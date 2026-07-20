@@ -889,6 +889,56 @@ class CaptureRouteTerminalTests(unittest.TestCase):
                         aws=self.aws_side_effect(fixture, job=job),
                     )
 
+    def test_batch_identity_requires_exact_job_name_and_log_stream_text(self):
+        fixture = self.fixture()
+        cases = (
+            (
+                "job_name",
+                lambda job, compute: job.__setitem__("jobName", 123),
+                "failed job_name_text",
+            ),
+            (
+                "job_log_stream",
+                lambda job, compute: job["container"].__setitem__(
+                    "logStreamName",
+                    123,
+                ),
+                "failed log_stream_exact",
+            ),
+            (
+                "attempt_log_stream",
+                lambda job, compute: job["attempts"][0]["container"].__setitem__(
+                    "logStreamName",
+                    123,
+                ),
+                "failed log_stream_exact",
+            ),
+            (
+                "x86_instance_type",
+                lambda job, compute: compute["computeResources"].__setitem__(
+                    "instanceTypes",
+                    ["r7i", "m7i", 7],
+                ),
+                "failed x86_compute_environment_live_exact",
+            ),
+        )
+
+        for label, mutate, error in cases:
+            with self.subTest(label=label):
+                job = copy.deepcopy(fixture["job"])
+                compute = copy.deepcopy(fixture["compute"])
+                mutate(job, compute)
+
+                with self.assertRaisesRegex(ValueError, error):
+                    MODULE.validate_job(
+                        job,
+                        fixture["definition"],
+                        fixture["queue"],
+                        compute,
+                        self.args(Path("unused"), fixture),
+                        fixture["submission_environment"],
+                    )
+
     def test_batch_identity_check_map_must_be_exact(self):
         fixture = self.fixture()
         cases = (
@@ -1017,6 +1067,25 @@ class CaptureRouteTerminalTests(unittest.TestCase):
                         self.args(Path("unused"), fixture),
                         fixture["submission_environment"],
                     )
+
+    def test_batch_identity_checks_avoid_raw_string_coercion(self):
+        module = ast.parse(
+            (SCRIPT_DIR / "capture_route_terminal.py").read_text(encoding="utf-8")
+        )
+        raw_batch_coercions = [
+            ast.unparse(node)
+            for node in ast.walk(module)
+            if isinstance(node, ast.Call)
+            and isinstance(node.func, ast.Name)
+            and node.func.id == "str"
+            and node.args
+            and any(
+                field in ast.unparse(node.args[0])
+                for field in ("logStreamName", "jobName", "instanceTypes")
+            )
+        ]
+
+        self.assertEqual(raw_batch_coercions, [])
 
     def test_cloudwatch_event_timestamps_must_be_exact_integers(self):
         cases = (

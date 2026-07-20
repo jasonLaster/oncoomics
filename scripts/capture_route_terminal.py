@@ -132,6 +132,7 @@ EXPECTED_HISTORY_AUDIT_CHECKS = {
 }
 EXPECTED_BATCH_IDENTITY_CHECKS = {
     "job_id_exact": True,
+    "job_name_text": True,
     "succeeded": True,
     "terminal_timestamps": True,
     "exact_job_definition": True,
@@ -248,6 +249,19 @@ def exact_terminal_timestamps(started_at: Any, stopped_at: Any) -> bool:
         and type(stopped_at) is int
         and started_at > 0
         and stopped_at >= started_at
+    )
+
+
+def exact_nonempty_text(value: Any) -> bool:
+    return isinstance(value, str) and bool(value)
+
+
+def exact_instance_types(value: Any, expected: tuple[str, ...]) -> bool:
+    return (
+        isinstance(value, list)
+        and len(value) == len(expected)
+        and all(isinstance(item, str) for item in value)
+        and sorted(value) == sorted(expected)
     )
 
 
@@ -614,12 +628,14 @@ def validate_job(
     resources = compute_environment.get("computeResources")
     instance_types = resources.get("instanceTypes") if isinstance(resources, dict) else None
     queue_order = queue.get("computeEnvironmentOrder")
-    job_log_stream = str(container.get("logStreamName", ""))
-    attempt_log_stream = str(attempt_container.get("logStreamName", ""))
+    job_log_stream = container.get("logStreamName")
+    attempt_log_stream = attempt_container.get("logStreamName")
+    job_name = job.get("jobName")
     started_at = job.get("startedAt")
     stopped_at = job.get("stoppedAt")
     checks = {
         "job_id_exact": job.get("jobId") == args.job_id,
+        "job_name_text": exact_nonempty_text(job_name),
         "succeeded": job.get("status") == "SUCCEEDED",
         "terminal_timestamps": exact_terminal_timestamps(started_at, stopped_at),
         "exact_job_definition": (job.get("jobDefinition") == route["job_definition_arn"]),
@@ -631,7 +647,9 @@ def validate_job(
         "job_environment_exact": job_environment == expected_job_environment,
         "submission_environment_exact": all(job_environment.get(name) == value for name, value in submission_environment.items()),
         "log_stream_exact": (
-            bool(job_log_stream) and job_log_stream == attempt_log_stream and job_log_stream.startswith(LOG_STREAM_PREFIX + "/")
+            exact_nonempty_text(job_log_stream)
+            and job_log_stream == attempt_log_stream
+            and job_log_stream.startswith(LOG_STREAM_PREFIX + "/")
         ),
         "definition_identity_exact": (
             definition.get("jobDefinitionArn") == route["job_definition_arn"]
@@ -692,9 +710,7 @@ def validate_job(
             and resources.get("allocationStrategy") == "BEST_FIT_PROGRESSIVE"
             and exact_int(resources.get("minvCpus"), 0)
             and exact_int(resources.get("maxvCpus"), 128)
-            and isinstance(instance_types, list)
-            and len(instance_types) == len(EXPECTED_X86_INSTANCE_TYPES)
-            and sorted(str(value) for value in instance_types) == sorted(EXPECTED_X86_INSTANCE_TYPES)
+            and exact_instance_types(instance_types, EXPECTED_X86_INSTANCE_TYPES)
             and resources.get("launchTemplate")
             == {
                 "launchTemplateId": "lt-0b2375486d24af74a",
@@ -715,7 +731,7 @@ def validate_job(
     return {
         "route": args.route,
         "job_id": args.job_id,
-        "job_name": str(job.get("jobName", "")),
+        "job_name": job_name,
         "status": "SUCCEEDED",
         "started_at_epoch_ms": started_at,
         "stopped_at_epoch_ms": stopped_at,

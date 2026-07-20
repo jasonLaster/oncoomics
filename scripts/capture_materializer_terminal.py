@@ -160,6 +160,7 @@ EXPECTED_RECEIPT_ANCHOR_CHECKS = {
 }
 EXPECTED_BATCH_IDENTITY_CHECKS = {
     "job_id_exact": True,
+    "job_name_text": True,
     "succeeded": True,
     "terminal_timestamps": True,
     "exact_job_definition": True,
@@ -273,6 +274,15 @@ def exact_terminal_timestamps(started_at: Any, stopped_at: Any) -> bool:
         and type(stopped_at) is int
         and started_at > 0
         and stopped_at >= started_at
+    )
+
+
+def exact_instance_types(value: Any, expected: tuple[str, ...]) -> bool:
+    return (
+        isinstance(value, list)
+        and len(value) == len(expected)
+        and all(isinstance(item, str) for item in value)
+        and sorted(value) == sorted(expected)
     )
 
 
@@ -564,8 +574,9 @@ def validate_job(
     if not isinstance(attempt_container, dict):
         raise ValueError("Batch attempt container is missing")
     normalized_parameters = normalize_job_parameters(job.get("parameters"))
-    job_log_stream = str(container.get("logStreamName", ""))
-    attempt_log_stream = str(attempt_container.get("logStreamName", ""))
+    job_log_stream = container.get("logStreamName")
+    attempt_log_stream = attempt_container.get("logStreamName")
+    job_name = job.get("jobName")
     queue_order = queue.get("computeEnvironmentOrder")
     resources = compute_environment.get("computeResources")
     instance_types = resources.get("instanceTypes") if isinstance(resources, dict) else None
@@ -580,6 +591,7 @@ def validate_job(
     stopped_at = job.get("stoppedAt")
     checks = {
         "job_id_exact": job.get("jobId") == job_id,
+        "job_name_text": is_nonempty_text(job_name),
         "succeeded": job.get("status") == "SUCCEEDED",
         "terminal_timestamps": exact_terminal_timestamps(started_at, stopped_at),
         "exact_job_definition": job.get("jobDefinition") == EXPECTED_JOB_DEFINITION,
@@ -590,7 +602,9 @@ def validate_job(
         "attempt_exit_zero": exact_int(attempt_container.get("exitCode"), 0),
         "parameters_exact": normalized_parameters == expected_parameters,
         "log_stream_exact": (
-            bool(job_log_stream) and job_log_stream == attempt_log_stream and job_log_stream.startswith(LOG_STREAM_PREFIX)
+            is_nonempty_text(job_log_stream)
+            and job_log_stream == attempt_log_stream
+            and job_log_stream.startswith(LOG_STREAM_PREFIX)
         ),
         "definition_exact": (
             definition.get("jobDefinitionArn") == EXPECTED_JOB_DEFINITION
@@ -626,9 +640,7 @@ def validate_job(
             and compute_environment.get("computeEnvironmentName") == EXPECTED_QUEUE_NAME
             and compute_environment.get("state") == "ENABLED"
             and compute_environment.get("status") == "VALID"
-            and isinstance(instance_types, list)
-            and len(instance_types) == len(EXPECTED_ARM_INSTANCE_TYPES)
-            and sorted(str(value) for value in instance_types) == sorted(EXPECTED_ARM_INSTANCE_TYPES)
+            and exact_instance_types(instance_types, EXPECTED_ARM_INSTANCE_TYPES)
         ),
     }
     try:
@@ -641,7 +653,7 @@ def validate_job(
         raise ValueError(f"terminal materializer Batch identity failed: {error}") from error
     return {
         "job_id": job_id,
-        "job_name": str(job.get("jobName", "")),
+        "job_name": job_name,
         "status": "SUCCEEDED",
         "started_at_epoch_ms": started_at,
         "stopped_at_epoch_ms": stopped_at,
