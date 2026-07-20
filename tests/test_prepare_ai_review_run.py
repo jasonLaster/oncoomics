@@ -799,6 +799,65 @@ class PrepareAiReviewRunTests(unittest.TestCase):
             self.assertFalse(output.exists())
             self.assertFalse(any(root.glob(".ai-review.*")))
 
+    def test_rejects_stage_receipt_with_truthy_integer_reviewer_modes(
+        self,
+    ) -> None:
+        mutations = (
+            (
+                "directory_mode",
+                lambda payload: payload["reviewers"]["A"].__setitem__(
+                    "mode_0700",
+                    1,
+                ),
+            ),
+            (
+                "bundle_file_mode",
+                lambda payload: payload["reviewers"]["A"]["files"][
+                    "review_bundle.json"
+                ].__setitem__("mode_0600", 1),
+            ),
+            (
+                "prompt_file_mode",
+                lambda payload: payload["reviewers"]["B"]["files"][
+                    "reviewer-b.prompt.md"
+                ].__setitem__("mode_0600", 1),
+            ),
+        )
+
+        for label, mutate in mutations:
+            with self.subTest(label=label), tempfile.TemporaryDirectory() as temporary:
+                root = Path(temporary)
+                fixture = AiReviewBundleFixture(root)
+                output = root / "ai-review"
+                real_stage_inputs = PREPARE.stage_inputs
+
+                def stage_then_truthy_integer_mode(
+                    bundle_dir: Path,
+                    output_root: Path,
+                    receipt: Path,
+                    mutate=mutate,
+                ) -> None:
+                    real_stage_inputs(bundle_dir, output_root, receipt)
+                    payload = json.loads(receipt.read_text(encoding="utf-8"))
+                    mutate(payload)
+                    write_json(receipt, payload)
+
+                with (
+                    mock.patch.object(
+                        PREPARE,
+                        "stage_inputs",
+                        side_effect=stage_then_truthy_integer_mode,
+                    ),
+                    self.assertRaisesRegex(
+                        ValueError,
+                        "stage AI review input receipt is not exact",
+                    ),
+                ):
+                    PREPARE.prepare(namespace(fixture, output))
+
+                self.assertFalse(output.exists())
+                self.assertFalse(any(root.glob(".ai-review.*")))
+
     def test_rejects_thin_or_legacy_stage_receipt_envelope(self) -> None:
         cases = {
             "missing_generated_at": lambda payload: payload.pop("generated_at"),

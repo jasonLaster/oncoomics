@@ -170,6 +170,39 @@ def exact_check_map(value: Any, expected: dict[str, bool]) -> bool:
     )
 
 
+def exact_stage_reviewers(value: Any, expected: dict[str, Any]) -> bool:
+    if not isinstance(value, dict) or set(value) != set(expected):
+        return False
+
+    for role, expected_reviewer in expected.items():
+        reviewer = value.get(role)
+        if not isinstance(reviewer, dict) or set(reviewer) != set(expected_reviewer):
+            return False
+        if (
+            reviewer.get("directory") != expected_reviewer["directory"]
+            or reviewer.get("exact_two_file_inventory")
+            != expected_reviewer["exact_two_file_inventory"]
+            or reviewer.get("mode_0700") is not True
+        ):
+            return False
+
+        expected_files = expected_reviewer["files"]
+        files = reviewer.get("files")
+        if not isinstance(files, dict) or set(files) != set(expected_files):
+            return False
+        for filename, expected_file in expected_files.items():
+            file = files.get(filename)
+            if (
+                not isinstance(file, dict)
+                or set(file) != set(expected_file)
+                or file.get("mode_0600") is not True
+                or file.get("sha256") != expected_file["sha256"]
+            ):
+                return False
+
+    return True
+
+
 def require_installed_json(path: Path, expected_sha256: str) -> None:
     require_real_file(path, "staged AI review JSON")
     if (path.stat().st_mode & 0o777) != 0o600:
@@ -553,7 +586,7 @@ def require_rebased_stage_receipt(
         or not receipt.get("generated_at")
         or receipt.get("bundle_dir") != str(output / "bundle")
         or receipt.get("output_root") != str(output / "reviewer-inputs")
-        or receipt.get("reviewers") != expected_reviewers
+        or not exact_stage_reviewers(receipt.get("reviewers"), expected_reviewers)
         or not exact_check_map(receipt.get("checks"), STAGE_RECEIPT_CHECKS)
     ):
         raise ValueError("stage AI review input receipt is not exact")
