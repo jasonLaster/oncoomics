@@ -99,7 +99,11 @@ def require_real_hash_input(path: Path) -> None:
 
 def sha256(path: Path) -> str:
     require_real_hash_input(path)
-    return hashlib.sha256(path.read_bytes()).hexdigest()
+    data = path.read_bytes()
+    digest = sha256_bytes(data)
+    if sha256_bytes(path.read_bytes()) != digest:
+        raise ValueError(f"{path.name} SHA-256 input changed during read")
+    return digest
 
 
 def sha256_bytes(value: bytes) -> str:
