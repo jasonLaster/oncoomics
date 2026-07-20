@@ -337,6 +337,15 @@ def non_null_version_id(value: Any) -> bool:
     )
 
 
+def exact_receipt_string(value: Any) -> bool:
+    return (
+        isinstance(value, str)
+        and bool(value)
+        and value == value.strip()
+        and not any(ord(character) < 32 or ord(character) == 127 for character in value)
+    )
+
+
 def exact_non_null_version_id(value: Any, label: str) -> str:
     if not non_null_version_id(value):
         raise ValueError(f"{label} omitted a non-null VersionId")
@@ -728,12 +737,9 @@ def validate_private_receipt_payload(
             receipt.get("destination_final_history_count"),
             len(expected),
         )
-        or not isinstance(receipt.get("generated_at_utc"), str)
-        or not receipt.get("generated_at_utc")
-        or not isinstance(receipt.get("completed_at_utc"), str)
-        or not receipt.get("completed_at_utc")
-        or not isinstance(receipt.get("source_packet_dir"), str)
-        or not receipt.get("source_packet_dir")
+        or not exact_receipt_string(receipt.get("generated_at_utc"))
+        or not exact_receipt_string(receipt.get("completed_at_utc"))
+        or not exact_receipt_string(receipt.get("source_packet_dir"))
         or not is_positive_exact_int(receipt.get("forbidden_token_count"))
         or not isinstance(forbidden_hashes, list)
         or not forbidden_hashes
@@ -813,8 +819,7 @@ def validate_private_receipt_payload(
         or set(dry_run) != PRIVATE_DRY_RUN_SUMMARY_KEYS
         or dry_run.get("status") != "dry_run"
         or dry_run.get("packet_revision") != packet_revision
-        or not isinstance(dry_run.get("path"), str)
-        or not dry_run.get("path")
+        or not exact_receipt_string(dry_run.get("path"))
         or not isinstance(dry_run.get("sha256"), str)
         or not SHA256_HEX.fullmatch(dry_run.get("sha256", ""))
     ):
@@ -1110,10 +1115,8 @@ def validate_dry_run_receipt(
         or dry_run.get("status") != "dry_run"
         or dry_run.get("apply") is not False
         or set(dry_run) != REVIEWED_PUBLIC_DRY_RUN_RECEIPT_KEYS
-        or not isinstance(dry_run.get("generated_at_utc"), str)
-        or not dry_run.get("generated_at_utc")
-        or not isinstance(dry_run.get("completed_at_utc"), str)
-        or not dry_run.get("completed_at_utc")
+        or not exact_receipt_string(dry_run.get("generated_at_utc"))
+        or not exact_receipt_string(dry_run.get("completed_at_utc"))
         or dry_run.get("destination_objects") != []
         or not exact_int(dry_run.get("destination_initial_history_count"), 0)
         or not isinstance(source_objects, list)

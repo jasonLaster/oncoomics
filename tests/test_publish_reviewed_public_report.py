@@ -927,6 +927,14 @@ class PublishReviewedPublicReportTests(unittest.TestCase):
                 "contract is malformed",
             ),
             (
+                "tabbed generated_at",
+                lambda payload: payload.__setitem__(
+                    "generated_at_utc",
+                    f"{payload['generated_at_utc']}\t",
+                ),
+                "contract is malformed",
+            ),
+            (
                 "boolean destination_initial_history_count",
                 lambda payload: payload.__setitem__(
                     "destination_initial_history_count",
@@ -1524,6 +1532,22 @@ class PublishReviewedPublicReportTests(unittest.TestCase):
                 "stale dry-run revision",
                 lambda receipt: receipt["dry_run_receipt"].__setitem__(
                     "packet_revision", "0" * 64
+                ),
+                "dry-run receipt summary is not exact",
+            ),
+            (
+                "hidden-NUL source packet directory",
+                lambda receipt: receipt.__setitem__(
+                    "source_packet_dir",
+                    f"{receipt['source_packet_dir']}\x00",
+                ),
+                "not exact and passed",
+            ),
+            (
+                "tabbed dry-run summary path",
+                lambda receipt: receipt["dry_run_receipt"].__setitem__(
+                    "path",
+                    f"{receipt['dry_run_receipt']['path']}\t",
                 ),
                 "dry-run receipt summary is not exact",
             ),
