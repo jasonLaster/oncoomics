@@ -1800,6 +1800,28 @@ class BuildAiReviewBundleTests(unittest.TestCase):
             self.assertIn("no_call manifest state", built.stderr)
             self.assertFalse((fixture.bundle_dir / "review_bundle.json").exists())
 
+    def test_rejects_promoted_rosalind_reviewer_packet(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            fixture = AiReviewBundleFixture(Path(temporary))
+            fixture.update_manifest(
+                1,
+                {
+                    "evidence_status": "ready",
+                    "authorized_hrd_state": "positive",
+                    "classification_authorized": True,
+                    "classification_qc_status": "passed",
+                },
+            )
+
+            built = fixture.run()
+
+            self.assertNotEqual(built.returncode, 0)
+            self.assertIn(
+                "rosalind_hrd_reviewer_packet report manifest cannot authorize",
+                built.stderr,
+            )
+            self.assertFalse((fixture.bundle_dir / "review_bundle.json").exists())
+
     def test_rejects_no_call_manifest_with_applicable_classification_qc(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             fixture = AiReviewBundleFixture(Path(temporary))
