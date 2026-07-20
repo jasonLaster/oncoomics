@@ -56,7 +56,7 @@ def write_route_report(source: Path, route: str = "sigprofiler_sbs3") -> Path:
     manifest = {
         "schema_version": 1,
         "method_id": route,
-        "report_kind": route,
+        "report_kind": "executable_crosscheck_method",
         "route": route,
         "evidence_status": "partial_evidence",
         "authorized_hrd_state": "no_call",
@@ -947,6 +947,32 @@ class StageHrdCrosscheckReportTests(unittest.TestCase):
                     root / "staged",
                     "sigprofiler_sbs3",
                 )
+
+    def test_stage_rejects_non_exact_source_route_manifest_envelope(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            source = root / "exact"
+            verification = write_route_report(source)
+            manifest_path = source / "report_manifest.json"
+            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+            manifest["legacy_unbound_summary"] = {
+                "stale": "not part of the downloaded route packet contract",
+            }
+            write_json(manifest_path, manifest)
+            refresh_download_verification(source, verification)
+
+            with self.assertRaisesRegex(
+                ValueError,
+                "route report manifest envelope is not exact",
+            ):
+                STAGE.stage(
+                    source,
+                    verification,
+                    root / "staged",
+                    "sigprofiler_sbs3",
+                )
+
+            self.assertFalse((root / "staged").exists())
 
     def test_stage_rejects_coerced_download_verification_hashes(self) -> None:
         digest = "1" * 64

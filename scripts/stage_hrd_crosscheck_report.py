@@ -329,9 +329,12 @@ def require_download_verification(
     manifest, source_report_manifest_sha256 = load_json_with_sha256(
         source_dir / "report_manifest.json", "route report manifest"
     )
+    if set(manifest) != REPORT_MANIFEST_KEYS:
+        raise ValueError("route report manifest envelope is not exact")
     if (
         not exact_schema_version(manifest)
         or manifest.get("method_id") != route
+        or manifest.get("report_kind") != "executable_crosscheck_method"
         or manifest.get("route") != route
         or manifest.get("authorized_hrd_state") != "no_call"
         or manifest.get("classification_authorized") is not False

@@ -386,6 +386,8 @@
           summary they are about to preserve,
           pre-route blocked cross-check packets now exact-check the top-level
           review summary they are about to hand to AI/freeform review,
+          downloaded executable route manifests now have to keep the exact
+          no-call cross-check envelope before route staging can compact them,
           prepared AI runs now reject model-catalog
           drift before writing a receipt, independent reviewer validation now
           rechecks reviewer-authored outputs after its receipt is installed,
@@ -411,7 +413,7 @@
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-20</li>
-          <li class="pill">Latest milestone = Blocked summaries exact</li>
+          <li class="pill">Latest milestone = Route manifests exact</li>
           <li class="pill">AI synthesis summary = exact</li>
           <li class="pill">AI reviewer inputs = rehashed</li>
           <li class="pill">AI reviewer pair = same packet</li>
@@ -422,6 +424,7 @@
           <li class="pill">AI stage manifest = hash-bound</li>
           <li class="pill">Daily Batch spend = cross-region</li>
           <li class="pill">Packet file rows = unique</li>
+          <li class="pill">Route manifests = exact</li>
           <li class="pill">Blocked summaries = exact</li>
           <li class="pill">P5 spend = preflighted</li>
           <li class="pill">P5 cost ledger = bound</li>
@@ -1748,6 +1751,10 @@
           <h3>Priority 3 · Rosalind packet and route reports</h3>
           <ol class="todo">
             <li class="item" style="--tone: var(--done)">
+              <strong>Done · bind route manifests before staging</strong>
+              <span>Exact route replay staging now rejects stale top-level fields or the wrong report kind in downloaded Sequenza/scarHRD and SigProfiler/SBS3 manifests before their compact no-call packets can feed source-freeze, Rosalind, or AI/freeform review.</span>
+            </li>
+            <li class="item" style="--tone: var(--done)">
               <strong>Done · bind blocked review summaries exactly</strong>
               <span>Pre-route blocked FACETS/scarHRD, CHORD, and HRDetect packets now reject extra top-level review-summary fields before a no-call packet can enter source-freeze or AI/freeform handoff, while still preserving the explicit blocked/no-call state.</span>
             </li>
@@ -3001,6 +3008,19 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-20">Jul 20 · local</time>
+              <span>
+                <strong>Local patch · Bind route manifests before staging:</strong>
+                executable Sequenza/scarHRD and SigProfiler/SBS3 route staging
+                now rejects downloaded <code>report_manifest.json</code> files
+                with stale top-level fields or a non-compact report kind before
+                repackaging them for source-freeze, Rosalind, and AI/freeform
+                review. No S3, Batch, route, GPU, quota, replacement compute,
+                or apply-mode AWS work was launched; Cost Explorer was
+                refreshed read-only for 2026-07-19 UTC and remained at $5.24.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-20">Jul 20 · local</time>
               <span>
