@@ -260,6 +260,30 @@ class PublicIndexTests(unittest.TestCase):
             ):
                 MODULE.sha256(linked_inputs / "reviewed-public.json")
 
+    def test_sha256_rejects_inputs_that_change_during_read(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            receipt = Path(temporary) / "reviewed-public.json"
+            receipt.write_text('{"status":"passed"}\n', encoding="utf-8")
+            real_sha256_bytes = MODULE.sha256_bytes
+
+            def tamper_after_initial_read(data: bytes) -> str:
+                digest = real_sha256_bytes(data)
+                receipt.write_text('{"status":"tampered"}\n', encoding="utf-8")
+                return digest
+
+            with (
+                mock.patch.object(
+                    MODULE,
+                    "sha256_bytes",
+                    side_effect=tamper_after_initial_read,
+                ),
+                self.assertRaisesRegex(
+                    RuntimeError,
+                    "reviewed-public.json SHA-256 input changed during read",
+                ),
+            ):
+                MODULE.sha256(receipt)
+
     def test_diana_public_prefixes_are_exact_reviewed_report_destinations(self) -> None:
         expected = tuple(
             PUBLISH.PUBLIC_ROOT + str(contract["destination"])
@@ -542,37 +566,39 @@ class PublicIndexTests(unittest.TestCase):
             with self.assertRaisesRegex(RuntimeError, "parent may not be a symlink"):
                 MODULE.validate_reviewed_public_receipts(receipts)
 
-    def test_reviewed_public_receipt_hash_rejects_symlink_after_load(self) -> None:
+    def test_reviewed_public_receipt_binding_uses_loaded_digest_after_symlink(
+        self,
+    ) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
             receipts = write_public_receipts(root)
-            real_load_json_object = MODULE.load_json_object
+            expected_sha256 = MODULE.sha256(receipts[0])
+            real_load_json_object_with_sha256 = MODULE.load_json_object_with_sha256
             swapped = False
 
-            def swap_receipt_after_load(path: Path, label: str) -> dict:
+            def swap_receipt_after_stable_load(
+                path: Path, label: str
+            ) -> tuple[dict, str]:
                 nonlocal swapped
-                receipt = real_load_json_object(path, label)
+                receipt, digest = real_load_json_object_with_sha256(path, label)
                 if not swapped:
                     moved = root / "reviewed-public.real.json"
                     path.rename(moved)
                     path.symlink_to(moved)
                     swapped = True
-                return receipt
+                return receipt, digest
 
-            with (
-                mock.patch.object(
-                    MODULE,
-                    "load_json_object",
-                    side_effect=swap_receipt_after_load,
-                ),
-                self.assertRaisesRegex(
-                    RuntimeError,
-                    "SHA-256 input must be a real file",
-                ),
+            with mock.patch.object(
+                MODULE,
+                "load_json_object_with_sha256",
+                side_effect=swap_receipt_after_stable_load,
             ):
-                MODULE.validate_reviewed_public_receipts(receipts)
+                _, receipt_binding = MODULE.validate_reviewed_public_receipts(
+                    receipts
+                )
 
             self.assertTrue(swapped)
+            self.assertEqual(receipt_binding[0]["sha256"], expected_sha256)
 
     def test_reviewed_public_receipts_reject_invalid_json_objects(self) -> None:
         cases = (
@@ -599,6 +625,66 @@ class PublicIndexTests(unittest.TestCase):
 
                 with self.assertRaisesRegex(RuntimeError, message):
                     MODULE.load_json_object(receipt, "reviewed-public receipt")
+
+    def test_reviewed_public_receipts_reject_json_that_changes_during_read(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            receipt = Path(temporary) / "reviewed-public.json"
+            receipt.write_text('{"status":"passed"}\n', encoding="utf-8")
+            real_sha256_bytes = MODULE.sha256_bytes
+
+            def tamper_after_initial_read(data: bytes) -> str:
+                digest = real_sha256_bytes(data)
+                receipt.write_text('{"status":"tampered"}\n', encoding="utf-8")
+                return digest
+
+            with (
+                mock.patch.object(
+                    MODULE,
+                    "sha256_bytes",
+                    side_effect=tamper_after_initial_read,
+                ),
+                self.assertRaisesRegex(
+                    RuntimeError,
+                    "reviewed-public receipt changed during read",
+                ),
+            ):
+                MODULE.load_json_object(receipt, "reviewed-public receipt")
+
+    def test_reviewed_public_receipt_binding_uses_loaded_digest(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            receipts = write_public_receipts(root)
+            expected_sha256 = MODULE.sha256(receipts[0])
+            real_load_json_object_with_sha256 = MODULE.load_json_object_with_sha256
+            swapped = False
+
+            def swap_receipt_after_stable_load(
+                path: Path, label: str
+            ) -> tuple[dict, str]:
+                nonlocal swapped
+                receipt, digest = real_load_json_object_with_sha256(path, label)
+                if not swapped:
+                    path.write_text(
+                        '{"status":"tampered"}\n',
+                        encoding="utf-8",
+                    )
+                    swapped = True
+                return receipt, digest
+
+            with mock.patch.object(
+                MODULE,
+                "load_json_object_with_sha256",
+                side_effect=swap_receipt_after_stable_load,
+            ):
+                _, receipt_binding = MODULE.validate_reviewed_public_receipts(
+                    receipts
+                )
+
+            self.assertTrue(swapped)
+            self.assertEqual(receipt_binding[0]["sha256"], expected_sha256)
+            self.assertNotEqual(MODULE.sha256(receipts[0]), expected_sha256)
 
     def test_reviewed_public_receipts_require_full_source_preflight_checks(
         self,

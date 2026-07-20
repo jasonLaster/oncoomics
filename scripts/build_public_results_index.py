@@ -288,12 +288,7 @@ def sha256_bytes(value: bytes) -> str:
 
 
 def sha256(path: pathlib.Path) -> str:
-    require_real_hash_input(path)
-    digest = hashlib.sha256()
-    with path.open("rb") as handle:
-        for block in iter(lambda: handle.read(8 * 1024 * 1024), b""):
-            digest.update(block)
-    return digest.hexdigest()
+    return read_stable_file(path, f"{path.name} SHA-256 input")[1]
 
 
 def require_installed_index(path: pathlib.Path, expected_sha256: str) -> None:
@@ -303,12 +298,18 @@ def require_installed_index(path: pathlib.Path, expected_sha256: str) -> None:
 
 
 def load_json_object(path: pathlib.Path, label: str) -> dict[str, Any]:
-    require_real_input_file(path, label)
-    if path.stat().st_size <= 0:
+    return load_json_object_with_sha256(path, label)[0]
+
+
+def load_json_object_with_sha256(
+    path: pathlib.Path, label: str
+) -> tuple[dict[str, Any], str]:
+    data, digest = read_stable_file(path, label)
+    if len(data) <= 0:
         raise RuntimeError(f"{label} must be a real non-empty file: {path}")
     try:
         value = json.loads(
-            path.read_text(encoding="utf-8"),
+            data.decode("utf-8"),
             object_pairs_hook=reject_duplicate_json_object_names,
         )
     except DuplicateJsonKeyError as error:
@@ -317,7 +318,16 @@ def load_json_object(path: pathlib.Path, label: str) -> dict[str, Any]:
         raise RuntimeError(f"invalid JSON in {label}: {path}") from error
     if not isinstance(value, dict):
         raise RuntimeError(f"{label} must be a JSON object: {path}")
-    return value
+    return value, digest
+
+
+def read_stable_file(path: pathlib.Path, label: str) -> tuple[bytes, str]:
+    require_real_input_file(path, label)
+    data = path.read_bytes()
+    digest = sha256_bytes(data)
+    if sha256_bytes(path.read_bytes()) != digest:
+        raise RuntimeError(f"{label} changed during read: {path}")
+    return data, digest
 
 
 def is_positive_exact_int(value: Any) -> bool:
@@ -355,7 +365,9 @@ def validate_reviewed_public_receipts(
     receipt_objects: dict[str, ReviewedPublicObject] = {}
     receipt_binding: list[dict[str, Any]] = []
     for method_id, path in zip(REPORT_METHOD_IDS, paths):
-        receipt = load_json_object(path, f"{method_id} reviewed-public receipt")
+        receipt, receipt_sha256 = load_json_object_with_sha256(
+            path, f"{method_id} reviewed-public receipt"
+        )
         contract = METHOD_CONTRACTS[method_id]
         expected_files = tuple(sorted(contract["files"]))
         expected_prefix = f"s3://{BUCKET}/{PUBLIC_ROOT}{contract['destination']}"
@@ -539,7 +551,7 @@ def validate_reviewed_public_receipts(
         receipt_binding.append(
             {
                 "method_id": method_id,
-                "sha256": sha256(path),
+                "sha256": receipt_sha256,
                 "destination_prefix": expected_prefix,
                 "object_count": len(expected_files),
             }
