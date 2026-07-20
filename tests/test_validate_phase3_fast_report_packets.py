@@ -303,6 +303,41 @@ class ValidatePhase3FastReportPacketsTests(unittest.TestCase):
             ):
                 VALIDATOR.sha256_file(source)
 
+    def test_packet_file_rows_use_exact_stable_file_bytes(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            source = root / "report.md"
+            original = b"stable no_call report\n"
+            source.write_bytes(original)
+            mutated = False
+            real_read_stable_file = VALIDATOR.read_stable_file
+
+            def tamper_after_read(path: Path, label: str) -> bytes:
+                nonlocal mutated
+                payload = real_read_stable_file(path, label)
+                if path == source and not mutated:
+                    mutated = True
+                    path.write_bytes(b"rewritten no_call report with more bytes\n")
+                return payload
+
+            with mock.patch.object(
+                VALIDATOR,
+                "read_stable_file",
+                side_effect=tamper_after_read,
+            ):
+                row = VALIDATOR.stable_packet_file_row(
+                    source,
+                    "report.md",
+                    (),
+                )
+
+            digest = hashlib.sha256(original).hexdigest()
+            self.assertTrue(mutated)
+            self.assertEqual(row["bytes"], len(original))
+            self.assertEqual(row["sha256"], digest)
+            self.assertEqual(row["checksum_sha256"], VALIDATOR.checksum_sha256(digest))
+            self.assertNotEqual(source.stat().st_size, row["bytes"])
+
     def test_validate_packets_rejects_inexact_generated_row_bytes(self) -> None:
         packet_dirs = {
             method_id: Path("/unused")
