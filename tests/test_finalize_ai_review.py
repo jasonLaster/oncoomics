@@ -879,6 +879,77 @@ class FinalizeAiReviewTests(unittest.TestCase):
 
             self.assertFalse((review / "report_manifest.json").exists())
 
+    def test_final_manifest_rejects_inexact_review_summary_model(self) -> None:
+        cases = (
+            (
+                "legacy nested note",
+                lambda model: model.__setitem__(
+                    "legacy_model_notes",
+                    "not part of the finalized AI review contract",
+                ),
+            ),
+            (
+                "coerced provider",
+                lambda model: model.__setitem__("provider", 123),
+            ),
+            (
+                "padded model",
+                lambda model: model.__setitem__("model_id", " gpt-5.6-sol\n"),
+            ),
+            (
+                "non-attested model",
+                lambda model: model.__setitem__("latest_available_attested", 1),
+            ),
+            (
+                "naive catalog timestamp",
+                lambda model: model.__setitem__(
+                    "catalog_verified_at",
+                    "2026-07-17T00:00:00",
+                ),
+            ),
+        )
+
+        for label, mutate in cases:
+            with self.subTest(label=label), tempfile.TemporaryDirectory() as temporary:
+                fixture, review = self.validated_review(temporary)
+                real_build_manifest = FINALIZE.build_manifest
+
+                def build_manifest_with_stale_model(
+                    bundle_dir: Path,
+                    review_dir: Path,
+                    reviewer: str,
+                    model_catalog_receipt: Path,
+                ) -> dict:
+                    manifest = real_build_manifest(
+                        bundle_dir,
+                        review_dir,
+                        reviewer,
+                        model_catalog_receipt,
+                    )
+                    mutate(manifest["review_summary"]["model"])
+                    return manifest
+
+                with (
+                    mock.patch.object(
+                        FINALIZE,
+                        "build_manifest",
+                        side_effect=build_manifest_with_stale_model,
+                    ),
+                    self.assertRaisesRegex(
+                        ValueError,
+                        "AI review summary model is not exact",
+                    ),
+                ):
+                    FINALIZE.finalize(
+                        fixture.bundle_dir,
+                        review,
+                        "A",
+                        fixture.catalog_receipt,
+                        review / "report_manifest.json",
+                    )
+
+                self.assertFalse((review / "report_manifest.json").exists())
+
     def test_rejects_validation_bound_to_stale_bundle_manifest(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             fixture, review = self.validated_review(temporary)
