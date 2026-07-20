@@ -78,6 +78,16 @@ output "gpu_p5en_queue" {
   value       = aws_batch_job_queue.gpu_p5en.name
 }
 
+output "daily_cost_guard_budget" {
+  description = "Daily AWS Budgets cost guard that invokes the Diana Batch kill switch."
+  value       = aws_budgets_budget.daily_cost_guard.name
+}
+
+output "daily_cost_guard_topic_arn" {
+  description = "SNS topic that invokes the Diana Batch kill switch when the daily cost guard trips."
+  value       = aws_sns_topic.daily_cost_guard.arn
+}
+
 output "batch_job_role_arn" {
   description = "IAM role ARN used by Batch jobs."
   value       = aws_iam_role.batch_job.arn

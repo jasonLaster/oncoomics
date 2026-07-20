@@ -484,4 +484,18 @@ Cloud Nextflow profiles retry failed Batch processes once by default. Override w
 
 ## Cost Notes
 
-The stack includes a NAT Gateway so private Batch compute can download public data. NAT Gateway, EBS root volumes, Batch EC2 instances, S3 storage, and data transfer can create charges. Work-bucket objects expire by lifecycle policy, but Batch compute and failed runs should still be checked after testing.
+The stack includes a NAT Gateway so private Batch compute can download public
+data. NAT Gateway, EBS root volumes, Batch EC2 instances, S3 storage, and data
+transfer can create charges. Work-bucket objects expire by lifecycle policy,
+but Batch compute and failed runs should still be checked after testing.
+
+Each Terraform workspace also installs an account-wide daily AWS Budget guard
+with a default `daily_cost_guard_limit_usd = 200`. When actual same-day spend
+crosses `daily_cost_guard_stop_threshold_percent = 80`, the Budget publishes to
+SNS and invokes `${project}-${environment}-batch-cost-guard`, which disables
+this workspace's Batch job queues and compute environments before cancelling
+queued jobs and terminating visible running jobs. The same SNS path fires again
+at 100% for an idempotent stop. Billing telemetry is delayed, so this is a
+conservative Batch kill switch rather than an instantaneous account spend cap;
+leave GPU smoke and execute runs bounded and re-check Batch state after every
+high-cost test.

@@ -35,6 +35,9 @@ locals {
   ]
   batch_service_role_arn = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/aws-service-role/batch.amazonaws.com/AWSServiceRoleForBatch"
 
+  daily_cost_guard_budget_name = "${local.name_prefix}-daily-cost-guard"
+  daily_cost_guard_budget_arn  = "arn:aws:budgets::${data.aws_caller_identity.current.account_id}:budget/${local.daily_cost_guard_budget_name}"
+
   # Public access is opt-in per reviewed validation or alias-only analysis run.
   # Never grant bucket listing, version listing, historical-version reads, or a
   # wildcard object read on the results bucket. Raw inputs, BAMs, and direct
@@ -82,6 +85,7 @@ data "aws_iam_policy_document" "bootstrap_local_cli" {
     effect = "Allow"
     actions = [
       "batch:*",
+      "budgets:*",
       "ecr:*",
       "ec2:DescribeInstances",
       "ecs:DescribeClusters",
@@ -90,7 +94,9 @@ data "aws_iam_policy_document" "bootstrap_local_cli" {
       "ecs:ListContainerInstances",
       "ecs:ListTasks",
       "kms:*",
+      "lambda:*",
       "logs:*",
+      "sns:*",
       "servicequotas:GetRequestedServiceQuotaChange",
       "servicequotas:GetServiceQuota",
       "servicequotas:ListRequestedServiceQuotaChangeHistory",
@@ -1171,6 +1177,213 @@ resource "aws_batch_job_queue" "gpu_p5en" {
     Architecture = "linux-amd64"
     Workload     = "parabricks-p5en"
   }
+}
+
+resource "aws_sns_topic" "daily_cost_guard" {
+  name = "${local.name_prefix}-daily-cost-guard"
+}
+
+data "aws_iam_policy_document" "daily_cost_guard_sns" {
+  statement {
+    sid     = "AllowAwsBudgetsPublish"
+    effect  = "Allow"
+    actions = ["SNS:Publish"]
+
+    principals {
+      type        = "Service"
+      identifiers = ["budgets.amazonaws.com"]
+    }
+
+    resources = [aws_sns_topic.daily_cost_guard.arn]
+
+    condition {
+      test     = "StringEquals"
+      variable = "aws:SourceAccount"
+      values   = [data.aws_caller_identity.current.account_id]
+    }
+
+    condition {
+      test     = "ArnLike"
+      variable = "aws:SourceArn"
+      values   = [local.daily_cost_guard_budget_arn]
+    }
+  }
+}
+
+resource "aws_sns_topic_policy" "daily_cost_guard" {
+  arn    = aws_sns_topic.daily_cost_guard.arn
+  policy = data.aws_iam_policy_document.daily_cost_guard_sns.json
+}
+
+resource "aws_budgets_budget" "daily_cost_guard" {
+  name         = local.daily_cost_guard_budget_name
+  budget_type  = "COST"
+  limit_amount = tostring(var.daily_cost_guard_limit_usd)
+  limit_unit   = "USD"
+  time_unit    = "DAILY"
+
+  cost_types {
+    include_credit             = false
+    include_discount           = true
+    include_other_subscription = true
+    include_recurring          = true
+    include_refund             = false
+    include_subscription       = true
+    include_support            = true
+    include_tax                = true
+    include_upfront            = true
+    use_amortized              = false
+    use_blended                = false
+  }
+
+  notification {
+    comparison_operator        = "GREATER_THAN"
+    notification_type          = "ACTUAL"
+    subscriber_email_addresses = var.daily_cost_guard_email == "" ? [] : [var.daily_cost_guard_email]
+    subscriber_sns_topic_arns  = [aws_sns_topic.daily_cost_guard.arn]
+    threshold                  = var.daily_cost_guard_stop_threshold_percent
+    threshold_type             = "PERCENTAGE"
+  }
+
+  notification {
+    comparison_operator        = "GREATER_THAN"
+    notification_type          = "ACTUAL"
+    subscriber_email_addresses = var.daily_cost_guard_email == "" ? [] : [var.daily_cost_guard_email]
+    subscriber_sns_topic_arns  = [aws_sns_topic.daily_cost_guard.arn]
+    threshold                  = 100
+    threshold_type             = "PERCENTAGE"
+  }
+
+  depends_on = [aws_sns_topic_policy.daily_cost_guard]
+}
+
+data "archive_file" "batch_cost_guard" {
+  type        = "zip"
+  source_file = "${path.module}/batch_cost_guard.py"
+  output_path = "${path.module}/.terraform/batch_cost_guard.zip"
+}
+
+data "aws_iam_policy_document" "batch_cost_guard_assume" {
+  statement {
+    effect  = "Allow"
+    actions = ["sts:AssumeRole"]
+
+    principals {
+      type        = "Service"
+      identifiers = ["lambda.amazonaws.com"]
+    }
+  }
+}
+
+resource "aws_iam_role" "batch_cost_guard" {
+  name               = "${local.name_prefix}-batch-cost-guard"
+  assume_role_policy = data.aws_iam_policy_document.batch_cost_guard_assume.json
+}
+
+resource "aws_cloudwatch_log_group" "batch_cost_guard" {
+  name              = "/aws/lambda/${local.name_prefix}-batch-cost-guard"
+  retention_in_days = 14
+}
+
+data "aws_iam_policy_document" "batch_cost_guard" {
+  statement {
+    sid    = "WriteOwnLogs"
+    effect = "Allow"
+    actions = [
+      "logs:CreateLogStream",
+      "logs:PutLogEvents"
+    ]
+    resources = ["${aws_cloudwatch_log_group.batch_cost_guard.arn}:*"]
+  }
+
+  statement {
+    sid    = "DisableDianaBatchCapacity"
+    effect = "Allow"
+    actions = [
+      "batch:UpdateComputeEnvironment",
+      "batch:UpdateJobQueue"
+    ]
+    resources = [
+      aws_batch_compute_environment.spot.arn,
+      aws_batch_compute_environment.ondemand.arn,
+      aws_batch_compute_environment.hrd_x86_ondemand.arn,
+      aws_batch_compute_environment.gpu_p5en_ondemand.arn,
+      aws_batch_job_queue.spot.arn,
+      aws_batch_job_queue.ondemand.arn,
+      aws_batch_job_queue.hrd_x86.arn,
+      aws_batch_job_queue.gpu_p5en.arn
+    ]
+  }
+
+  statement {
+    sid       = "ListDianaBatchJobs"
+    effect    = "Allow"
+    actions   = ["batch:ListJobs"]
+    resources = ["*"]
+  }
+
+  statement {
+    sid    = "CancelAndTerminateDianaBatchJobs"
+    effect = "Allow"
+    actions = [
+      "batch:CancelJob",
+      "batch:TerminateJob"
+    ]
+    resources = ["arn:aws:batch:${var.region}:${data.aws_caller_identity.current.account_id}:job/*"]
+  }
+}
+
+resource "aws_iam_role_policy" "batch_cost_guard" {
+  name   = "${local.name_prefix}-batch-cost-guard"
+  role   = aws_iam_role.batch_cost_guard.id
+  policy = data.aws_iam_policy_document.batch_cost_guard.json
+}
+
+resource "aws_lambda_function" "batch_cost_guard" {
+  function_name    = "${local.name_prefix}-batch-cost-guard"
+  description      = format("Disable Diana Batch when the daily $%d AWS Budget guard trips", var.daily_cost_guard_limit_usd)
+  filename         = data.archive_file.batch_cost_guard.output_path
+  handler          = "batch_cost_guard.handler"
+  role             = aws_iam_role.batch_cost_guard.arn
+  runtime          = "python3.12"
+  source_code_hash = data.archive_file.batch_cost_guard.output_base64sha256
+  timeout          = 60
+
+  environment {
+    variables = {
+      BATCH_COMPUTE_ENVIRONMENTS = jsonencode([
+        aws_batch_compute_environment.spot.name,
+        aws_batch_compute_environment.ondemand.name,
+        aws_batch_compute_environment.hrd_x86_ondemand.name,
+        aws_batch_compute_environment.gpu_p5en_ondemand.name
+      ])
+      BATCH_JOB_QUEUES = jsonencode([
+        aws_batch_job_queue.spot.name,
+        aws_batch_job_queue.ondemand.name,
+        aws_batch_job_queue.hrd_x86.name,
+        aws_batch_job_queue.gpu_p5en.name
+      ])
+      BATCH_STOP_REASON = "Diana daily AWS Budget cost guard tripped"
+    }
+  }
+
+  depends_on = [aws_iam_role_policy.batch_cost_guard]
+}
+
+resource "aws_lambda_permission" "allow_daily_cost_guard_sns" {
+  statement_id  = "AllowExecutionFromDailyCostGuardSns"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.batch_cost_guard.function_name
+  principal     = "sns.amazonaws.com"
+  source_arn    = aws_sns_topic.daily_cost_guard.arn
+}
+
+resource "aws_sns_topic_subscription" "daily_cost_guard_lambda" {
+  topic_arn = aws_sns_topic.daily_cost_guard.arn
+  protocol  = "lambda"
+  endpoint  = aws_lambda_function.batch_cost_guard.arn
+
+  depends_on = [aws_lambda_permission.allow_daily_cost_guard_sns]
 }
 
 resource "local_file" "nextflow_params" {
