@@ -30,6 +30,7 @@ For command, evidence, and domain vocabulary, see [terms.md](terms.md).
 | --- | --- |
 | [terms.md](terms.md) | Decode command names, evidence gates, and domain vocabulary. |
 | [status/current-state.md](status/current-state.md) | Check what has passed, what is partial, and what is blocked. |
+| [status/diana-wgs-hrd-progress.instructions.md](status/diana-wgs-hrd-progress.instructions.md) | Maintain the local Diana WGS HRD progress dashboard, including the prior-day Cost Explorer panel. |
 | [validation/known-answer-datasets.md](validation/known-answer-datasets.md) | Choose public truth-set datasets and understand validation priorities. |
 | [validation/hcc1395-hrd-model-rehearsal.md](validation/hcc1395-hrd-model-rehearsal.md) | Review the public-safe HCC1395 WGS rehearsal across deterministic mechanics, the Rosalind packet, analytical no-calls, and independent qualitative model audits. |
 | [clinical/risk-register.md](clinical/risk-register.md) | Review likely bugs or failure modes before trusting results. |
