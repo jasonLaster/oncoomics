@@ -17,6 +17,7 @@ import json
 import os
 import re
 import shutil
+import stat
 import subprocess
 import sys
 import tempfile
@@ -383,20 +384,59 @@ def load_object_with_sha256(path: Path, label: str) -> tuple[dict[str, Any], str
 
 
 def read_stable_file_with_sha256(path: Path, label: str) -> tuple[bytes, str]:
+    payload, identity = read_real_hash_input_once(path, label)
+    digest = sha256_bytes(payload)
+    stable_payload, stable_identity = read_real_hash_input_once(path, label)
+    if stable_identity != identity or sha256_bytes(stable_payload) != digest:
+        raise ValueError(f"{label} changed during read: {path}")
+    return payload, digest
+
+
+def read_real_hash_input_once(
+    path: Path,
+    label: str,
+) -> tuple[bytes, tuple[int, int, int, int, int, int]]:
     require_no_symlinked_ancestors(path, label)
     if path.is_symlink() or not path.is_file():
         raise ValueError(f"{label} is missing or a symlink: {path}")
+
+    flags = (
+        os.O_RDONLY
+        | getattr(os, "O_CLOEXEC", 0)
+        | getattr(os, "O_NOFOLLOW", 0)
+        | getattr(os, "O_NONBLOCK", 0)
+    )
+    descriptor = -1
     try:
-        payload = path.read_bytes()
-        digest = sha256_bytes(payload)
-        if sha256_bytes(path.read_bytes()) != digest:
-            raise ValueError(f"{label} changed during read: {path}")
+        descriptor = os.open(path, flags)
+        opened = os.fstat(descriptor)
+        if not stat.S_ISREG(opened.st_mode):
+            raise ValueError(f"{label} is missing or a symlink: {path}")
+        with os.fdopen(descriptor, "rb") as handle:
+            descriptor = -1
+            payload = handle.read()
+            after_read = os.fstat(handle.fileno())
+        current = os.stat(path, follow_symlinks=False)
     except OSError as error:
         raise ValueError(f"{label} changed during read: {path}") from error
-    require_no_symlinked_ancestors(path, label)
-    if path.is_symlink() or not path.is_file():
-        raise ValueError(f"{label} is missing or a symlink: {path}")
-    return payload, digest
+
+    if (
+        stat_identity(opened) != stat_identity(after_read)
+        or stat_identity(after_read) != stat_identity(current)
+    ):
+        raise ValueError(f"{label} changed during read: {path}")
+    return payload, stat_identity(opened)
+
+
+def stat_identity(value: os.stat_result) -> tuple[int, int, int, int, int, int]:
+    return (
+        value.st_dev,
+        value.st_ino,
+        value.st_mode,
+        value.st_size,
+        value.st_mtime_ns,
+        value.st_ctime_ns,
+    )
 
 
 def s3_parts(uri: str) -> tuple[str, str]:
