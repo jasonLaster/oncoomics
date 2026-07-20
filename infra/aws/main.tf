@@ -1412,7 +1412,7 @@ resource "aws_lambda_function" "batch_cost_guard" {
         aws_batch_compute_environment.hrd_x86_ondemand.name,
         aws_batch_compute_environment.gpu_p5en_ondemand.name
       ])
-      BATCH_DAILY_EC2_LIMIT_USD       = tostring(var.daily_cost_guard_limit_usd)
+      BATCH_DAILY_EC2_LIMIT_USD       = tostring(var.daily_cost_guard_limit_usd * var.daily_cost_guard_live_stop_threshold_percent / 100)
       BATCH_ESTIMATED_STOP_REASON     = "Diana estimated daily Batch EC2 spend guard tripped"
       BATCH_INSTANCE_HOURLY_RATES_USD = jsonencode(var.daily_cost_guard_instance_hourly_rates_usd)
       BATCH_JOB_QUEUES = jsonencode([

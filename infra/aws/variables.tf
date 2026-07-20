@@ -68,12 +68,33 @@ variable "daily_cost_guard_limit_usd" {
   description = "Account-wide daily AWS Budgets limit in USD for the Diana Batch kill switch."
   type        = number
   default     = 200
+
+  validation {
+    condition     = var.daily_cost_guard_limit_usd > 0
+    error_message = "daily_cost_guard_limit_usd must be greater than 0."
+  }
 }
 
 variable "daily_cost_guard_stop_threshold_percent" {
   description = "Actual daily AWS spend percentage that invokes the Diana Batch kill switch."
   type        = number
   default     = 80
+
+  validation {
+    condition     = var.daily_cost_guard_stop_threshold_percent > 0 && var.daily_cost_guard_stop_threshold_percent <= 100
+    error_message = "daily_cost_guard_stop_threshold_percent must be between 0 and 100."
+  }
+}
+
+variable "daily_cost_guard_live_stop_threshold_percent" {
+  description = "Estimated live Diana Batch EC2 spend percentage that invokes the Diana Batch kill switch before slower non-EC2 costs fill the daily limit."
+  type        = number
+  default     = 80
+
+  validation {
+    condition     = var.daily_cost_guard_live_stop_threshold_percent > 0 && var.daily_cost_guard_live_stop_threshold_percent <= 100
+    error_message = "daily_cost_guard_live_stop_threshold_percent must be between 0 and 100."
+  }
 }
 
 variable "daily_cost_guard_email" {

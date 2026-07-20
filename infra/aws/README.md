@@ -495,16 +495,17 @@ a default `daily_cost_guard_limit_usd = 200`:
 - a live EventBridge rule invokes `${project}-${environment}-batch-cost-guard`
   every minute, estimates the current UTC day's Diana Batch EC2 spend from
   tagged Batch instances, persists the observed runtime in a DynamoDB ledger,
-  and disables this workspace's Batch job queues and compute environments
-  before cancelling queued jobs and terminating visible running jobs once the
-  estimate reaches the daily limit;
+  and disables this workspace's Batch job queues and compute environments before
+  cancelling queued jobs and terminating visible running jobs once the estimate
+  reaches `daily_cost_guard_live_stop_threshold_percent = 80` of the daily
+  limit, or $160 of the default $200/day limit;
 - an account-wide AWS Budget publishes to the same Lambda through SNS when
   actual same-day spend crosses `daily_cost_guard_stop_threshold_percent = 80`,
   and again at 100%, as a delayed whole-account backstop for non-Batch costs.
 
 The live estimator deliberately overprices P5-family 48xlarge hosts in
-`daily_cost_guard_instance_hourly_rates_usd` so a GPU run stops early rather
-than late. AWS billing telemetry is still delayed, and non-EC2 charges such as
-NAT Gateway, S3, ECR, DynamoDB, Lambda, logs, and EventBridge are only covered
-by the delayed Budget layer, so leave GPU smoke and execute runs bounded and
-re-check Batch state after every high-cost test.
+`daily_cost_guard_instance_hourly_rates_usd`, and now reserves 20% of the daily
+cap for slower NAT Gateway, S3, ECR, DynamoDB, Lambda, logs, and EventBridge
+metering, so a GPU run stops early rather than late. AWS billing telemetry is
+still delayed, so leave GPU smoke and execute runs bounded and re-check Batch
+state after every high-cost test.

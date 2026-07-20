@@ -967,7 +967,7 @@
             </li>
             <li class="item" style="--tone: var(--done)">
               <strong>Done · install the daily cost kill switch</strong>
-              <span>The stack now combines the $200/day AWS Budget backstop with a one-minute live EC2 spend poller that prices Diana-tagged Batch hosts into a UTC-day ledger, then disables Diana Batch queues and compute environments before cancelling queued jobs and terminating visible running jobs when the daily estimate reaches the limit.</span>
+              <span>The stack now combines the $200/day AWS Budget backstop with a one-minute live EC2 spend poller that prices Diana-tagged Batch hosts into a UTC-day ledger, then disables Diana Batch queues and compute environments before cancelling queued jobs and terminating visible running jobs when the live Batch EC2 estimate reaches 80% of the daily cap, or $160 by default.</span>
             </li>
             <li class="item" style="--tone: var(--queued)">
               <strong>Pending · hold the us-west-2 P-family quota hedge</strong>
@@ -2900,6 +2900,15 @@
                 non-negative JSON integers for deterministic measured evidence
                 and BAM-derived SV counters before rendering the deterministic
                 report or staging AI/freeform review inputs.
+              </span>
+            </li>
+            <li class="item">
+              <time datetime="2026-07-19">Jul 19 · local</time>
+              <span>
+                <strong>Local patch · Reserve daily cost headroom:</strong>
+                the live Batch EC2 estimator now stops compute at 80% of the
+                $200/day cap by default, preserving the remaining $40 for
+                slower NAT, S3, ECR, logging, and AWS Budget telemetry.
               </span>
             </li>
             <li class="item">

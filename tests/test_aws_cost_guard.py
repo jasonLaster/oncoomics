@@ -333,8 +333,38 @@ class AwsCostGuardTests(unittest.TestCase):
         self.assertIn('source  = "hashicorp/archive"', versions)
         self.assertIn('variable "daily_cost_guard_limit_usd"', variables)
         self.assertIn("default     = 200", variables)
+        self.assertIn(
+            "var.daily_cost_guard_limit_usd > 0",
+            variables,
+        )
         self.assertIn('variable "daily_cost_guard_stop_threshold_percent"', variables)
         self.assertIn("default     = 80", variables)
+        self.assertIn(
+            (
+                "var.daily_cost_guard_stop_threshold_percent > 0 && "
+                "var.daily_cost_guard_stop_threshold_percent <= 100"
+            ),
+            variables,
+        )
+        self.assertIn(
+            'variable "daily_cost_guard_live_stop_threshold_percent"',
+            variables,
+        )
+        self.assertIn(
+            (
+                "var.daily_cost_guard_live_stop_threshold_percent > 0 && "
+                "var.daily_cost_guard_live_stop_threshold_percent <= 100"
+            ),
+            variables,
+        )
+        self.assertIn(
+            (
+                "BATCH_DAILY_EC2_LIMIT_USD       = "
+                "tostring(var.daily_cost_guard_limit_usd * "
+                "var.daily_cost_guard_live_stop_threshold_percent / 100)"
+            ),
+            main,
+        )
         self.assertIn('resource "aws_budgets_budget" "daily_cost_guard"', main)
         self.assertIn('time_unit    = "DAILY"', main)
         self.assertIn(
