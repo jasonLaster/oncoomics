@@ -387,11 +387,17 @@ def require_unique_rows(
     for row in rows:
         if not isinstance(row, dict):
             raise ValueError(f"{label} contains a non-object row")
-        key = str(row.get(key_field, ""))
+        key = require_exact_key(row.get(key_field), f"{label} {key_field}")
         if not key or key in result:
             raise ValueError(f"{label} contains an empty or duplicate {key_field}")
         result[key] = row
     return result
+
+
+def require_exact_key(value: Any, label: str) -> str:
+    if not isinstance(value, str) or not value:
+        raise ValueError(f"{label} must be an exact non-empty string")
+    return value
 
 
 def validate_final_sources(
@@ -404,7 +410,7 @@ def validate_final_sources(
     expected_count = freeze.get("object_count")
     if not isinstance(expected_count, int) or isinstance(expected_count, bool) or expected_count <= 0:
         raise ValueError("final freeze object_count must be a positive integer")
-    job_id = str(freeze.get("batch_job_id", ""))
+    job_id = require_exact_key(freeze.get("batch_job_id"), "final freeze batch_job_id")
     expected_prefix = f"s3://diana-omics-private-results-{ACCOUNT_ID}-{REGION}/runs/subject01/{run_id}/deterministic/final/"
     freeze_rows = require_unique_rows(
         freeze.get("objects"),
