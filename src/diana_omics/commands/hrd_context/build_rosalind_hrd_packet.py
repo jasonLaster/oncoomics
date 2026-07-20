@@ -1133,12 +1133,21 @@ def validate_diana_wgs_worker_schema() -> None:
     sbs_rows = read_csv_or_empty("signatures/wgs_sbs96_matrix.csv")
     sbs_keys = {(row.get("mutation_type", ""), row.get("trinucleotide", "")) for row in sbs_rows}
     sbs_counts = [require_csv_nonnegative_int(row.get("count"), "SBS96 count") for row in sbs_rows]
+    sigprofiler_assignment_status = require_exact_nonempty_string(
+        signatures.get("sigprofiler_assignment_status"),
+        "Diana WGS SigProfiler assignment status",
+    )
+    sbs3_status = require_exact_nonempty_string(
+        signatures.get("sbs3_status"),
+        "Diana WGS SBS3 status",
+    )
     if (
         signatures.get("status") != "partial_evidence"
         or len(sbs_rows) != 96
         or sbs_keys != EXPECTED_SBS96
         or sum(sbs_counts) != require_json_nonnegative_int(signatures.get("usable_snv_records"), "usable SBS96 SNVs")
-        or not str(signatures.get("sbs3_status", "")).startswith("no_call")
+        or sigprofiler_assignment_status != "input_ready_threshold_met"
+        or not sbs3_status.startswith("no_call")
     ):
         raise ValueError("Diana WGS SBS96 matrix is not an exact 96-channel input")
 
@@ -2115,6 +2124,13 @@ def diana_wgs_evidence(
         summary.get("boundary"),
         "Diana WGS summary boundary",
     )
+    input_summary = summary.get("input")
+    if not isinstance(input_summary, Mapping):
+        raise ValueError("Diana WGS summary input is missing or malformed")
+    reference = require_exact_nonempty_string(
+        input_summary.get("reference"),
+        "Diana WGS summary input reference",
+    )
     if summary_status != "no_call":
         blockers.append(
             f"Diana WGS summary status is {summary_status}; this packet requires the worker's explicit no_call HRD boundary."
@@ -2232,7 +2248,7 @@ def diana_wgs_evidence(
             summary_status,
             (
                 f"Overall HRD status: {summary_status}; evidence status: {evidence_status}; "
-                f"reference: {summary.get('input', {}).get('reference', 'unknown') if isinstance(summary.get('input'), dict) else 'unknown'}."
+                f"reference: {reference}."
             ),
             "diana_hrd_summary.json",
             "The worker explicitly emits sample-derived evidence with an overall HRD no-call boundary.",
