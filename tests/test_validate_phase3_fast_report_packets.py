@@ -130,19 +130,31 @@ def write_packet(
         ),
         "support_sha256": {name: sha256(directory / name) for name in sorted(support_names)},
         "report_sha256": sha256(directory / "report.md"),
-        "review_summary": {
-            **(
-                {
-                    "source_report_binding_scope": "pre_route_deterministic_rosalind",
-                    "source_report_manifests": source_report_manifests,
-                }
-                if method_id.endswith("_blocked")
-                else {}
-            ),
-            "overall": {
-                "authorized_hrd_state": "no_call",
+        "review_summary": (
+            {
+                "evidence_scope": f"{method_id} blocked-method specification",
+                "source_report_binding_scope": "pre_route_deterministic_rosalind",
+                "source_report_manifests": source_report_manifests,
+                "readiness": {
+                    "execution_status": "not_run",
+                    "evidence_status": "blocked",
+                    "authorized_hrd_state": "no_call",
+                    "classification_authorization": "none",
+                },
+                "observations": {},
+                "limitations": [
+                    "The method was not run.",
+                    "No patient result is present.",
+                    "No HRD classification is authorized.",
+                ],
             }
-        },
+            if method_id.endswith("_blocked")
+            else {
+                "overall": {
+                    "authorized_hrd_state": "no_call",
+                }
+            }
+        ),
     }
     directory.joinpath("report_manifest.json").write_text(
         json.dumps(manifest, sort_keys=True) + "\n",
@@ -556,6 +568,31 @@ class ValidatePhase3FastReportPacketsTests(unittest.TestCase):
             manifest_path = blocked / "report_manifest.json"
             manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
             manifest["source_sha256"]["legacy_unit_source"] = "0" * 64
+            manifest_path.write_text(
+                json.dumps(manifest, sort_keys=True) + "\n",
+                encoding="utf-8",
+            )
+
+            with self.assertRaisesRegex(
+                ValueError,
+                "must use pre_route_deterministic_rosalind",
+            ):
+                VALIDATOR.validate_packets(
+                    packet_dirs,
+                    json.dumps(["Run-Private-Token"]),
+                )
+
+    def test_rejects_pre_route_blocked_packet_extra_review_summary_field(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            packet_dirs = self.write_phase3_fast_packets(root)
+            blocked = packet_dirs["facets_scarhrd_blocked"]
+
+            manifest_path = blocked / "report_manifest.json"
+            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+            manifest["review_summary"]["legacy_source_report_manifests"] = {
+                "deterministic_full_wgs": "0" * 64,
+            }
             manifest_path.write_text(
                 json.dumps(manifest, sort_keys=True) + "\n",
                 encoding="utf-8",

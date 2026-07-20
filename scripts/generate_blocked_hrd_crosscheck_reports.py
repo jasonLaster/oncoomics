@@ -64,6 +64,14 @@ BLOCKED_REPORT_MANIFEST_KEYS = {
     "support_sha256",
     "report_sha256",
 }
+BLOCKED_REVIEW_SUMMARY_KEYS = {
+    "evidence_scope",
+    "source_report_binding_scope",
+    "source_report_manifests",
+    "readiness",
+    "observations",
+    "limitations",
+}
 
 # Keep formatter noise out of this static prose table so diffs only show
 # substantive route-contract changes.
@@ -580,7 +588,7 @@ def require_blocked_report_manifest(packet_dir: Path) -> None:
         or manifest.get("classification_qc_status") != "not_applicable"
         or not str(manifest.get("generated_at", ""))
         or not isinstance(manifest.get("review_summary"), dict)
-        or not manifest.get("review_summary")
+        or set(manifest.get("review_summary", {})) != BLOCKED_REVIEW_SUMMARY_KEYS
     ):
         raise ValueError("blocked cross-check report manifest envelope is not exact")
 

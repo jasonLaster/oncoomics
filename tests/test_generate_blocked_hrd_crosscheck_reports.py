@@ -514,6 +514,13 @@ class GenerateBlockedHrdCrosscheckReportsTests(unittest.TestCase):
                 ),
                 "source hashes are not exact",
             ),
+            "extra_review_summary": (
+                lambda manifest: manifest["review_summary"].__setitem__(
+                    "late_local_rewrite",
+                    "not validated",
+                ),
+                "envelope is not exact",
+            ),
         }
 
         for label, (mutate, message) in mutations.items():
