@@ -40,6 +40,7 @@ def write_staged_run(staging: Path) -> None:
             path.write_text("{}\n", encoding="utf-8")
 
     bundle_dir = staging / "bundle"
+    output = (staging.parent / "ai-review").resolve()
     reviewer_a_prompt = bundle_dir / "reviewer-a.prompt.md"
     reviewer_b_prompt = bundle_dir / "reviewer-b.prompt.md"
     review_bundle = bundle_dir / "review_bundle.json"
@@ -70,6 +71,21 @@ def write_staged_run(staging: Path) -> None:
     write_json(
         staging / "prepare_ai_review_run_receipt.json",
         {
+            "schema_version": 1,
+            "status": "passed",
+            "generated_at": "2026-07-19T00:00:00+00:00",
+            "subject_alias": "subject01",
+            "method_inventory": INVENTORY.inventory_payload(),
+            "method_inventory_sha256": INVENTORY.inventory_sha256(),
+            "source_manifests": {
+                method: {
+                    "path": f"/source/{method}/report_manifest.json",
+                    "sha256": "a" * 64,
+                }
+                for method in INVENTORY.REQUIRED_METHOD_IDS
+            },
+            "model_catalog_receipt_sha256": "b" * 64,
+            "bundle_dir": str(output / "bundle"),
             "bundle_manifest_sha256": PREPARE.sha256(bundle_manifest),
             "review_bundle_sha256": PREPARE.sha256(review_bundle),
             "stage_receipt_sha256": PREPARE.sha256(stage_receipt),
@@ -77,6 +93,23 @@ def write_staged_run(staging: Path) -> None:
                 "A": PREPARE.sha256(reviewer_a_prompt),
                 "B": PREPARE.sha256(reviewer_b_prompt),
             },
+            "reviewer_inputs": {
+                "A": {
+                    "directory": str(output / "reviewer-inputs" / "reviewer-a-input"),
+                    "exact_two_file_inventory": [
+                        "review_bundle.json",
+                        "reviewer-a.prompt.md",
+                    ],
+                },
+                "B": {
+                    "directory": str(output / "reviewer-inputs" / "reviewer-b-input"),
+                    "exact_two_file_inventory": [
+                        "review_bundle.json",
+                        "reviewer-b.prompt.md",
+                    ],
+                },
+            },
+            "checks": dict(PREPARE.EXPECTED_PREPARE_POSTCONDITION_CHECKS),
         },
     )
 
@@ -834,6 +867,38 @@ class PrepareAiReviewRunTests(unittest.TestCase):
                 "prepared AI review run reviewer inputs are stale",
             ):
                 PREPARE.require_prepared_run_support(output)
+
+    def test_prepared_run_support_rejects_non_exact_prepare_receipt(self) -> None:
+        cases = {
+            "missing_inventory": lambda receipt: receipt.pop("method_inventory"),
+            "stale_status": lambda receipt: receipt.update({"status": "failed"}),
+            "non_exact_schema": lambda receipt: receipt.update({"schema_version": 1.0}),
+            "missing_source_manifest": lambda receipt: receipt["source_manifests"].pop(
+                INVENTORY.REQUIRED_METHOD_IDS[0]
+            ),
+            "thin_reviewer_inputs": lambda receipt: receipt["reviewer_inputs"]["A"].pop(
+                "exact_two_file_inventory"
+            ),
+            "truthy_integer_check": lambda receipt: receipt["checks"].update(
+                {"no_model_invoked": 1}
+            ),
+        }
+        for name, mutate in cases.items():
+            with self.subTest(name=name), tempfile.TemporaryDirectory() as temporary:
+                root = Path(temporary)
+                fixture = AiReviewBundleFixture(root)
+                output = root / "ai-review"
+                PREPARE.prepare(namespace(fixture, output))
+                receipt_path = output / "prepare_ai_review_run_receipt.json"
+                receipt = json.loads(receipt_path.read_text(encoding="utf-8"))
+                mutate(receipt)
+                write_json(receipt_path, receipt)
+
+                with self.assertRaisesRegex(
+                    ValueError,
+                    "prepared AI review run receipt is not exact",
+                ):
+                    PREPARE.require_prepared_run_support(output)
 
     def test_rejects_stage_receipt_with_failed_child_check(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
@@ -1680,10 +1745,9 @@ class PrepareAiReviewRunTests(unittest.TestCase):
     def test_install_rejects_stale_prepared_run_hashes(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
-            fixture = AiReviewBundleFixture(root)
             staging = root / "staging"
             output = root / "ai-review"
-            PREPARE.prepare(namespace(fixture, staging))
+            write_staged_run(staging)
 
             manifest_path = staging / "bundle" / "bundle_manifest.json"
             payload = json.loads(manifest_path.read_text(encoding="utf-8"))
