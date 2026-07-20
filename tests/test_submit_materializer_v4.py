@@ -968,6 +968,69 @@ class SubmitMaterializerV4Tests(unittest.TestCase):
         ):
             MODULE.sha256_path(linked_parent / "final-freeze.json")
 
+    def test_sha256_path_rejects_same_byte_leaf_replacement(self) -> None:
+        replacement = self.root / "replacement-script-anchor.json"
+        replacement.write_bytes(self.script_anchor.read_bytes())
+        real_read_once = MODULE.read_real_input_file_once
+        swapped = False
+
+        def replace_after_initial_read(path: Path, label: str):
+            nonlocal swapped
+            data = real_read_once(path, label)
+            if path == self.script_anchor and not swapped:
+                swapped = True
+                replacement.replace(self.script_anchor)
+            return data
+
+        with (
+            mock.patch.object(
+                MODULE,
+                "read_real_input_file_once",
+                side_effect=replace_after_initial_read,
+            ),
+            self.assertRaisesRegex(
+                ValueError,
+                "materializer-script-freeze-anchor\\.json SHA-256 input "
+                "changed during read",
+            ),
+        ):
+            MODULE.sha256_path(self.script_anchor)
+
+        self.assertTrue(swapped)
+
+    def test_sha256_path_rejects_symlink_swap_after_preflight(self) -> None:
+        real_anchor = self.root / "real-anchor.json"
+        real_anchor.write_bytes(self.script_anchor.read_bytes())
+        real_open = MODULE.os.open
+        expected_path = self.script_anchor.resolve()
+        swapped = False
+
+        def swap_to_symlink_before_open(
+            path: Path,
+            flags: int,
+            mode: int = 0o777,
+            *,
+            dir_fd: int | None = None,
+        ) -> int:
+            nonlocal swapped
+            if path == expected_path and not swapped:
+                swapped = True
+                self.script_anchor.unlink()
+                self.script_anchor.symlink_to(real_anchor)
+            return real_open(path, flags, mode, dir_fd=dir_fd)
+
+        with (
+            mock.patch.object(MODULE.os, "open", side_effect=swap_to_symlink_before_open),
+            self.assertRaisesRegex(
+                ValueError,
+                "materializer-script-freeze-anchor\\.json SHA-256 input "
+                "changed during read",
+            ),
+        ):
+            MODULE.sha256_path(self.script_anchor)
+
+        self.assertTrue(swapped)
+
     def test_rejects_duplicate_custody_receipts_before_aws(self) -> None:
         cases = (
             ("final freeze receipt", self.final_freeze, "schema_version"),

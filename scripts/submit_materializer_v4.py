@@ -15,6 +15,7 @@ import hashlib
 import json
 import os
 import re
+import stat
 import subprocess
 from datetime import datetime, timezone
 from pathlib import Path
@@ -229,17 +230,15 @@ def sha256_bytes(value: bytes) -> str:
 
 
 def sha256_path(path: Path) -> str:
-    path = require_real_input_file(path, f"{path.name} SHA-256 input")
-    digest = hashlib.sha256()
-    with path.open("rb") as handle:
-        for block in iter(lambda: handle.read(1024 * 1024), b""):
-            digest.update(block)
-    return digest.hexdigest()
+    _payload, digest = read_stable_file_with_sha256(
+        path,
+        f"{path.name} SHA-256 input",
+    )
+    return digest
 
 
 def load_object_with_sha256(path: Path, label: str) -> tuple[dict[str, Any], str, int]:
-    path = require_real_input_file(path, label)
-    data = path.read_bytes()
+    data, digest = read_stable_file_with_sha256(path, label)
     try:
         value = json.loads(
             data,
@@ -249,7 +248,61 @@ def load_object_with_sha256(path: Path, label: str) -> tuple[dict[str, Any], str
         raise ValueError(f"duplicate JSON object name in {label}: {error}") from error
     if not isinstance(value, dict):
         raise ValueError(f"{label} must be a JSON object")
-    return value, sha256_bytes(data), len(data)
+    return value, digest, len(data)
+
+
+def read_stable_file_with_sha256(path: Path, label: str) -> tuple[bytes, str]:
+    data, identity = read_real_input_file_once(path, label)
+    digest = sha256_bytes(data)
+    stable_data, stable_identity = read_real_input_file_once(path, label)
+    if stable_identity != identity or sha256_bytes(stable_data) != digest:
+        raise ValueError(f"{label} changed during read")
+    return data, digest
+
+
+def read_real_input_file_once(
+    path: Path,
+    label: str,
+) -> tuple[bytes, tuple[int, int, int, int, int, int]]:
+    path = require_real_input_file(path, label)
+    flags = os.O_RDONLY
+    flags |= getattr(os, "O_CLOEXEC", 0)
+    flags |= getattr(os, "O_NOFOLLOW", 0)
+    descriptor = -1
+    try:
+        descriptor = os.open(path, flags)
+        opened = os.fstat(descriptor)
+        if not stat.S_ISREG(opened.st_mode):
+            raise OSError(f"{label} is not a regular file")
+        with os.fdopen(descriptor, "rb") as handle:
+            descriptor = -1
+            data = handle.read()
+            after_read = os.fstat(handle.fileno())
+        current = os.stat(path, follow_symlinks=False)
+    except OSError as error:
+        raise ValueError(f"{label} changed during read") from error
+    finally:
+        if descriptor >= 0:
+            os.close(descriptor)
+
+    require_real_input_file(path, label)
+    if (
+        stat_identity(opened) != stat_identity(after_read)
+        or stat_identity(after_read) != stat_identity(current)
+    ):
+        raise ValueError(f"{label} changed during read")
+    return data, stat_identity(opened)
+
+
+def stat_identity(value: os.stat_result) -> tuple[int, int, int, int, int, int]:
+    return (
+        value.st_dev,
+        value.st_ino,
+        value.st_mode,
+        value.st_size,
+        value.st_mtime_ns,
+        value.st_ctime_ns,
+    )
 
 
 def load_object(path: Path, label: str) -> dict[str, Any]:
