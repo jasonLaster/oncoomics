@@ -2109,6 +2109,69 @@ class RosalindHrdPacketTest(unittest.TestCase):
                 packet.sha256_file(deterministic_root / "report_manifest.json"),
             )
 
+    def test_diana_wgs_report_manifest_binds_input_index_source_ids(
+        self,
+    ):
+        with tempfile.TemporaryDirectory() as tmp:
+            output_root = Path(tmp)
+            deterministic_root, final_root = write_phase3_fast_deterministic_report(
+                output_root / "phase3_fast"
+            )
+
+            with (
+                patch.object(packet, "path_from_root", lambda relative: output_root / relative),
+                patch.dict(
+                    "os.environ",
+                    {
+                        "ROSALIND_HRD_ARTIFACT_ROOT": str(final_root),
+                        "ROSALIND_HRD_DETERMINISTIC_REPORT_DIR": str(deterministic_root),
+                        "ROSALIND_HRD_FORBIDDEN_TOKENS_JSON": PHASE3_FAST_FORBIDDEN_TOKENS_JSON,
+                    },
+                ),
+            ):
+                packet.write_packet(packet.PACKET_SPECS["diana_wgs"], "phase3-fast")
+
+            output_dir = (
+                output_root
+                / "results/rosalind_hrd/diana_wgs/phase3-fast"
+            )
+            index = utils.read_json(output_dir / "input_evidence_index.json")
+            self.assertTrue(
+                all(
+                    isinstance(row.get("input_id"), str) and row["input_id"]
+                    for row in index["artifacts"]
+                )
+            )
+
+            manifest_path = output_dir / "report_manifest.json"
+            manifest = utils.read_json(manifest_path)
+            manifest["source_sha256"]["small_variants.filter_mutect.filtered_vcf"] = (
+                "0" * 64
+            )
+            utils.write_json(manifest_path, manifest)
+
+            with self.assertRaisesRegex(
+                ValueError,
+                "Rosalind report manifest source_sha256 is not exact",
+            ):
+                packet.require_rosalind_report_manifest(output_dir)
+
+            manifest["source_sha256"] = {
+                row["input_id"]: row["sha256"] for row in index["artifacts"]
+            }
+            del index["artifacts"][0]["input_id"]
+            utils.write_json(output_dir / "input_evidence_index.json", index)
+            manifest["support_sha256"]["input_evidence_index.json"] = (
+                packet.sha256_file(output_dir / "input_evidence_index.json")
+            )
+            utils.write_json(manifest_path, manifest)
+
+            with self.assertRaisesRegex(
+                ValueError,
+                "Diana WGS input evidence index artifacts are not exact",
+            ):
+                packet.require_rosalind_report_manifest(output_dir)
+
     def test_diana_wgs_packet_carries_parsed_phase3_fast_manifest_hash(
         self,
     ):
