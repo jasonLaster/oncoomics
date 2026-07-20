@@ -335,7 +335,7 @@ class MaterializeCrosscheckInputsTests(unittest.TestCase):
         # for the next materializer revision.
         self.assertEqual(
             module.sha256(SCRIPT_DIR / "materialize_crosscheck_inputs.py"),
-            "1b4f74722b6d3fb8cfa918732566a8e62d5766ccb0e4ca28cc4d547c91fbb621",
+            "65c1cbbc718be08d5ac5fa4dbbbbddf6025499d2cd5e72e1769abd27d5a73203",
         )
 
     def test_sha256_rejects_symlinked_hash_inputs(self):
@@ -370,21 +370,21 @@ class MaterializeCrosscheckInputsTests(unittest.TestCase):
             receipt = root / "materialization-receipt.json"
             receipt.write_text('{"stable": true}\n', encoding="utf-8")
 
-            original_sha256_file_once = module.sha256_file_once
+            original_sha256_bytes = module.sha256_bytes
             mutated = False
 
-            def mutate_after_first_read(path: Path) -> str:
+            def mutate_after_first_read(data: bytes) -> str:
                 nonlocal mutated
-                digest = original_sha256_file_once(path)
-                if path == receipt and not mutated:
+                digest = original_sha256_bytes(data)
+                if not mutated:
                     mutated = True
-                    path.write_text('{"stable": false}\n', encoding="utf-8")
+                    receipt.write_text('{"stable": false}\n', encoding="utf-8")
                 return digest
 
             with (
                 patch.object(
                     module,
-                    "sha256_file_once",
+                    "sha256_bytes",
                     side_effect=mutate_after_first_read,
                 ),
                 self.assertRaisesRegex(
@@ -393,6 +393,39 @@ class MaterializeCrosscheckInputsTests(unittest.TestCase):
                 ),
             ):
                 module.sha256(receipt)
+
+    def test_sha256_rejects_hash_input_swapped_to_symlink_during_read(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            receipt = root / "materialization-receipt.json"
+            receipt.write_text('{"stable": true}\n', encoding="utf-8")
+            real_read_bytes = Path.read_bytes
+            moved = False
+
+            def swap_to_symlink_after_first_read(path: Path) -> bytes:
+                nonlocal moved
+                data = real_read_bytes(path)
+                if path == receipt and not moved:
+                    moved = True
+                    real_receipt = root / "materialization-receipt.real.json"
+                    receipt.rename(real_receipt)
+                    receipt.symlink_to(real_receipt)
+                return data
+
+            with (
+                patch.object(
+                    Path,
+                    "read_bytes",
+                    swap_to_symlink_after_first_read,
+                ),
+                self.assertRaisesRegex(
+                    ValueError,
+                    "materialization-receipt.json SHA-256 input may not be a symlink",
+                ),
+            ):
+                module.sha256(receipt)
+
+            self.assertTrue(moved)
 
     def test_json_output_removes_partial_file_after_file_fsync_failure(self):
         with tempfile.TemporaryDirectory() as tmp:

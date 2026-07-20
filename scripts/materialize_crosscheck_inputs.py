@@ -78,9 +78,11 @@ def now() -> str:
 
 def sha256(path: Path) -> str:
     require_real_local_file(path, f"{path.name} SHA-256 input")
-    digest = sha256_file_once(path)
-    if sha256_file_once(path) != digest:
-        raise ValueError(f"{path.name} SHA-256 input changed during read")
+    _payload, digest = read_stable_file_with_sha256(
+        path,
+        f"{path.name} SHA-256 input",
+    )
+    require_real_local_file(path, f"{path.name} SHA-256 input")
     return digest
 
 
@@ -90,6 +92,21 @@ def sha256_file_once(path: Path) -> str:
         for block in iter(lambda: handle.read(8 * 1024 * 1024), b""):
             digest.update(block)
     return digest.hexdigest()
+
+
+def sha256_bytes(data: bytes) -> str:
+    return hashlib.sha256(data).hexdigest()
+
+
+def read_stable_file_with_sha256(path: Path, label: str) -> tuple[bytes, str]:
+    try:
+        data = path.read_bytes()
+        digest = sha256_bytes(data)
+        if sha256_bytes(path.read_bytes()) != digest:
+            raise ValueError(f"{label} changed during read")
+    except OSError as error:
+        raise ValueError(f"{label} changed during read") from error
+    return data, digest
 
 
 def checksum_sha256(digest: str) -> str:
