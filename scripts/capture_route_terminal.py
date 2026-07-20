@@ -22,7 +22,7 @@ import subprocess
 import tempfile
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Iterable
+from typing import Any, Callable, Iterable
 from urllib.parse import urlparse
 
 from build_ai_review_bundle import (
@@ -1118,16 +1118,73 @@ def require_installed_private_outputs(expected_sha256: dict[Path, str]) -> None:
 
 
 def sha256_private_output(path: Path) -> str:
-    digest = sha256_private_output_once(path)
-    if sha256_private_output_once(path) != digest:
-        raise ValueError(f"private output changed during write: {path}")
+    _data, digest = read_stable_private_output_with_sha256(path)
     return digest
 
 
-def sha256_private_output_once(path: Path) -> str:
+def read_stable_private_output_with_sha256(path: Path) -> tuple[bytes, str]:
+    data, identity = read_private_output_once(path)
+    digest = sha256_bytes(data)
+    stable_data, stable_identity = read_private_output_once(path)
+    if stable_identity != identity or sha256_bytes(stable_data) != digest:
+        raise ValueError(f"private output changed during write: {path}")
+    return data, digest
+
+
+def read_stable_downloaded_file(path: Path, label: str) -> bytes:
+    data, _digest = read_stable_file_with_sha256(
+        path,
+        label,
+        require_real_downloaded_file,
+    )
+    return data
+
+
+def read_stable_file_with_sha256(
+    path: Path,
+    label: str,
+    preflight: Callable[[Path, str], None],
+) -> tuple[bytes, str]:
+    data, identity = read_real_hash_input_once(path, label, preflight)
+    digest = sha256_bytes(data)
+    stable_data, stable_identity = read_real_hash_input_once(path, label, preflight)
+    if stable_identity != identity or sha256_bytes(stable_data) != digest:
+        raise ValueError(f"{label} changed during read: {path}")
+    return data, digest
+
+
+def read_private_output_once(
+    path: Path,
+) -> tuple[bytes, tuple[int, int, int, int, int, int]]:
     require_no_symlinked_ancestors(path, "private output")
     if path.is_symlink() or not path.is_file():
         raise ValueError(f"private output changed during write: {path}")
+    try:
+        data, identity, mode = read_real_file_once(path, "private output")
+    except ValueError as error:
+        raise ValueError(f"private output changed during write: {path}") from error
+    if (mode & 0o777) != 0o600:
+        raise ValueError(f"private output mode changed during write: {path}")
+    return data, identity
+
+
+def read_real_hash_input_once(
+    path: Path,
+    label: str,
+    preflight: Callable[[Path, str], None],
+) -> tuple[bytes, tuple[int, int, int, int, int, int]]:
+    preflight(path, label)
+    try:
+        data, identity, _mode = read_real_file_once(path, label)
+    except ValueError as error:
+        raise ValueError(f"{label} changed during read: {path}") from error
+    return data, identity
+
+
+def read_real_file_once(
+    path: Path,
+    label: str,
+) -> tuple[bytes, tuple[int, int, int, int, int, int], int]:
     flags = (
         os.O_RDONLY
         | getattr(os, "O_CLOEXEC", 0)
@@ -1139,14 +1196,14 @@ def sha256_private_output_once(path: Path) -> str:
         descriptor = os.open(path, flags)
         opened = os.fstat(descriptor)
         if not stat.S_ISREG(opened.st_mode):
-            raise ValueError(f"private output changed during write: {path}")
+            raise ValueError(f"{label} changed during read: {path}")
         with os.fdopen(descriptor, "rb") as handle:
             descriptor = -1
             data = handle.read()
             after_read = os.fstat(handle.fileno())
         current = os.stat(path, follow_symlinks=False)
     except OSError as error:
-        raise ValueError(f"private output changed during write: {path}") from error
+        raise ValueError(f"{label} changed during read: {path}") from error
     finally:
         if descriptor >= 0:
             os.close(descriptor)
@@ -1155,8 +1212,8 @@ def sha256_private_output_once(path: Path) -> str:
         stat_identity(opened) != stat_identity(after_read)
         or stat_identity(after_read) != stat_identity(current)
     ):
-        raise ValueError(f"private output changed during write: {path}")
-    return sha256_bytes(data)
+        raise ValueError(f"{label} changed during read: {path}")
+    return data, stat_identity(opened), opened.st_mode
 
 
 def stat_identity(value: os.stat_result) -> tuple[int, int, int, int, int, int]:
@@ -1263,8 +1320,10 @@ def capture(args: argparse.Namespace) -> dict[str, Any]:
             location["version_id"],
             temporary_path,
         )
-        require_real_downloaded_file(temporary_path, "downloaded route receipt")
-        downloaded = temporary_path.read_bytes()
+        downloaded = read_stable_downloaded_file(
+            temporary_path,
+            "downloaded route receipt",
+        )
     receipt, receipt_checks = validate_exact_receipt(
         downloaded,
         get_response,
