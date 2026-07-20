@@ -6,6 +6,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 SCRIPT_DIR = Path(__file__).resolve().parents[1] / "scripts"
 if str(SCRIPT_DIR) not in sys.path:
@@ -114,6 +115,35 @@ class ForbiddenTextTests(unittest.TestCase):
                 "forbidden-token file parent may not be a symlink",
             ):
                 MODULE.merge_forbidden_tokens([], files=[tokens])
+
+    def test_refuses_forbidden_token_file_replaced_after_preflight(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            tokens = root / "forbidden_tokens.json"
+            target = root / "redirected_tokens.json"
+            tokens.write_text('["DirectIdentifier"]\n', encoding="utf-8")
+            target.write_text('["RedirectedIdentifier"]\n', encoding="utf-8")
+            real_require = MODULE.require_real_forbidden_token_file
+            swapped = False
+
+            def swap_leaf_after_preflight(path: Path) -> None:
+                nonlocal swapped
+                real_require(path)
+                if path == tokens and not swapped:
+                    swapped = True
+                    tokens.unlink()
+                    tokens.symlink_to(target)
+
+            with mock.patch.object(
+                MODULE,
+                "require_real_forbidden_token_file",
+                side_effect=swap_leaf_after_preflight,
+            ):
+                with self.assertRaisesRegex(
+                    ValueError,
+                    "forbidden-token file changed during read",
+                ):
+                    MODULE.merge_forbidden_tokens([], files=[tokens])
 
     def test_file_forbidden_tokens_share_json_normalization_policy(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:

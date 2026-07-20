@@ -134,7 +134,7 @@ def read_real_hash_input_once(path: Path, label: str) -> bytes:
             descriptor = -1
             data = handle.read()
             after_read = os.fstat(handle.fileno())
-        current = path.stat(follow_symlinks=False)
+        current = path.lstat()
     except OSError as error:
         raise ValueError(f"{label} changed during read: {path}") from error
     finally:

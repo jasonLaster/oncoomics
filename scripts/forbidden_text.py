@@ -5,7 +5,9 @@ from __future__ import annotations
 import hashlib
 import html
 import json
+import os
 import re
+import stat
 import unicodedata
 from pathlib import Path
 from typing import Any, Iterable
@@ -115,14 +117,54 @@ def forbidden_token_fingerprints(tokens: Iterable[str]) -> list[str]:
 def forbidden_tokens_from_file(path: Path) -> list[str]:
     """Load a non-empty JSON string array from a real forbidden-token file."""
 
+    text = read_real_forbidden_token_file(path)
+
+    try:
+        return normalize_forbidden_tokens_json(text)
+    except ValueError as error:
+        raise ValueError(f"forbidden-token file must contain a valid non-empty JSON string array: {path}") from error
+
+
+def require_real_forbidden_token_file(path: Path) -> None:
     require_no_symlinked_ancestors(path)
     if path.is_symlink() or not path.is_file():
         raise ValueError(f"forbidden-token file must be a real file: {path}")
 
+
+def read_real_forbidden_token_file(path: Path) -> str:
+    require_real_forbidden_token_file(path)
+    flags = os.O_RDONLY
+    flags |= getattr(os, "O_CLOEXEC", 0)
+    flags |= getattr(os, "O_NOFOLLOW", 0)
+    flags |= getattr(os, "O_NONBLOCK", 0)
+    descriptor = -1
     try:
-        return normalize_forbidden_tokens_json(path.read_text(encoding="utf-8"))
-    except ValueError as error:
-        raise ValueError(f"forbidden-token file must contain a valid non-empty JSON string array: {path}") from error
+        descriptor = os.open(path, flags)
+        opened = os.fstat(descriptor)
+        if not stat.S_ISREG(opened.st_mode):
+            raise ValueError(f"forbidden-token file must be a real file: {path}")
+        with os.fdopen(descriptor, "rb") as handle:
+            descriptor = -1
+            data = handle.read()
+            after_read = os.fstat(handle.fileno())
+        current = path.lstat()
+    except OSError as error:
+        raise ValueError(f"forbidden-token file changed during read: {path}") from error
+    finally:
+        if descriptor >= 0:
+            os.close(descriptor)
+
+    require_no_symlinked_ancestors(path)
+    if not os.path.samestat(opened, after_read) or not os.path.samestat(
+        after_read,
+        current,
+    ):
+        raise ValueError(f"forbidden-token file changed during read: {path}")
+
+    try:
+        return data.decode("utf-8")
+    except UnicodeError as error:
+        raise ValueError(f"forbidden-token file must be UTF-8: {path}") from error
 
 
 def is_platform_root_alias(path: Path) -> bool:
