@@ -460,6 +460,48 @@ class RosalindHrdPacketTest(unittest.TestCase):
             with self.subTest(value=value):
                 self.assertIs(packet.is_exact_int(value, expected), accepted)
 
+    def test_optional_counts_reject_json_bool_float_and_padded_text(self):
+        self.assertEqual(packet.optional_nonnegative_int(None, "optional count"), 0)
+        self.assertEqual(packet.optional_nonnegative_int("", "optional count"), 0)
+        self.assertEqual(packet.optional_nonnegative_int(12, "optional count"), 12)
+        self.assertEqual(packet.optional_nonnegative_int("12", "optional count"), 12)
+
+        for value in (True, False, 1.0, " 1", "1\n", "-1", [], {}):
+            with self.subTest(value=value):
+                with self.assertRaisesRegex(
+                    ValueError,
+                    "optional count must be a non-negative integer or blank",
+                ):
+                    packet.optional_nonnegative_int(value, "optional count")
+
+    def test_hcc1395_wgs_packet_rejects_boolean_sv_counts(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            utils.write_json(
+                root / "results/phase3_wgs_smoke/sv_evidence_summary.json",
+                {
+                    "status": "passed",
+                    "rows": [
+                        {
+                            "status": "passed",
+                            "tool": "samtools view flag/evidence counters",
+                            "discordant_mapped_pairs": True,
+                            "chord_input_status": "not_assessable_requires_validated_sv_caller_vcf",
+                        }
+                    ],
+                },
+            )
+
+            with (
+                patch.object(packet, "path_from_root", lambda relative: root / relative),
+                self.assertRaisesRegex(
+                    ValueError,
+                    "HCC1395 WGS SV discordant_mapped_pairs must be a "
+                    "non-negative integer or blank",
+                ),
+            ):
+                packet.hcc1395_wgs_evidence()
+
     def test_schema_version_checks_avoid_raw_comparisons(self):
         source = Path(packet.__file__).read_text(encoding="utf-8")
         tree = ast.parse(source, filename=str(packet.__file__))

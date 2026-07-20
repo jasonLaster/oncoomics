@@ -378,12 +378,13 @@
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-19</li>
-          <li class="pill">Latest milestone = AI catalog receipts fail closed</li>
+          <li class="pill">Latest milestone = Rosalind optional counts fail closed</li>
           <li class="pill">Live P5 placement = p5en / p5e / p5</li>
           <li class="pill">Daily $200 Batch guard = live</li>
           <li class="pill">Materializer registration reads = stable</li>
           <li class="pill">Materializer render hashes = stable</li>
           <li class="pill">Rosalind hash inputs = stable</li>
+          <li class="pill">Rosalind optional counts = exact</li>
           <li class="pill">Deterministic report reads = stable</li>
           <li class="pill">Blocked generator hashes = stable</li>
           <li class="pill">Phase 3 fast manifest hashes = stable</li>
@@ -1740,6 +1741,10 @@
               <span>The Diana WGS Rosalind packet builder now parses CSV count and byte fields as CSV text while requiring JSON counts and bytes from deterministic manifests, artifact groups, worker summaries, and Sequenza/scarHRD alias contracts to be exact integers.</span>
             </li>
             <li class="item" style="--tone: var(--done)">
+              <strong>Done · reject loose Rosalind optional counts</strong>
+              <span>HCC1395 and Diana WGS Rosalind packet summaries now keep truly blank optional counters at zero but reject booleans, floats, padded strings, and negative strings before SV, alignment, HRR, or deterministic artifact byte counts can render into a reviewer packet.</span>
+            </li>
+            <li class="item" style="--tone: var(--done)">
               <strong>Done · bind blocked packets to current reports</strong>
               <span>The Phase 3 fast report-packet validator now rejects stale but internally consistent blocked scarHRD, CHORD, and HRDetect packets unless their pre-route deterministic and Rosalind report-manifest hashes match the exact packets entering the AI-review handoff.</span>
             </li>
@@ -2665,6 +2670,16 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-19T22:24:11-07:00">Jul 19 · local</time>
+              <span>
+                <strong>Local patch · Reject loose Rosalind optional counts:</strong>
+                the Rosalind packet builder now preserves blank optional public
+                SV counters while rejecting booleans, floats, padded strings,
+                negative strings, and loose deterministic byte values before
+                HCC1395 or Diana WGS packet summaries can render.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-19T22:20:25-07:00">Jul 19 · live</time>
               <span>
