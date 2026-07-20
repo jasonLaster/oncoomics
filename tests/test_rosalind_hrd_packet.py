@@ -2021,6 +2021,67 @@ class RosalindHrdPacketTest(unittest.TestCase):
                     ).exists()
                 )
 
+    def test_diana_wgs_phase3_fast_packet_rejects_loose_evidence_check_rows(self):
+        cases = (
+            (
+                "extra_top_level",
+                lambda checks: checks.__setitem__("status_copy", "passed"),
+                "Phase 3 fast evidence checks are not exact",
+            ),
+            (
+                "padded_status",
+                lambda checks: checks.__setitem__("status", " passed"),
+                "Phase 3 fast evidence-check status must be a non-empty unpadded single-line string",
+            ),
+            (
+                "extra_check_field",
+                lambda checks: checks["checks"][0].__setitem__("extra", "stale"),
+                "Phase 3 fast evidence-check rows are not exact",
+            ),
+            (
+                "multiline_check_detail",
+                lambda checks: checks["checks"][0].__setitem__(
+                    "detail",
+                    "synthetic\nstale",
+                ),
+                "Phase 3 fast evidence-check row 1 detail must be a non-empty unpadded single-line string",
+            ),
+            (
+                "failed_check",
+                lambda checks: checks["checks"][0].__setitem__("status", "failed"),
+                "Phase 3 fast evidence-check rows are incomplete or not all passed",
+            ),
+        )
+        for label, mutation, error in cases:
+            with self.subTest(label=label), tempfile.TemporaryDirectory() as tmp:
+                output_root = Path(tmp)
+                deterministic_root, final_root = write_phase3_fast_deterministic_report(
+                    output_root / "phase3_fast"
+                )
+                mutate_phase3_fast_evidence_checks(deterministic_root, mutation)
+
+                with (
+                    patch.object(packet, "path_from_root", lambda relative: output_root / relative),
+                    patch.dict(
+                        "os.environ",
+                        {
+                            "ROSALIND_HRD_ARTIFACT_ROOT": str(final_root),
+                            "ROSALIND_HRD_DETERMINISTIC_REPORT_DIR": str(deterministic_root),
+                            "ROSALIND_HRD_FORBIDDEN_TOKENS_JSON": PHASE3_FAST_FORBIDDEN_TOKENS_JSON,
+                        },
+                    ),
+                    self.assertRaisesRegex(ValueError, error),
+                ):
+                    packet.write_packet(packet.PACKET_SPECS["diana_wgs"], "phase3-fast")
+
+                self.assertFalse(
+                    (
+                        output_root
+                        / "results/rosalind_hrd/diana_wgs/phase3-fast/"
+                        "report_manifest.json"
+                    ).exists()
+                )
+
     def test_diana_wgs_phase3_fast_packet_rejects_duplicate_report_manifest_json(self):
         with tempfile.TemporaryDirectory() as tmp:
             output_root = Path(tmp)

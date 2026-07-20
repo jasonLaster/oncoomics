@@ -950,6 +950,14 @@ PHASE3_FAST_SEQUENZA_REFERENCE_SOURCES = {
     "fai",
     "sequence_dictionary",
 }
+PHASE3_FAST_EVIDENCE_CHECK_KEYS = {
+    "schema_version",
+    "status",
+    "report_status",
+    "overall_hrd_status",
+    "checks",
+    "input_sha256",
+}
 DIANA_WGS_DETERMINISTIC_INPUTS = {
     "diana_hrd_summary.json": "summary",
     "hrd_readiness.csv": "readiness",
@@ -1401,23 +1409,33 @@ def diana_wgs_phase3_fast_deterministic_binding(
     )
 
     checks = read_json_file(paths["evidence_checks.json"], "Phase 3 fast evidence checks")
-    check_rows = checks.get("checks", []) if isinstance(checks, dict) else []
-    checks_input = (
-        phase3_fast_evidence_check_inputs(checks.get("input_sha256"))
-        if isinstance(checks, dict)
-        else []
-    )
+    if not isinstance(checks, Mapping) or set(checks) != PHASE3_FAST_EVIDENCE_CHECK_KEYS:
+        raise ValueError("Phase 3 fast evidence checks are not exact")
+    if not is_exact_int(checks["schema_version"], 1):
+        raise ValueError("Phase 3 fast evidence checks are not exact")
+
+    checks_input = phase3_fast_evidence_check_inputs(checks["input_sha256"])
+    phase3_fast_evidence_check_rows(checks["checks"])
     normalized_csv_input = [
         {key: str(row.get(key, "")) for key in ("input_id", "path", "bytes", "sha256")}
         for row in input_rows
     ]
     if (
-        checks.get("status") != "passed"
-        or checks.get("report_status") != "partial_evidence"
-        or checks.get("overall_hrd_status") != "no_call"
-        or not isinstance(check_rows, list)
-        or not check_rows
-        or any(not isinstance(row, dict) or row.get("status") != "passed" for row in check_rows)
+        require_exact_nonempty_string(
+            checks["status"],
+            "Phase 3 fast evidence-check status",
+        )
+        != "passed"
+        or require_exact_nonempty_string(
+            checks["report_status"],
+            "Phase 3 fast evidence-check report_status",
+        )
+        != "partial_evidence"
+        or require_exact_nonempty_string(
+            checks["overall_hrd_status"],
+            "Phase 3 fast evidence-check overall_hrd_status",
+        )
+        != "no_call"
         or checks_input != normalized_csv_input
     ):
         raise ValueError("Phase 3 fast deterministic evidence checks are incomplete or not all passed")
@@ -1533,6 +1551,28 @@ def phase3_fast_evidence_check_inputs(value: Any) -> list[dict[str, str]]:
                 ),
             }
         )
+    return rows
+
+
+def phase3_fast_evidence_check_rows(value: Any) -> list[dict[str, str]]:
+    fields = ("check_id", "status", "detail")
+    if not isinstance(value, list) or not value:
+        raise ValueError("Phase 3 fast evidence-check rows are not exact")
+
+    rows: list[dict[str, str]] = []
+    for index, row in enumerate(value, start=1):
+        if not isinstance(row, Mapping) or set(row) != set(fields):
+            raise ValueError("Phase 3 fast evidence-check rows are not exact")
+        normalized = {
+            field: require_exact_nonempty_string(
+                row.get(field),
+                f"Phase 3 fast evidence-check row {index} {field}",
+            )
+            for field in fields
+        }
+        if normalized["status"] != "passed":
+            raise ValueError("Phase 3 fast evidence-check rows are incomplete or not all passed")
+        rows.append(normalized)
     return rows
 
 
