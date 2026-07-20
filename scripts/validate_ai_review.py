@@ -16,6 +16,7 @@ from typing import Any, Sequence
 
 from ai_model_catalog import MODEL_CATALOG_MODEL_KEYS, MODEL_CATALOG_RECEIPT_KEYS
 from build_ai_review_bundle import (
+    BUNDLE_EVIDENCE_SOURCE_KEYS,
     BUNDLE_MANIFEST_KEYS,
     BUNDLE_REVIEW_BUNDLE_KEYS,
     DuplicateJsonKeyError,
@@ -769,6 +770,8 @@ def validate_bundle(
     for row in evidence_rows:
         if not isinstance(row, dict):
             raise ValueError("malformed evidence source")
+        if set(row) != BUNDLE_EVIDENCE_SOURCE_KEYS:
+            raise ValueError("evidence source envelope is not exact")
         evidence_id = str(row.get("evidence_id", ""))
         source_hashes = row.get("source_artifact_sha256")
         review_summary = row.get("review_summary")
