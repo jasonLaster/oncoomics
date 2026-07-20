@@ -656,6 +656,7 @@ def validate_other_reviewer(
     subject_alias: str,
     required_methods: list[str],
     catalog_receipt_hash: str,
+    inventory_id: str,
 ) -> None:
     paths = {
         "validation": other_dir / "validation.json",
@@ -699,15 +700,17 @@ def validate_other_reviewer(
         or other_validation.get("review_manifest_sha256") != other_manifest_sha256
     ):
         raise ValueError("reviewer A artifacts changed after validation")
-    if other_manifest.get("reviewer_id") != "A":
-        raise ValueError("other review manifest is not reviewer A")
-    if (
-        other_manifest.get("input_bundle_sha256") != bundle_hash
-        or other_manifest.get("prompt_sha256") != reviewer_a_prompt_hash
-        or other_manifest.get("model") != reviewer_a_model
-        or other_manifest.get("subject_alias") != subject_alias
-    ):
-        raise ValueError("reviewer A manifest is not bound to this review bundle")
+    validate_review_manifest(
+        other_manifest,
+        "A",
+        subject_alias,
+        reviewer_a_model,
+        reviewer_a_prompt_hash,
+        bundle_hash,
+        paths["report"],
+        paths["claims"],
+        inventory_id,
+    )
 
     current_invocation = require_exact_review_invocation(
         current_manifest.get("invocation", {}),
@@ -1474,6 +1477,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                 subject_alias,
                 required_methods,
                 catalog_receipt_hash,
+                inventory_id,
             )
     except (ValueError, json.JSONDecodeError) as error:
         raise SystemExit(f"Fail-closed: {error}") from error
