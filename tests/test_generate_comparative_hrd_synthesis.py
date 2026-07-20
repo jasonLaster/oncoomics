@@ -585,6 +585,30 @@ class GenerateSynthesisTests(unittest.TestCase):
                 self.assertIn(message, result.stdout + result.stderr)
                 self.assertFalse((fixture.output_dir / "report_manifest.json").exists())
 
+    def test_rejects_rebound_bundle_with_non_exact_evidence_source_envelope(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory(
+            prefix="hrd-synthesis-exact-evidence-"
+        ) as temporary:
+            fixture = SynthesisFixture(Path(temporary))
+            bundle_path = fixture.bundle_dir / "review_bundle.json"
+            bundle = json.loads(bundle_path.read_text(encoding="utf-8"))
+            bundle["evidence_sources"][0]["legacy_unreviewed_context"] = {
+                "stale": "not part of the exact source evidence row contract",
+            }
+            write_json(bundle_path, bundle)
+            fixture.refresh_bundle_hash()
+
+            result = fixture.run()
+
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn(
+                "AI bundle evidence source envelope is not exact",
+                result.stdout + result.stderr,
+            )
+            self.assertFalse((fixture.output_dir / "report_manifest.json").exists())
+
     def test_synthesis_packet_install_is_create_only_and_fsynced(self) -> None:
         with tempfile.TemporaryDirectory(prefix="hrd-synthesis-") as temporary:
             root = Path(temporary)

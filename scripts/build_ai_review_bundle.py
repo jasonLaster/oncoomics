@@ -91,6 +91,18 @@ BUNDLE_REVIEW_BUNDLE_KEYS = set(BUNDLE_REVIEW_BUNDLE_BOUND_FIELDS) | {
     "quantitative_facts",
     "policy",
 }
+BUNDLE_EVIDENCE_SOURCE_KEYS = {
+    "evidence_id",
+    "method_id",
+    "report_kind",
+    "evidence_status",
+    "authorized_hrd_state",
+    "classification_authorized",
+    "classification_qc_status",
+    "report_sha256",
+    "source_artifact_sha256",
+    "review_summary",
+}
 BUNDLE_MANIFEST_KEYS = set(BUNDLE_REVIEW_BUNDLE_BOUND_FIELDS) | {
     "generated_at",
     "input_manifest_sha256",

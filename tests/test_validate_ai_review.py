@@ -730,6 +730,36 @@ class ValidateAiReviewTests(unittest.TestCase):
                 self.assertIn(message, validated.stderr)
                 self.assertFalse((review / "validation.json").exists())
 
+    def test_rejects_rebound_bundle_with_non_exact_evidence_source_envelope(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            fixture = ValidateReviewFixture(Path(temporary))
+            fixture.build()
+
+            bundle_path = fixture.bundle_dir / "review_bundle.json"
+            bundle = json.loads(bundle_path.read_text(encoding="utf-8"))
+            bundle["evidence_sources"][0]["legacy_unreviewed_context"] = {
+                "stale": "not part of the exact source evidence row contract",
+            }
+            write_json(bundle_path, bundle)
+
+            bundle_manifest_path = fixture.bundle_dir / "bundle_manifest.json"
+            bundle_manifest = json.loads(
+                bundle_manifest_path.read_text(encoding="utf-8")
+            )
+            bundle_manifest["review_bundle_sha256"] = sha256(bundle_path)
+            write_json(bundle_manifest_path, bundle_manifest)
+
+            review = Path(temporary) / "review-a"
+            fixture.write_review(review)
+
+            validated = fixture.validate(review)
+
+            self.assertNotEqual(validated.returncode, 0)
+            self.assertIn("evidence source envelope is not exact", validated.stderr)
+            self.assertFalse((review / "validation.json").exists())
+
     def test_rejects_inexact_bundle_directory_before_validation(self) -> None:
         cases = (
             (

@@ -21,6 +21,7 @@ from pathlib import Path
 from typing import Any, Dict, Iterable, List, Mapping, Sequence, Tuple
 
 from build_ai_review_bundle import (
+    BUNDLE_EVIDENCE_SOURCE_KEYS,
     BUNDLE_MANIFEST_KEYS,
     BUNDLE_REVIEW_BUNDLE_KEYS,
     is_exact_int,
@@ -516,8 +517,13 @@ def verify_bundle(
     evidence = bundle.get("evidence_sources")
     if not isinstance(evidence, list) or len(evidence) != len(required_methods):
         raise ValueError("AI bundle evidence inventory is incomplete")
+    for row in evidence:
+        if not isinstance(row, dict):
+            raise ValueError("AI bundle evidence source is malformed")
+        if set(row) != BUNDLE_EVIDENCE_SOURCE_KEYS:
+            raise ValueError("AI bundle evidence source envelope is not exact")
     expected_ids = ["E{0:03d}".format(index) for index in range(1, len(evidence) + 1)]
-    if [str(row.get("evidence_id", "")) for row in evidence if isinstance(row, dict)] != expected_ids:
+    if [str(row.get("evidence_id", "")) for row in evidence] != expected_ids:
         raise ValueError("AI bundle evidence IDs are missing, reordered, or malformed")
     if [str(row.get("method_id", "")) for row in evidence] != list(required_methods):
         raise ValueError("AI bundle evidence does not match the ordered method inventory")
