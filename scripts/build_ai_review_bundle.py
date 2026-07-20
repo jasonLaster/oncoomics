@@ -9,6 +9,7 @@ import json
 import math
 import os
 import re
+import stat
 import tempfile
 from datetime import datetime, timezone
 from pathlib import Path
@@ -239,12 +240,42 @@ def load_object_with_sha256(path: Path) -> tuple[dict[str, Any], str]:
 
 
 def read_stable_file_with_sha256(path: Path, label: str) -> tuple[bytes, str]:
-    require_real_hash_input(path)
-    data = path.read_bytes()
+    data = read_real_hash_input_once(path, label)
     digest = sha256_bytes(data)
-    if not data or sha256_bytes(path.read_bytes()) != digest:
+    if not data or sha256_bytes(read_real_hash_input_once(path, label)) != digest:
         raise ValueError(f"{label} changed during read: {path}")
     return data, digest
+
+
+def read_real_hash_input_once(path: Path, label: str) -> bytes:
+    require_real_hash_input(path)
+    flags = os.O_RDONLY
+    flags |= getattr(os, "O_NOFOLLOW", 0)
+    flags |= getattr(os, "O_NONBLOCK", 0)
+    descriptor = -1
+    try:
+        descriptor = os.open(path, flags)
+        opened = os.fstat(descriptor)
+        if not stat.S_ISREG(opened.st_mode):
+            raise ValueError(f"{label} must be a real file: {path}")
+        with os.fdopen(descriptor, "rb") as handle:
+            descriptor = -1
+            data = handle.read()
+            after_read = os.fstat(handle.fileno())
+        current = path.stat(follow_symlinks=False)
+    except OSError as error:
+        raise ValueError(f"{label} changed during read: {path}") from error
+    finally:
+        if descriptor >= 0:
+            os.close(descriptor)
+
+    require_no_symlinked_ancestors(path, label)
+    if not os.path.samestat(opened, after_read) or not os.path.samestat(
+        after_read,
+        current,
+    ):
+        raise ValueError(f"{label} changed during read: {path}")
+    return data
 
 
 def scan_text(text: str, forbidden_tokens: list[str], context: str) -> None:
@@ -818,45 +849,42 @@ def prepare_output_dir(output: Path, expected_files: Iterable[str]) -> None:
 
 def copy_create_only(source: Path, destination: Path) -> None:
     source = require_real_input_file(source, "staged AI review bundle file")
-    expected_sha256 = sha256(source)
+    payload, expected_sha256 = read_stable_file_with_sha256(
+        source,
+        "staged AI review bundle file",
+    )
     destination = require_safe_new_bundle_file(destination)
-    with source.open("rb") as source_handle:
-        try:
-            file_descriptor = os.open(
-                destination,
-                os.O_WRONLY | os.O_CREAT | os.O_EXCL,
-                0o644,
-            )
-        except FileExistsError as error:
+    try:
+        file_descriptor = os.open(
+            destination,
+            os.O_WRONLY | os.O_CREAT | os.O_EXCL,
+            0o644,
+        )
+    except FileExistsError as error:
+        raise ValueError(
+            "AI review bundle output already exists: " + destination.name
+        ) from error
+
+    try:
+        destination_handle = os.fdopen(file_descriptor, "wb")
+    except Exception:
+        os.close(file_descriptor)
+        destination.unlink(missing_ok=True)
+        raise
+
+    try:
+        with destination_handle:
+            destination_handle.write(payload)
+            destination_handle.flush()
+            os.fsync(destination_handle.fileno())
+        fsync_directory(destination.parent)
+        if sha256(destination) != expected_sha256:
             raise ValueError(
-                "AI review bundle output already exists: " + destination.name
-            ) from error
-
-        try:
-            destination_handle = os.fdopen(file_descriptor, "wb")
-        except Exception:
-            os.close(file_descriptor)
-            destination.unlink(missing_ok=True)
-            raise
-
-        try:
-            with destination_handle:
-                for chunk in iter(lambda: source_handle.read(1024 * 1024), b""):
-                    destination_handle.write(chunk)
-                destination_handle.flush()
-                os.fsync(destination_handle.fileno())
-            fsync_directory(destination.parent)
-            if (
-                sha256(source) != expected_sha256
-                or sha256(destination) != expected_sha256
-            ):
-                raise ValueError(
-                    "staged AI review bundle file changed during copy: "
-                    + source.name
-                )
-        except Exception:
-            destination.unlink(missing_ok=True)
-            raise
+                "staged AI review bundle file changed during copy: " + source.name
+            )
+    except Exception:
+        destination.unlink(missing_ok=True)
+        raise
 
 
 def fsync_directory(path: Path) -> None:
