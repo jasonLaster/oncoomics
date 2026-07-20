@@ -107,14 +107,7 @@ def require_real_hash_input(path: Path) -> None:
 
 
 def sha256(path: Path) -> str:
-    require_real_hash_input(path)
-    import hashlib
-
-    digest = hashlib.sha256()
-    with path.open("rb") as handle:
-        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
-            digest.update(chunk)
-    return digest.hexdigest()
+    return read_stable_file_with_sha256(path, f"{path.name} SHA-256 input")[1]
 
 
 def load_object(path: Path) -> dict[str, Any]:
