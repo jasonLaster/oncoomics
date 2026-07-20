@@ -45,7 +45,7 @@ params.phase3_allow_metadata_cnv_timing = params.containsKey('phase3_allow_metad
 params.phase3_fast_gpu_smoke_cpus = params.containsKey('phase3_fast_gpu_smoke_cpus') ? params.phase3_fast_gpu_smoke_cpus : 192
 params.phase3_fast_gpu_smoke_memory = params.containsKey('phase3_fast_gpu_smoke_memory') ? params.phase3_fast_gpu_smoke_memory : '1900 GB'
 params.phase3_fast_gpu_smoke_expected_gpus = params.containsKey('phase3_fast_gpu_smoke_expected_gpus') ? params.phase3_fast_gpu_smoke_expected_gpus : 8
-params.phase3_fast_gpu_smoke_gpu_name = params.containsKey('phase3_fast_gpu_smoke_gpu_name') ? params.phase3_fast_gpu_smoke_gpu_name : 'H200'
+params.phase3_fast_gpu_smoke_gpu_names = params.containsKey('phase3_fast_gpu_smoke_gpu_names') ? params.phase3_fast_gpu_smoke_gpu_names : 'H100,H200'
 params.phase3_fast_private_freeze_receipt = params.phase3_fast_private_freeze_receipt ?: null
 params.phase3_fast_private_sha256_receipt = params.phase3_fast_private_sha256_receipt ?: null
 params.phase3_fast_reference_freeze_receipt = params.phase3_fast_reference_freeze_receipt ?: null
@@ -593,7 +593,7 @@ process FAST_INPUT_MANIFEST {
 }
 
 process FAST_GPU_SMOKE {
-    tag "fast_gpu_smoke_${params.phase3_fast_gpu_smoke_expected_gpus}x_${params.phase3_fast_gpu_smoke_gpu_name}"
+    tag "fast_gpu_smoke_${params.phase3_fast_gpu_smoke_expected_gpus}x_Hopper"
     label 'gpu_parabricks'
     cpus { params.phase3_fast_gpu_smoke_cpus as int }
     memory { params.phase3_fast_gpu_smoke_memory }
@@ -641,16 +641,33 @@ process FAST_GPU_SMOKE {
 
     gpu_count="\$(wc -l < workspace/results/phase3_wgs_fast_gpu_smoke/nvidia-smi-gpus.csv | tr -d '[:space:]')"
     expected_gpus="${params.phase3_fast_gpu_smoke_expected_gpus}"
-    required_name="${params.phase3_fast_gpu_smoke_gpu_name}"
+    required_names="${params.phase3_fast_gpu_smoke_gpu_names}"
 
     if [[ "\${gpu_count}" != "\${expected_gpus}" ]]; then
       echo "Expected \${expected_gpus} GPUs, saw \${gpu_count}" >&2
       exit 42
     fi
 
-    if [[ -n "\${required_name}" ]]; then
-      awk -F, -v needle="\${required_name}" '
-        index(\$2, needle) == 0 { bad = 1 }
+    if [[ -n "\${required_names}" ]]; then
+      awk -F, -v needles="\${required_names}" '
+        BEGIN {
+          n = split(needles, allowed, ",")
+          for (i = 1; i <= n; i++) {
+            gsub(/^[[:space:]]+/, "", allowed[i])
+            gsub(/[[:space:]]+\$/, "", allowed[i])
+          }
+        }
+        {
+          matched = 0
+          for (i = 1; i <= n; i++) {
+            if (allowed[i] != "" && index(\$2, allowed[i]) > 0) {
+              matched = 1
+            }
+          }
+          if (!matched) {
+            bad = 1
+          }
+        }
         END { exit bad }
       ' workspace/results/phase3_wgs_fast_gpu_smoke/nvidia-smi-gpus.csv
     fi
@@ -703,7 +720,7 @@ process FAST_GPU_SMOKE {
       "parabricksContainer": "${params.parabricks_container}",
       "expectedGpuCount": \${expected_gpus},
       "observedGpuCount": \${gpu_count},
-      "requiredGpuName": "\${required_name}",
+      "requiredGpuNames": "\${required_names}",
       "nvidiaSmiCsv": "nvidia-smi-gpus.csv",
       "awsCliVersionTxt": "aws-cli-version.txt",
       "bcftoolsVersionCommand": "bcftools --version",
@@ -772,7 +789,7 @@ process FAST_GPU_SMOKE {
       "parabricksContainer": "${params.parabricks_container}",
       "expectedGpuCount": 8,
       "observedGpuCount": 8,
-      "requiredGpuName": "H200",
+      "requiredGpuNames": "H100,H200",
       "nvidiaSmiCsv": "nvidia-smi-gpus.csv",
       "awsCliVersionTxt": "aws-cli-version.txt",
       "bcftoolsVersionCommand": "bcftools --version",
@@ -1936,11 +1953,29 @@ process FAST_STAGE_BLOCKED_CROSSCHECKS {
     test -s "${deterministic_report}"
     test -s "${deterministic_report_manifest}"
 
+    source_report_root="\$PWD/source_reports"
+    mkdir -p "\$source_report_root/deterministic_full_wgs"
+    mkdir -p "\$source_report_root/rosalind_diana_wgs"
+    cp -L "${deterministic_report}" "\$source_report_root/deterministic_full_wgs/report.md"
+    cp -L "${deterministic_report_manifest}" "\$source_report_root/deterministic_full_wgs/report_manifest.json"
+    cp -L "${deterministic_readiness}" "\$source_report_root/deterministic_full_wgs/readiness.csv"
+    cp -L "${deterministic_evidence_checks}" "\$source_report_root/deterministic_full_wgs/evidence_checks.json"
+    cp -L "${deterministic_input_sha256}" "\$source_report_root/deterministic_full_wgs/input_sha256.csv"
+    cp -L "${deterministic_crosscheck_input_plans}" "\$source_report_root/deterministic_full_wgs/crosscheck_input_plans.json"
+    cp -L "${rosalind_report}" "\$source_report_root/rosalind_diana_wgs/report.md"
+    cp -L "${rosalind_report_manifest}" "\$source_report_root/rosalind_diana_wgs/report_manifest.json"
+    cp -L "${rosalind_input_evidence_index}" "\$source_report_root/rosalind_diana_wgs/input_evidence_index.json"
+    cp -L "${rosalind_sample_validation_summary}" "\$source_report_root/rosalind_diana_wgs/sample_validation_summary.csv"
+    cp -L "${rosalind_hrd_adapter_status}" "\$source_report_root/rosalind_diana_wgs/hrd_adapter_status.csv"
+    cp -L "${rosalind_research_context_sources}" "\$source_report_root/rosalind_diana_wgs/research_context_sources.json"
+    cp -L "${rosalind_next_actions}" "\$source_report_root/rosalind_diana_wgs/next_actions.md"
+    cp -L "${rosalind_reviewer_packet}" "\$source_report_root/rosalind_diana_wgs/reviewer_packet.md"
+
     "${params.python_bin}" "${params.repo_dir}/scripts/generate_blocked_hrd_crosscheck_reports.py" \
         --output-dir "\$PWD/workspace/results/phase3_wgs_fast/blocked_crosschecks" \
         --run-id "${params.phase3_fast_run_id}" \
-        --source-report-manifest "deterministic_full_wgs=${deterministic_report_manifest}" \
-        --source-report-manifest "rosalind_diana_wgs=${rosalind_report_manifest}" \
+        --source-report-manifest "deterministic_full_wgs=\$source_report_root/deterministic_full_wgs/report_manifest.json" \
+        --source-report-manifest "rosalind_diana_wgs=\$source_report_root/rosalind_diana_wgs/report_manifest.json" \
         --allow-pre-route-source-reports \
         --generated-at "${params.phase3_fast_generated_at}"
     """
@@ -1949,30 +1984,34 @@ process FAST_STAGE_BLOCKED_CROSSCHECKS {
     """
     set -euo pipefail
     test -s "${deterministic_report_manifest}"
+    test -s "${rosalind_report}"
     test -s "${rosalind_report_manifest}"
-    output="workspace/results/phase3_wgs_fast/blocked_crosschecks"
-    deterministic_manifest_sha="\$(shasum -a 256 "${deterministic_report_manifest}" | awk '{print \$1}')"
-    rosalind_manifest_sha="\$(shasum -a 256 "${rosalind_report_manifest}" | awk '{print \$1}')"
-    mkdir -p "\$output"
-    for method_id in facets_scarhrd_blocked oncoanalyser_chord_blocked hrdetect_blocked; do
-      mkdir -p "\$output/\$method_id"
-      method_spec="\$output/\$method_id/method_spec.json"
-      report="\$output/\$method_id/report.md"
-      report_manifest="\$output/\$method_id/report_manifest.json"
-      cat > "\$method_spec" <<JSON
-    {"schema_version":1,"method_id":"\$method_id","execution_status":"not_run","evidence_status":"blocked","interpretation_status":"no_call","patient_result":"none","source_report_binding_scope":"pre_route_deterministic_rosalind","source_report_manifests":{"deterministic_full_wgs":"\$deterministic_manifest_sha","rosalind_diana_wgs":"\$rosalind_manifest_sha"}}
-    JSON
-      cat > "\$report" <<'MD'
-    # Blocked HRD cross-check report
 
-    Stubbed blocked `no_call` report.
-    MD
-      method_spec_sha="\$(shasum -a 256 "\$method_spec" | awk '{print \$1}')"
-      report_sha="\$(shasum -a 256 "\$report" | awk '{print \$1}')"
-      cat > "\$report_manifest" <<JSON
-    {"schema_version":1,"method_id":"\$method_id","report_kind":"blocked_method","evidence_status":"blocked","authorized_hrd_state":"no_call","classification_authorized":false,"classification_qc_status":"not_applicable","source_report_binding_scope":"pre_route_deterministic_rosalind","source_sha256":{"deterministic_full_wgs_report_manifest":"\$deterministic_manifest_sha","rosalind_diana_wgs_report_manifest":"\$rosalind_manifest_sha"},"support_sha256":{"method_spec.json":"\$method_spec_sha"},"report_sha256":"\$report_sha","review_summary":{"source_report_binding_scope":"pre_route_deterministic_rosalind","source_report_manifests":{"deterministic_full_wgs":"\$deterministic_manifest_sha","rosalind_diana_wgs":"\$rosalind_manifest_sha"}}}
-    JSON
-    done
+    source_report_root="\$PWD/source_reports"
+    mkdir -p "\$source_report_root/deterministic_full_wgs"
+    mkdir -p "\$source_report_root/rosalind_diana_wgs"
+    cp -L "${deterministic_report}" "\$source_report_root/deterministic_full_wgs/report.md"
+    cp -L "${deterministic_report_manifest}" "\$source_report_root/deterministic_full_wgs/report_manifest.json"
+    cp -L "${deterministic_readiness}" "\$source_report_root/deterministic_full_wgs/readiness.csv"
+    cp -L "${deterministic_evidence_checks}" "\$source_report_root/deterministic_full_wgs/evidence_checks.json"
+    cp -L "${deterministic_input_sha256}" "\$source_report_root/deterministic_full_wgs/input_sha256.csv"
+    cp -L "${deterministic_crosscheck_input_plans}" "\$source_report_root/deterministic_full_wgs/crosscheck_input_plans.json"
+    cp -L "${rosalind_report}" "\$source_report_root/rosalind_diana_wgs/report.md"
+    cp -L "${rosalind_report_manifest}" "\$source_report_root/rosalind_diana_wgs/report_manifest.json"
+    cp -L "${rosalind_input_evidence_index}" "\$source_report_root/rosalind_diana_wgs/input_evidence_index.json"
+    cp -L "${rosalind_sample_validation_summary}" "\$source_report_root/rosalind_diana_wgs/sample_validation_summary.csv"
+    cp -L "${rosalind_hrd_adapter_status}" "\$source_report_root/rosalind_diana_wgs/hrd_adapter_status.csv"
+    cp -L "${rosalind_research_context_sources}" "\$source_report_root/rosalind_diana_wgs/research_context_sources.json"
+    cp -L "${rosalind_next_actions}" "\$source_report_root/rosalind_diana_wgs/next_actions.md"
+    cp -L "${rosalind_reviewer_packet}" "\$source_report_root/rosalind_diana_wgs/reviewer_packet.md"
+
+    "${params.python_bin}" "${params.repo_dir}/scripts/generate_blocked_hrd_crosscheck_reports.py" \
+        --output-dir "\$PWD/workspace/results/phase3_wgs_fast/blocked_crosschecks" \
+        --run-id "${params.phase3_fast_run_id}" \
+        --source-report-manifest "deterministic_full_wgs=\$source_report_root/deterministic_full_wgs/report_manifest.json" \
+        --source-report-manifest "rosalind_diana_wgs=\$source_report_root/rosalind_diana_wgs/report_manifest.json" \
+        --allow-pre-route-source-reports \
+        --generated-at "${params.phase3_fast_generated_at}"
     """
 }
 

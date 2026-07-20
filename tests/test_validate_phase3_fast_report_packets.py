@@ -90,7 +90,7 @@ def write_packet(
     manifest = {
         "schema_version": 1,
         "method_id": method_id,
-        "report_kind": PUBLISH.METHOD_CONTRACTS[method_id]["report_kind"],
+        "report_kind": VALIDATOR.PHASE3_FAST_REPORT_KINDS[method_id][0],
         "evidence_status": "blocked" if method_id.endswith("_blocked") else "partial_evidence",
         "authorized_hrd_state": "no_call",
         "classification_authorized": False,
@@ -367,6 +367,29 @@ class ValidatePhase3FastReportPacketsTests(unittest.TestCase):
                 set(written["packets"][0]["files"][0]),
             )
             self.assertNotIn("path", written["packets"][0]["files"][0])
+
+    def test_rejects_unknown_deterministic_report_kind_in_fast_validation(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            packet_dirs = self.write_phase3_fast_packets(root)
+            deterministic_manifest = (
+                packet_dirs["deterministic_full_wgs"] / "report_manifest.json"
+            )
+            manifest = json.loads(deterministic_manifest.read_text(encoding="utf-8"))
+            manifest["report_kind"] = "legacy_deterministic_report"
+            deterministic_manifest.write_text(
+                json.dumps(manifest, sort_keys=True) + "\n",
+                encoding="utf-8",
+            )
+
+            with self.assertRaisesRegex(
+                ValueError,
+                "report manifest report_kind is not exact",
+            ):
+                VALIDATOR.validate_packets(
+                    packet_dirs,
+                    json.dumps(["Run-Private-Token"]),
+                )
 
     def test_rejects_terminal_bound_blocked_packets_in_fast_validation(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:

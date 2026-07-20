@@ -697,6 +697,8 @@
           <li class="pill">Phase 3 fast replication/cache counts = exact</li>
           <li class="pill">Phase 3 fast input counts = exact</li>
           <li class="pill">Parabricks mirror schemas = exact</li>
+          <li class="pill">P5 Hopper placement = widened</li>
+          <li class="pill">us-west-2 P-family hedge = pending</li>
           <li class="pill">Deterministic Phase 3 fast schemas = exact</li>
           <li class="pill">Rosalind Phase 3 fast schemas = exact</li>
           <li class="pill">Materializer submit schemas = exact</li>
@@ -823,9 +825,9 @@
               <div class="bar" aria-hidden="true" style="--pct: 100%"><span></span></div>
             </li>
             <li class="track" style="--tone: var(--blocked)">
-              <strong>Next-generation P5en / Parabricks architecture</strong>
-              <span>60% · source handoffs stable; quota-blocked</span>
-              <div class="bar" aria-hidden="true" style="--pct: 60%"><span></span></div>
+              <strong>Next-generation P5 Hopper / Parabricks architecture</strong>
+              <span>65% · P5 lane widened; primary quota-blocked; hedge pending</span>
+              <div class="bar" aria-hidden="true" style="--pct: 65%"><span></span></div>
             </li>
             <li class="track" style="--tone: var(--blocked)">
               <strong>Diana terminal deterministic artifacts</strong>
@@ -875,7 +877,7 @@
           <div class="flow" aria-label="Ordered terminal-to-public flow">
             <div class="stage" style="--tone: var(--blocked)">
               <strong>1. Wait for selected quota</strong>
-              <p>P5en/Parabricks is selected; do not race a CPU fallback or another region.</p>
+              <p>P5 Hopper/Parabricks is selected; the second-region quota request is a hedge, not a competing rerun.</p>
               <span class="badge">blocked</span>
             </div>
             <div class="stage" style="--tone: var(--queued)">
@@ -942,6 +944,14 @@
 
           <h3>Priority 1 · selected GPU NGS rerun prep</h3>
           <ol class="todo">
+            <li class="item" style="--tone: var(--done)">
+              <strong>Done · widen the P5 Hopper placement lane</strong>
+              <span>The selected GPU lane now stays inside the existing P-family quota path while allowing AWS Batch to place eight-GPU Hopper smoke or execute jobs on <code>p5en.48xlarge</code>, <code>p5e.48xlarge</code>, or <code>p5.48xlarge</code>; H100 and H200 smoke outputs are accepted, while P4/A100, G-family, Spot, other regions, and CPU reruns remain excluded.</span>
+            </li>
+            <li class="item" style="--tone: var(--queued)">
+              <strong>Pending · hold the us-west-2 P-family quota hedge</strong>
+              <span>A second 384-vCPU P-family request is open in <code>us-west-2</code>, where all three eight-GPU P5 Hopper shapes are catalog-visible; this is quota optionality only and does not launch replacement compute or a regional race.</span>
+            </li>
             <li class="item" style="--tone: var(--done)">
               <strong>Done · bind blocked cross-checks to parsed upstream manifests</strong>
               <span>Blocked FACETS/scarHRD, CHORD, and HRDetect reports now record the SHA-256 values from the exact deterministic and Rosalind manifests they already parsed, so a late local rewrite cannot change the upstream digest carried into a no-call packet.</span>
@@ -1116,7 +1126,7 @@
             </li>
             <li class="item" style="--tone: var(--done)">
               <strong>Done · close Phase 3 WGS boolean-friendly integer guards</strong>
-              <span>Shared Sequenza alias contracts, cross-check materialization planning, the Parabricks P5en runner, and GPU-smoke parameter validation now reject JSON booleans as integers, closing the last raw Phase 3 WGS integer guards.</span>
+              <span>Shared Sequenza alias contracts, cross-check materialization planning, the Parabricks P5 runner, and GPU-smoke parameter validation now reject JSON booleans as integers, closing the last raw Phase 3 WGS integer guards.</span>
             </li>
             <li class="item" style="--tone: var(--done)">
               <strong>Done · require exact deterministic report bytes</strong>
@@ -1140,7 +1150,7 @@
             </li>
             <li class="item" style="--tone: var(--done)">
               <strong>Done · require exact Phase 3 fast Parabricks-plan bytes</strong>
-              <span><code>FAST_PARABRICKS_MUTECT_PLAN</code> now rejects JSON booleans in staged input byte counts before it can render exact prepon/mutectcaller/postpon command vectors for the selected P5en/Parabricks route.</span>
+              <span><code>FAST_PARABRICKS_MUTECT_PLAN</code> now rejects JSON booleans in staged input byte counts before it can render exact prepon/mutectcaller/postpon command vectors for the selected P5 Hopper/Parabricks route.</span>
             </li>
             <li class="item" style="--tone: var(--done)">
               <strong>Done · require exact Phase 3 fast staging counts</strong>
@@ -1148,27 +1158,27 @@
             </li>
             <li class="item" style="--tone: var(--done)">
               <strong>Done · require exact Phase 3 fast replication/cache counts</strong>
-              <span>The selected P5en/Parabricks replication plan, dry-run/apply receipt builder, and cache-manifest renderer now reject JSON floats or booleans in copy-plan byte counts, object counts, and total bytes before declaring the immutable cache ready for downstream deterministic evidence.</span>
+              <span>The selected P5 Hopper/Parabricks replication plan, dry-run/apply receipt builder, and cache-manifest renderer now reject JSON floats or booleans in copy-plan byte counts, object counts, and total bytes before declaring the immutable cache ready for downstream deterministic evidence.</span>
             </li>
             <li class="item" style="--tone: var(--done)">
               <strong>Done · require exact Phase 3 fast input-manifest counts</strong>
-              <span>The immutable Phase 3 fast input-manifest renderer now rejects JSON floats or booleans in source receipt object counts and byte counts before seeding the selected P5en/Parabricks deterministic rerun or later deterministic, Rosalind, and freeform HRD handoffs.</span>
+              <span>The immutable Phase 3 fast input-manifest renderer now rejects JSON floats or booleans in source receipt object counts and byte counts before seeding the selected P5 Hopper/Parabricks deterministic rerun or later deterministic, Rosalind, and freeform HRD handoffs.</span>
             </li>
             <li class="item" style="--tone: var(--done)">
               <strong>Done · require exact Parabricks mirror schemas</strong>
-              <span>Parabricks ECR mirror receipt verification now rejects JSON floats or booleans before a reviewed mirror can be trusted for the selected P5en/Parabricks GPU architecture.</span>
+              <span>Parabricks ECR mirror receipt verification now rejects JSON floats or booleans before a reviewed mirror can be trusted for the selected P5 Hopper/Parabricks GPU architecture.</span>
             </li>
             <li class="item" style="--tone: var(--blocked)">
               <strong>Blocked · lift the GPU capacity gate</strong>
-              <span>Running On-Demand P quota remains 8 vCPUs; the 384-vCPU P5en request remains <code>CASE_OPENED</code>.</span>
+              <span>The selected region's Running On-Demand P quota remains below one 192-vCPU P5 host; the primary 384-vCPU P-family request remains <code>CASE_OPENED</code>.</span>
             </li>
             <li class="item" style="--tone: var(--done)">
               <strong>Done · choose quota-only, no-race execution</strong>
-              <span>Wait for the selected P5en/Parabricks quota and bounded smoke gate; keep the distributed CPU design historical and do not launch a competing rerun.</span>
+              <span>Wait for the selected P-family quota and P5 Hopper/Parabricks bounded smoke gate; keep the distributed CPU design historical and do not launch a competing rerun.</span>
             </li>
             <li class="item" style="--tone: var(--queued)">
               <strong>Next · run the bounded architecture smoke gate</strong>
-              <span>Exercise checked-in <code>phase3_wgs_fast</code> P5en/Parabricks only after quota approval; do not launch a fallback or competing rerun.</span>
+              <span>Exercise checked-in <code>phase3_wgs_fast</code> P5 Hopper/Parabricks only after quota approval; do not launch a fallback or competing rerun.</span>
             </li>
           </ol>
 
@@ -1560,7 +1570,7 @@
             </li>
             <li class="item" style="--tone: var(--blocked)">
               <strong>Blocked · keep the legacy CPU run stopped</strong>
-              <span>Start a new deterministic run only on the selected P5en/Parabricks topology after its bounded smoke gate passes.</span>
+              <span>Start a new deterministic run only on the selected P5 Hopper/Parabricks topology after its bounded smoke gate passes.</span>
             </li>
           </ol>
 
@@ -5757,7 +5767,7 @@
               <span>
                 <strong>Local patch · Close Phase 3 WGS boolean-friendly integer guards:</strong>
                 shared Sequenza alias contracts, cross-check materialization
-                planning, the Parabricks P5en runner, and GPU-smoke parameter
+                planning, the Parabricks P5 runner, and GPU-smoke parameter
                 validation now reject JSON booleans as integers, leaving no
                 raw boolean-friendly integer guards in Phase 3 WGS. No S3,
                 Batch, route, GPU, quota, replacement compute, or AWS-side
@@ -5836,7 +5846,7 @@
                 <code>FAST_PARABRICKS_MUTECT_PLAN</code> now rejects JSON
                 booleans in staged input byte counts before it can render
                 exact prepon/mutectcaller/postpon command vectors for the
-                selected P5en/Parabricks route. No S3, Batch, route, GPU,
+                selected P5 Hopper/Parabricks route. No S3, Batch, route, GPU,
                 quota, replacement compute, or AWS-side verification was
                 launched.
               </span>
@@ -5857,7 +5867,7 @@
               <time datetime="2026-07-19T02:58:00-07:00">Jul 19 · local</time>
               <span>
                 <strong>Local patch · Require exact Phase 3 fast replication/cache counts:</strong>
-                the selected P5en/Parabricks replication plan, dry-run/apply
+                the selected P5 Hopper/Parabricks replication plan, dry-run/apply
                 receipt builder, and cache-manifest renderer now reject JSON
                 floats or booleans in copy-plan byte counts, object counts,
                 and total bytes before declaring the immutable cache ready for
@@ -5873,7 +5883,7 @@
                 the immutable Phase 3 fast input-manifest renderer now rejects
                 JSON floats or booleans in source receipt object-count and
                 byte-count fields before the manifest can seed the selected
-                P5en/Parabricks deterministic rerun or later deterministic,
+                P5 Hopper/Parabricks deterministic rerun or later deterministic,
                 Rosalind, and freeform HRD handoffs. No S3, Batch, route, GPU,
                 quota, replacement compute, or AWS-side verification was
                 launched.
@@ -6848,7 +6858,7 @@
               <span>
                 <strong>4de1f21 Refresh HRD dashboard for private dry-run exactness:</strong>
                 published the exact private dry-run receipt gate while keeping
-                the selected P5en path quota-blocked, the legacy CPU run
+                the selected P5 path quota-blocked, the legacy CPU run
                 stopped, terminal cross-check inputs absent, and Diana HRD at
                 <code>partial_evidence</code> / <code>no_call</code>. No
                 publication or compute was launched.
@@ -6947,7 +6957,7 @@
               <time datetime="2026-07-18T23:18:13-07:00">Jul 18 · 11:18 PM</time>
               <span>
                 <strong>01ca4ce Refresh HRD dashboard for quota-only GPU path:</strong>
-                published the selected P5en/Parabricks quota-only, no-race
+                published the selected P5 Hopper/Parabricks quota-only, no-race
                 decision plus the 5 Mb CNV-bin and BAM-derived SV-counter
                 <code>no_call</code> boundaries. No compute was launched.
               </span>
@@ -7343,7 +7353,7 @@
               <span>
                 <strong>Kept the next rerun off the legacy CPU topology:</strong>
                 the selected next compute path is checked-in
-                <code>phase3_wgs_fast</code> on P5en/Parabricks or distributed
+                <code>phase3_wgs_fast</code> on P5 Hopper/Parabricks or distributed
                 CPU only. The live us-east-2 Running On-Demand P quota is
                 8 vCPUs, and the 384-vCPU increase request remains
                 <code>CASE_OPENED</code> under AWS case

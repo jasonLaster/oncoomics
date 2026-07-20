@@ -117,7 +117,7 @@ class FastRerunDocsTests(unittest.TestCase):
         self.assertIn("PARABRICKS_MIRROR_RECEIPT", text)
         self.assertIn("PHASE3_FAST_GPU_SMOKE_RESULT", text)
         self.assertIn("alias-only forbidden-token inventory after `--`", text)
-        self.assertIn("live Batch queue, isolated P5en compute\nenvironment", text)
+        self.assertIn("live Batch queue, isolated P5 compute\nenvironment", text)
         self.assertIn("mirror-receipt, cache, ECR-image, live P-instance quota", text)
         self.assertIn("misrouted compute environment", text)
 
@@ -126,7 +126,7 @@ class FastRerunDocsTests(unittest.TestCase):
 
         self.assertIn("Do not use this legacy full-source CPU launcher", text)
         self.assertIn("phase3_wgs_fast", text)
-        self.assertIn("P5en/Parabricks", text)
+        self.assertIn("P5/Parabricks", text)
 
     def test_scripts_readme_tracks_six_file_deterministic_report(self) -> None:
         text = SCRIPTS_README.read_text(encoding="utf-8")

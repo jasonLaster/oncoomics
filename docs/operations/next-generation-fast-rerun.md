@@ -6,14 +6,14 @@ For the executive runtime and cost comparison, see [fast-rerun-performance-cost-
 
 ## Decision
 
-**Verdict: go, assuming the selected GPU quota lands.** Build one resumable `phase3_wgs_fast` Nextflow workflow in `us-east-2`. Run Parabricks on one On-Demand `p5en.48xlarge` with eight NVIDIA H200 GPUs. Do not build a CPU caller fallback or a multi-region race for the first implementation.
+**Verdict: go, assuming the selected GPU quota lands.** Build one resumable `phase3_wgs_fast` Nextflow workflow in `us-east-2`. Run Parabricks on one On-Demand eight-GPU P5 Hopper host: `p5en.48xlarge`, `p5e.48xlarge`, or `p5.48xlarge`. Do not build a CPU caller fallback or a multi-region race for the first implementation.
 
 The superseded CPU scatter design is preserved as a historical artifact in [historical/2026-07-16-cpu-fast-rerun-plan.md](historical/2026-07-16-cpu-fast-rerun-plan.md). It is not an active fallback.
 
 The July single-node CPU evidence retry was intentionally stopped during v4
 instead of spending further on the monolithic tail. Do not restart that S3-only
 worker or race it with an ad hoc GPU recomputation. The next full Diana WGS run
-must wait for the requested P5en quota, isolated Batch environment, checked-in
+must wait for the requested P-family quota, isolated Batch environment, checked-in
 `phase3_wgs_fast` DAG, and bounded Parabricks smoke gate.
 
 For the next run of the current tumor/matched-normal pair, do **not** rerun FASTQ alignment or BAM gathering. Reuse the two validated duplicate-marked BAMs as an immutable input checkpoint and rerun only the evidence DAG. For later FASTQ-origin runs, replace the lane-alignment-plus-gather critical path with parallel Parabricks `fq2bam` jobs only after a separate BAM and known-answer non-inferiority gate passes.
@@ -80,7 +80,7 @@ flowchart LR
     R -->|no| FN["Normal fq2bam GPU job"]
     FT --> B
     FN --> B
-    B --> P["Parabricks mutectcaller on p5en.48xlarge"]
+    B --> P["Parabricks mutectcaller on one P5 Hopper 48xlarge"]
     P --> PP["PoN postprocessing and caller checkpoint"]
     B --> Q["QC and contamination branch"]
     B --> N["CNV evidence branch"]
@@ -133,25 +133,25 @@ not recopy BAMs into each run directory.
 
 ### 3. Selected GPU environment
 
-The selected environment is `us-east-2` on one On-Demand `p5en.48xlarge`. This shape has 192 vCPUs, 2 TiB of RAM, eight NVIDIA H200 GPUs, and eight 3.8 TB NVMe SSDs. It is explicitly supported through the On-Demand purchase path and is currently offered in all three `us-east-2` availability zones. The current AWS account has zero On-Demand P quota there; this plan assumes that quota is raised before execution.
+The selected environment is `us-east-2` on one eight-GPU On-Demand P5 Hopper shape. The allowed `p5en.48xlarge`, `p5e.48xlarge`, and `p5.48xlarge` instances each have 192 vCPUs, 2 TiB of RAM, eight NVIDIA H200 or H100 GPUs, and eight 3.8 TB NVMe SSDs. The current AWS account has 8 On-Demand P vCPUs there; this plan assumes that quota is raised before execution.
 
 Quota and capacity contract:
 
 | Need | Request | Purpose |
 | --- | ---: | --- |
-| Immediate BAM-to-evidence rerun | 192 On-Demand P vCPUs | One `p5en.48xlarge` caller job. |
-| Later parallel tumor/normal `fq2bam` | 384 On-Demand P vCPUs | Two `p5en.48xlarge` alignment jobs running concurrently. |
+| Immediate BAM-to-evidence rerun | 192 On-Demand P vCPUs | One eight-GPU P5 caller job. |
+| Later parallel tumor/normal `fq2bam` | 384 On-Demand P vCPUs | Two eight-GPU P5 alignment jobs running concurrently. |
 
 Request the EC2 `Running On-Demand P instances` quota in `us-east-2` at 384
-vCPUs. That quota covers both the immediate one-P5en caller job and the later
-two-P5en parallel alignment target.
+vCPUs. That quota covers both the immediate one-P5 caller job and the later
+two-P5 parallel alignment target.
 
-An EC2 offering and approved quota do not guarantee live capacity. The launch step should fail clearly if `p5en.48xlarge` cannot be placed; it should not silently switch instance type, region, caller, or Spot capacity. An operator can retry the same idempotent job without invalidating completed checkpoints.
+An EC2 offering and approved quota do not guarantee live capacity. The launch step should fail clearly if none of the allowed P5 Hopper shapes can be placed; it should not silently switch GPU family, region, caller, or Spot capacity. An operator can retry the same idempotent job without invalidating completed checkpoints.
 
 Use separate managed AWS Batch compute environments and queues:
 
 - `cpu-io-use2`: Graviton families for downloads, QC, packaging, and other ARM-compatible work;
-- `gpu-p5en-use2`: x86 ECS GPU-optimized AMI, `p5en.48xlarge` only.
+- `gpu-p5en-use2`: x86 ECS GPU-optimized AMI, `p5en.48xlarge`, `p5e.48xlarge`, or `p5.48xlarge` only.
 
 Do not mix GPU and non-GPU jobs in the same queue. GPU job definitions must request GPU resources explicitly. Stripe the eight instance-store NVMe devices into an ephemeral RAID0 `/scratch` volume for Parabricks inputs, temporary data, and outputs; upload every durable checkpoint to S3 before the job exits. Do not run the caller against the container root disk.
 
@@ -197,7 +197,7 @@ FAST_BAM_QC_PLAN                   exact quickcheck, flagstat, and idxstats plan
 FAST_CNV_EVIDENCE_PLAN             exact full-depth bedcov coverage-bin plan
 FAST_FILTER_MUTECT_PLAN            exact contamination/orientation/filter plan
 FAST_SV_EVIDENCE_PLAN              exact split/discordant read evidence plan
-FAST_GPU_SMOKE                     bounded P5en/Parabricks placement gate
+FAST_GPU_SMOKE                     bounded P5/Parabricks placement gate
 FAST_VALIDATE_FORBIDDEN_TOKENS     pre-expense alias-only private-token JSON validation
 FAST_MUTECT_PARABRICKS_FILTER      worker-local Parabricks, FilterMutect, and small-variant export
 FAST_BAM_CNV_SV_EVIDENCE           worker-local BAM QC, coverage-CNV, and split/discordant export
@@ -217,11 +217,11 @@ Implementation rules:
 - Map processes to `cpu_io` and `gpu_parabricks` queues.
 - Keep `FAST_PARABRICKS_MUTECT_PLAN` on `cpu_io`; it materializes and
   verifies scratch inputs with a bounded parallel `get-object` pool and renders
-  exact `pbrun` argument vectors, but must not reserve P5en/H200 capacity until
+  exact `pbrun` argument vectors, but must not reserve P5 Hopper capacity until
   execute mode enters
   `FAST_MUTECT_PARABRICKS_FILTER`.
 - Keep the current ARM application image for compatible CPU tasks and use a pinned x86 Parabricks image only for GPU tasks.
-- Set the `gpu_parabricks` accelerator request from `phase3_fast_parabricks_num_gpus`; queue placement and a GPU instance type are not enough to reserve or expose H200s to the AWS Batch container.
+- Set the `gpu_parabricks` accelerator request from `phase3_fast_parabricks_num_gpus`; queue placement and a GPU instance type are not enough to reserve or expose Hopper GPUs to the AWS Batch container.
 - Use `-resume` and content digests. Do not use a timestamp alone as a cache key.
 - Publish large inputs and intermediates once to the immutable cache. Publish pointer manifests and evidence outputs to the run result prefix.
 - Redact sample identifiers from job names and general CloudWatch command logs; retain them only in access-controlled provenance where required.
@@ -500,7 +500,7 @@ python3 scripts/render_source_report_freeze_runbook.py \
   --blocked-crosscheck-root "$TERMINAL_BLOCKED_ROOT"
 ```
 
-### Gate 1: P5en and Parabricks smoke
+### Gate 1: P5 Hopper and Parabricks smoke
 
 Run the checked-in placement smoke after quota approval, a pinned Parabricks
 image, and a reviewed mirror receipt bound to the current Diana source:
@@ -511,7 +511,7 @@ PYTHONPATH=src /usr/bin/python3 -m diana_omics nf:aws:phase3-wgs-fast:gpu-smoke
 
 The alias runs `verify:phase3-fast-gpu-smoke` first to fail locally unless the
 generated `infra/aws/nextflow.aws.use2.json` is bound to `us-east-2`, the
-isolated P5en queue, exactly `p5en.48xlarge`, at least one P5en worth of
+isolated P5 queue, exactly `p5en.48xlarge`, `p5e.48xlarge`, and `p5.48xlarge`, at least one P5 worth of
 capacity, a Parabricks image pinned by SHA-256 digest, and a `us-east-2`
 destination KMS key for the regional cache. It also requires
 `PARABRICKS_MIRROR_RECEIPT` or the default
@@ -520,14 +520,14 @@ receipt whose Parabricks container matches those generated params and whose
 Diana Git commit and `infra/aws/Dockerfile.parabricks` SHA-256 match the
 current checkout. It also reads the live Batch queue and its only compute
 environment before submission: the queue must be `ENABLED`, `VALID`, and routed
-only to the isolated P5en environment; the compute environment must be managed,
+only to the isolated P5 environment; the compute environment must be managed,
 enabled, valid, scale-to-zero On-Demand EC2 capacity, backed only by
-`p5en.48xlarge`, sized to at least one full P5en, and using only the NVIDIA
+`p5en.48xlarge`, `p5e.48xlarge`, and `p5.48xlarge`, sized to at least one full P5, and using only the NVIDIA
 Amazon Linux 2023 ECS image. It then queries the live EC2
 `Running On-Demand P instances` quota and requires at least 192 applied P vCPUs
-before Nextflow can submit the H200 placement job.
+before Nextflow can submit the Hopper placement job.
 The smoke itself verifies the host `/scratch` mount was built from all eight
-P5en NVMe instance-store devices, performs a write/read probe on that scratch
+P5 NVMe instance-store devices, performs a write/read probe on that scratch
 mount, then records `nvidia-smi`, `pbrun version`, a tiny `pbrun prepon`
 execution, `java -version`, `bcftools --version`, `aws --version`, and
 `python3 -m diana_omics --help` output from inside the pinned Diana Parabricks
@@ -544,12 +544,12 @@ reviewed smoke output as `PHASE3_FAST_GPU_SMOKE_RESULT`, and pass the reviewed
 Parabricks mirror receipt as `PARABRICKS_MIRROR_RECEIPT`, then pass the reviewed
 Gate 0 receipt paths and alias-only forbidden-token inventory as Nextflow
 arguments after `--`. The full execute alias intentionally repeats the GPU
-params, live Batch queue, live P5en compute-environment, mirror-receipt,
+params, live Batch queue, live P5 compute-environment, mirror-receipt,
 source-bound ECR tag, mirrored-image, cache, and live-quota checks before
 starting Nextflow. It also requires the reviewed mirror receipt to match the
 current Diana Git commit and `infra/aws/Dockerfile.parabricks` SHA-256, then
 rejects missing, stubbed,
-malformed, or non-H200 smoke output. A stale non-`us-east-2`, non-P5en,
+malformed, or non-H100/H200 smoke output. A stale non-`us-east-2`, non-P5,
 misrouted, source-mismatched, unpinned, unmirrored, under-quota, wrong-KMS, or
 smoke-skipping launch therefore still fails locally even when
 `ALLOW_PHASE3_FAST_AWS_EXECUTE=YES` is present:
@@ -573,7 +573,7 @@ PYTHONPATH=src /usr/bin/python3 -m diana_omics nf:aws:phase3-wgs-fast:execute --
   --phase3_fast_forbidden_tokens_json '["<private-token>"]'
 ```
 
-Verify all eight H200 GPUs are visible with `nvidia-smi`, then execute a fixed
+Verify all eight H100 or H200 GPUs are visible with `nvidia-smi`, then execute a fixed
 bounded interval. Accept the environment only if:
 
 - the pinned container and driver/CUDA combination passes Parabricks startup checks;
@@ -656,13 +656,13 @@ Emit machine-readable JSON/CloudWatch embedded metrics as well as human logs. Pr
    Python CLI because GPU workers stage S3 inputs, render exact command plans,
    and run Parabricks inside one container-local `/scratch` boundary.
 6. Track the 384 On-Demand P vCPU request in `us-east-2`; the same approved
-   quota should cover one immediate P5en caller job and the later two-P5en
+   quota should cover one immediate P5 caller job and the later two-P5
    parallel `fq2bam` gate.
 
 ### After quota approval
 
 1. Run Gate 1 with `nvidia-smi`, `/scratch` read/write proof, and a tiny
-   `pbrun prepon` startup on `p5en.48xlarge`.
+   `pbrun prepon` startup on an allowed P5 Hopper shape.
 2. Review the smoke artifacts, then run the full existing-BAM Parabricks caller
    and Gate 2 comparison.
 3. Promote the accepted Parabricks caller into the complete checkpointed evidence DAG.

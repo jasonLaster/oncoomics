@@ -13,7 +13,7 @@ from .safe_json_output import read_real_json, require_no_symlinked_ancestors
 GPU_SMOKE_RESULT_ENV = "PHASE3_FAST_GPU_SMOKE_RESULT"
 MIRROR_RECEIPT_ENV = "PARABRICKS_MIRROR_RECEIPT"
 REQUIRED_GPU_COUNT = 8
-REQUIRED_GPU_NAME = "H200"
+REQUIRED_GPU_NAMES = ("H100", "H200")
 REQUIRED_PARABRICKS_VERSION_COMMAND = "pbrun version"
 REQUIRED_PARABRICKS_PREPON_SMOKE_COMMAND = "pbrun prepon"
 REQUIRED_SCRATCH_SCHEMA = "diana_p5en_nvme_scratch.v1"
@@ -25,7 +25,7 @@ REQUIRED_BCFTOOLS_VERSION_COMMAND = "bcftools --version"
 
 
 class Phase3FastExecuteError(ValueError):
-    """Raised when the full P5en execute lane is not safe to submit."""
+    """Raised when the full P5 Hopper execute lane is not safe to submit."""
 
 
 def _require_string(value: Any, label: str) -> str:
@@ -120,6 +120,15 @@ def _require_matching_string(value: Any, label: str, expected: Any) -> str:
     return observed
 
 
+def _require_gpu_names(value: Any) -> tuple[str, ...]:
+    raw = _require_string(value, "requiredGpuNames")
+    names = tuple(name.strip() for name in raw.split(",") if name.strip())
+    if names != REQUIRED_GPU_NAMES:
+        joined = ",".join(REQUIRED_GPU_NAMES)
+        raise Phase3FastExecuteError(f"GPU smoke result must require {joined}")
+    return names
+
+
 def _parse_nvidia_smi_csv(path: Path) -> list[dict[str, str]]:
     rows = []
     for line_number, line in enumerate(_require_nonempty_text_file(path, "nvidia-smi CSV").splitlines(), start=1):
@@ -140,25 +149,25 @@ def _parse_nvidia_smi_csv(path: Path) -> list[dict[str, str]]:
 
 
 def _parse_scratch_readiness(path: Path) -> dict[str, Any]:
-    payload = read_real_json(path, "P5en scratch readiness JSON", Phase3FastExecuteError)
+    payload = read_real_json(path, "P5 Hopper scratch readiness JSON", Phase3FastExecuteError)
     if not isinstance(payload, dict):
-        raise Phase3FastExecuteError("P5en scratch readiness JSON must be an object")
+        raise Phase3FastExecuteError("P5 Hopper scratch readiness JSON must be an object")
     if payload.get("schema") != REQUIRED_SCRATCH_SCHEMA:
-        raise Phase3FastExecuteError(f"P5en scratch readiness schema must be {REQUIRED_SCRATCH_SCHEMA}")
+        raise Phase3FastExecuteError(f"P5 Hopper scratch readiness schema must be {REQUIRED_SCRATCH_SCHEMA}")
     if payload.get("mountPoint") != REQUIRED_SCRATCH_MOUNT:
-        raise Phase3FastExecuteError(f"P5en scratch readiness mountPoint must be {REQUIRED_SCRATCH_MOUNT}")
+        raise Phase3FastExecuteError(f"P5 Hopper scratch readiness mountPoint must be {REQUIRED_SCRATCH_MOUNT}")
     if payload.get("fileSystem") != REQUIRED_SCRATCH_FS:
-        raise Phase3FastExecuteError(f"P5en scratch readiness fileSystem must be {REQUIRED_SCRATCH_FS}")
+        raise Phase3FastExecuteError(f"P5 Hopper scratch readiness fileSystem must be {REQUIRED_SCRATCH_FS}")
     if payload.get("mountedSource") not in {"/dev/md0", "dev/md0"} and not str(
         payload.get("mountedSource", "")
     ).startswith("/dev/disk/by-id/nvme-Amazon_EC2_NVMe_Instance_Storage"):
-        raise Phase3FastExecuteError("P5en scratch readiness must be mounted from NVMe instance storage")
+        raise Phase3FastExecuteError("P5 Hopper scratch readiness must be mounted from NVMe instance storage")
     if payload.get("instanceStoreDeviceCount") != REQUIRED_SCRATCH_DEVICE_COUNT:
         raise Phase3FastExecuteError(
-            f"P5en scratch readiness must prove exactly {REQUIRED_SCRATCH_DEVICE_COUNT} instance-store devices"
+            f"P5 Hopper scratch readiness must prove exactly {REQUIRED_SCRATCH_DEVICE_COUNT} instance-store devices"
         )
     if payload.get("probeStatus") != "passed":
-        raise Phase3FastExecuteError("P5en scratch readiness must include a passed write probe")
+        raise Phase3FastExecuteError("P5 Hopper scratch readiness must include a passed write probe")
     return payload
 
 
@@ -182,12 +191,10 @@ def validate_gpu_smoke_result(
     )
     expected_count = _require_int(payload.get("expectedGpuCount"), "expectedGpuCount")
     observed_count = _require_int(payload.get("observedGpuCount"), "observedGpuCount")
-    required_name = _require_string(payload.get("requiredGpuName"), "requiredGpuName")
+    required_names = _require_gpu_names(payload.get("requiredGpuNames"))
 
     if expected_count != REQUIRED_GPU_COUNT or observed_count != REQUIRED_GPU_COUNT:
         raise Phase3FastExecuteError(f"GPU smoke result must prove exactly {REQUIRED_GPU_COUNT} visible GPUs")
-    if required_name != REQUIRED_GPU_NAME:
-        raise Phase3FastExecuteError(f"GPU smoke result must require {REQUIRED_GPU_NAME}")
     if payload.get("parabricksVersionCommand") != REQUIRED_PARABRICKS_VERSION_COMMAND:
         raise Phase3FastExecuteError(f"GPU smoke result must include {REQUIRED_PARABRICKS_VERSION_COMMAND}")
     if payload.get("javaVersionCommand") != REQUIRED_JAVA_VERSION_COMMAND:
@@ -210,8 +217,9 @@ def validate_gpu_smoke_result(
         if not uuid.startswith("GPU-"):
             raise Phase3FastExecuteError(f"nvidia-smi GPU UUID must start with GPU-: {uuid}")
         observed_uuids.add(uuid)
-        if required_name not in row["name"]:
-            raise Phase3FastExecuteError(f"nvidia-smi GPU {row['index']} was not an {required_name}: {row['name']}")
+        if not any(required_name in row["name"] for required_name in required_names):
+            joined = "/".join(required_names)
+            raise Phase3FastExecuteError(f"nvidia-smi GPU {row['index']} was not an allowed {joined} Hopper GPU: {row['name']}")
     if sorted(observed_indexes) != list(range(REQUIRED_GPU_COUNT)):
         raise Phase3FastExecuteError(f"nvidia-smi CSV must prove distinct GPU indexes 0-{REQUIRED_GPU_COUNT - 1}")
     if len(observed_uuids) != observed_count:
@@ -285,7 +293,7 @@ def validate_gpu_smoke_result(
         "parabricks_prepon_smoke_txt": parabricks_prepon_smoke_path.name,
         "parabricks_version_command": REQUIRED_PARABRICKS_VERSION_COMMAND,
         "parabricks_version_txt": parabricks_version_path.name,
-        "required_gpu_name": required_name,
+        "required_gpu_names": ",".join(required_names),
         "scratch_instance_store_device_count": scratch_readiness["instanceStoreDeviceCount"],
         "scratch_readiness_json": scratch_readiness_path.name,
         "status": "passed",

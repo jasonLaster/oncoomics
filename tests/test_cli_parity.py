@@ -369,7 +369,7 @@ class CliParityTest(unittest.TestCase):
         self.assertIn("infra/aws/nextflow.aws.use2.json", argv)
         self.assertEqual("phase3_wgs_fast_gpu_smoke", argv[argv.index("--workflow") + 1])
         self.assertEqual("8", argv[argv.index("--phase3_fast_gpu_smoke_expected_gpus") + 1])
-        self.assertEqual("H200", argv[argv.index("--phase3_fast_gpu_smoke_gpu_name") + 1])
+        self.assertEqual("H100,H200", argv[argv.index("--phase3_fast_gpu_smoke_gpu_names") + 1])
         self.assertEqual("8", argv[argv.index("--phase3_fast_parabricks_num_gpus") + 1])
         self.assertIn("--aws_max_retries", argv)
         self.assertEqual("0", argv[argv.index("--aws_max_retries") + 1])

@@ -98,7 +98,7 @@ class Phase3FastNextflowTests(unittest.TestCase):
         self.assertIn("phase3_wgs_fast_crosscheck_materialization_plan", text)
         self.assertIn("phase3_fast_deterministic_evidence", text)
         self.assertIn("rosalind_hrd_reviewer_packet", text)
-        self.assertIn("blocked_method", text)
+        self.assertIn("generate_blocked_hrd_crosscheck_reports.py", text)
         self.assertIn("validate_phase3_fast_report_packets.py", text)
         self.assertIn("facets_scarhrd_blocked", text)
         self.assertIn("oncoanalyser_chord_blocked", text)
@@ -171,7 +171,7 @@ class Phase3FastNextflowTests(unittest.TestCase):
         self.assertIn("`FAST_INPUT_MANIFEST`", text)
         self.assertIn("`FAST_REPLICATION_PLAN`", text)
         self.assertIn("`FAST_REPLICATE_INPUTS`", text)
-        self.assertIn("FAST_GPU_SMOKE                     bounded P5en/Parabricks placement gate", text)
+        self.assertIn("FAST_GPU_SMOKE                     bounded P5/Parabricks placement gate", text)
         self.assertIn(
             "FAST_VALIDATE_FORBIDDEN_TOKENS     pre-expense alias-only private-token JSON validation",
             text,
@@ -183,7 +183,7 @@ class Phase3FastNextflowTests(unittest.TestCase):
         self.assertIn("`run:phase3-fast-parabricks-mutect` must consume that plan", text)
         self.assertIn("`run:phase3-fast-filter-mutect` must require", text)
         self.assertIn("live Batch queue", text)
-        self.assertIn("live P5en compute-environment", text)
+        self.assertIn("live P5 compute-environment", text)
         self.assertIn("misrouted", text)
         self.assertNotIn("--phase3_fast_cache_prefix s3://", text)
         self.assertNotIn("--phase3_fast_cache_kms_key_arn <", text)
@@ -460,8 +460,39 @@ class Phase3FastNextflowTests(unittest.TestCase):
         self.assertIn("generate_blocked_hrd_crosscheck_reports.py", process)
         self.assertIn('--generated-at "${params.phase3_fast_generated_at}"', process)
         self.assertIn('--run-id "${params.phase3_fast_run_id}"', process)
+        self.assertIn('source_report_root="\\$PWD/source_reports"', process)
         self.assertIn(
-            '--source-report-manifest "rosalind_diana_wgs=${rosalind_report_manifest}"',
+            'cp -L "${deterministic_report}" '
+            '"\\$source_report_root/deterministic_full_wgs/report.md"',
+            process,
+        )
+        self.assertIn(
+            'cp -L "${deterministic_report_manifest}" '
+            '"\\$source_report_root/deterministic_full_wgs/report_manifest.json"',
+            process,
+        )
+        self.assertIn(
+            'cp -L "${deterministic_crosscheck_input_plans}" '
+            '"\\$source_report_root/deterministic_full_wgs/crosscheck_input_plans.json"',
+            process,
+        )
+        self.assertIn(
+            'cp -L "${rosalind_report}" '
+            '"\\$source_report_root/rosalind_diana_wgs/report.md"',
+            process,
+        )
+        self.assertIn(
+            'cp -L "${rosalind_report_manifest}" '
+            '"\\$source_report_root/rosalind_diana_wgs/report_manifest.json"',
+            process,
+        )
+        self.assertIn(
+            'cp -L "${rosalind_hrd_adapter_status}" '
+            '"\\$source_report_root/rosalind_diana_wgs/hrd_adapter_status.csv"',
+            process,
+        )
+        self.assertIn(
+            '--source-report-manifest "rosalind_diana_wgs=\\$source_report_root/rosalind_diana_wgs/report_manifest.json"',
             process,
         )
         self.assertIn("--allow-pre-route-source-reports", process)
@@ -471,20 +502,11 @@ class Phase3FastNextflowTests(unittest.TestCase):
         )
         self.assertIn('test -s "${deterministic_report}"', process)
         self.assertIn('test -s "${deterministic_report_manifest}"', process)
-        self.assertIn('deterministic_manifest_sha="\\$(shasum -a 256 "${deterministic_report_manifest}"', process)
-        self.assertIn('rosalind_manifest_sha="\\$(shasum -a 256 "${rosalind_report_manifest}"', process)
-        self.assertIn("awk '{print \\$1}'", process)
+        self.assertIn('test -s "${rosalind_report}"', process)
         self.assertIn(
-            '--source-report-manifest "deterministic_full_wgs=${deterministic_report_manifest}"',
+            '--source-report-manifest "deterministic_full_wgs=\\$source_report_root/deterministic_full_wgs/report_manifest.json"',
             process,
         )
-        self.assertIn('"source_report_manifests"', process)
-        self.assertIn('"source_report_binding_scope":"pre_route_deterministic_rosalind"', process)
-        self.assertIn('"deterministic_full_wgs_report_manifest"', process)
-        self.assertIn('"rosalind_diana_wgs_report_manifest"', process)
-        self.assertIn('"classification_qc_status":"not_applicable"', process)
-        self.assertIn('"support_sha256":{"method_spec.json"', process)
-        self.assertIn('"report_sha256":"\\$report_sha"', process)
         self.assertIn("workspace/results/phase3_wgs_fast/blocked_crosschecks", process)
         for method_id in (
             "facets_scarhrd_blocked",

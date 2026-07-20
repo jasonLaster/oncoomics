@@ -59,7 +59,7 @@ variable "hrd_x86_max_vcpus" {
 }
 
 variable "gpu_p5en_max_vcpus" {
-  description = "Maximum vCPUs for the zero-idle On-Demand P5en Parabricks compute environment."
+  description = "Maximum vCPUs for the zero-idle On-Demand P5 Hopper Parabricks compute environment."
   type        = number
   default     = 384
 }
@@ -79,7 +79,7 @@ variable "batch_x86_instance_families" {
 variable "batch_gpu_p5en_instance_types" {
   description = "GPU EC2 instance types for the isolated Parabricks AWS Batch environment."
   type        = list(string)
-  default     = ["p5en.48xlarge"]
+  default     = ["p5en.48xlarge", "p5e.48xlarge", "p5.48xlarge"]
 }
 
 variable "parabricks_container" {

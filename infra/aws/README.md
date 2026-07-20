@@ -91,7 +91,7 @@ PYTHONPATH=src /usr/bin/python3 -m diana_omics aws:ecr:push:use2
 
 The default image push uses the current Terraform workspace and infers the ECR
 login region from that workspace's `region` output. Use `aws:ecr:push:use1` for
-the existing `sra-use1` CPU stack and `aws:ecr:push:use2` for the P5en
+the existing `sra-use1` CPU stack and `aws:ecr:push:use2` for the P5
 `phase3-fast-use2` stack; those aliases select the intended workspace before
 reading the regional ECR repository URL and restore the prior workspace when
 the push exits. Override the current git SHA with `AWS_IMAGE_TAG=...` when
@@ -134,19 +134,19 @@ The profile writes published results to the private results bucket. Planning
 or provisioning this lane does not submit a job; analysis job definitions and
 submissions require a separate reviewed change.
 
-## Parabricks P5en GPU Smoke Lane
+## Parabricks P5 Hopper GPU Smoke Lane
 
 The selected fast WGS rerun uses a separate On-Demand GPU Batch lane instead of
 mixing Parabricks jobs into the ARM CPU queues:
 
 - Compute environment: `<project>-<environment>-gpu-p5en-ondemand`
 - Queue: `<project>-<environment>-gpu-p5en`
-- Instance type: `p5en.48xlarge` only
+- Instance types: `p5en.48xlarge`, `p5e.48xlarge`, or `p5.48xlarge` only
 - AMI family: AWS Batch NVIDIA Amazon Linux 2023 for ECS
 - Capacity: `min_vcpus = 0`, `desired_vcpus = 0`, and
   `gpu_p5en_max_vcpus = 384` by default
 
-Provision the P5en lane in its own `us-east-2` Terraform workspace so the
+Provision the P5 lane in its own `us-east-2` Terraform workspace so the
 existing `sra-use1` CPU queues and `infra/aws/nextflow.aws.json` stay bound to
 `us-east-1`:
 
@@ -166,7 +166,7 @@ pinned by digest. The `awsbatch_gpu` profile maps `gpu_parabricks` processes to
 that queue and image, binds the host instance-store `/scratch` volume into the
 container, and sets the Nextflow `accelerator` request to
 `phase3_fast_parabricks_num_gpus`, so Batch receives an explicit eight-GPU
-request for the P5en jobs.
+request for the P5 jobs.
 
 After the selected NVIDIA Parabricks `linux/amd64` image digest has been
 reviewed, build the Diana Parabricks runtime from that exact base digest and
@@ -197,7 +197,7 @@ match the checkout that is about to pin or execute the image.
 Keep the reviewed receipt in
 `results/phase3_wgs_fast/parabricks_mirror_receipt.json` or export
 `PARABRICKS_MIRROR_RECEIPT=/path/to/parabricks_mirror_receipt.json` before any
-P5en smoke or full execution attempt. Both launch preflights reject receipts
+P5 smoke or full execution attempt. Both launch preflights reject receipts
 whose pinned ECR image, immutable source-digest/Git tag, Diana Git commit, or
 `Dockerfile.parabricks` SHA-256 no longer match the current launcher source.
 
@@ -215,19 +215,19 @@ encoded CopySource `VersionId`s for the large BAMs so apply mode can cross the
 5 GiB single-object `CopyObject` limit without losing the reviewed source
 version.
 
-After P5en quota is approved and the pinned image is supplied, run only the
+After P-family quota is approved and the pinned image is supplied, run only the
 bounded placement/visibility smoke first. The alias starts with a local
 `verify:phase3-fast-gpu-smoke` preflight so a missing `nextflow.aws.use2.json`,
 tagged/empty/missing Parabricks image, source-mismatched mirror receipt,
-non-P5en queue, or too-small P5en capacity fails before Nextflow can submit to
+non-P5 queue, or too-small P5 capacity fails before Nextflow can submit to
 AWS Batch. The same preflight reads the live Batch queue and requires it to be
-`ENABLED`, `VALID`, and still routed only to the isolated P5en compute
+`ENABLED`, `VALID`, and still routed only to the isolated P5 compute
 environment. It also reads that compute environment and requires it to be
 managed, enabled, valid, scale-to-zero, On-Demand EC2 capacity backed only by
-`p5en.48xlarge`, sized to at least one full P5en, and configured with only the
+`p5en.48xlarge`, `p5e.48xlarge`, and `p5.48xlarge`, sized to at least one full P5, and configured with only the
 NVIDIA Amazon Linux 2023 ECS image. It then reads the live EC2
 `Running On-Demand P instances` quota and requires at least 192 vCPUs, the size
-of one `p5en.48xlarge`, so a submitted but still-open Service Quotas case
+of one allowed P5 48xlarge, so a submitted but still-open Service Quotas case
 cannot leak into an expensive doomed smoke job. It also verifies that the
 receipt's pinned Parabricks ECR digest exists in the mirror repository with its
 exact source-bound immutable tag before Batch tries to pull it:
@@ -238,8 +238,8 @@ PYTHONPATH=src /usr/bin/python3 -m diana_omics nf:aws:phase3-wgs-fast:gpu-smoke
 
 The smoke workflow verifies that the Batch job lands on the isolated GPU queue
 with the pinned Diana Parabricks image, that the host `/scratch` mount was built
-from all eight P5en NVMe instance-store devices, and that `nvidia-smi` reports
-the expected eight H200 GPUs. It also captures `pbrun version`, a tiny
+from all eight P5 NVMe instance-store devices, and that `nvidia-smi` reports
+the expected eight H100 or H200 GPUs. It also captures `pbrun version`, a tiny
 `pbrun prepon` execution, `java -version`, `bcftools --version`,
 `aws --version`, and `python3 -m diana_omics --help` from inside the selected
 container. Those Java and bcftools checks are required because the same GPU
@@ -248,14 +248,14 @@ caller checkpoint. The smoke is a placement/startup gate only; it does not run P
 
 Use `nf:aws:phase3-wgs-fast:execute` only after Gate 0 inputs, the pinned image,
 and the smoke output have been reviewed. That alias runs the full
-BAM-to-evidence P5en path and therefore requires
+BAM-to-evidence P5 path and therefore requires
 `ALLOW_PHASE3_FAST_AWS_EXECUTE=YES`, `PHASE3_FAST_GPU_SMOKE_RESULT` pointed at
 the reviewed `gpu_smoke.json` with its sibling `nvidia-smi-gpus.csv`,
 `PARABRICKS_MIRROR_RECEIPT` pointed at the reviewed mirror receipt, plus the
 reviewed Nextflow receipt parameters after `--`. It still repeats the GPU
 params, mirror-receipt, cache, ECR-image, and live-quota checks before Nextflow
 starts, then rejects missing, deleted-image, stubbed, stale-queue, stale-image,
-malformed, non-H200, or non-Parabricks-starting smoke output so a full run
+malformed, non-H100/H200, or non-Parabricks-starting smoke output so a full run
 cannot skip the bounded placement gate or reuse an already-reviewed smoke after
 the mirrored digest is removed.
 
@@ -441,7 +441,7 @@ AWS profiles delete local `.sra` files after validated conversion and cache publ
 Do not use this legacy full-source CPU launcher for the current Diana
 tumor/matched-normal evidence rerun. The July 2026 single-node CPU evidence
 retry was intentionally stopped before final publication; the rerun is now
-gated on the `phase3_wgs_fast` P5en/Parabricks architecture in
+gated on the `phase3_wgs_fast` P5/Parabricks architecture in
 `docs/operations/next-generation-fast-rerun.md`.
 
 The legacy AWS full-source CPU aliases intentionally fail unless

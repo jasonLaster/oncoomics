@@ -18,7 +18,18 @@ from generate_blocked_hrd_crosscheck_reports import (
     PRE_ROUTE_SOURCE_REPORT_METHOD_IDS,
 )
 from hrd_report_inventory import BLOCKED_CROSSCHECK_METHOD_IDS
-from publish_private_report import canonical_packet_digest, validate_packet_dir
+from publish_private_report import canonical_packet_digest, require_real_packet_dir
+from publish_reviewed_public_report import (
+    MAX_FILE_BYTES,
+    MAX_PACKET_BYTES,
+    METHOD_CONTRACTS,
+    checked_final_source_artifact_id,
+    load_json,
+    scan_no_call_language,
+    scan_text,
+    sha256,
+    validate_report_manifest_support,
+)
 from runbook_io import (
     load_json_object,
     read_stable_file,
@@ -36,6 +47,14 @@ PACKET_ARG_TO_METHOD = (
     ("hrdetect_report_dir", "hrdetect_blocked"),
 )
 PHASE3_FAST_VALIDATED_METHOD_IDS = tuple(method_id for _, method_id in PACKET_ARG_TO_METHOD)
+PHASE3_FAST_REPORT_KINDS: dict[str, tuple[str, ...]] = {
+    method_id: (METHOD_CONTRACTS[method_id]["report_kind"],)
+    for method_id in PHASE3_FAST_VALIDATED_METHOD_IDS
+}
+PHASE3_FAST_REPORT_KINDS["deterministic_full_wgs"] = (
+    "phase3_fast_deterministic_evidence",
+    "deterministic_baseline",
+)
 SHA256_HEX = re.compile(r"^[0-9a-f]{64}$")
 SHA256_B64 = re.compile(r"^[A-Za-z0-9+/]{43}=$")
 VALIDATION_RECEIPT_KEYS = {
@@ -99,6 +118,99 @@ def sha256_forbidden_tokens(tokens: tuple[str, ...]) -> str:
 
 def checksum_sha256(digest: str) -> str:
     return base64.b64encode(bytes.fromhex(digest)).decode("ascii")
+
+
+def validate_report_packet(
+    paths: dict[str, Path],
+    method_id: str,
+    expected: tuple[str, ...],
+) -> dict[str, Any]:
+    manifest = load_json(paths["report_manifest.json"], "report manifest")
+    if manifest.get("report_kind") not in PHASE3_FAST_REPORT_KINDS[method_id]:
+        raise ValueError("report manifest report_kind is not exact")
+    validate_report_manifest_support(
+        paths["report_manifest.json"].parent,
+        manifest,
+        method_id,
+    )
+    if (
+        not exact_schema_version(manifest)
+        or manifest.get("method_id") != method_id
+        or manifest.get("evidence_status") not in {"partial_evidence", "no_call", "blocked"}
+        or manifest.get("authorized_hrd_state") != "no_call"
+        or manifest.get("classification_authorized") is not False
+        or manifest.get("classification_qc_status") != "not_applicable"
+        or manifest.get("report_sha256") != sha256(paths["report.md"])
+        or not isinstance(manifest.get("review_summary"), dict)
+        or not manifest.get("review_summary")
+    ):
+        raise ValueError("report manifest does not preserve the reviewed no-call contract")
+    support = manifest.get("support_sha256")
+    expected_support = set(expected) - {"report.md", "report_manifest.json"}
+    if not isinstance(support, dict) or set(support) != expected_support:
+        raise ValueError("report manifest support inventory is not exact")
+    for name in expected_support:
+        if support.get(name) != sha256(paths[name]):
+            raise ValueError(f"report manifest support hash differs for {name}")
+    sources = manifest.get("source_sha256")
+    if (
+        not isinstance(sources, dict)
+        or not sources
+        or any(
+            checked_final_source_artifact_id(name, method_id) != name
+            or not isinstance(digest, str)
+            or not SHA256_HEX.fullmatch(digest)
+            for name, digest in sources.items()
+        )
+    ):
+        raise ValueError("report manifest source SHA-256 inventory is malformed")
+    for name in sorted(set(sources) & expected_support):
+        if sources[name] != sha256(paths[name]):
+            raise ValueError(f"report manifest source hash differs for {name}")
+    for name in sorted(expected):
+        scan_no_call_language(paths[name])
+    return manifest
+
+
+def validate_packet_dir(
+    packet_dir: Path,
+    method_id: str,
+    tokens: tuple[str, ...],
+) -> list[dict[str, Any]]:
+    packet_dir = require_real_packet_dir(packet_dir)
+    expected = tuple(sorted(METHOD_CONTRACTS[method_id]["files"]))
+    present = sorted(child.name for child in packet_dir.iterdir())
+    if present != list(expected):
+        raise ValueError("packet directory inventory is not exact")
+
+    paths: dict[str, Path] = {}
+    rows: list[dict[str, Any]] = []
+    total_bytes = 0
+    for relative in expected:
+        path = packet_dir / relative
+        if path.is_symlink() or not path.is_file():
+            raise ValueError(f"packet file must be a real file: {relative}")
+        size = path.stat().st_size
+        if size <= 0 or size > MAX_FILE_BYTES:
+            raise ValueError(f"packet file size is out of bounds: {relative}")
+        scan_text(path, tokens)
+        digest = sha256(path)
+        paths[relative] = path
+        rows.append(
+            {
+                "relative_path": relative,
+                "path": path,
+                "bytes": size,
+                "sha256": digest,
+                "checksum_sha256": checksum_sha256(digest),
+            }
+        )
+        total_bytes += size
+
+    if total_bytes > MAX_PACKET_BYTES:
+        raise ValueError("packet directory is too large")
+    validate_report_packet(paths, method_id, expected)
+    return rows
 
 
 def sha256_file(path: Path) -> str:

@@ -48,14 +48,14 @@ LEGACY_PHASE3_AWS_FULL_ENV = {"ALLOW_LEGACY_PHASE3_AWS_FULL": "YES"}
 LEGACY_PHASE3_CPU_FULL_NEXTFLOW_ARGS = ("--allow_legacy_phase3_cpu_full", "true")
 LEGACY_PHASE3_AWS_FULL_DESCRIPTION = (
     "Legacy full-source AWS Phase 3 WGS CPU runs are disabled for Diana reruns. "
-    "Use the P5en/Parabricks phase3_wgs_fast path after quota and GPU smoke pass. "
+    "Use the P5 Hopper/Parabricks phase3_wgs_fast path after quota and GPU smoke pass. "
     "Set ALLOW_LEGACY_PHASE3_AWS_FULL=YES only for an explicitly approved legacy public WGS run."
 )
 PHASE3_FAST_AWS_EXECUTE_ENV = {"ALLOW_PHASE3_FAST_AWS_EXECUTE": "YES"}
 PHASE3_FAST_PARABRICKS_NUM_GPUS = "8"
 PHASE3_FAST_AWS_EXECUTE_DESCRIPTION = (
-    "Phase 3 fast AWS execute mode runs the full Diana BAM-to-evidence P5en/Parabricks path. "
-    "Set ALLOW_PHASE3_FAST_AWS_EXECUTE=YES only after Gate 0 receipts, P5en quota, a pinned mirrored "
+    "Phase 3 fast AWS execute mode runs the full Diana BAM-to-evidence P5 Hopper/Parabricks path. "
+    "Set ALLOW_PHASE3_FAST_AWS_EXECUTE=YES only after Gate 0 receipts, P-family quota, a pinned mirrored "
     "Parabricks image, the PARABRICKS_MIRROR_RECEIPT receipt, the PHASE3_FAST_GPU_SMOKE_RESULT "
     "gpu_smoke.json, and the forbidden-token scan inventory have been reviewed."
 )
@@ -736,8 +736,8 @@ TASKS: dict[str, Task] = {
             "phase3_wgs_fast_gpu_smoke",
             "--phase3_fast_gpu_smoke_expected_gpus",
             "8",
-            "--phase3_fast_gpu_smoke_gpu_name",
-            "H200",
+            "--phase3_fast_gpu_smoke_gpu_names",
+            "H100,H200",
             "--phase3_fast_parabricks_num_gpus",
             PHASE3_FAST_PARABRICKS_NUM_GPUS,
             "--aws_max_retries",

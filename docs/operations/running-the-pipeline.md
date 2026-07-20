@@ -67,7 +67,7 @@ nextflow run main.nf -profile local --workflow phase3_wgs --phase3_reads 500000
 Bounded WGS runs are developer checks. The legacy full-source CPU WGS workflows
 are blocked unless an explicitly approved public-WGS regression run passes
 `--phase3_reads full --allow_legacy_phase3_cpu_full true`; Diana reruns should
-use the P5en/Parabricks `phase3_wgs_fast` path or the distributed CPU scatter
+use the P5/Parabricks `phase3_wgs_fast` path or the distributed CPU scatter
 architecture instead.
 
 ## Docker
@@ -110,9 +110,9 @@ PYTHONPATH=src /usr/bin/python3 -m diana_omics nf:aws:phase3-wgs-fast:gpu-smoke
 ```
 
 The expanded known-answer cohort fetches small public assets in the Batch task and publishes clinicalization reports to S3. The GPU smoke alias is the bounded
-placement gate for the isolated `phase3_wgs_fast` P5en/Parabricks queue; it
+placement gate for the isolated `phase3_wgs_fast` P5/Parabricks queue; it
 requires the reviewed `PARABRICKS_MIRROR_RECEIPT` source binding, proves the
-bound `/scratch` mount came from P5en NVMe instance storage, runs a tiny
+bound `/scratch` mount came from P5 NVMe instance storage, runs a tiny
 Parabricks `prepon` command, and does not run the full WGS caller.
 
 The full `phase3_wgs_fast` execute alias is available as
@@ -121,8 +121,8 @@ alias-only forbidden-token inventory after `--`, and intentionally requires
 `ALLOW_PHASE3_FAST_AWS_EXECUTE=YES`. It also requires
 `PARABRICKS_MIRROR_RECEIPT` to point at the reviewed ECR mirror receipt and
 `PHASE3_FAST_GPU_SMOKE_RESULT` to point at the reviewed `gpu_smoke.json` from
-the bounded placement gate. Before it can submit the full P5en/Parabricks
-workflow, it repeats the GPU params, live Batch queue, isolated P5en compute
+the bounded placement gate. Before it can submit the full P5/Parabricks
+workflow, it repeats the GPU params, live Batch queue, isolated P5 compute
 environment, mirror-receipt, cache, ECR-image, live P-instance quota, and
 GPU-smoke checks locally so a stale image, missing mirror, deleted digest, wrong
 queue, misrouted compute environment, under-quota region, or skipped placement

@@ -152,7 +152,7 @@ class AwsGpuInfraTests(unittest.TestCase):
 
         self.assertIn('variable "gpu_p5en_max_vcpus"', text)
         self.assertIn("default     = 384", text)
-        self.assertIn('default     = ["p5en.48xlarge"]', text)
+        self.assertIn('default     = ["p5en.48xlarge", "p5e.48xlarge", "p5.48xlarge"]', text)
         self.assertIn('variable "parabricks_container"', text)
         self.assertIn('variable "enable_parabricks_mirror"', text)
         self.assertIn('default     = ""', text)

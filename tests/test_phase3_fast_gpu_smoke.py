@@ -24,7 +24,7 @@ def p5en_params(**overrides):
         "aws_private_results_dir": "s3://diana-omics-private-results-172630973301-us-east-2/runs",
         "aws_region": "us-east-2",
         "aws_workdir": "s3://diana-omics-work-172630973301-us-east-2/work",
-        "batch_gpu_p5en_instance_types": ["p5en.48xlarge"],
+        "batch_gpu_p5en_instance_types": list(verify.REQUIRED_INSTANCE_TYPES),
         "gpu_p5en_max_vcpus": 384,
         "parabricks_container": f"{PARABRICKS_REPOSITORY}@{DESTINATION_DIGEST}",
         "parabricks_mirror_repository": PARABRICKS_REPOSITORY,
@@ -75,7 +75,7 @@ class Phase3FastGpuSmokeConfigTests(unittest.TestCase):
         self.assertEqual("diana-omics-prod-use2-gpu-p5en", summary["aws_gpu_queue"])
         self.assertEqual("us-east-2", summary["phase3_fast_cache_region"])
         self.assertEqual(384, summary["gpu_p5en_max_vcpus"])
-        self.assertEqual(["p5en.48xlarge"], summary["instance_types"])
+        self.assertEqual(list(verify.REQUIRED_INSTANCE_TYPES), summary["instance_types"])
         self.assertEqual(
             "172630973301.dkr.ecr.us-east-2.amazonaws.com/diana-omics/parabricks@sha256:" + "a" * 64,
             summary["parabricks_container"],
@@ -141,11 +141,11 @@ class Phase3FastGpuSmokeConfigTests(unittest.TestCase):
             )
 
     def test_rejects_non_p5en_queue_and_capacity(self) -> None:
-        with self.assertRaisesRegex(verify.GpuSmokeConfigError, "P5en GPU smoke is not ready"):
+        with self.assertRaisesRegex(verify.GpuSmokeConfigError, "P5 Hopper GPU smoke is not ready"):
             verify.validate_gpu_smoke_params(
                 p5en_params(
                     aws_gpu_queue="diana-omics-prod-use1-spot",
-                    batch_gpu_p5en_instance_types=["p5.48xlarge"],
+                    batch_gpu_p5en_instance_types=["g5.48xlarge"],
                     gpu_p5en_max_vcpus=8,
                 )
             )
@@ -336,7 +336,7 @@ class Phase3FastGpuSmokeConfigTests(unittest.TestCase):
             ),
         ):
             with self.subTest(queue=queue):
-                with self.assertRaisesRegex(verify.GpuSmokeConfigError, "P5en Batch queue is not ready"):
+                with self.assertRaisesRegex(verify.GpuSmokeConfigError, "P5 Hopper Batch queue is not ready"):
                     verify.validate_gpu_batch_job_queue(
                         queue,
                         expected_queue="diana-omics-prod-use2-gpu-p5en",
@@ -353,7 +353,7 @@ class Phase3FastGpuSmokeConfigTests(unittest.TestCase):
                 "allocationStrategy": "BEST_FIT_PROGRESSIVE",
                 "type": "EC2",
                 "minvCpus": 0,
-                "instanceTypes": ["p5en.48xlarge"],
+                "instanceTypes": list(verify.REQUIRED_INSTANCE_TYPES),
                 "maxvCpus": 384,
                 "ec2Configuration": [{"imageType": "ECS_AL2023_NVIDIA"}],
                 "launchTemplate": {"launchTemplateId": "lt-p5en", "version": "42"},
@@ -417,7 +417,7 @@ class Phase3FastGpuSmokeConfigTests(unittest.TestCase):
         self.assertEqual(
             {
                 "compute_environment": arn,
-                "instance_types": ["p5en.48xlarge"],
+                "instance_types": list(verify.REQUIRED_INSTANCE_TYPES),
                 "max_vcpus": 384,
                 "status": "ready",
             },
@@ -448,7 +448,7 @@ class Phase3FastGpuSmokeConfigTests(unittest.TestCase):
                     "allocationStrategy": "BEST_FIT_PROGRESSIVE",
                     "type": "EC2",
                     "minvCpus": 0,
-                    "instanceTypes": ["p5en.48xlarge"],
+                    "instanceTypes": list(verify.REQUIRED_INSTANCE_TYPES),
                     "maxvCpus": 8,
                     "ec2Configuration": [{"imageType": "ECS_AL2023_NVIDIA"}],
                     "launchTemplate": {"launchTemplateId": "lt-p5en", "version": "42"},
@@ -459,7 +459,7 @@ class Phase3FastGpuSmokeConfigTests(unittest.TestCase):
                     "allocationStrategy": "BEST_FIT_PROGRESSIVE",
                     "type": "EC2",
                     "minvCpus": 0,
-                    "instanceTypes": ["p5en.48xlarge"],
+                    "instanceTypes": list(verify.REQUIRED_INSTANCE_TYPES),
                     "maxvCpus": 384,
                     "ec2Configuration": [{"imageType": "ECS_AL2023"}],
                     "launchTemplate": {"launchTemplateId": "lt-p5en", "version": "42"},
@@ -470,7 +470,7 @@ class Phase3FastGpuSmokeConfigTests(unittest.TestCase):
                     "allocationStrategy": "BEST_FIT_PROGRESSIVE",
                     "type": "EC2",
                     "minvCpus": 192,
-                    "instanceTypes": ["p5en.48xlarge"],
+                    "instanceTypes": list(verify.REQUIRED_INSTANCE_TYPES),
                     "maxvCpus": 384,
                     "ec2Configuration": [{"imageType": "ECS_AL2023_NVIDIA"}],
                 }
@@ -480,7 +480,7 @@ class Phase3FastGpuSmokeConfigTests(unittest.TestCase):
                     "allocationStrategy": "BEST_FIT_PROGRESSIVE",
                     "type": "EC2",
                     "minvCpus": 0,
-                    "instanceTypes": ["p5en.48xlarge"],
+                    "instanceTypes": list(verify.REQUIRED_INSTANCE_TYPES),
                     "maxvCpus": 384,
                     "ec2Configuration": [
                         {"imageType": "ECS_AL2023"},
@@ -494,7 +494,7 @@ class Phase3FastGpuSmokeConfigTests(unittest.TestCase):
                     "allocationStrategy": "BEST_FIT",
                     "type": "EC2",
                     "minvCpus": 0,
-                    "instanceTypes": ["p5en.48xlarge"],
+                    "instanceTypes": list(verify.REQUIRED_INSTANCE_TYPES),
                     "maxvCpus": 384,
                     "ec2Configuration": [{"imageType": "ECS_AL2023_NVIDIA"}],
                     "launchTemplate": {"launchTemplateId": "lt-p5en", "version": "42"},
@@ -505,7 +505,7 @@ class Phase3FastGpuSmokeConfigTests(unittest.TestCase):
                     "allocationStrategy": "BEST_FIT_PROGRESSIVE",
                     "type": "EC2",
                     "minvCpus": 0,
-                    "instanceTypes": ["p5en.48xlarge"],
+                    "instanceTypes": list(verify.REQUIRED_INSTANCE_TYPES),
                     "maxvCpus": 384,
                     "ec2Configuration": [{"imageType": "ECS_AL2023_NVIDIA"}],
                 }
@@ -515,7 +515,7 @@ class Phase3FastGpuSmokeConfigTests(unittest.TestCase):
                     "allocationStrategy": "BEST_FIT_PROGRESSIVE",
                     "type": "EC2",
                     "minvCpus": 0,
-                    "instanceTypes": ["p5en.48xlarge"],
+                    "instanceTypes": list(verify.REQUIRED_INSTANCE_TYPES),
                     "maxvCpus": 384,
                     "ec2Configuration": [{"imageType": "ECS_AL2023_NVIDIA"}],
                     "launchTemplate": {"version": "42"},
@@ -526,7 +526,7 @@ class Phase3FastGpuSmokeConfigTests(unittest.TestCase):
                     "allocationStrategy": "BEST_FIT_PROGRESSIVE",
                     "type": "EC2",
                     "minvCpus": 0,
-                    "instanceTypes": ["p5en.48xlarge"],
+                    "instanceTypes": list(verify.REQUIRED_INSTANCE_TYPES),
                     "maxvCpus": 384,
                     "ec2Configuration": [{"imageType": "ECS_AL2023_NVIDIA"}],
                     "launchTemplate": {"launchTemplateId": "lt-p5en"},
@@ -537,7 +537,7 @@ class Phase3FastGpuSmokeConfigTests(unittest.TestCase):
                     "allocationStrategy": "BEST_FIT_PROGRESSIVE",
                     "type": "EC2",
                     "minvCpus": 0,
-                    "instanceTypes": ["p5en.48xlarge"],
+                    "instanceTypes": list(verify.REQUIRED_INSTANCE_TYPES),
                     "maxvCpus": 384,
                     "ec2Configuration": [{"imageType": "ECS_AL2023_NVIDIA"}],
                     "launchTemplate": {"launchTemplateId": "lt-p5en", "version": "$Latest"},
@@ -548,7 +548,7 @@ class Phase3FastGpuSmokeConfigTests(unittest.TestCase):
                     "allocationStrategy": "BEST_FIT_PROGRESSIVE",
                     "type": "EC2",
                     "minvCpus": 0,
-                    "instanceTypes": ["p5en.48xlarge"],
+                    "instanceTypes": list(verify.REQUIRED_INSTANCE_TYPES),
                     "maxvCpus": 384,
                     "ec2Configuration": [{"imageType": "ECS_AL2023_NVIDIA"}],
                     "launchTemplate": {"launchTemplateId": "lt-p5en", "version": "$Default"},
@@ -556,7 +556,7 @@ class Phase3FastGpuSmokeConfigTests(unittest.TestCase):
             ),
         ):
             with self.subTest(environment=environment):
-                with self.assertRaisesRegex(verify.GpuSmokeConfigError, "P5en compute environment is not ready"):
+                with self.assertRaisesRegex(verify.GpuSmokeConfigError, "P5 Hopper compute environment is not ready"):
                     verify.validate_gpu_batch_compute_environment(
                         environment,
                         expected_compute_environment=arn,

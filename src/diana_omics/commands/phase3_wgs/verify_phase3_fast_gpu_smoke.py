@@ -14,8 +14,8 @@ from .safe_json_output import read_real_json
 DEFAULT_PARAMS = "infra/aws/nextflow.aws.use2.json"
 REQUIRED_AWS_REGION = "us-east-2"
 REQUIRED_GPU_QUEUE_SUFFIX = "-gpu-p5en"
-REQUIRED_INSTANCE_TYPES = ("p5en.48xlarge",)
-P5EN_VCPUS = 192
+REQUIRED_INSTANCE_TYPES = ("p5en.48xlarge", "p5e.48xlarge", "p5.48xlarge")
+P5_HOPPER_48XLARGE_VCPUS = 192
 EC2_SERVICE_CODE = "ec2"
 ON_DEMAND_P_QUOTA_CODE = "L-417A185B"
 BATCH_GPU_COMPUTE_ENVIRONMENT_SUFFIX = "-ondemand"
@@ -25,7 +25,7 @@ PINNED_IMAGE = re.compile(r"^\S+@sha256:[0-9a-f]{64}$")
 
 
 class GpuSmokeConfigError(ValueError):
-    """Raised when the P5en smoke task is not safe to submit."""
+    """Raised when the P5 Hopper smoke task is not safe to submit."""
 
 
 def _require_non_empty_string(params: Mapping[str, Any], key: str, errors: list[str]) -> str:
@@ -122,14 +122,14 @@ def validate_gpu_smoke_params(params: Mapping[str, Any]) -> dict[str, Any]:
 
     instance_types = params.get("batch_gpu_p5en_instance_types")
     if instance_types != list(REQUIRED_INSTANCE_TYPES):
-        errors.append("batch_gpu_p5en_instance_types must be exactly ['p5en.48xlarge']")
+        errors.append(f"batch_gpu_p5en_instance_types must be exactly {list(REQUIRED_INSTANCE_TYPES)!r}")
 
-    max_vcpus = _require_int_at_least(params, "gpu_p5en_max_vcpus", P5EN_VCPUS, errors)
-    if max_vcpus and max_vcpus % P5EN_VCPUS != 0:
-        errors.append(f"gpu_p5en_max_vcpus must be a multiple of {P5EN_VCPUS}")
+    max_vcpus = _require_int_at_least(params, "gpu_p5en_max_vcpus", P5_HOPPER_48XLARGE_VCPUS, errors)
+    if max_vcpus and max_vcpus % P5_HOPPER_48XLARGE_VCPUS != 0:
+        errors.append(f"gpu_p5en_max_vcpus must be a multiple of {P5_HOPPER_48XLARGE_VCPUS}")
 
     if errors:
-        raise GpuSmokeConfigError("P5en GPU smoke is not ready:\n- " + "\n- ".join(errors))
+        raise GpuSmokeConfigError("P5 Hopper GPU smoke is not ready:\n- " + "\n- ".join(errors))
 
     return {
         "aws_gpu_queue": queue,
@@ -181,11 +181,11 @@ def load_gpu_batch_job_queue(
             text=True,
         )
     except FileNotFoundError as error:
-        raise GpuSmokeConfigError(f"{aws_cli} is required to verify the live P5en Batch queue") from error
+        raise GpuSmokeConfigError(f"{aws_cli} is required to verify the live P5 Hopper Batch queue") from error
     except subprocess.CalledProcessError as error:
         output = (error.stdout or "").strip()
         detail = f": {output}" if output else ""
-        raise GpuSmokeConfigError(f"Unable to read the live {region} P5en Batch queue {queue}{detail}") from error
+        raise GpuSmokeConfigError(f"Unable to read the live {region} P5 Hopper Batch queue {queue}{detail}") from error
 
     try:
         payload = json.loads(result.stdout)
@@ -198,10 +198,10 @@ def load_gpu_batch_job_queue(
     if not isinstance(queues, list):
         raise GpuSmokeConfigError("AWS Batch response must include a jobQueues array")
     if len(queues) != 1:
-        raise GpuSmokeConfigError(f"AWS Batch must return exactly one P5en queue for {queue}")
+        raise GpuSmokeConfigError(f"AWS Batch must return exactly one P5 Hopper queue for {queue}")
     observed = queues[0]
     if not isinstance(observed, dict):
-        raise GpuSmokeConfigError("AWS Batch P5en queue must be a JSON object")
+        raise GpuSmokeConfigError("AWS Batch P5 Hopper queue must be a JSON object")
     return observed
 
 
@@ -217,35 +217,35 @@ def validate_gpu_batch_job_queue(
         errors.append(f"jobQueueName must be {expected_queue}")
 
     if payload.get("state") != "ENABLED":
-        errors.append("P5en Batch queue must be ENABLED")
+        errors.append("P5 Hopper Batch queue must be ENABLED")
     if payload.get("status") != "VALID":
-        errors.append("P5en Batch queue must be VALID")
+        errors.append("P5 Hopper Batch queue must be VALID")
 
     compute_environments = payload.get("computeEnvironmentOrder")
     compute_environment = ""
     if not isinstance(compute_environments, list) or len(compute_environments) != 1:
-        errors.append("P5en Batch queue must route to exactly one compute environment")
+        errors.append("P5 Hopper Batch queue must route to exactly one compute environment")
     else:
         entry = compute_environments[0]
         if not isinstance(entry, dict):
-            errors.append("P5en Batch compute environment order entry must be a JSON object")
+            errors.append("P5 Hopper Batch compute environment order entry must be a JSON object")
         else:
             order = entry.get("order")
             if type(order) is not int:
-                errors.append("P5en Batch compute environment order must be an integer")
+                errors.append("P5 Hopper Batch compute environment order must be an integer")
             elif order != 1:
-                errors.append("P5en Batch compute environment order must be 1")
+                errors.append("P5 Hopper Batch compute environment order must be 1")
 
             value = entry.get("computeEnvironment")
             if not isinstance(value, str) or not value:
-                errors.append("P5en Batch compute environment ARN must be set")
+                errors.append("P5 Hopper Batch compute environment ARN must be set")
             elif not value.endswith(f":compute-environment/{expected_queue}{BATCH_GPU_COMPUTE_ENVIRONMENT_SUFFIX}"):
-                errors.append("P5en Batch queue must route only to its isolated P5en compute environment")
+                errors.append("P5 Hopper Batch queue must route only to its isolated P5 compute environment")
             else:
                 compute_environment = value
 
     if errors:
-        raise GpuSmokeConfigError("P5en Batch queue is not ready:\n- " + "\n- ".join(errors))
+        raise GpuSmokeConfigError("P5 Hopper Batch queue is not ready:\n- " + "\n- ".join(errors))
 
     return {
         "compute_environment": compute_environment,
@@ -279,11 +279,11 @@ def load_gpu_batch_compute_environment(
             text=True,
         )
     except FileNotFoundError as error:
-        raise GpuSmokeConfigError(f"{aws_cli} is required to verify the live P5en compute environment") from error
+        raise GpuSmokeConfigError(f"{aws_cli} is required to verify the live P5 Hopper compute environment") from error
     except subprocess.CalledProcessError as error:
         output = (error.stdout or "").strip()
         detail = f": {output}" if output else ""
-        raise GpuSmokeConfigError(f"Unable to read the live {region} P5en compute environment {compute_environment}{detail}") from error
+        raise GpuSmokeConfigError(f"Unable to read the live {region} P5 Hopper compute environment {compute_environment}{detail}") from error
 
     try:
         payload = json.loads(result.stdout)
@@ -296,10 +296,10 @@ def load_gpu_batch_compute_environment(
     if not isinstance(compute_environments, list):
         raise GpuSmokeConfigError("AWS Batch response must include a computeEnvironments array")
     if len(compute_environments) != 1:
-        raise GpuSmokeConfigError(f"AWS Batch must return exactly one P5en compute environment for {compute_environment}")
+        raise GpuSmokeConfigError(f"AWS Batch must return exactly one P5 Hopper compute environment for {compute_environment}")
     observed = compute_environments[0]
     if not isinstance(observed, dict):
-        raise GpuSmokeConfigError("AWS Batch P5en compute environment must be a JSON object")
+        raise GpuSmokeConfigError("AWS Batch P5 Hopper compute environment must be a JSON object")
     return observed
 
 
@@ -311,69 +311,69 @@ def validate_gpu_batch_compute_environment(
     errors: list[str] = []
 
     if payload.get("computeEnvironmentArn") != expected_compute_environment:
-        errors.append("P5en compute environment ARN must match the GPU queue")
+        errors.append("P5 Hopper compute environment ARN must match the GPU queue")
     if payload.get("type") != "MANAGED":
-        errors.append("P5en compute environment must be MANAGED")
+        errors.append("P5 Hopper compute environment must be MANAGED")
     if payload.get("state") != "ENABLED":
-        errors.append("P5en compute environment must be ENABLED")
+        errors.append("P5 Hopper compute environment must be ENABLED")
     if payload.get("status") != "VALID":
-        errors.append("P5en compute environment must be VALID")
+        errors.append("P5 Hopper compute environment must be VALID")
 
     resources = payload.get("computeResources")
     max_vcpus = 0
     instance_types: list[str] = []
     if not isinstance(resources, dict):
-        errors.append("P5en computeResources must be a JSON object")
+        errors.append("P5 Hopper computeResources must be a JSON object")
     else:
         if resources.get("type") != "EC2":
-            errors.append("P5en computeResources type must be EC2")
+            errors.append("P5 Hopper computeResources type must be EC2")
 
         observed_min_vcpus = resources.get("minvCpus")
         if type(observed_min_vcpus) is not int:
-            errors.append("P5en computeResources minvCpus must be an integer")
+            errors.append("P5 Hopper computeResources minvCpus must be an integer")
         elif observed_min_vcpus != 0:
-            errors.append("P5en computeResources minvCpus must be 0")
+            errors.append("P5 Hopper computeResources minvCpus must be 0")
 
         observed_instance_types = resources.get("instanceTypes")
         if observed_instance_types != list(REQUIRED_INSTANCE_TYPES):
-            errors.append("P5en computeResources instanceTypes must be exactly ['p5en.48xlarge']")
+            errors.append(f"P5 Hopper computeResources instanceTypes must be exactly {list(REQUIRED_INSTANCE_TYPES)!r}")
         else:
             instance_types = observed_instance_types
 
         observed_max_vcpus = resources.get("maxvCpus")
         if type(observed_max_vcpus) is not int:
-            errors.append("P5en computeResources maxvCpus must be an integer")
-        elif observed_max_vcpus < P5EN_VCPUS:
-            errors.append(f"P5en computeResources maxvCpus must be at least {P5EN_VCPUS}")
-        elif observed_max_vcpus % P5EN_VCPUS:
-            errors.append(f"P5en computeResources maxvCpus must be a multiple of {P5EN_VCPUS}")
+            errors.append("P5 Hopper computeResources maxvCpus must be an integer")
+        elif observed_max_vcpus < P5_HOPPER_48XLARGE_VCPUS:
+            errors.append(f"P5 Hopper computeResources maxvCpus must be at least {P5_HOPPER_48XLARGE_VCPUS}")
+        elif observed_max_vcpus % P5_HOPPER_48XLARGE_VCPUS:
+            errors.append(f"P5 Hopper computeResources maxvCpus must be a multiple of {P5_HOPPER_48XLARGE_VCPUS}")
         else:
             max_vcpus = observed_max_vcpus
 
         ec2_configuration = resources.get("ec2Configuration")
         if ec2_configuration != [{"imageType": "ECS_AL2023_NVIDIA"}]:
-            errors.append("P5en computeResources ec2Configuration must be exactly ECS_AL2023_NVIDIA")
+            errors.append("P5 Hopper computeResources ec2Configuration must be exactly ECS_AL2023_NVIDIA")
 
         allocation_strategy = resources.get("allocationStrategy")
         if allocation_strategy != "BEST_FIT_PROGRESSIVE":
-            errors.append("P5en computeResources allocationStrategy must be BEST_FIT_PROGRESSIVE")
+            errors.append("P5 Hopper computeResources allocationStrategy must be BEST_FIT_PROGRESSIVE")
 
         launch_template = resources.get("launchTemplate")
         if not isinstance(launch_template, dict):
-            errors.append("P5en computeResources launchTemplate must be configured")
+            errors.append("P5 Hopper computeResources launchTemplate must be configured")
         else:
             launch_template_identity = (
                 launch_template.get("launchTemplateId"),
                 launch_template.get("launchTemplateName"),
             )
             if not any(isinstance(value, str) and value for value in launch_template_identity):
-                errors.append("P5en computeResources launchTemplate must include an id or name")
+                errors.append("P5 Hopper computeResources launchTemplate must include an id or name")
             version = launch_template.get("version")
             if not isinstance(version, str) or not re.fullmatch(r"[1-9]\d*", version):
-                errors.append("P5en computeResources launchTemplate version must be pinned to a numeric version")
+                errors.append("P5 Hopper computeResources launchTemplate version must be pinned to a numeric version")
 
     if errors:
-        raise GpuSmokeConfigError("P5en compute environment is not ready:\n- " + "\n- ".join(errors))
+        raise GpuSmokeConfigError("P5 Hopper compute environment is not ready:\n- " + "\n- ".join(errors))
 
     return {
         "compute_environment": expected_compute_environment,
@@ -427,10 +427,10 @@ def load_running_on_demand_p_vcpus(region: str, *, aws_cli: str = "aws") -> floa
     return float(value)
 
 
-def validate_running_on_demand_p_quota(value: float, *, minimum: int = P5EN_VCPUS) -> None:
+def validate_running_on_demand_p_quota(value: float, *, minimum: int = P5_HOPPER_48XLARGE_VCPUS) -> None:
     if value < minimum:
         raise GpuSmokeConfigError(
-            f"Running On-Demand P instances quota is {value:g} vCPUs; phase3_wgs_fast needs at least {minimum} vCPUs for one p5en.48xlarge"
+            f"Running On-Demand P instances quota is {value:g} vCPUs; phase3_wgs_fast needs at least {minimum} vCPUs for one P5 48xlarge"
         )
 
 

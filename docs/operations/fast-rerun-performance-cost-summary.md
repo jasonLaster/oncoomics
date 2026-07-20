@@ -4,9 +4,9 @@ Status: planning projection based on the live `diana-wgs-hrd-20260716T033101Z` r
 
 ## Executive summary
 
-**Verdict: promising with gaps.** The selected `us-east-2` P5en/Parabricks plan is the fastest route. Reusing the completed tumor and normal BAMs, it targets **1-2 hours and $70-$135** for the immediate evidence rerun: roughly **10-24x faster** than today's projected 20-24-hour run, but more expensive per run. The archived CPU scatter plan targets **1.5-3 hours and $10-$22** from the same BAM checkpoint: roughly **7-16x faster** and about **60-75% cheaper** than today's run, but with a lower acceleration ceiling and more orchestration.
+**Verdict: promising with gaps.** The selected `us-east-2` P5 Hopper/Parabricks plan is the fastest route. Reusing the completed tumor and normal BAMs, it targets **1-2 hours and $70-$135** for the immediate evidence rerun: roughly **10-24x faster** than today's projected 20-24-hour run, but more expensive per run. The archived CPU scatter plan targets **1.5-3 hours and $10-$22** from the same BAM checkpoint: roughly **7-16x faster** and about **60-75% cheaper** than today's run, but with a lower acceleration ceiling and more orchestration.
 
-The speed ranges are engineering projections, not measured P5en or isolated-CPU benchmarks. The immediate rerun gains time from both a faster caller topology and from resuming at the validated BAM checkpoint instead of repeating alignment and BAM gathering.
+The speed ranges are engineering projections, not measured P5 Hopper or isolated-CPU benchmarks. The immediate rerun gains time from both a faster caller topology and from resuming at the validated BAM checkpoint instead of repeating alignment and BAM gathering.
 
 | Plan | Starting point | Projected wall time | Improvement versus today | Projected run cost | Confidence |
 | --- | --- | ---: | ---: | ---: | --- |
@@ -19,9 +19,9 @@ The speed ranges are engineering projections, not measured P5en or isolated-CPU 
 The operational decision remains: implement the GPU plan assuming quota lands, and retain the CPU plan only as a historical artifact. The GPU premium buys the shortest turnaround; it is not expected to make this single On-Demand rerun cheaper.
 
 The July CPU evidence retry was stopped intentionally during v4. Do not restart
-that same monolithic single-node CPU topology or race it with an ad hoc P5en
+that same monolithic single-node CPU topology or race it with an ad hoc P5
 recomputation. New GPU compute should wait for approved quota, an isolated
-`p5en.48xlarge` Batch queue, a checked-in resumable DAG, and a bounded
+P5 Batch queue, a checked-in resumable DAG, and a bounded
 Parabricks smoke gate.
 
 ## Today's measured baseline
@@ -70,22 +70,22 @@ The primary uncertainty is long-contig shard balance. One fixed-interval benchma
 
 ## GPU projection: fastest rerun
 
-The selected design uses one On-Demand `p5en.48xlarge` in `us-east-2` for Parabricks `mutectcaller`. The instance provides 192 vCPUs, 2 TiB RAM, eight NVIDIA H200 GPUs, and eight 3.8 TB local NVMe devices. The public On-Demand price retrieved for `us-east-2` was **$63.296 per instance-hour**.
+The selected design uses one On-Demand P5 Hopper 48xlarge in `us-east-2` for Parabricks `mutectcaller`: `p5en.48xlarge`, `p5e.48xlarge`, or `p5.48xlarge`. Each allowed instance provides 192 vCPUs, 2 TiB RAM, eight H200 or H100 GPUs, and eight 3.8 TB local NVMe devices. The P5en public On-Demand price retrieved for `us-east-2` was **$63.296 per instance-hour**.
 
 | GPU cost component | Calculation | Projection |
 | --- | --- | ---: |
-| P5en caller | 1-2 instance-hours x $63.296/hour | $63.30-$126.59 |
+| P5 Hopper caller | 1-2 instance-hours x $63.296/hour | $63.30-$126.59 |
 | CPU QC, filtering, evidence join, and verification | Small Graviton jobs | $2-$5 |
 | Initial regional replication | About 130 GB x $0.02/GB | About $2.60 once |
 | **Immediate evidence rerun** | Rounded cold/warm range | **$70-$135** |
 
-The **1-2-hour** target includes staging from the regional cache, Parabricks calling on local NVMe, downstream filtering/evidence branches, and publication. It assumes the P5en quota and capacity land and that the bounded smoke test confirms all eight GPUs are usable. NVIDIA publishes large CPU-to-GPU acceleration examples for Parabricks, but no directly comparable H200 tumor-normal MutectCaller benchmark was found; the projection is therefore deliberately broader than a vendor benchmark claim.
+The **1-2-hour** target includes staging from the regional cache, Parabricks calling on local NVMe, downstream filtering/evidence branches, and publication. It assumes the P-family quota and P5 capacity land and that the bounded smoke test confirms all eight GPUs are usable. NVIDIA publishes large CPU-to-GPU acceleration examples for Parabricks, but no directly comparable H100/H200 tumor-normal MutectCaller benchmark was found; the projection is therefore deliberately broader than a vendor benchmark claim.
 
-For a later FASTQ-origin run, two P5en `fq2bam` jobs would process tumor and normal concurrently, followed by one P5en caller job. A planning allowance of 2.0-3.5 total P5en instance-hours plus CPU branches gives **2-3 hours and $135-$235**. This future mode is not part of the immediate rerun and cannot be promoted until BAM and downstream known-answer non-inferiority gates pass.
+For a later FASTQ-origin run, two P5 `fq2bam` jobs would process tumor and normal concurrently, followed by one P5 caller job. A planning allowance of 2.0-3.5 total P5 instance-hours plus CPU branches gives **2-3 hours and $135-$235**. This future mode is not part of the immediate rerun and cannot be promoted until BAM and downstream known-answer non-inferiority gates pass.
 
 ## Storage projection
 
-Storage is small relative to P5en compute and should be used to remove transfer and recomputation from the critical path.
+Storage is small relative to P5 compute and should be used to remove transfer and recomputation from the critical path.
 
 | Storage item | Size assumption | Projection |
 | --- | ---: | ---: |
@@ -93,14 +93,14 @@ Storage is small relative to P5en compute and should be used to remove transfer 
 | Proposed `us-east-2` immutable BAM/reference/resource cache | About 130 GB | About $3/month |
 | One-time source-to-cache transfer | About 130 GB | About $2.60 |
 
-Results should point to the immutable BAMs by version and checksum instead of copying the approximately 100 GiB BAM pair into every result prefix. Temporary P5en NVMe is included with the instance and should hold scratch data only; durable checkpoints must be uploaded before job exit.
+Results should point to the immutable BAMs by version and checksum instead of copying the approximately 100 GiB BAM pair into every result prefix. Temporary P5 NVMe is included with the instance and should hold scratch data only; durable checkpoints must be uploaded before job exit.
 
 ## What changes performance
 
 ```text
 today: FASTQs -> CPU lane alignment -> serial gather -> ten Mutect2 JVMs sharing one host/disk -> monolithic evidence package
  CPU: validated BAMs ----------------> sixteen isolated Mutect2 hosts/disks -------> resumable evidence branches
- GPU: validated BAMs ----------------> one 8x H200 Parabricks caller -------------> resumable evidence branches
+ GPU: validated BAMs ----------------> one 8x Hopper Parabricks caller -----------> resumable evidence branches
 ```
 
 The major improvements are architectural, not just larger machines:
@@ -116,7 +116,7 @@ The major improvements are architectural, not just larger machines:
 The smallest useful validation is the same bounded genomic interval on both candidate topologies:
 
 - one isolated CPU shard with its own staged BAMs and gp3 volume;
-- one eight-H200 Parabricks run with the same BAMs, reference, resources, and interval;
+- one eight-H100/H200 Parabricks run with the same BAMs, reference, resources, and interval;
 - queue, staging, caller, upload, total wall time, resource utilization, normalized concordance, and actual instance-hours recorded separately.
 
 Promotion then requires full BAM-to-evidence benchmarking and known-answer non-inferiority. Until those gates pass:
@@ -129,7 +129,7 @@ Promotion then requires full BAM-to-evidence benchmarking and known-answer non-i
 
 ## Source and calculation notes
 
-- AWS P5en specifications: [Accelerated computing instance types](https://docs.aws.amazon.com/ec2/latest/instancetypes/ac.html).
+- AWS P5 specifications: [Accelerated computing instance types](https://docs.aws.amazon.com/ec2/latest/instancetypes/ac.html).
 - AWS P5en On-Demand availability: [Amazon EC2 P5en instances announcement](https://aws.amazon.com/blogs/aws/new-amazon-ec2-p5en-instances-with-nvidia-h200-tensor-core-gpus-and-efav3-networking/).
 - Exact EC2 prices were retrieved from the AWS public regional Price List files for [US East (Ohio)](https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonEC2/current/us-east-2/index.json) and [US East (N. Virginia)](https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonEC2/current/us-east-1/index.json) on 2026-07-16. Spot inputs came from the live AWS `describe-spot-price-history` API on the same date.
 - EBS calculations use [AWS EBS pricing](https://aws.amazon.com/ebs/pricing/); S3 storage and transfer assumptions use [AWS S3 pricing](https://aws.amazon.com/s3/pricing/).
