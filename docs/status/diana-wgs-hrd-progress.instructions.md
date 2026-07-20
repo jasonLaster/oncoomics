@@ -7,7 +7,8 @@ Use this checklist when updating `docs/status/diana-wgs-hrd-progress.html`.
 - Keep the page self-contained and readable from a local `file://` URL.
 - Keep the summary user-centric: lead with what a collaborator can understand now, what changed, and what remains blocked.
 - Preserve `partial_evidence`, `no_call`, and `blocked` boundaries. Do not imply Diana HRD, scarHRD, SBS3, CHORD, or HRDetect readiness until real terminal artifacts and reviewed cross-check reports exist.
-- Update the visual progress dashboard, priority todo lists, and changelog for every material source milestone.
+- Update the visual progress dashboard, the Cost Explorer past-day breakdown,
+  priority todo lists, and changelog for every material source milestone.
 - Update the ignored preview copy after editing:
 
 ```sh
@@ -15,7 +16,7 @@ mkdir -p .codex-tmp/diana-wgs-hrd-progress
 cp docs/status/diana-wgs-hrd-progress.html .codex-tmp/diana-wgs-hrd-progress/index.html
 ```
 
-## Cost Explorer panel
+## Cost Explorer past-day breakdown
 
 Every dashboard refresh should include an AWS Cost Explorer breakdown for the latest
 complete UTC billing day. Treat "the past day" as the newest complete UTC day,
@@ -27,6 +28,10 @@ buckets and avoids partial same-day estimates.
 - Request `UnblendedCost`.
 - Group by `SERVICE` first and `USAGE_TYPE` second.
 - Display the covered UTC date, total unblended cost, and the top service / usage-type rows.
+- Keep the breakdown row-level: every visible non-`Other` row should come from
+  one exact Cost Explorer `SERVICE` / `USAGE_TYPE` pair, except rows that
+  intentionally combine a single plain-language cost such as Public IPv4 across
+  regions.
 - Sort rows by descending unblended cost, sum all returned rows into the visible
   total, and aggregate low-dollar rows into `Other` only after preserving the
   largest cost drivers as their own rows.

@@ -814,6 +814,134 @@ class CustodyHandoffTests(unittest.TestCase):
         )
         self.assertEqual(checker.validate(contract)["overall_status"], "ready")
 
+    def test_finalizer_main_uses_hashes_from_loaded_receipt_bytes(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            fixture = CustodyFixture()
+            pending = root / "pending.json"
+            freeze = root / "freeze.json"
+            freeze_anchor = root / "freeze-anchor.json"
+            exact = root / "exact.json"
+            cross = root / "cross.json"
+            cross_anchor = root / "cross-anchor.json"
+            output = root / "contract.json"
+            write_json(pending, fixture.pending)
+            write_json(freeze, fixture.freeze)
+            fixture.exact["freeze_receipt_sha256"] = finalizer.sha256(freeze)
+            write_json(exact, fixture.exact)
+            write_json(cross, fixture.cross)
+
+            def write_anchor(
+                path: Path,
+                receipt: Path,
+                *,
+                prefix: str,
+                version: str,
+                checks: dict[str, bool],
+            ) -> None:
+                digest = finalizer.sha256(receipt)
+                write_json(
+                    path,
+                    {
+                        "schema_version": 1,
+                        "status": "passed",
+                        "receipt_sha256": digest,
+                        "receipt_bytes": receipt.stat().st_size,
+                        "receipt_uri": f"s3://{BUCKET}/{prefix}/{digest}.json",
+                        "receipt_version_id": version,
+                        "checks": dict(checks),
+                    },
+                )
+
+            write_anchor(
+                freeze_anchor,
+                freeze,
+                prefix="freeze",
+                version="freeze-receipt-version",
+                checks=finalizer.EXPECTED_FINAL_FREEZE_ANCHOR_CHECKS,
+            )
+            write_anchor(
+                cross_anchor,
+                cross,
+                prefix="cross",
+                version="cross-receipt-version",
+                checks=finalizer.EXPECTED_CROSSCHECK_ANCHOR_CHECKS,
+            )
+            original_hashes = {
+                "final freeze receipt": finalizer.sha256(freeze),
+                "exact materialization": finalizer.sha256(exact),
+                "cross-check materialization receipt": finalizer.sha256(cross),
+            }
+            rewritten_labels: set[str] = set()
+            original_load = finalizer.load_object_with_sha256
+
+            def load_then_rewrite(
+                path: Path, label: str
+            ) -> tuple[dict[str, object], str, int]:
+                value, digest, byte_count = original_load(path, label)
+                if label in original_hashes:
+                    rewritten = json.loads(path.read_text(encoding="utf-8"))
+                    rewritten["rewritten_after_parse"] = label
+                    write_json(path, rewritten)
+                    rewritten_labels.add(label)
+                return value, digest, byte_count
+
+            argv = [
+                "finalize_input_contract.py",
+                "--pending-contract",
+                str(pending),
+                "--final-freeze-receipt",
+                str(freeze),
+                "--final-freeze-anchor",
+                str(freeze_anchor),
+                "--exact-materialization-receipt",
+                str(exact),
+                "--crosscheck-materialization-receipt",
+                str(cross),
+                "--crosscheck-materialization-anchor",
+                str(cross_anchor),
+                "--expected-crosscheck-materializer-sha256",
+                fixture.materializer_sha,
+                "--output",
+                str(output),
+            ]
+
+            with (
+                patch.object(sys, "argv", argv),
+                patch.object(
+                    finalizer,
+                    "load_object_with_sha256",
+                    side_effect=load_then_rewrite,
+                ),
+            ):
+                self.assertEqual(finalizer.main(), 0)
+
+            self.assertEqual(rewritten_labels, set(original_hashes))
+            self.assertNotEqual(
+                finalizer.sha256(freeze), original_hashes["final freeze receipt"]
+            )
+            self.assertNotEqual(
+                finalizer.sha256(exact), original_hashes["exact materialization"]
+            )
+            self.assertNotEqual(
+                finalizer.sha256(cross),
+                original_hashes["cross-check materialization receipt"],
+            )
+            contract = json.loads(output.read_text(encoding="utf-8"))
+            custody = contract["custody"]
+            self.assertEqual(
+                custody["final_freeze_receipt_sha256"],
+                original_hashes["final freeze receipt"],
+            )
+            self.assertEqual(
+                custody["exact_materialization_receipt_sha256"],
+                original_hashes["exact materialization"],
+            )
+            self.assertEqual(
+                custody["crosscheck_materialization_receipt_sha256"],
+                original_hashes["cross-check materialization receipt"],
+            )
+
     def test_contract_check_requires_exact_finalized_custody_checks(self):
         contract = CustodyFixture().finalize()
         contract["custody"]["checks"]["future_check"] = True

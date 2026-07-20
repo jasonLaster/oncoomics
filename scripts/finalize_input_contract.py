@@ -309,12 +309,18 @@ def require_no_symlinked_ancestors(path: Path, label: str) -> None:
 
 
 def load_object(path: Path, label: str) -> dict[str, Any]:
+    value, _, _ = load_object_with_sha256(path, label)
+    return value
+
+
+def load_object_with_sha256(path: Path, label: str) -> tuple[dict[str, Any], str, int]:
     require_no_symlinked_ancestors(path, label)
     if path.is_symlink() or not path.is_file():
         raise ValueError(f"{label} must be a real JSON file: {path}")
     try:
+        raw = path.read_bytes()
         value = json.loads(
-            path.read_text(encoding="utf-8"),
+            raw.decode("utf-8"),
             object_pairs_hook=reject_duplicate_json_object_names,
         )
     except DuplicateJsonKeyError as error:
@@ -323,7 +329,7 @@ def load_object(path: Path, label: str) -> dict[str, Any]:
         raise ValueError(f"invalid JSON in {label}") from error
     if not isinstance(value, dict):
         raise ValueError(f"{label} must be a JSON object")
-    return value
+    return value, sha256_bytes(raw), len(raw)
 
 
 def require_hex(value: Any, label: str) -> str:
@@ -436,16 +442,17 @@ def validate_anchor(
     anchor_path: Path,
     label: str,
     expected_checks: dict[str, bool],
-) -> tuple[dict[str, Any], dict[str, Any]]:
-    receipt = load_object(receipt_path, f"{label} receipt")
+) -> tuple[dict[str, Any], dict[str, Any], str]:
+    receipt, receipt_hash, receipt_bytes = load_object_with_sha256(
+        receipt_path, f"{label} receipt"
+    )
     anchor = load_object(anchor_path, f"{label} anchor")
-    receipt_hash = sha256(receipt_path)
     if (
         not exact_schema_version(anchor, 1)
         or anchor.get("status") != "passed"
         or require_hex(anchor.get("receipt_sha256"), f"{label} anchor receipt")
         != receipt_hash
-        or not exact_int(anchor.get("receipt_bytes"), receipt_path.stat().st_size)
+        or not exact_int(anchor.get("receipt_bytes"), receipt_bytes)
         or not str(anchor.get("receipt_uri", "")).startswith(
             "s3://diana-omics-private-results-"
         )
@@ -453,7 +460,7 @@ def validate_anchor(
         raise ValueError(f"{label} anchor does not bind the local receipt")
     require_version(anchor.get("receipt_version_id"), f"{label} anchor")
     require_exact_true(anchor.get("checks"), expected_checks, f"{label} anchor")
-    return receipt, anchor
+    return receipt, anchor, receipt_hash
 
 
 def validate_freeze(
@@ -883,28 +890,31 @@ def main() -> int:
     parser.add_argument("--output", required=True, type=Path)
     args = parser.parse_args()
 
-    freeze, freeze_anchor = validate_anchor(
+    freeze, freeze_anchor, freeze_receipt_sha256 = validate_anchor(
         args.final_freeze_receipt,
         args.final_freeze_anchor,
         "final freeze",
         EXPECTED_FINAL_FREEZE_ANCHOR_CHECKS,
     )
-    crosscheck, crosscheck_anchor = validate_anchor(
+    crosscheck, crosscheck_anchor, crosscheck_receipt_sha256 = validate_anchor(
         args.crosscheck_materialization_receipt,
         args.crosscheck_materialization_anchor,
         "cross-check materialization",
         EXPECTED_CROSSCHECK_ANCHOR_CHECKS,
     )
+    exact_materialization, exact_materialization_sha256, _ = load_object_with_sha256(
+        args.exact_materialization_receipt, "exact materialization"
+    )
     result = finalize(
         load_object(args.pending_contract, "pending contract"),
         freeze,
         freeze_anchor,
-        load_object(args.exact_materialization_receipt, "exact materialization"),
+        exact_materialization,
         crosscheck,
         crosscheck_anchor,
-        freeze_receipt_sha256=sha256(args.final_freeze_receipt),
-        exact_materialization_sha256=sha256(args.exact_materialization_receipt),
-        crosscheck_receipt_sha256=sha256(args.crosscheck_materialization_receipt),
+        freeze_receipt_sha256=freeze_receipt_sha256,
+        exact_materialization_sha256=exact_materialization_sha256,
+        crosscheck_receipt_sha256=crosscheck_receipt_sha256,
         finalizer_sha256=sha256(Path(__file__)),
         expected_crosscheck_materializer_sha256=(
             args.expected_crosscheck_materializer_sha256
