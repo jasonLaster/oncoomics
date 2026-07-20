@@ -1456,6 +1456,36 @@ class PrepareAiReviewRunTests(unittest.TestCase):
 
             self.assertTrue(swapped)
 
+    def test_sha256_rejects_same_byte_leaf_replacement(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            input_path = root / "model-catalog-receipt.json"
+            replacement = root / "replacement-model-catalog-receipt.json"
+            input_path.write_text('{"status":"ready"}\n', encoding="utf-8")
+            replacement.write_text('{"status":"ready"}\n', encoding="utf-8")
+            real_read_once = PREPARE.read_real_hash_input_once
+            swapped = False
+
+            def replace_after_initial_read(path: Path, label: str):
+                nonlocal swapped
+                data = real_read_once(path, label)
+                if path == input_path and not swapped:
+                    swapped = True
+                    replacement.replace(input_path)
+                return data
+
+            with (
+                mock.patch.object(
+                    PREPARE,
+                    "read_real_hash_input_once",
+                    side_effect=replace_after_initial_read,
+                ),
+                self.assertRaisesRegex(ValueError, "changed during read"),
+            ):
+                PREPARE.sha256(input_path)
+
+            self.assertTrue(swapped)
+
     def test_cleans_current_attempt_after_install_failure(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             fixture = AiReviewBundleFixture(Path(temporary))
