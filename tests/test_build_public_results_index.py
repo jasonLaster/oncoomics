@@ -284,6 +284,39 @@ class PublicIndexTests(unittest.TestCase):
             ):
                 MODULE.sha256(receipt)
 
+    def test_sha256_rejects_same_byte_leaf_replacement(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            receipt = root / "reviewed-public.json"
+            replacement = root / "replacement-reviewed-public.json"
+            receipt.write_text('{"status":"passed"}\n', encoding="utf-8")
+            replacement.write_text('{"status":"passed"}\n', encoding="utf-8")
+            real_read_once = MODULE.read_real_input_file_once
+            swapped = False
+
+            def replace_after_initial_read(path: Path, label: str):
+                nonlocal swapped
+                data = real_read_once(path, label)
+                if path == receipt and not swapped:
+                    swapped = True
+                    replacement.replace(receipt)
+                return data
+
+            with (
+                mock.patch.object(
+                    MODULE,
+                    "read_real_input_file_once",
+                    side_effect=replace_after_initial_read,
+                ),
+                self.assertRaisesRegex(
+                    RuntimeError,
+                    "reviewed-public.json SHA-256 input changed during read",
+                ),
+            ):
+                MODULE.sha256(receipt)
+
+            self.assertTrue(swapped)
+
     def test_diana_public_prefixes_are_exact_reviewed_report_destinations(self) -> None:
         expected = tuple(
             PUBLISH.PUBLIC_ROOT + str(contract["destination"])
