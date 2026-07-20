@@ -15,8 +15,10 @@ from typing import Any, Mapping
 from forbidden_text import DEFAULT_FORBIDDEN_TOKENS, normalize_forbidden_tokens_json
 from generate_blocked_hrd_crosscheck_reports import (
     BLOCKED_REVIEW_SUMMARY_KEYS,
+    METHODS_BY_ID,
     PRE_ROUTE_SOURCE_REPORT_BINDING_SCOPE,
     PRE_ROUTE_SOURCE_REPORT_METHOD_IDS,
+    render_report as render_blocked_report,
 )
 from hrd_report_inventory import BLOCKED_CROSSCHECK_METHOD_IDS
 from publish_private_report import canonical_packet_digest, require_real_packet_dir
@@ -458,6 +460,51 @@ def validate_pre_route_blocked_packet(
             f"{method_id} blocked packet must use "
             f"{PRE_ROUTE_SOURCE_REPORT_BINDING_SCOPE} source binding"
         )
+    validate_pre_route_blocked_report(
+        packet_dir,
+        method_id,
+        manifest,
+        expected_source_report_manifests,
+    )
+
+
+def validate_pre_route_blocked_report(
+    packet_dir: Path,
+    method_id: str,
+    manifest: Mapping[str, Any],
+    source_report_manifests: Mapping[str, str],
+) -> None:
+    method = METHODS_BY_ID.get(method_id)
+    generated_at = manifest.get("generated_at")
+    run_id = manifest.get("run_id")
+    source_report_binding_scope = manifest.get("source_report_binding_scope")
+    if (
+        method is None
+        or not isinstance(generated_at, str)
+        or not generated_at
+        or not isinstance(run_id, str)
+        or source_report_binding_scope != PRE_ROUTE_SOURCE_REPORT_BINDING_SCOPE
+    ):
+        raise ValueError(f"{method_id} blocked report inputs are not exact")
+
+    report_path = packet_dir / "report.md"
+    try:
+        report_text = read_stable_file(
+            report_path,
+            f"{method_id} blocked report.md",
+        ).decode("utf-8")
+    except UnicodeError as error:
+        raise ValueError(f"{method_id} blocked report.md is not UTF-8") from error
+
+    expected = render_blocked_report(
+        method,
+        generated_at,
+        run_id=run_id,
+        source_report_manifests=source_report_manifests,
+        source_report_binding_scope=source_report_binding_scope,
+    )
+    if report_text != expected:
+        raise ValueError(f"{method_id} blocked report is stale")
 
 
 def validate_packets(
