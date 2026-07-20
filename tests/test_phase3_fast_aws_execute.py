@@ -568,6 +568,8 @@ class Phase3FastAwsExecutePreflightTests(unittest.TestCase):
         load_receipt.assert_not_called()
 
     @patch("diana_omics.commands.phase3_wgs.verify_phase3_fast_aws_execute.load_mirror_receipt_from_environment")
+    @patch("diana_omics.commands.phase3_wgs.verify_phase3_fast_aws_execute.gpu_smoke.validate_batch_launch_template_cost_guard_tags")
+    @patch("diana_omics.commands.phase3_wgs.verify_phase3_fast_aws_execute.gpu_smoke.load_batch_launch_template_version")
     @patch("diana_omics.commands.phase3_wgs.verify_phase3_fast_aws_execute.gpu_smoke.validate_daily_cost_guard_estimated_spend")
     @patch("diana_omics.commands.phase3_wgs.verify_phase3_fast_aws_execute.gpu_smoke.load_daily_cost_guard_estimated_spend")
     @patch("diana_omics.commands.phase3_wgs.verify_phase3_fast_aws_execute.gpu_smoke.load_gpu_batch_compute_environment")
@@ -584,6 +586,8 @@ class Phase3FastAwsExecutePreflightTests(unittest.TestCase):
         load_compute_environment,
         load_cost,
         validate_cost,
+        load_launch_template,
+        validate_launch_template,
         load_mirror,
     ) -> None:
         load_params.return_value = ({}, Path("infra/aws/nextflow.aws.use2.json"))
@@ -604,6 +608,8 @@ class Phase3FastAwsExecutePreflightTests(unittest.TestCase):
         )
         load_queue.assert_called_once_with(queue="diana-omics-prod-use2-gpu-p5en", region="us-east-2")
         load_compute_environment.assert_not_called()
+        load_launch_template.assert_not_called()
+        validate_launch_template.assert_not_called()
         load_mirror.assert_not_called()
 
     @patch("diana_omics.commands.phase3_wgs.verify_phase3_fast_aws_execute.gpu_smoke.load_gpu_batch_job_queue")
@@ -634,6 +640,8 @@ class Phase3FastAwsExecutePreflightTests(unittest.TestCase):
     @patch("diana_omics.commands.phase3_wgs.verify_phase3_fast_aws_execute.load_gpu_smoke_result_from_environment")
     @patch("diana_omics.commands.phase3_wgs.verify_phase3_fast_aws_execute.gpu_smoke.load_parabricks_mirror_image_digest")
     @patch("diana_omics.commands.phase3_wgs.verify_phase3_fast_aws_execute.gpu_smoke.load_running_on_demand_p_vcpus")
+    @patch("diana_omics.commands.phase3_wgs.verify_phase3_fast_aws_execute.gpu_smoke.validate_batch_launch_template_cost_guard_tags")
+    @patch("diana_omics.commands.phase3_wgs.verify_phase3_fast_aws_execute.gpu_smoke.load_batch_launch_template_version")
     @patch("diana_omics.commands.phase3_wgs.verify_phase3_fast_aws_execute.gpu_smoke.validate_gpu_batch_compute_environment")
     @patch("diana_omics.commands.phase3_wgs.verify_phase3_fast_aws_execute.gpu_smoke.load_gpu_batch_compute_environment")
     @patch("diana_omics.commands.phase3_wgs.verify_phase3_fast_aws_execute.gpu_smoke.validate_gpu_batch_job_queue")
@@ -650,6 +658,8 @@ class Phase3FastAwsExecutePreflightTests(unittest.TestCase):
         validate_queue,
         load_compute_environment,
         validate_compute_environment,
+        load_launch_template,
+        validate_launch_template,
         load_quota,
         load_image,
         load_smoke,
@@ -702,8 +712,14 @@ class Phase3FastAwsExecutePreflightTests(unittest.TestCase):
         validate_compute_environment.return_value = {
             "compute_environment": ("arn:aws:batch:us-east-2:172630973301:compute-environment/diana-omics-prod-use2-gpu-p5en-ondemand"),
             "instance_types": list(verify.gpu_smoke.REQUIRED_INSTANCE_TYPES),
+            "launch_template": {"launchTemplateId": "lt-p5en", "version": "42"},
             "max_vcpus": 384,
             "status": "ready",
+        }
+        validate_launch_template.return_value = {
+            "cost_guard_tag": "DianaBatchCostGuard=diana-omics",
+            "status": "ready",
+            "tagged_resource_types": ["instance", "volume"],
         }
         load_quota.return_value = 384.0
         load_cost.return_value = Decimal("42.000000")
@@ -742,6 +758,11 @@ class Phase3FastAwsExecutePreflightTests(unittest.TestCase):
                 "arn:aws:batch:us-east-2:172630973301:compute-environment/diana-omics-prod-use2-gpu-p5en-ondemand"
             ),
         )
+        load_launch_template.assert_called_once_with(
+            launch_template={"launchTemplateId": "lt-p5en", "version": "42"},
+            region="us-east-2",
+        )
+        validate_launch_template.assert_called_once_with(load_launch_template.return_value)
         load_mirror.assert_called_once()
         load_image.assert_called_once_with(
             parabricks_container=PARABRICKS_CONTAINER,

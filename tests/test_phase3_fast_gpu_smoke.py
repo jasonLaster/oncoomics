@@ -541,6 +541,7 @@ class Phase3FastGpuSmokeConfigTests(unittest.TestCase):
             {
                 "compute_environment": arn,
                 "instance_types": list(verify.REQUIRED_INSTANCE_TYPES),
+                "launch_template": {"launchTemplateId": "lt-p5en", "version": "42"},
                 "max_vcpus": 384,
                 "status": "ready",
             },
@@ -684,6 +685,103 @@ class Phase3FastGpuSmokeConfigTests(unittest.TestCase):
                         environment,
                         expected_compute_environment=arn,
                     )
+
+    @patch("diana_omics.commands.phase3_wgs.verify_phase3_fast_gpu_smoke.subprocess.run")
+    def test_loads_live_p5en_launch_template_version(self, run) -> None:
+        run.return_value = subprocess.CompletedProcess(
+            args=[],
+            returncode=0,
+            stdout='{"LaunchTemplateVersions":[{"VersionNumber":42}]}',
+        )
+
+        version = verify.load_batch_launch_template_version(
+            launch_template={"launchTemplateId": "lt-p5en", "version": "42"},
+            region="us-east-2",
+        )
+
+        self.assertEqual({"VersionNumber": 42}, version)
+        self.assertEqual(
+            [
+                "aws",
+                "ec2",
+                "describe-launch-template-versions",
+                "--region",
+                "us-east-2",
+                "--versions",
+                "42",
+                "--output",
+                "json",
+                "--launch-template-id",
+                "lt-p5en",
+            ],
+            run.call_args.args[0],
+        )
+
+    def test_validates_launch_template_cost_guard_tag_specifications(self) -> None:
+        summary = verify.validate_batch_launch_template_cost_guard_tags(
+            {
+                "LaunchTemplateData": {
+                    "TagSpecifications": [
+                        {
+                            "ResourceType": "instance",
+                            "Tags": [
+                                {
+                                    "Key": verify.COST_GUARD_TAG_KEY,
+                                    "Value": verify.COST_GUARD_TAG_VALUE,
+                                }
+                            ],
+                        },
+                        {
+                            "ResourceType": "volume",
+                            "Tags": [
+                                {
+                                    "Key": verify.COST_GUARD_TAG_KEY,
+                                    "Value": verify.COST_GUARD_TAG_VALUE,
+                                }
+                            ],
+                        },
+                    ]
+                }
+            }
+        )
+
+        self.assertEqual(
+            {
+                "cost_guard_tag": "DianaBatchCostGuard=diana-omics",
+                "status": "ready",
+                "tagged_resource_types": ["instance", "volume"],
+            },
+            summary,
+        )
+
+    def test_rejects_launch_template_without_cost_guard_tags(self) -> None:
+        with self.assertRaisesRegex(verify.GpuSmokeConfigError, "daily cost guard: volume"):
+            verify.validate_batch_launch_template_cost_guard_tags(
+                {
+                    "LaunchTemplateData": {
+                        "TagSpecifications": [
+                            {
+                                "ResourceType": "instance",
+                                "Tags": [
+                                    {
+                                        "Key": verify.COST_GUARD_TAG_KEY,
+                                        "Value": verify.COST_GUARD_TAG_VALUE,
+                                    }
+                                ],
+                            },
+                            {
+                                "ResourceType": "volume",
+                                "Tags": [
+                                    {
+                                        "Key": verify.COST_GUARD_TAG_KEY,
+                                        "Value": "wrong-project",
+                                    }
+                                ],
+                            },
+                        ]
+                    }
+                }
+            )
 
     @patch("diana_omics.commands.phase3_wgs.verify_phase3_fast_gpu_smoke.subprocess.run")
     def test_loads_live_running_on_demand_p_quota(self, run) -> None:

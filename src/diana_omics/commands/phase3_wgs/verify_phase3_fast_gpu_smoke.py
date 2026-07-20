@@ -24,6 +24,8 @@ ON_DEMAND_P_QUOTA_CODE = "L-417A185B"
 BATCH_GPU_COMPUTE_ENVIRONMENT_SUFFIX = "-ondemand"
 MAX_DAILY_COST_GUARD_LIMIT_USD = Decimal("200")
 MAX_DAILY_COST_GUARD_LIVE_STOP_PERCENT = Decimal("80")
+COST_GUARD_TAG_KEY = "DianaBatchCostGuard"
+COST_GUARD_TAG_VALUE = "diana-omics"
 KMS_KEY_ARN = re.compile(r"^arn:aws:kms:([a-z]{2}-[a-z]+-\d):(\d{12}):key/[A-Za-z0-9-]+$")
 ECR_REPOSITORY = re.compile(r"^\d{12}\.dkr\.ecr\.([a-z]{2}-[a-z]+-\d)\.amazonaws\.com/[a-z0-9][a-z0-9._/-]*$")
 PINNED_IMAGE = re.compile(r"^\S+@sha256:[0-9a-f]{64}$")
@@ -513,6 +515,7 @@ def validate_gpu_batch_compute_environment(
     resources = payload.get("computeResources")
     max_vcpus = 0
     instance_types: list[str] = []
+    pinned_launch_template: dict[str, str] = {}
     if not isinstance(resources, dict):
         errors.append("P5 Hopper computeResources must be a JSON object")
     else:
@@ -553,15 +556,19 @@ def validate_gpu_batch_compute_environment(
         if not isinstance(launch_template, dict):
             errors.append("P5 Hopper computeResources launchTemplate must be configured")
         else:
-            launch_template_identity = (
-                launch_template.get("launchTemplateId"),
-                launch_template.get("launchTemplateName"),
-            )
-            if not any(isinstance(value, str) and value for value in launch_template_identity):
+            launch_template_id = launch_template.get("launchTemplateId")
+            launch_template_name = launch_template.get("launchTemplateName")
+            if isinstance(launch_template_id, str) and launch_template_id:
+                pinned_launch_template["launchTemplateId"] = launch_template_id
+            elif isinstance(launch_template_name, str) and launch_template_name:
+                pinned_launch_template["launchTemplateName"] = launch_template_name
+            else:
                 errors.append("P5 Hopper computeResources launchTemplate must include an id or name")
             version = launch_template.get("version")
             if not isinstance(version, str) or not re.fullmatch(r"[1-9]\d*", version):
                 errors.append("P5 Hopper computeResources launchTemplate version must be pinned to a numeric version")
+            else:
+                pinned_launch_template["version"] = version
 
     if errors:
         raise GpuSmokeConfigError("P5 Hopper compute environment is not ready:\n- " + "\n- ".join(errors))
@@ -569,8 +576,115 @@ def validate_gpu_batch_compute_environment(
     return {
         "compute_environment": expected_compute_environment,
         "instance_types": instance_types,
+        "launch_template": pinned_launch_template,
         "max_vcpus": max_vcpus,
         "status": "ready",
+    }
+
+
+def load_batch_launch_template_version(
+    *,
+    launch_template: Mapping[str, Any],
+    region: str,
+    aws_cli: str = "aws",
+) -> dict[str, Any]:
+    errors: list[str] = []
+    version = _require_non_empty_string(launch_template, "version", errors)
+    if errors:
+        raise GpuSmokeConfigError("P5 Hopper launch template is not ready:\n- " + "\n- ".join(errors))
+    command = [
+        aws_cli,
+        "ec2",
+        "describe-launch-template-versions",
+        "--region",
+        region,
+        "--versions",
+        version,
+        "--output",
+        "json",
+    ]
+    launch_template_id = launch_template.get("launchTemplateId")
+    launch_template_name = launch_template.get("launchTemplateName")
+    if isinstance(launch_template_id, str) and launch_template_id:
+        command.extend(["--launch-template-id", launch_template_id])
+    elif isinstance(launch_template_name, str) and launch_template_name:
+        command.extend(["--launch-template-name", launch_template_name])
+    else:
+        raise GpuSmokeConfigError("P5 Hopper launch template must include an id or name")
+
+    try:
+        result = subprocess.run(
+            command,
+            check=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+        )
+    except FileNotFoundError as error:
+        raise GpuSmokeConfigError(f"{aws_cli} is required to verify the P5 Hopper launch template") from error
+    except subprocess.CalledProcessError as error:
+        output = (error.stdout or "").strip()
+        detail = f": {output}" if output else ""
+        raise GpuSmokeConfigError(f"Unable to read the live {region} P5 Hopper launch template{detail}") from error
+
+    try:
+        payload = json.loads(result.stdout)
+    except json.JSONDecodeError as error:
+        raise GpuSmokeConfigError("EC2 did not return launch-template JSON") from error
+
+    if not isinstance(payload, dict):
+        raise GpuSmokeConfigError("EC2 launch-template response must be a JSON object")
+    versions = payload.get("LaunchTemplateVersions")
+    if not isinstance(versions, list):
+        raise GpuSmokeConfigError("EC2 launch-template response must include a LaunchTemplateVersions array")
+    if len(versions) != 1:
+        raise GpuSmokeConfigError("EC2 must return exactly one P5 Hopper launch-template version")
+    observed = versions[0]
+    if not isinstance(observed, dict):
+        raise GpuSmokeConfigError("EC2 P5 Hopper launch-template version must be a JSON object")
+    return observed
+
+
+def _tag_specification_has_cost_guard_tag(specification: Any, resource_type: str) -> bool:
+    if not isinstance(specification, dict) or specification.get("ResourceType") != resource_type:
+        return False
+    tags = specification.get("Tags")
+    return isinstance(tags, list) and any(
+        isinstance(tag, dict)
+        and tag.get("Key") == COST_GUARD_TAG_KEY
+        and tag.get("Value") == COST_GUARD_TAG_VALUE
+        for tag in tags
+    )
+
+
+def validate_batch_launch_template_cost_guard_tags(payload: Mapping[str, Any]) -> dict[str, Any]:
+    data = payload.get("LaunchTemplateData")
+    if not isinstance(data, dict):
+        raise GpuSmokeConfigError("P5 Hopper launch template must include LaunchTemplateData")
+    tag_specifications = data.get("TagSpecifications")
+    if not isinstance(tag_specifications, list):
+        raise GpuSmokeConfigError("P5 Hopper launch template must include TagSpecifications")
+
+    required_resource_types = ("instance", "volume")
+    tagged_resource_types = [
+        resource_type
+        for resource_type in required_resource_types
+        if any(
+            _tag_specification_has_cost_guard_tag(specification, resource_type)
+            for specification in tag_specifications
+        )
+    ]
+    missing = sorted(set(required_resource_types) - set(tagged_resource_types))
+    if missing:
+        raise GpuSmokeConfigError(
+            "P5 Hopper launch template must tag Batch EC2 resources for the daily cost guard: "
+            + ", ".join(missing)
+        )
+
+    return {
+        "cost_guard_tag": f"{COST_GUARD_TAG_KEY}={COST_GUARD_TAG_VALUE}",
+        "status": "ready",
+        "tagged_resource_types": tagged_resource_types,
     }
 
 
