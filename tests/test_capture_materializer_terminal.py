@@ -917,6 +917,22 @@ class CaptureMaterializerTerminalTests(unittest.TestCase):
                             aws=self.aws_side_effect(definition=definition),
                         )
 
+    def test_batch_parameters_must_be_exact_strings(self) -> None:
+        parameters = dict(self.parameters)
+        parameters["source_vcf_version_id"] = "1"
+        job = copy.deepcopy(self.job)
+        job["parameters"]["source_vcf_version_id"] = 1
+
+        with self.assertRaisesRegex(ValueError, "failed parameters_exact"):
+            MODULE.validate_job(
+                job,
+                self.definition,
+                self.queue,
+                self.compute,
+                "job-1",
+                parameters,
+            )
+
     def test_failed_batch_identity_check_reports_exact_key(self) -> None:
         job = copy.deepcopy(self.job)
         job["stoppedAt"] = 99
@@ -1212,6 +1228,16 @@ class CaptureMaterializerTerminalTests(unittest.TestCase):
                         Path(temporary) / label,
                         receipt,
                     )
+
+    def test_destination_inventory_filename_must_be_an_exact_string(self) -> None:
+        class CoercibleFilename:
+            def __str__(self) -> str:
+                return "somatic.pass.vcf.gz"
+
+        receipt = json.loads(self.receipt_bytes)
+        receipt["destination_inventory"][0]["filename"] = CoercibleFilename()
+
+        self.assertFalse(MODULE.destination_inventory_is_exact(receipt))
 
     def test_rejects_nullish_materializer_output_version_ids(self) -> None:
         cases = ("null", "None")
