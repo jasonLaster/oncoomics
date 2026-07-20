@@ -3134,6 +3134,42 @@ class CustodyHandoffTests(unittest.TestCase):
 
             self.assertTrue(moved)
 
+    def test_contract_publication_rejects_same_byte_contract_replacement(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            contract = root / "contract.json"
+            replacement = root / "replacement-contract.json"
+            write_json(contract, CustodyFixture().finalize())
+            write_json(replacement, CustodyFixture().finalize())
+            real_read_once = publisher.read_real_hash_input_once
+            swapped = False
+
+            def replace_after_first_read(
+                path: Path,
+                label: str,
+            ) -> tuple[bytes, tuple[int, int, int, int, int, int]]:
+                nonlocal swapped
+                payload = real_read_once(path, label)
+                if path == contract and not swapped:
+                    swapped = True
+                    replacement.replace(contract)
+                return payload
+
+            with (
+                patch.object(
+                    publisher,
+                    "read_real_hash_input_once",
+                    replace_after_first_read,
+                ),
+                self.assertRaisesRegex(
+                    ValueError,
+                    "contract changed during read",
+                ),
+            ):
+                publisher.load_contract_with_sha256(contract)
+
+            self.assertTrue(swapped)
+
     def test_contract_publication_uploads_stable_parsed_contract_bytes(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
