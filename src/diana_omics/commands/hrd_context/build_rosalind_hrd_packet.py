@@ -3694,14 +3694,27 @@ def write_cloud_materialization_plan(root: str | Path, packet_run_id: str, packe
     )
 
 
-def require_bound_run_file(run_dir: Path, name: str, digest: Any) -> None:
+def expected_text_bytes(text: str) -> bytes:
+    return (text if text.endswith("\n") else f"{text}\n").encode("utf-8")
+
+
+def require_bound_run_file(
+    run_dir: Path,
+    name: str,
+    digest: Any,
+    *,
+    expected_text: str | None = None,
+) -> None:
     if name != Path(name).name:
         raise ValueError("Rosalind run manifest contains a non-local support path")
 
     expected_sha256 = require_sha256(digest, f"Rosalind run {name} SHA-256")
     path = require_real_nonempty_file(run_dir / name, f"Rosalind run {name}")
-    if sha256_file(path) != expected_sha256:
+    payload = read_stable_file_bytes(path, f"Rosalind run {name}")
+    if _sha256_bytes(payload) != expected_sha256:
         raise ValueError(f"Rosalind run manifest is stale for {name}")
+    if expected_text is not None and payload != expected_text_bytes(expected_text):
+        raise ValueError(f"Rosalind run {name} content is not exact")
 
 
 def require_rosalind_run_manifest(run_dir: Path) -> None:
@@ -3720,10 +3733,6 @@ def require_rosalind_run_manifest(run_dir: Path) -> None:
         raise ValueError("Rosalind run manifest support_sha256 must be an object")
     if set(support_sha256) != RUN_MANIFEST_SUPPORT_FILES:
         raise ValueError("Rosalind run manifest support files changed")
-    for name, digest in support_sha256.items():
-        if not isinstance(name, str):
-            raise ValueError("Rosalind run manifest support files changed")
-        require_bound_run_file(run_dir, name, digest)
 
     packet_summaries = manifest.get("packets")
     if not isinstance(packet_summaries, list):
@@ -3733,6 +3742,36 @@ def require_rosalind_run_manifest(run_dir: Path) -> None:
     )
     if len(rechecked) != len(packet_summaries):
         raise ValueError("Rosalind run manifest packets must be objects")
+    run_id = require_exact_nonempty_string(
+        manifest.get("runId"),
+        "Rosalind run manifest runId",
+    )
+    rechecked_sample_sets = [
+        require_exact_nonempty_string(
+            summary.get("sampleSet"),
+            "Rosalind packet summary sampleSet",
+        )
+        for summary in rechecked
+    ]
+    if manifest.get("sampleSets") != rechecked_sample_sets:
+        raise ValueError("Rosalind run manifest sampleSets differ from packets")
+
+    expected_support_text = {
+        "cloud_materialization_plan.md": cloud_materialization_plan_text(
+            run_id,
+            rechecked,
+        ),
+        "packet_index.md": packet_index_text(run_id, rechecked),
+    }
+    for name, digest in support_sha256.items():
+        if not isinstance(name, str):
+            raise ValueError("Rosalind run manifest support files changed")
+        require_bound_run_file(
+            run_dir,
+            name,
+            digest,
+            expected_text=expected_support_text[name],
+        )
 
 
 def write_run_outputs(
