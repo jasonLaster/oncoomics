@@ -502,6 +502,37 @@ class RosalindHrdPacketTest(unittest.TestCase):
             ):
                 packet.hcc1395_wgs_evidence()
 
+    def test_hcc1395_wgs_packet_rejects_malformed_sv_rows(self):
+        cases = (
+            ("missing", None),
+            ("empty", []),
+            ("object", {}),
+            ("non_object_row", [{"discordant_mapped_pairs": 1}, True]),
+        )
+
+        for label, rows in cases:
+            with self.subTest(label=label), tempfile.TemporaryDirectory() as tmp:
+                root = Path(tmp)
+                sv_summary = {"status": "passed"}
+                if label != "missing":
+                    sv_summary["rows"] = rows
+                utils.write_json(
+                    root / "results/phase3_wgs_smoke/sv_evidence_summary.json",
+                    sv_summary,
+                )
+
+                with (
+                    patch.object(packet, "path_from_root", lambda relative: root / relative),
+                    self.assertRaisesRegex(
+                        ValueError,
+                        (
+                            "HCC1395 WGS SV evidence rows must be a non-empty "
+                            "list of JSON objects"
+                        ),
+                    ),
+                ):
+                    packet.hcc1395_wgs_evidence()
+
     def test_schema_version_checks_avoid_raw_comparisons(self):
         source = Path(packet.__file__).read_text(encoding="utf-8")
         tree = ast.parse(source, filename=str(packet.__file__))
