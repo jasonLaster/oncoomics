@@ -480,6 +480,53 @@ class PublishReviewedPublicReportTests(unittest.TestCase):
             ):
                 MODULE.sha256(linked_inputs / "private-publication.json")
 
+    def test_sha256_rejects_hash_input_that_changes_during_read(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            receipt = root / "private-publication.json"
+            receipt.write_text('{"status":"passed"}\n', encoding="utf-8")
+            real_read_bytes = Path.read_bytes
+            calls = 0
+
+            def mutating_read_bytes(path: Path) -> bytes:
+                nonlocal calls
+                data = real_read_bytes(path)
+                calls += 1
+                if calls == 1:
+                    receipt.write_text('{"status":"tampered"}\n', encoding="utf-8")
+                return data
+
+            with (
+                mock.patch.object(Path, "read_bytes", mutating_read_bytes),
+                self.assertRaisesRegex(ValueError, "changed during read"),
+            ):
+                MODULE.sha256(receipt)
+
+    def test_load_json_rejects_input_that_changes_during_read(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            receipt = root / "private-publication.json"
+            receipt.write_text('{"status":"passed"}\n', encoding="utf-8")
+            real_read_bytes = Path.read_bytes
+            calls = 0
+
+            def mutating_read_bytes(path: Path) -> bytes:
+                nonlocal calls
+                data = real_read_bytes(path)
+                calls += 1
+                if calls == 1:
+                    receipt.write_text('{"status":"tampered"}\n', encoding="utf-8")
+                return data
+
+            with (
+                mock.patch.object(Path, "read_bytes", mutating_read_bytes),
+                self.assertRaisesRegex(
+                    ValueError,
+                    "private publication receipt changed during read",
+                ),
+            ):
+                MODULE.load_json_with_sha256(receipt, "private publication receipt")
+
     def test_report_packet_hash_rejects_symlink_after_manifest_load(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             fixture = Fixture(Path(temporary))

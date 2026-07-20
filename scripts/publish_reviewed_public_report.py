@@ -298,12 +298,10 @@ def canonical_bytes(value: Any) -> bytes:
 
 
 def sha256(path: Path) -> str:
-    require_real_hash_input(path)
-    digest = hashlib.sha256()
-    with path.open("rb") as handle:
-        for block in iter(lambda: handle.read(8 * 1024 * 1024), b""):
-            digest.update(block)
-    return digest.hexdigest()
+    return read_stable_file_with_sha256(
+        path,
+        f"{path.name} SHA-256 input",
+    )[1]
 
 
 def sha256_bytes(value: bytes) -> str:
@@ -370,10 +368,22 @@ def exact_schema_version(payload: dict[str, Any], expected: int = 1) -> bool:
     return type(payload.get("schema_version")) is int and payload["schema_version"] == expected
 
 
-def load_json_with_sha256(path: Path, label: str) -> tuple[dict[str, Any], str]:
+def read_stable_file_with_sha256(path: Path, label: str) -> tuple[bytes, str]:
     require_real_input_file(path, label)
     try:
         payload = path.read_bytes()
+        digest = sha256_bytes(payload)
+        if sha256_bytes(path.read_bytes()) != digest:
+            raise ValueError(f"{label} changed during read")
+    except OSError as error:
+        raise ValueError(f"{label} changed during read") from error
+    require_real_input_file(path, label)
+    return payload, digest
+
+
+def load_json_with_sha256(path: Path, label: str) -> tuple[dict[str, Any], str]:
+    payload, digest = read_stable_file_with_sha256(path, label)
+    try:
         value = json.loads(
             payload.decode("utf-8"),
             object_pairs_hook=reject_duplicate_json_object_names,
@@ -384,7 +394,7 @@ def load_json_with_sha256(path: Path, label: str) -> tuple[dict[str, Any], str]:
         raise ValueError(f"invalid JSON in {label}") from error
     if not isinstance(value, dict):
         raise ValueError(f"{label} must be a JSON object")
-    return value, sha256_bytes(payload)
+    return value, digest
 
 
 def load_json(path: Path, label: str) -> dict[str, Any]:
