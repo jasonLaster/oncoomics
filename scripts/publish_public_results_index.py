@@ -125,6 +125,17 @@ def exact_non_null_version_id(value: Any, label: str) -> str:
     return value
 
 
+def exact_check_map(value: Any, expected: dict[str, bool]) -> bool:
+    return (
+        isinstance(value, dict)
+        and set(value) == set(expected)
+        and all(
+            value.get(name) is expected_value
+            for name, expected_value in expected.items()
+        )
+    )
+
+
 def is_nonnegative_exact_int(value: Any) -> bool:
     return type(value) is int and value >= 0
 
@@ -369,8 +380,8 @@ def head_object(bucket: str, key: str, region: str, version_id: str = "") -> dic
     return aws_json(arguments, region)
 
 
-def require_public_index_destination_checks_exact(checks: dict[str, bool]) -> None:
-    if checks != PUBLIC_INDEX_DESTINATION_CHECKS:
+def require_public_index_destination_checks_exact(checks: Any) -> None:
+    if not exact_check_map(checks, PUBLIC_INDEX_DESTINATION_CHECKS):
         raise ValueError(f"public index destination verification failed: {checks}")
 
 
@@ -501,7 +512,7 @@ def validate_dry_run_receipt(path: Path, custody: dict[str, Any]) -> dict[str, A
         "index_sorted_unique_keys": True,
         "index_reviewed_public_receipts": True,
     }
-    if checks != required_checks:
+    if not exact_check_map(checks, required_checks):
         raise ValueError("public index dry-run receipt did not pass preflight checks")
     return {
         "path": str(path.resolve()),
