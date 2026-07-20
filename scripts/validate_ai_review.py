@@ -629,6 +629,10 @@ def scan_output(paths: list[Path], forbidden_tokens: list[str]) -> None:
                 raise ValueError(f"forbidden token leaked into {path.name}")
 
 
+def is_positive_exact_int(value: Any) -> bool:
+    return type(value) is int and value > 0
+
+
 def validate_prompt(
     prompt_path: Path,
     bundle_hash: str,
@@ -677,6 +681,7 @@ def validate_other_reviewer(
         not is_exact_int(other_validation.get("schema_version"), 2)
         or other_validation.get("status") != "passed"
         or other_validation.get("reviewer_id") != "A"
+        or not is_positive_exact_int(other_validation.get("forbidden_token_count"))
     ):
         raise ValueError("other review is not a passed reviewer A validation")
     if (
