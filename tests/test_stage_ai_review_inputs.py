@@ -113,6 +113,10 @@ class StageAiReviewInputsTests(unittest.TestCase):
         receipt = STAGE.stage(self.bundle, self.output_root, self.receipt)
 
         self.assertEqual(receipt["status"], "passed")
+        self.assertEqual(
+            receipt["bundle_manifest_sha256"],
+            sha256(self.bundle / "bundle_manifest.json"),
+        )
         self.assertEqual(stat.S_IMODE(self.receipt.stat().st_mode), 0o600)
         for role, prompt in (
             ("A", "reviewer-a.prompt.md"),

@@ -372,9 +372,11 @@
           Hopper shapes and still waiting on quota, the prod-use2 daily cost
           guard now has a one-minute cross-region live spend poller, P5
           smoke/execute preflights now require generated cost-guard bindings
-          for that GPU queue and the guarded region set, packet-validation
-          receipts can no longer double-count a report file, and the latest
-          source-only guardrails now reject truthy reviewer modes plus
+          for that GPU queue and the guarded region set, staged AI reviewer
+          packets now have to carry the exact bundle-manifest fingerprint that
+          authorized them, packet-validation receipts can no longer
+          double-count a report file, and the latest source-only guardrails now
+          reject truthy reviewer modes plus
           not-really-zero and not-quite-exact counters before terminal artifact
           freezing, exact-version
           materialization, private report replays, final alias-only input
@@ -394,7 +396,8 @@
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-20</li>
-          <li class="pill">Latest milestone = shared $200 guard</li>
+          <li class="pill">Latest milestone = AI stage manifest binding</li>
+          <li class="pill">AI stage manifest = hash-bound</li>
           <li class="pill">Daily Batch spend = cross-region</li>
           <li class="pill">Packet file rows = unique</li>
           <li class="pill">P5 cost guard params = bound</li>
@@ -2221,6 +2224,10 @@
           <h3>Priority 4 · AI / freeform review</h3>
           <ol class="todo">
             <li class="item" style="--tone: var(--done)">
+              <strong>Done · bind AI reviewer inputs to their manifest</strong>
+              <span>The reviewer-input stager now writes the exact bundle-manifest SHA-256 into its receipt, and AI-review preparation refuses to install Reviewer A/B packets if that receipt points at an older bundle.</span>
+            </li>
+            <li class="item" style="--tone: var(--done)">
               <strong>Done · require exact AI reviewer file modes</strong>
               <span>AI-review preparation now exact-checks both reviewer directories and both staged reviewer files, rejecting JSON <code>1</code> in place of reviewed <code>mode_0700</code> and <code>mode_0600</code> values before two-reviewer source bundles can be installed.</span>
             </li>
@@ -2934,6 +2941,18 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-20">Jul 20 · local</time>
+              <span>
+                <strong>Local patch · Bind staged AI reviewer inputs to their bundle manifest:</strong>
+                the AI reviewer-input stager now stores the exact
+                <code>bundle_manifest.json</code> SHA-256 in its receipt, and
+                AI-review preparation rejects staged Reviewer A/B packets if
+                that receipt no longer matches the bundle being installed. No
+                S3, Batch, route, GPU, quota, replacement compute, or
+                apply-mode AWS work was launched.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-20">Jul 20 · local</time>
               <span>

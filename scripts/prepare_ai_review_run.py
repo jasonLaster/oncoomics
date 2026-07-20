@@ -59,6 +59,7 @@ STAGE_RECEIPT_KEYS = {
     "status",
     "generated_at",
     "bundle_dir",
+    "bundle_manifest_sha256",
     "output_root",
     "reviewers",
     "checks",
@@ -489,6 +490,7 @@ def validate_postconditions(
         stage_receipt,
         output,
         bundle_manifest,
+        bundle_manifest_sha256,
     )
     expected_prompt_hashes = bundle_manifest["prompt_sha256"]
     checks = {
@@ -548,6 +550,7 @@ def require_rebased_stage_receipt(
     receipt: dict[str, Any],
     output: Path,
     bundle_manifest: dict[str, Any],
+    bundle_manifest_sha256: str,
 ) -> dict[str, Any]:
     review_bundle_sha256 = require_sha256(
         bundle_manifest.get("review_bundle_sha256"),
@@ -585,6 +588,7 @@ def require_rebased_stage_receipt(
         or not isinstance(receipt.get("generated_at"), str)
         or not receipt.get("generated_at")
         or receipt.get("bundle_dir") != str(output / "bundle")
+        or receipt.get("bundle_manifest_sha256") != bundle_manifest_sha256
         or receipt.get("output_root") != str(output / "reviewer-inputs")
         or not exact_stage_reviewers(receipt.get("reviewers"), expected_reviewers)
         or not exact_check_map(receipt.get("checks"), STAGE_RECEIPT_CHECKS)

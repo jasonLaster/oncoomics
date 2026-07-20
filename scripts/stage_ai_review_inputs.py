@@ -65,11 +65,12 @@ def sha256(path: Path) -> str:
     return digest.hexdigest()
 
 
-def load_object(path: Path, label: str) -> dict[str, Any]:
+def load_object_with_sha256(path: Path, label: str) -> tuple[dict[str, Any], str]:
     require_real_file(path, label)
+    payload = path.read_bytes()
     try:
         value = json.loads(
-            path.read_text(encoding="utf-8"),
+            payload.decode("utf-8"),
             object_pairs_hook=reject_duplicate_json_object_names,
         )
     except DuplicateJsonKeyError as error:
@@ -78,6 +79,13 @@ def load_object(path: Path, label: str) -> dict[str, Any]:
         raise ValueError(f"invalid JSON in {label}") from error
     if not isinstance(value, dict):
         raise ValueError(f"{label} must be a JSON object")
+    digest = hashlib.sha256(payload).hexdigest()
+    require_file(path, digest, label)
+    return value, digest
+
+
+def load_object(path: Path, label: str) -> dict[str, Any]:
+    value, _ = load_object_with_sha256(path, label)
     return value
 
 
@@ -213,7 +221,7 @@ def validate_bundle(bundle_dir: Path) -> dict[str, str]:
 
     require_bundle_manifest(bundle_dir)
 
-    bundle_manifest = load_object(
+    bundle_manifest, bundle_manifest_sha256 = load_object_with_sha256(
         bundle_dir / "bundle_manifest.json",
         "bundle_manifest.json",
     )
@@ -230,7 +238,7 @@ def validate_bundle(bundle_dir: Path) -> dict[str, str]:
     )
     require_file(bundle_dir / "review_bundle.json", bundle_hash, "review_bundle.json")
 
-    output = {"review_bundle.json": bundle_hash}
+    output = {"bundle_manifest.json": bundle_manifest_sha256, "review_bundle.json": bundle_hash}
     for role in ROLES:
         prompt = ROLE_PROMPTS[role]
         prompt_hash = require_sha(
@@ -353,6 +361,7 @@ def stage(bundle_dir: Path, output_root: Path, receipt_output: Path) -> dict[str
         "status": "passed",
         "generated_at": now(),
         "bundle_dir": str(bundle_dir),
+        "bundle_manifest_sha256": hashes["bundle_manifest.json"],
         "output_root": str(output_root),
         "reviewers": published,
         "checks": {
