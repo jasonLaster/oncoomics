@@ -242,7 +242,9 @@ class RenderMaterializerCaptureCommandTests(unittest.TestCase):
         real_read_input = MODULE.read_real_hash_input_once
         changed = False
 
-        def change_after_first_request_read(path: Path, label: str) -> bytes:
+        def change_after_first_request_read(
+            path: Path, label: str
+        ) -> tuple[bytes, tuple[int, int, int, int, int, int]]:
             nonlocal changed
             data = real_read_input(path, label)
             if path == self.request_path and not changed:
@@ -274,7 +276,9 @@ class RenderMaterializerCaptureCommandTests(unittest.TestCase):
         real_read_input = MODULE.read_real_hash_input_once
         changed = False
 
-        def change_after_first_response_read(path: Path, label: str) -> bytes:
+        def change_after_first_response_read(
+            path: Path, label: str
+        ) -> tuple[bytes, tuple[int, int, int, int, int, int]]:
             nonlocal changed
             data = real_read_input(path, label)
             if path == self.response_path and not changed:
@@ -419,22 +423,24 @@ class RenderMaterializerCaptureCommandTests(unittest.TestCase):
 
     def test_sha256_path_rejects_changing_hash_inputs(self) -> None:
         input_path = self.root / "request.json"
+        replacement = self.root / "replacement-request.json"
         input_path.write_text('{"status":"first"}\n', encoding="utf-8")
-        real_sha256_path_once = MODULE.sha256_path_once
-        hashes = 0
+        replacement.write_text('{"status":"second"}\n', encoding="utf-8")
+        real_sha256_bytes = MODULE.sha256_bytes
+        mutated = False
 
-        def mutate_after_first_hash(path: Path) -> str:
-            nonlocal hashes
-            digest = real_sha256_path_once(path)
-            if path == input_path and hashes == 0:
-                input_path.write_text('{"status":"second"}\n', encoding="utf-8")
-            hashes += 1
+        def mutate_after_first_hash(data: bytes) -> str:
+            nonlocal mutated
+            digest = real_sha256_bytes(data)
+            if not mutated:
+                replacement.replace(input_path)
+                mutated = True
             return digest
 
         with (
             mock.patch.object(
                 MODULE,
-                "sha256_path_once",
+                "sha256_bytes",
                 side_effect=mutate_after_first_hash,
             ),
             self.assertRaisesRegex(
@@ -443,6 +449,67 @@ class RenderMaterializerCaptureCommandTests(unittest.TestCase):
             ),
         ):
             MODULE.sha256_path(input_path)
+
+        self.assertTrue(mutated)
+
+    def test_sha256_path_rejects_same_byte_leaf_replacement(self) -> None:
+        input_path = self.root / "request.json"
+        replacement = self.root / "replacement-request.json"
+        input_path.write_text('{"status":"stable"}\n', encoding="utf-8")
+        replacement.write_text('{"status":"stable"}\n', encoding="utf-8")
+        real_sha256_bytes = MODULE.sha256_bytes
+        mutated = False
+
+        def replace_after_first_hash(data: bytes) -> str:
+            nonlocal mutated
+            digest = real_sha256_bytes(data)
+            if not mutated:
+                replacement.replace(input_path)
+                mutated = True
+            return digest
+
+        with (
+            mock.patch.object(
+                MODULE,
+                "sha256_bytes",
+                side_effect=replace_after_first_hash,
+            ),
+            self.assertRaisesRegex(
+                ValueError,
+                "request.json SHA-256 input changed during read",
+            ),
+        ):
+            MODULE.sha256_path(input_path)
+
+        self.assertTrue(mutated)
+
+    def test_stable_file_rejects_same_byte_leaf_replacement(self) -> None:
+        input_path = self.root / "request.json"
+        replacement = self.root / "replacement-request.json"
+        input_path.write_text('{"status":"stable"}\n', encoding="utf-8")
+        replacement.write_text('{"status":"stable"}\n', encoding="utf-8")
+        real_sha256_bytes = MODULE.sha256_bytes
+        mutated = False
+
+        def replace_after_first_hash(data: bytes) -> str:
+            nonlocal mutated
+            digest = real_sha256_bytes(data)
+            if not mutated:
+                replacement.replace(input_path)
+                mutated = True
+            return digest
+
+        with (
+            mock.patch.object(
+                MODULE,
+                "sha256_bytes",
+                side_effect=replace_after_first_hash,
+            ),
+            self.assertRaisesRegex(ValueError, "request receipt changed during read"),
+        ):
+            MODULE.read_stable_file_with_sha256(input_path, "request receipt")
+
+        self.assertTrue(mutated)
 
     def test_sha256_path_rejects_symlink_swap_after_preflight(self) -> None:
         input_path = self.root / "request.json"
