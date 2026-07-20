@@ -956,7 +956,12 @@ def collect_limitations(evidence_rows: Sequence[Dict[str, Any]], reviews: Sequen
     for evidence in evidence_rows:
         limitations = evidence["review_summary"].get("limitations", [])
         if isinstance(limitations, list):
-            values.update(str(value).strip() for value in limitations if str(value).strip())
+            for value in limitations:
+                if not isinstance(value, str) or not value or value != value.strip():
+                    raise ValueError(
+                        "comparative synthesis source limitations are not exact"
+                    )
+                values.add(value)
     for review in reviews:
         values.update(row["caveat"] for row in review["claims"] if row["caveat"])
     return sorted(values)
@@ -1312,7 +1317,8 @@ def review_evidence_payload(
 
 def require_string_list(value: Any, label: str) -> List[str]:
     if not isinstance(value, list) or any(
-        not isinstance(item, str) or not item.strip() for item in value
+        not isinstance(item, str) or not item or item != item.strip()
+        for item in value
     ):
         raise ValueError("comparative synthesis review summary has malformed " + label)
     return value

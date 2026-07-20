@@ -1751,6 +1751,34 @@ class GenerateSynthesisTests(unittest.TestCase):
             ):
                 GENERATE.require_synthesis_report_manifest(fixture.output_dir)
 
+    def test_synthesis_manifest_rejects_padded_review_evidence_limitations(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="hrd-synthesis-") as temporary:
+            fixture = SynthesisFixture(Path(temporary))
+            result = fixture.run()
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+
+            evidence_path = fixture.output_dir / "review_evidence.json"
+            evidence = json.loads(evidence_path.read_text(encoding="utf-8"))
+            evidence["methods"][0]["review_summary"]["limitations"][0] = (
+                " " + evidence["methods"][0]["review_summary"]["limitations"][0]
+            )
+            write_json(evidence_path, evidence)
+
+            manifest_path = fixture.output_dir / "report_manifest.json"
+            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+            manifest["support_sha256"]["review_evidence.json"] = sha256(evidence_path)
+            bind_review_evidence_hashes(
+                manifest["source_sha256"],
+                evidence,
+            )
+            write_json(manifest_path, manifest)
+
+            with self.assertRaisesRegex(
+                ValueError,
+                "comparative synthesis source limitations are not exact",
+            ):
+                GENERATE.require_synthesis_report_manifest(fixture.output_dir)
+
     def test_synthesis_manifest_rejects_stale_review_evidence_unresolved(
         self,
     ) -> None:

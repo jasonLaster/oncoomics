@@ -401,7 +401,10 @@
           report is now re-rendered from exact installed support before a
           rebound narrative hash can be trusted, AI-review bundles and
           comparative synthesis now reject padded method-inventory arguments
-          instead of trimming them before exact validation,
+          instead of trimming them before exact validation, comparative
+          synthesis now rejects padded source limitations in its de-identified
+          review-evidence support, executable cross-check staging now rejects
+          padded S3/KMS receipt strings and coerced output directories,
           reviewed-public publication now preserves the support file,
           pre-route blocked cross-check packets now exact-check the top-level
           and nested review summary they are about to hand to AI/freeform
@@ -436,7 +439,9 @@
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-20</li>
-          <li class="pill">Latest milestone = AI/freeform inventory exact</li>
+          <li class="pill">Latest milestone = support/receipt exactness</li>
+          <li class="pill">Synthesis limitations = exact</li>
+          <li class="pill">Cross-check receipts = exact</li>
           <li class="pill">AI/freeform method IDs = exact</li>
           <li class="pill">Blocked reports = exact</li>
           <li class="pill">Synthesis report = exact</li>
@@ -1110,6 +1115,10 @@
             <li class="item" style="--tone: var(--done)">
               <strong>Done · reject padded AI/freeform method inventories</strong>
               <span>AI-review bundle construction and comparative synthesis now pass <code>--require-method</code> arguments through exact ordered validation without trimming them first, so a padded or hand-edited deterministic/Rosalind/cross-check inventory fails before it can prepare model-review prompts or synthesize final freeform findings.</span>
+            </li>
+            <li class="item" style="--tone: var(--done)">
+              <strong>Done · reject normalized support and receipt fields</strong>
+              <span>Comparative synthesis now rejects padded source limitations in <code>review_evidence.json</code>, and exact route replay staging now rejects padded publication receipt strings or coerced output directories before compact no-call cross-check packets can feed Rosalind, source-freeze, or AI/freeform review.</span>
             </li>
             <li class="item" style="--tone: var(--done)">
               <strong>Done · re-render blocked route reports</strong>
@@ -3105,6 +3114,20 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-20">Jul 20 · local</time>
+              <span>
+                <strong>Local patch · Reject normalized support and receipt fields:</strong>
+                comparative synthesis no longer strips source limitations from
+                <code>review_evidence.json</code>, and exact route replay
+                staging now rejects padded publication receipt strings plus
+                coerced output directories before compact no-call cross-check
+                packets can feed Rosalind, source-freeze, or AI/freeform
+                review. No S3, Batch, route, GPU, quota, rerun, or apply-mode
+                AWS work was launched; Cost Explorer was refreshed read-only
+                for 2026-07-19 UTC and remained at $5.24.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-20">Jul 20 · local</time>
               <span>

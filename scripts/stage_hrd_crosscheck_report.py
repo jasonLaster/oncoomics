@@ -161,6 +161,12 @@ def require_sha(value: Any, label: str) -> str:
     return value
 
 
+def require_exact_string(value: Any, label: str) -> str:
+    if not isinstance(value, str) or not value or value != value.strip():
+        raise ValueError(f"{label} is not exact")
+    return value
+
+
 def require_safe_relative_path(relative: str, label: str) -> Path:
     path = Path(relative)
     if not path.parts or path.is_absolute() or any(
@@ -264,8 +270,27 @@ def require_download_verification(
             verification.get("prior_verification_sha256"),
             "download verification prior_verification_sha256",
         )
-    if "prior_error" in verification and not str(verification.get("prior_error", "")):
-        raise ValueError("download verification envelope is not exact")
+    if "prior_error" in verification:
+        require_exact_string(
+            verification.get("prior_error"),
+            "download verification prior_error",
+        )
+    publication_receipt_uri = require_exact_string(
+        verification.get("publication_receipt_uri"),
+        "download verification publication_receipt_uri",
+    )
+    route_output_uri = require_exact_string(
+        verification.get("route_output_uri"),
+        "download verification route_output_uri",
+    )
+    expected_kms_key_arn = require_exact_string(
+        verification.get("expected_kms_key_arn"),
+        "download verification expected_kms_key_arn",
+    )
+    require_exact_string(
+        verification.get("output_dir"),
+        "download verification output_dir",
+    )
     if (
         not exact_schema_version(verification)
         or verification.get("status") != "passed"
@@ -273,10 +298,9 @@ def require_download_verification(
             verification.get("publication_receipt_sha256"),
             "download verification publication receipt SHA-256",
         )
-        or not str(verification.get("publication_receipt_uri", "")).startswith("s3://")
-        or not str(verification.get("route_output_uri", "")).startswith("s3://")
-        or not str(verification.get("expected_kms_key_arn", "")).startswith("arn:aws:kms:")
-        or not str(verification.get("output_dir", ""))
+        or not publication_receipt_uri.startswith("s3://")
+        or not route_output_uri.startswith("s3://")
+        or not expected_kms_key_arn.startswith("arn:aws:kms:")
         or not isinstance(rows, list)
         or not rows
         or require_positive_exact_int(
