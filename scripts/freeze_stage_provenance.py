@@ -577,7 +577,7 @@ def validate_execution(
         or batch.get("command") != expected_command
         or batch.get("retry_strategy") != job.get("retryStrategy")
         or batch.get("timeout") != job.get("timeout")
-        or batch.get("attempt_count") != len(normalized_attempts)
+        or not exact_int(batch.get("attempt_count"), len(normalized_attempts))
         or captured_attempts != normalized_attempts
         or len(normalized_attempts) != 1
         or normalized_attempts[0].get("exit_code") != 0

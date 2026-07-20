@@ -374,14 +374,15 @@
           source-only guardrails now reject not-really-zero and not-quite-exact
           counters before terminal artifact freezing, exact-version
           materialization, private report replays, final alias-only input
-          contracts, alias-only materializer submission, or cross-check report
-          replay can continue.
+          contracts, alias-only materializer submission, cross-check report
+          replay, or post-terminal freeze handoff can continue.
           Diana HRD remains <code>partial_evidence</code> / <code>no_call</code> until terminal
           artifacts and reviewed cross-check reports exist.
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-19</li>
-          <li class="pill">Latest milestone = cross-check replay counts</li>
+          <li class="pill">Latest milestone = freeze Batch attempts</li>
+          <li class="pill">Terminal freeze attempts = exact</li>
           <li class="pill">Cross-check replay counts = exact</li>
           <li class="pill">Materializer submit counts = exact</li>
           <li class="pill">Live P5 placement = p5en / p5e / p5</li>
@@ -1220,6 +1221,10 @@
 
           <h3>Priority 2 · terminal deterministic artifacts</h3>
           <ol class="todo">
+            <li class="item" style="--tone: var(--done)">
+              <strong>Done · require exact terminal freeze attempts</strong>
+              <span>Stage-provenance and final-artifact freezing now reject boolean, string, or float Batch attempt counts before a captured terminal job can freeze deterministic handoff files for Rosalind, cross-check staging, or AI/freeform review.</span>
+            </li>
             <li class="item" style="--tone: var(--done)">
               <strong>Done · require exact finalizer empty histories</strong>
               <span>Alias-only input-contract finalization now rejects JSON booleans or floats in the final-freeze and cross-check materialization empty-history counters, so Rosalind and route jobs cannot trust a final input contract backed by upstream receipts that only looked empty through Python coercion.</span>
@@ -2794,6 +2799,19 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-19T23:50:00-07:00">Jul 19 · local</time>
+              <span>
+                <strong>Local patch · Reject loose terminal freeze attempts:</strong>
+                stage-provenance and final-artifact freezing now exact-check
+                captured Batch attempt counts before terminal execution receipts
+                can freeze deterministic provenance or final artifacts for
+                downstream Rosalind, executable cross-check, and AI/freeform
+                reports. No S3, Batch, route, GPU, quota, replacement compute,
+                or apply-mode AWS work was launched; Cost Explorer was
+                refreshed read-only.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-19T23:48:00-07:00">Jul 19 · local</time>
               <span>
