@@ -271,6 +271,7 @@ def validate_file_rows(packet: Mapping[str, Any], packet_sha256: str) -> None:
         raise ValueError("report packet validation receipt packet file summary is malformed")
 
     observed_bytes = 0
+    observed_paths: set[str] = set()
     for file_row in files:
         if not isinstance(file_row, dict) or set(file_row) != {"relative_path", "bytes", "sha256", "checksum_sha256"}:
             raise ValueError("report packet validation receipt file rows are malformed")
@@ -285,6 +286,9 @@ def validate_file_rows(packet: Mapping[str, Any], packet_sha256: str) -> None:
             or ".." in Path(relative_path).parts
         ):
             raise ValueError("report packet validation receipt file rows are malformed")
+        if relative_path in observed_paths:
+            raise ValueError("report packet validation receipt file rows are malformed")
+        observed_paths.add(relative_path)
         if size < 1 or not isinstance(sha256, str) or not SHA256_HEX.fullmatch(sha256):
             raise ValueError("report packet validation receipt file rows are malformed")
         if not isinstance(checksum, str) or not SHA256_B64.fullmatch(checksum) or checksum != checksum_sha256(sha256):

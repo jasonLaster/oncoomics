@@ -851,6 +851,24 @@ class ValidatePhase3FastReportPacketsTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "file rows"):
                 VALIDATOR.require_validation_receipt_packet_sha256s(malformed)
 
+            malformed = json.loads(json.dumps(receipt))
+            duplicate = dict(malformed["packets"][0]["files"][0])
+            malformed["packets"][0]["files"].append(duplicate)
+            malformed["packets"][0]["file_count"] = len(
+                malformed["packets"][0]["files"]
+            )
+            malformed["packets"][0]["total_bytes"] = sum(
+                row["bytes"] for row in malformed["packets"][0]["files"]
+            )
+            malformed["packets"][0]["packet_sha256"] = (
+                VALIDATOR.canonical_packet_digest(
+                    malformed["packets"][0]["files"],
+                )
+            )
+
+            with self.assertRaisesRegex(ValueError, "file rows"):
+                VALIDATOR.require_validation_receipt_packet_sha256s(malformed)
+
     def test_rejects_receipt_from_different_run_forbidden_tokens(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
