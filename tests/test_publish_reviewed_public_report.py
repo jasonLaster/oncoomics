@@ -1588,6 +1588,17 @@ class PublishReviewedPublicReportTests(unittest.TestCase):
                 "not exact and passed",
             ),
             (
+                "unsorted forbidden token fingerprints",
+                lambda receipt: (
+                    receipt.__setitem__("forbidden_token_count", 2),
+                    receipt.__setitem__(
+                        "forbidden_token_sha256",
+                        ["b" * 64, "a" * 64],
+                    ),
+                ),
+                "not exact and passed",
+            ),
+            (
                 "object bytes bool",
                 lambda receipt: (
                     receipt["objects"][0].__setitem__("bytes", True),
