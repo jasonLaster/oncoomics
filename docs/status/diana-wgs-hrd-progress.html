@@ -369,14 +369,15 @@
           files it used. The public HCC1395 rehearsal still tests only packaging
           mechanics; it does not stand in for Diana biology. The legacy CPU run
           is stopped, the selected GPU rerun is still waiting on quota, and the
-          latest source-only guardrail makes deterministic report staging reread
-          local JSON and support files before trusting their SHA-256 custody.
+          latest source-only guardrail makes Rosalind packet assembly reread
+          local files before trusting their SHA-256 custody.
           Diana HRD remains <code>partial_evidence</code> / <code>no_call</code> until terminal
           artifacts and reviewed cross-check reports exist.
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-19</li>
-          <li class="pill">Latest milestone = deterministic report reads stay stable</li>
+          <li class="pill">Latest milestone = Rosalind hash inputs stay stable</li>
+          <li class="pill">Rosalind hash inputs = stable</li>
           <li class="pill">Deterministic report reads = stable</li>
           <li class="pill">Blocked generator hashes = stable</li>
           <li class="pill">Phase 3 fast manifest hashes = stable</li>
@@ -1555,6 +1556,10 @@
           <h3>Priority 3 · Rosalind packet and route reports</h3>
           <ol class="todo">
             <li class="item" style="--tone: var(--done)">
+              <strong>Done · keep Rosalind hash inputs stable</strong>
+              <span>Diana WGS Rosalind packet assembly now rereads local files before trusting SHA-256s for source artifacts, support files, report manifests, and final packet installs, so a mid-read rewrite cannot rebind a packet.</span>
+            </li>
+            <li class="item" style="--tone: var(--done)">
               <strong>Done · seal publication packet envelopes</strong>
               <span>Private and reviewed-public publication now reuse the model-review packet validator, so unbound fields in any report-family <code>report_manifest.json</code> fail before a source-freeze, AI, or reviewed-public copy can trust the packet.</span>
             </li>
@@ -2632,6 +2637,16 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-19T21:37:00-07:00">Jul 19 · local</time>
+              <span>
+                <strong>Local patch · Keep Rosalind hash inputs stable:</strong>
+                Diana WGS Rosalind packet assembly now hashes every local packet
+                source twice before binding report manifests, support files,
+                source artifacts, or final installed packets for downstream
+                cross-check and AI/freeform review.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-19T21:33:00-07:00">Jul 19 · local</time>
               <span>

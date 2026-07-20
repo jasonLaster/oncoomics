@@ -506,6 +506,34 @@ class RosalindHrdPacketTest(unittest.TestCase):
             ):
                 packet.sha256_file(linked_sources / "report_manifest.json")
 
+    def test_sha256_file_rejects_input_that_changes_during_read(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "report_manifest.json"
+            path.write_text('{"status":"stable"}\n', encoding="utf-8")
+            original_sha256_file_once = packet.sha256_file_once
+            mutated = False
+
+            def mutate_after_first_hash(input_path: Path) -> str:
+                nonlocal mutated
+                digest = original_sha256_file_once(input_path)
+                if input_path == path and not mutated:
+                    mutated = True
+                    path.write_text('{"status":"rewritten"}\n', encoding="utf-8")
+                return digest
+
+            with (
+                patch.object(
+                    packet,
+                    "sha256_file_once",
+                    side_effect=mutate_after_first_hash,
+                ),
+                self.assertRaisesRegex(
+                    ValueError,
+                    "report_manifest.json SHA-256 input changed during read",
+                ),
+            ):
+                packet.sha256_file(path)
+
     def test_artifact_index_rejects_symlinked_present_artifact(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

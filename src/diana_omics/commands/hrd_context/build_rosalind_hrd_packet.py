@@ -358,6 +358,13 @@ def artifact_index(paths: Sequence[str], *, logical_paths_only: bool = False) ->
 
 def sha256_file(path: Path) -> str:
     require_real_hash_input(path)
+    digest = sha256_file_once(path)
+    if sha256_file_once(path) != digest:
+        raise ValueError(f"{path.name} SHA-256 input changed during read")
+    return digest
+
+
+def sha256_file_once(path: Path) -> str:
     digest = hashlib.sha256()
     with path.open("rb") as handle:
         for chunk in iter(lambda: handle.read(1024 * 1024), b""):
