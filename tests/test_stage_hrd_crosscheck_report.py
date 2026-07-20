@@ -322,21 +322,21 @@ class StageHrdCrosscheckReportTests(unittest.TestCase):
             root = Path(temporary)
             report = root / "report.md"
             report.write_text("stable report\n", encoding="utf-8")
-            original_sha256_file_once = STAGE.sha256_file_once
+            original_sha256_bytes = STAGE.sha256_bytes
             mutated = False
 
-            def mutate_after_first_hash(path: Path) -> str:
+            def mutate_after_first_hash(payload: bytes) -> str:
                 nonlocal mutated
-                digest = original_sha256_file_once(path)
-                if path == report and not mutated:
+                digest = original_sha256_bytes(payload)
+                if not mutated:
                     mutated = True
-                    path.write_text("rewritten report\n", encoding="utf-8")
+                    report.write_text("rewritten report\n", encoding="utf-8")
                 return digest
 
             with (
                 mock.patch.object(
                     STAGE,
-                    "sha256_file_once",
+                    "sha256_bytes",
                     side_effect=mutate_after_first_hash,
                 ),
                 self.assertRaisesRegex(
@@ -345,6 +345,39 @@ class StageHrdCrosscheckReportTests(unittest.TestCase):
                 ),
             ):
                 STAGE.sha256(report)
+
+    def test_sha256_rejects_hash_input_swapped_to_symlink_during_read(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            report = root / "report.md"
+            report.write_text("stable report\n", encoding="utf-8")
+            real_read_bytes = Path.read_bytes
+            moved = False
+
+            def swap_to_symlink_after_first_read(path: Path) -> bytes:
+                nonlocal moved
+                data = real_read_bytes(path)
+                if path == report and not moved:
+                    moved = True
+                    real_report = root / "report.real.md"
+                    report.rename(real_report)
+                    report.symlink_to(real_report)
+                return data
+
+            with (
+                mock.patch.object(
+                    Path,
+                    "read_bytes",
+                    swap_to_symlink_after_first_read,
+                ),
+                self.assertRaisesRegex(
+                    ValueError,
+                    "report.md SHA-256 input is missing or a symlink",
+                ),
+            ):
+                STAGE.sha256(report)
+
+            self.assertTrue(moved)
 
     def test_stage_compacts_route_tree_and_remains_publishable(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
@@ -418,22 +451,22 @@ class StageHrdCrosscheckReportTests(unittest.TestCase):
             root = Path(temporary)
             source = root / "exact"
             verification = write_route_report(source)
-            original_sha256_file_once = STAGE.sha256_file_once
+            original_sha256_bytes = STAGE.sha256_bytes
             mutated = False
 
-            def mutate_before_stability_hash(path: Path) -> str:
+            def mutate_before_stability_hash(payload: bytes) -> str:
                 nonlocal mutated
-                if path == verification and not mutated:
+                if not mutated:
                     mutated = True
-                    payload = json.loads(path.read_text(encoding="utf-8"))
-                    payload["prior_error"] = "late local mutation"
-                    write_json(path, payload)
-                return original_sha256_file_once(path)
+                    value = json.loads(verification.read_text(encoding="utf-8"))
+                    value["prior_error"] = "late local mutation"
+                    write_json(verification, value)
+                return original_sha256_bytes(payload)
 
             with (
                 mock.patch.object(
                     STAGE,
-                    "sha256_file_once",
+                    "sha256_bytes",
                     side_effect=mutate_before_stability_hash,
                 ),
                 self.assertRaisesRegex(
@@ -442,6 +475,39 @@ class StageHrdCrosscheckReportTests(unittest.TestCase):
                 ),
             ):
                 STAGE.load_json_with_sha256(verification, "download verification")
+
+    def test_stage_rejects_loaded_json_swapped_to_symlink_during_read(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            source = root / "exact"
+            verification = write_route_report(source)
+            real_read_bytes = Path.read_bytes
+            moved = False
+
+            def swap_to_symlink_after_first_read(path: Path) -> bytes:
+                nonlocal moved
+                data = real_read_bytes(path)
+                if path == verification and not moved:
+                    moved = True
+                    real_verification = root / "download-verification.real.json"
+                    verification.rename(real_verification)
+                    verification.symlink_to(real_verification)
+                return data
+
+            with (
+                mock.patch.object(
+                    Path,
+                    "read_bytes",
+                    swap_to_symlink_after_first_read,
+                ),
+                self.assertRaisesRegex(
+                    ValueError,
+                    "download verification is missing or a symlink",
+                ),
+            ):
+                STAGE.load_json_with_sha256(verification, "download verification")
+
+            self.assertTrue(moved)
 
     def test_stage_binds_parsed_source_manifest_digest(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
