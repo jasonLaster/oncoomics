@@ -128,8 +128,13 @@ def validate_packet_dir(packet_dir: Path, method_id: str, tokens: tuple[str, ...
         size = path.stat().st_size
         if size <= 0 or size > MAX_FILE_BYTES:
             raise ValueError(f"packet file size is out of bounds: {relative}")
+        scanned_digest = sha256(path)
         scan_text(path, tokens)
         digest = sha256(path)
+        if digest != scanned_digest:
+            raise ValueError(
+                f"packet file changed after forbidden-token scan: {relative}"
+            )
         paths[relative] = path
         rows.append(
             {

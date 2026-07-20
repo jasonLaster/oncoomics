@@ -1818,7 +1818,7 @@ class PublishReviewedPublicReportTests(unittest.TestCase):
                 authorized_hrd_state="positive", classification_authorized=True
             )
             fake = FakeAws(fixture)
-            with self.assertRaisesRegex(ValueError, "no-call contract"):
+            with self.assertRaisesRegex(ValueError, "cannot authorize HRD classification"):
                 self.execute(fixture, fake, apply=True)
             self.assertEqual(fake.put_calls, [])
 
@@ -1828,7 +1828,7 @@ class PublishReviewedPublicReportTests(unittest.TestCase):
             fixture.mutate_manifest(classification_qc_status="passed")
             fake = FakeAws(fixture)
 
-            with self.assertRaisesRegex(ValueError, "no-call contract"):
+            with self.assertRaisesRegex(ValueError, "cannot authorize HRD classification"):
                 self.execute(fixture, fake, apply=True)
 
             self.assertEqual(fake.put_calls, [])

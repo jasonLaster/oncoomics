@@ -416,6 +416,49 @@ class PublishPrivateReportTests(unittest.TestCase):
                     ("E019", "DRF-", "Personalis", "Echo"),
                 )
 
+    def test_validate_packet_dir_rejects_post_scan_rewrites(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            fixture = Fixture(Path(temporary))
+            real_scan = MODULE.scan_text
+            mutated = False
+
+            def mutate_after_clean_report_scan(path: Path, tokens: tuple[str, ...]) -> None:
+                nonlocal mutated
+                real_scan(path, tokens)
+                if path.name != "report.md" or mutated:
+                    return
+                mutated = True
+                path.write_text(
+                    "# Reviewed HRD evidence\n\n"
+                    "Overall HRD remains no_call.\n\n"
+                    "PRIVATE_IDENTIFIER\n",
+                    encoding="utf-8",
+                )
+                manifest_path = fixture.packet / "report_manifest.json"
+                manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+                manifest["report_sha256"] = digest(path.read_bytes())
+                manifest_path.write_text(
+                    json.dumps(manifest, indent=2, sort_keys=True) + "\n",
+                    encoding="utf-8",
+                )
+
+            with (
+                mock.patch.object(
+                    MODULE,
+                    "scan_text",
+                    side_effect=mutate_after_clean_report_scan,
+                ),
+                self.assertRaisesRegex(
+                    ValueError,
+                    "packet file changed after forbidden-token scan: report.md",
+                ),
+            ):
+                MODULE.validate_packet_dir(
+                    fixture.packet,
+                    fixture.method_id,
+                    ("PRIVATE_IDENTIFIER",),
+                )
+
     def test_rejects_extra_file_or_forbidden_token_before_aws(self) -> None:
         for mutate, message in (
             (lambda fixture: (fixture.packet / "raw.fastq.gz").write_text("raw\n"), "inventory"),
@@ -594,7 +637,7 @@ class PublishPrivateReportTests(unittest.TestCase):
                 classification_authorized=True,
             )
             with (
-                self.assertRaisesRegex(ValueError, "no-call contract"),
+                self.assertRaisesRegex(ValueError, "cannot authorize HRD classification"),
                 mock.patch.object(MODULE, "aws_json", side_effect=AssertionError("AWS called")),
             ):
                 MODULE.run(fixture.args())
@@ -605,7 +648,7 @@ class PublishPrivateReportTests(unittest.TestCase):
             fixture.mutate_manifest(classification_qc_status="passed")
 
             with (
-                self.assertRaisesRegex(ValueError, "no-call contract"),
+                self.assertRaisesRegex(ValueError, "cannot authorize HRD classification"),
                 mock.patch.object(MODULE, "aws_json", side_effect=AssertionError("AWS called")),
             ):
                 MODULE.run(fixture.args())
