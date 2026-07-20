@@ -987,25 +987,59 @@ class FreezeStageProvenanceTests(unittest.TestCase):
             receipt = root / "stage-receipt.json"
             receipt.write_text('{"stable": true}\n', encoding="utf-8")
 
-            original_sha256_once = MODULE.sha256_once
+            replacement = root / "mutated-stage-receipt.json"
+            replacement.write_text('{"stable": false}\n', encoding="utf-8")
+            original_sha256_bytes = MODULE.sha256_bytes
             mutated = False
 
-            def mutate_after_first_hash(path: Path) -> str:
+            def mutate_after_first_hash(data: bytes) -> str:
                 nonlocal mutated
-                digest = original_sha256_once(path)
-                if path == receipt and not mutated:
+                digest = original_sha256_bytes(data)
+                if not mutated:
                     mutated = True
-                    path.write_text('{"stable": false}\n', encoding="utf-8")
+                    replacement.replace(receipt)
                 return digest
 
             with (
-                patch.object(MODULE, "sha256_once", mutate_after_first_hash),
+                patch.object(MODULE, "sha256_bytes", mutate_after_first_hash),
                 self.assertRaisesRegex(
                     ValueError,
                     "stage-receipt.json SHA-256 input changed during read",
                 ),
             ):
                 MODULE.sha256(receipt)
+
+            self.assertTrue(mutated)
+
+    def test_sha256_rejects_same_byte_leaf_replacement(self) -> None:
+        with tempfile.TemporaryDirectory() as value:
+            root = Path(value)
+            receipt = root / "stage-receipt.json"
+            replacement = root / "replacement-stage-receipt.json"
+            receipt.write_text('{"stable": true}\n', encoding="utf-8")
+            replacement.write_text('{"stable": true}\n', encoding="utf-8")
+
+            original_sha256_bytes = MODULE.sha256_bytes
+            mutated = False
+
+            def replace_after_first_hash(data: bytes) -> str:
+                nonlocal mutated
+                digest = original_sha256_bytes(data)
+                if not mutated:
+                    mutated = True
+                    replacement.replace(receipt)
+                return digest
+
+            with (
+                patch.object(MODULE, "sha256_bytes", replace_after_first_hash),
+                self.assertRaisesRegex(
+                    ValueError,
+                    "stage-receipt.json SHA-256 input changed during read",
+                ),
+            ):
+                MODULE.sha256(receipt)
+
+            self.assertTrue(mutated)
 
     def test_sha256_rejects_symlink_swap_after_preflight(self) -> None:
         with tempfile.TemporaryDirectory() as value:
