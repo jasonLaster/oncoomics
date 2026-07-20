@@ -72,6 +72,18 @@ BLOCKED_REVIEW_SUMMARY_KEYS = {
     "observations",
     "limitations",
 }
+BLOCKED_REVIEW_READINESS = {
+    "execution_status": "not_run",
+    "evidence_status": "blocked",
+    "authorized_hrd_state": "no_call",
+    "classification_authorization": "none",
+}
+BLOCKED_REVIEW_OBSERVATIONS: dict[str, str] = {}
+BLOCKED_REVIEW_LIMITATIONS = (
+    "The method was not run.",
+    "No patient result is present.",
+    "No HRD classification is authorized.",
+)
 
 # Keep formatter noise out of this static prose table so diffs only show
 # substantive route-contract changes.
@@ -571,6 +583,42 @@ def require_bound_packet_file(packet_dir: Path, name: str, digest: Any) -> None:
         raise ValueError(f"blocked cross-check report manifest is stale for {name}")
 
 
+def require_blocked_review_summary(manifest: Mapping[str, Any]) -> dict[str, str]:
+    review_summary = manifest.get("review_summary")
+    if (
+        not isinstance(review_summary, dict)
+        or set(review_summary) != BLOCKED_REVIEW_SUMMARY_KEYS
+        or not isinstance(review_summary.get("evidence_scope"), str)
+        or not review_summary["evidence_scope"]
+        or review_summary.get("readiness") != BLOCKED_REVIEW_READINESS
+        or review_summary.get("observations") != BLOCKED_REVIEW_OBSERVATIONS
+        or review_summary.get("limitations") != list(BLOCKED_REVIEW_LIMITATIONS)
+    ):
+        raise ValueError("blocked cross-check review summary is not exact")
+
+    source_report_manifests = review_summary.get("source_report_manifests")
+    if not isinstance(source_report_manifests, dict):
+        raise ValueError("blocked cross-check review summary source reports are not exact")
+    validated_source_report_manifests = validate_source_report_manifests(
+        source_report_manifests,
+        allow_pre_route_source_reports=True,
+    )
+    if tuple(source_report_manifests) != tuple(validated_source_report_manifests):
+        raise ValueError("blocked cross-check review summary source reports are not exact")
+
+    expected_binding_scope = source_report_binding_scope(
+        validated_source_report_manifests,
+    )
+    if (
+        review_summary.get("source_report_binding_scope")
+        != expected_binding_scope
+        or manifest.get("source_report_binding_scope") != expected_binding_scope
+    ):
+        raise ValueError("blocked cross-check review summary source scope is not exact")
+
+    return validated_source_report_manifests
+
+
 def require_blocked_report_manifest(packet_dir: Path) -> None:
     manifest_path = packet_dir / "report_manifest.json"
     manifest = load_json_object(manifest_path, "blocked cross-check packet")
@@ -587,8 +635,6 @@ def require_blocked_report_manifest(packet_dir: Path) -> None:
         or manifest.get("classification_authorized") is not False
         or manifest.get("classification_qc_status") != "not_applicable"
         or not str(manifest.get("generated_at", ""))
-        or not isinstance(manifest.get("review_summary"), dict)
-        or set(manifest.get("review_summary", {})) != BLOCKED_REVIEW_SUMMARY_KEYS
     ):
         raise ValueError("blocked cross-check report manifest envelope is not exact")
 
@@ -598,16 +644,8 @@ def require_blocked_report_manifest(packet_dir: Path) -> None:
             "blocked cross-check report manifest must bind method_spec.json"
         )
     source_hashes = manifest.get("source_sha256")
-    review_summary = manifest.get("review_summary")
-    source_report_manifests = (
-        review_summary.get("source_report_manifests", {})
-        if isinstance(review_summary, dict)
-        else {}
-    )
-    if not isinstance(source_hashes, dict) or not isinstance(
-        source_report_manifests,
-        dict,
-    ):
+    source_report_manifests = require_blocked_review_summary(manifest)
+    if not isinstance(source_hashes, dict):
         raise ValueError("blocked cross-check report manifest source hashes are not exact")
     expected_source_hashes = {
         "generator": sha256_file(Path(__file__).resolve()),
@@ -811,18 +849,9 @@ def generate(
                     "evidence_scope": f"{method['title']} blocked-method specification",
                     "source_report_binding_scope": binding_scope,
                     "source_report_manifests": dict(source_report_manifests),
-                    "readiness": {
-                        "execution_status": "not_run",
-                        "evidence_status": "blocked",
-                        "authorized_hrd_state": "no_call",
-                        "classification_authorization": "none",
-                    },
-                    "observations": {},
-                    "limitations": [
-                        "The method was not run.",
-                        "No patient result is present.",
-                        "No HRD classification is authorized.",
-                    ],
+                    "readiness": BLOCKED_REVIEW_READINESS,
+                    "observations": BLOCKED_REVIEW_OBSERVATIONS,
+                    "limitations": list(BLOCKED_REVIEW_LIMITATIONS),
                 },
                 "source_sha256": {
                     "generator": generator_hash,

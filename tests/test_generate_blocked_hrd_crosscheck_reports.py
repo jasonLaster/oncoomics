@@ -519,7 +519,49 @@ class GenerateBlockedHrdCrosscheckReportsTests(unittest.TestCase):
                     "late_local_rewrite",
                     "not validated",
                 ),
-                "envelope is not exact",
+                "review summary is not exact",
+            ),
+            "extra_readiness": (
+                lambda manifest: manifest["review_summary"][
+                    "readiness"
+                ].__setitem__(
+                    "promoted_hrd_state",
+                    "ready",
+                ),
+                "review summary is not exact",
+            ),
+            "promoted_readiness": (
+                lambda manifest: manifest["review_summary"][
+                    "readiness"
+                ].__setitem__(
+                    "authorized_hrd_state",
+                    "called",
+                ),
+                "review summary is not exact",
+            ),
+            "stale_observation": (
+                lambda manifest: manifest["review_summary"][
+                    "observations"
+                ].__setitem__(
+                    "late_local_rewrite",
+                    "accepted",
+                ),
+                "review summary is not exact",
+            ),
+            "stale_limitation": (
+                lambda manifest: manifest["review_summary"][
+                    "limitations"
+                ].append(
+                    "Late local rewrite accepted this blocked route.",
+                ),
+                "review summary is not exact",
+            ),
+            "mismatched_source_scope": (
+                lambda manifest: manifest.__setitem__(
+                    "source_report_binding_scope",
+                    "pre_route_deterministic_rosalind",
+                ),
+                "source scope is not exact",
             ),
         }
 

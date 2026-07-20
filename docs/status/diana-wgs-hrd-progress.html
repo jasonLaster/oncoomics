@@ -392,7 +392,8 @@
           comparative synthesis manifests now exact-check the top-level review
           summary they are about to preserve,
           pre-route blocked cross-check packets now exact-check the top-level
-          review summary they are about to hand to AI/freeform review,
+          and nested review summary they are about to hand to AI/freeform
+          review,
           downloaded executable route manifests now have to keep the exact
           no-call cross-check envelope before route staging can compact them,
           prepared AI runs now reject model-catalog
@@ -438,6 +439,7 @@
           <li class="pill">Packet file rows = unique</li>
           <li class="pill">Route manifests = exact</li>
           <li class="pill">Blocked summaries = exact</li>
+          <li class="pill">Blocked nested summaries = exact</li>
           <li class="pill">P5 spend = preflighted</li>
           <li class="pill">P5 cost ledger = bound</li>
           <li class="pill">AI reviewer modes = exact</li>
@@ -1081,6 +1083,10 @@
             <li class="item" style="--tone: var(--queued)">
               <strong>Pending · hold the us-west-2 P-family quota hedge</strong>
               <span>A second 384-vCPU P-family request is open in <code>us-west-2</code>, where all three eight-GPU P5 Hopper shapes are catalog-visible; this is quota optionality only and does not launch replacement compute or a regional race.</span>
+            </li>
+            <li class="item" style="--tone: var(--done)">
+              <strong>Done · exact-check blocked nested summaries</strong>
+              <span>Blocked FACETS/scarHRD, CHORD, and HRDetect reports now reject stale nested readiness, observation, limitation, and source-scope fields, so a blocked route cannot smuggle promoted local review text into Rosalind, source-freeze, or AI/freeform handoffs.</span>
             </li>
             <li class="item" style="--tone: var(--done)">
               <strong>Done · bind blocked cross-checks to parsed upstream manifests</strong>
@@ -3044,6 +3050,19 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-20">Jul 20 · local</time>
+              <span>
+                <strong>Local patch · Exact-check blocked nested summaries:</strong>
+                blocked FACETS/scarHRD, CHORD, and HRDetect packets now require
+                nested <code>review_summary</code> readiness, observation,
+                limitation, and source-scope fields to stay exact before
+                <code>report_manifest.json</code> can be installed. No S3,
+                Batch, route, GPU, quota, replacement compute, or apply-mode
+                AWS work was launched; Cost Explorer was refreshed read-only
+                for 2026-07-19 UTC and remained at $5.24.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-20">Jul 20 · local</time>
               <span>
