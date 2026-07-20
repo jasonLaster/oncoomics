@@ -543,6 +543,25 @@ class RenderMaterializerCaptureCommandTests(unittest.TestCase):
 
         self.assertFalse(self.output.exists())
 
+    def test_write_once_rechecks_mode_after_parent_fsync(self) -> None:
+        real_fsync_directory = MODULE.fsync_directory
+
+        def chmod_after_parent_fsync(path: Path) -> None:
+            real_fsync_directory(path)
+            self.output.chmod(0o644)
+
+        with (
+            mock.patch.object(
+                MODULE,
+                "fsync_directory",
+                side_effect=chmod_after_parent_fsync,
+            ),
+            self.assertRaisesRegex(ValueError, "output mode changed during write"),
+        ):
+            MODULE.write_once(self.output, "complete\n")
+
+        self.assertFalse(self.output.exists())
+
     def test_write_once_rejects_symlinked_parent_without_writing_target(self) -> None:
         real_parent = self.root / "real-output"
         real_parent.mkdir()
