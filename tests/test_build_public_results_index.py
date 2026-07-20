@@ -902,6 +902,50 @@ class PublicIndexTests(unittest.TestCase):
                 with self.assertRaisesRegex(RuntimeError, message):
                     MODULE.validate_reviewed_public_receipts(receipts)
 
+    def test_reviewed_public_receipt_forbidden_fingerprints_must_be_exact(
+        self,
+    ) -> None:
+        cases = (
+            (
+                lambda receipt: receipt.update({"forbidden_token_count": 2}),
+                "reviewed-public receipt is not exact",
+            ),
+            (
+                lambda receipt: (
+                    receipt.update({"forbidden_token_count": 2}),
+                    receipt.update(
+                        {
+                            "forbidden_token_sha256": [
+                                receipt["forbidden_token_sha256"][0],
+                                receipt["forbidden_token_sha256"][0],
+                            ],
+                        }
+                    ),
+                ),
+                "reviewed-public receipt is not exact",
+            ),
+            (
+                lambda receipt: (
+                    receipt.update({"forbidden_token_count": 2}),
+                    receipt.update({"forbidden_token_sha256": ["b" * 64, "a" * 64]}),
+                ),
+                "reviewed-public receipt is not exact",
+            ),
+        )
+
+        for mutate, message in cases:
+            with self.subTest(message=message), tempfile.TemporaryDirectory() as temporary:
+                receipts = write_public_receipts(Path(temporary))
+                receipt = json.loads(receipts[0].read_text(encoding="utf-8"))
+                mutate(receipt)
+                receipts[0].write_text(
+                    json.dumps(receipt, indent=2, sort_keys=True) + "\n",
+                    encoding="utf-8",
+                )
+
+                with self.assertRaisesRegex(RuntimeError, message):
+                    MODULE.validate_reviewed_public_receipts(receipts)
+
     def test_reviewed_public_receipt_hashes_must_be_exact_strings(self) -> None:
         numeric_digest = int("1" * 64)
         digest = "1" * 64
