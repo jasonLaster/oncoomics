@@ -78,6 +78,12 @@ REQUIRED_SYNTHESIS_PROCESS = {
     "raw_inputs_used": False,
     "external_research_used": False,
 }
+REVIEWER_SUMMARY_KEYS = {
+    "reviewer_id",
+    "model",
+    "claim_count",
+    "disagreement_claim_count",
+}
 CLAIMS_FIELDS = [
     "claim_id",
     "claim",
@@ -1322,7 +1328,11 @@ def require_synthesis_review_summary(
     model_identities: set[Tuple[str, str]] = set()
     catalog_timestamps: set[str] = set()
     for row, reviewer in zip(reviewers, ("A", "B")):
-        if not isinstance(row, dict) or row.get("reviewer_id") != reviewer:
+        if (
+            not isinstance(row, dict)
+            or set(row) != REVIEWER_SUMMARY_KEYS
+            or row.get("reviewer_id") != reviewer
+        ):
             raise ValueError("comparative synthesis reviewer summary is not exact")
         model = row.get("model")
         claim_count = row.get("claim_count")

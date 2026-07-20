@@ -376,8 +376,8 @@
           forward, bind the top-level run index and cloud handoff to the run
           manifest, re-check per-packet manifests, and re-check exact public
           HCC1395 rehearsal stack manifests, inventories, reviewer input
-          directories, and AI-review preparation receipt links before they feed
-          model-review inputs.
+          directories, AI-review preparation receipt links, and comparative
+          reviewer summaries before they feed model-review inputs.
           The selected GPU rerun is still quota-blocked, the legacy CPU run
           remains stopped, and Diana HRD remains <code>partial_evidence</code> /
           <code>no_call</code> until terminal artifacts and reviewed cross-check
@@ -385,7 +385,8 @@
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-19</li>
-          <li class="pill">Latest milestone = input contracts route-checked</li>
+          <li class="pill">Latest milestone = comparative reviewer summaries exact</li>
+          <li class="pill">Comparative reviewer rows = exact</li>
           <li class="pill">Input-contract finalizer = route-checked</li>
           <li class="pill">HCC1395 AI prep receipts = rechecked</li>
           <li class="pill">HCC1395 reviewer inputs = rechecked</li>
@@ -827,8 +828,8 @@
             </li>
             <li class="track" style="--tone: var(--queued)">
               <strong>Diana AI / freeform review</strong>
-              <span>72% · rehearsal review package self-checks</span>
-              <div class="bar" aria-hidden="true" style="--pct: 72%"><span></span></div>
+              <span>73% · reviewer summaries exact</span>
+              <div class="bar" aria-hidden="true" style="--pct: 73%"><span></span></div>
             </li>
             <li class="track" style="--tone: var(--queued)">
               <strong>Diana reviewed-public publication</strong>
@@ -1983,6 +1984,10 @@
           <h3>Priority 4 · AI / freeform review</h3>
           <ol class="todo">
             <li class="item" style="--tone: var(--done)">
+              <strong>Done · seal comparative reviewer summaries</strong>
+              <span>Comparative synthesis now accepts only exact Reviewer A and Reviewer B summary rows, preventing late or unbound annotations from riding inside the final two-reviewer report manifest.</span>
+            </li>
+            <li class="item" style="--tone: var(--done)">
               <strong>Done · carry private receipt bytes into runbooks</strong>
               <span>AI-synthesis and reviewed-public runbook renderers now parse each private publication receipt once, use the same object for canonical method gates, and carry the exact parsed digests into downstream report handoffs.</span>
             </li>
@@ -2572,6 +2577,15 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-19T20:12:07-07:00">Jul 19 · local</time>
+              <span>
+                <strong>Local patch · Require exact reviewer summary rows:</strong>
+                the comparative synthesis manifest checker now rejects extra
+                Reviewer A/B summary fields before the final AI/freeform report
+                packet can be accepted.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-19T20:08:48-07:00">Jul 19 · local</time>
               <span>
