@@ -527,6 +527,105 @@ class DownloadMaterializerStagedValidationTests(unittest.TestCase):
                     )
                 )
 
+    def test_materialize_hashes_stable_loaded_receipt_bytes(self) -> None:
+        payload = json.dumps({"schema_version": 1, "status": "passed"}).encode()
+
+        with tempfile.TemporaryDirectory() as value:
+            root = Path(value)
+            receipt_path = root / "materializer.json"
+            output = root / "staged_input_validation.json"
+            verification = root / "verification.json"
+            receipt_path.write_text(
+                json.dumps(receipt(payload), indent=2, sort_keys=True) + "\n",
+                encoding="utf-8",
+            )
+            expected_receipt_sha256 = MODULE.sha256_path(receipt_path)
+
+            def get_object(
+                _bucket: str,
+                _key: str,
+                version_id: str,
+                destination: Path,
+                _region: str,
+            ) -> dict:
+                self.assertEqual(version_id, "version-1")
+                destination.write_bytes(payload)
+                return {
+                    "VersionId": "version-1",
+                    "ContentLength": len(payload),
+                    "ChecksumSHA256": checksum(payload),
+                    "ChecksumType": "FULL_OBJECT",
+                    "ServerSideEncryption": "aws:kms",
+                    "SSEKMSKeyId": KMS,
+                }
+
+            original_load = MODULE.load_json_with_sha256
+            rewrites: set[Path] = set()
+
+            def load_then_rewrite(
+                path: Path,
+                label: str,
+            ) -> tuple[dict[str, object], str]:
+                value, digest = original_load(path, label)
+                if path.resolve() == receipt_path.resolve() and path not in rewrites:
+                    rewrites.add(path)
+                    replacement = receipt(payload)
+                    replacement["outputs"][MODULE.OUTPUT_NAME][
+                        "version_id"
+                    ] = "late-rewrite-version"
+                    receipt_path.write_text(
+                        json.dumps(replacement, indent=2, sort_keys=True) + "\n",
+                        encoding="utf-8",
+                    )
+                    self.assertNotEqual(
+                        MODULE.sha256_path(receipt_path),
+                        digest,
+                    )
+                return value, digest
+
+            with (
+                patch.object(
+                    MODULE,
+                    "head_object",
+                    return_value={
+                        "VersionId": "version-1",
+                        "ContentLength": len(payload),
+                        "ChecksumSHA256": checksum(payload),
+                        "ChecksumType": "FULL_OBJECT",
+                        "ServerSideEncryption": "aws:kms",
+                        "SSEKMSKeyId": KMS,
+                    },
+                ),
+                patch.object(MODULE, "get_object", side_effect=get_object),
+                patch.object(
+                    MODULE,
+                    "load_json_with_sha256",
+                    side_effect=load_then_rewrite,
+                ),
+            ):
+                result = MODULE.materialize(
+                    argparse.Namespace(
+                        materializer_receipt=receipt_path,
+                        output=output,
+                        verification_output=verification,
+                        expected_kms_key_arn=KMS,
+                        region="us-east-1",
+                    )
+                )
+
+            self.assertEqual(rewrites, {receipt_path.resolve()})
+            self.assertEqual(result["status"], "passed")
+            self.assertEqual(
+                result["materializer_receipt_sha256"],
+                expected_receipt_sha256,
+            )
+            self.assertEqual(
+                json.loads(verification.read_text(encoding="utf-8"))[
+                    "materializer_receipt_sha256"
+                ],
+                expected_receipt_sha256,
+            )
+
     def test_materialize_rejects_non_integer_downloaded_schema_version(self) -> None:
         payload = json.dumps({"schema_version": 1.0, "status": "passed"}).encode()
 

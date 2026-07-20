@@ -368,16 +368,18 @@
           packets from a public known-answer dataset; it is not a Diana result.
           Recent hardening makes each handoff re-check the files it depends on
           before private review or reviewed-public release can continue. The
-          one-shot materializer submitter, freeze steps, and local
-          materialization now carry the exact digests of the JSON bytes they
-          parsed instead of trusting a later filesystem read. The selected GPU
-          rerun is still quota-blocked, the legacy CPU run remains stopped, and
-          Diana HRD remains <code>partial_evidence</code> / <code>no_call</code>
-          until terminal artifacts and reviewed cross-check reports exist.
+          one-shot materializer submitter, staged-validation downloader, freeze
+          steps, and local materialization now carry the exact digests of the
+          JSON bytes they parsed instead of trusting a later filesystem read.
+          The selected GPU rerun is still quota-blocked, the legacy CPU run
+          remains stopped, and Diana HRD remains <code>partial_evidence</code> /
+          <code>no_call</code> until terminal artifacts and reviewed cross-check
+          reports exist.
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-19</li>
-          <li class="pill">Latest milestone = materializer submit reads stable</li>
+          <li class="pill">Latest milestone = staged-validation receipt reads stable</li>
+          <li class="pill">Staged-validation receipt reads = stable</li>
           <li class="pill">Materializer submit reads = stable</li>
           <li class="pill">Materialization receipt reads = stable</li>
           <li class="pill">Final-freeze receipt reads = stable</li>
@@ -904,6 +906,10 @@
 
           <h3>Priority 1 · selected GPU NGS rerun prep</h3>
           <ol class="todo">
+            <li class="item" style="--tone: var(--done)">
+              <strong>Done · bind staged-validation download reads</strong>
+              <span>The materializer staged-validation downloader now records the terminal materializer receipt hash from the same JSON bytes it validated, so a local rewrite cannot swap the digest in the staged-input verification receipt.</span>
+            </li>
             <li class="item" style="--tone: var(--done)">
               <strong>Done · bind materializer submit reads</strong>
               <span>The one-shot cross-check materializer submitter now records final, reference, script, registration, job-definition, and dry-run receipt hashes from the same JSON bytes it validated, so a local rewrite cannot swap the digest recorded in the submission paperwork.</span>
@@ -2474,6 +2480,16 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-19T18:50:00-07:00">Jul 19 · local</time>
+              <span>
+                <strong>Local patch · Bind staged-validation download digests:</strong>
+                <code>download_materializer_staged_validation.py</code> now
+                carries the terminal materializer receipt hash from the stable
+                JSON bytes it parsed before writing the local staged-input
+                verification receipt.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-19T18:46:00-07:00">Jul 19 · local</time>
               <span>

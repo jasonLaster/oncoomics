@@ -75,18 +75,24 @@ def checksum_sha256(digest: str) -> str:
     return base64.b64encode(bytes.fromhex(digest)).decode("ascii")
 
 
-def load_json(path: Path, label: str) -> dict[str, Any]:
+def load_json_with_sha256(path: Path, label: str) -> tuple[dict[str, Any], str]:
     path = resolve_real_file(path, label)
+    payload = path.read_bytes()
     try:
-        payload = json.loads(
-            path.read_text(encoding="utf-8"),
+        value = json.loads(
+            payload,
             object_pairs_hook=reject_duplicate_json_object_names,
         )
     except DuplicateJsonKeyError as error:
         raise ValueError(f"duplicate JSON object name in {label}: {error}") from error
-    if not isinstance(payload, dict):
+    if not isinstance(value, dict):
         raise ValueError(f"{label} is not a JSON object")
-    return payload
+    return value, sha256_bytes(payload)
+
+
+def load_json(path: Path, label: str) -> dict[str, Any]:
+    value, _digest = load_json_with_sha256(path, label)
+    return value
 
 
 def canonical_json_bytes(value: dict[str, Any]) -> bytes:
@@ -443,13 +449,16 @@ def materialize(args: argparse.Namespace) -> dict[str, Any]:
     if staging.exists() or staging.is_symlink():
         raise FileExistsError(f"staging output already exists: {staging}")
 
-    receipt = load_json(receipt_path, "materializer receipt")
+    receipt, receipt_sha256 = load_json_with_sha256(
+        receipt_path,
+        "materializer receipt",
+    )
     row = validate_receipt(receipt, args.expected_kms_key_arn)
     result: dict[str, Any] = {
         "schema_version": 1,
         "status": "in_progress",
         "generated_at_utc": now(),
-        "materializer_receipt_sha256": sha256_path(receipt_path),
+        "materializer_receipt_sha256": receipt_sha256,
         "output": str(output_path),
         "expected_kms_key_arn": args.expected_kms_key_arn,
         "object": {
