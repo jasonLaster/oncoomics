@@ -172,6 +172,39 @@ class RunbookIoTests(unittest.TestCase):
             ):
                 MODULE.sha256_file(runbook)
 
+    def test_sha256_file_rejects_same_byte_leaf_replacement(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            runbook = root / "runbook.md"
+            replacement = root / "replacement-runbook.md"
+            runbook.write_text("original\n", encoding="utf-8")
+            replacement.write_text("original\n", encoding="utf-8")
+            real_read_once = MODULE.read_real_input_file_once
+            swapped = False
+
+            def replace_after_initial_read(path: Path, label: str):
+                nonlocal swapped
+                data = real_read_once(path, label)
+                if path == runbook and not swapped:
+                    swapped = True
+                    replacement.replace(runbook)
+                return data
+
+            with (
+                mock.patch.object(
+                    MODULE,
+                    "read_real_input_file_once",
+                    side_effect=replace_after_initial_read,
+                ),
+                self.assertRaisesRegex(
+                    ValueError,
+                    "runbook.md SHA-256 input changed during read",
+                ),
+            ):
+                MODULE.sha256_file(runbook)
+
+            self.assertTrue(swapped)
+
     def test_sha256_file_rejects_symlink_swap_between_reads(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
@@ -181,7 +214,7 @@ class RunbookIoTests(unittest.TestCase):
             real_read_once = MODULE.read_real_input_file_once
             reads = 0
 
-            def swap_after_initial_read(path: Path, label: str) -> bytes:
+            def swap_after_initial_read(path: Path, label: str):
                 nonlocal reads
                 data = real_read_once(path, label)
                 if path == runbook and reads == 0:
@@ -313,6 +346,41 @@ class RunbookIoTests(unittest.TestCase):
             ):
                 MODULE.write_once(output, "complete\n")
 
+            self.assertFalse(output.exists())
+
+    def test_write_once_rejects_same_byte_leaf_replacement_during_rehash(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            output = root / "runbook.md"
+            replacement = root / "replacement-runbook.md"
+            replacement.write_text("complete\n", encoding="utf-8")
+            real_read_once = MODULE.read_real_input_file_once
+            swapped = False
+
+            def replace_after_initial_read(path: Path, label: str):
+                nonlocal swapped
+                data = real_read_once(path, label)
+                if path == output and not swapped:
+                    swapped = True
+                    replacement.replace(output)
+                return data
+
+            with (
+                mock.patch.object(
+                    MODULE,
+                    "read_real_input_file_once",
+                    side_effect=replace_after_initial_read,
+                ),
+                self.assertRaisesRegex(
+                    ValueError,
+                    "runbook.md SHA-256 input changed during read",
+                ),
+            ):
+                MODULE.write_once(output, "complete\n")
+
+            self.assertTrue(swapped)
             self.assertFalse(output.exists())
 
     def test_write_once_rechecks_output_mode_after_directory_fsync(self) -> None:

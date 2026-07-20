@@ -107,14 +107,18 @@ def sha256_bytes(value: bytes) -> str:
 def read_stable_file(path: Path, label: str) -> bytes:
     """Read a required local input and reject mid-read rewrites."""
 
-    data = read_real_input_file_once(path, label)
+    data, identity = read_real_input_file_once(path, label)
     digest = sha256_bytes(data)
-    if sha256_bytes(read_real_input_file_once(path, label)) != digest:
+    stable_data, stable_identity = read_real_input_file_once(path, label)
+    if stable_identity != identity or sha256_bytes(stable_data) != digest:
         raise ValueError(f"{label} changed during read: {path}")
     return data
 
 
-def read_real_input_file_once(path: Path, label: str) -> bytes:
+def read_real_input_file_once(
+    path: Path,
+    label: str,
+) -> tuple[bytes, tuple[int, int, int, int, int, int]]:
     """Read a required local input after one redirected-path audit."""
 
     require_real_input_file(path, label)
@@ -146,7 +150,7 @@ def read_real_input_file_once(path: Path, label: str) -> bytes:
         or stat_identity(after_read) != stat_identity(current)
     ):
         raise ValueError(f"{label} changed during read: {path}")
-    return data
+    return data, stat_identity(opened)
 
 
 def stat_identity(value: os.stat_result) -> tuple[int, int, int, int, int, int]:
