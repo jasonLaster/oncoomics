@@ -611,6 +611,39 @@ class GenerateBlockedHrdCrosscheckReportsTests(unittest.TestCase):
 
             self.assertIn(mock.call(output.resolve()), fsync_directory.mock_calls)
 
+    def test_generation_rechecks_packets_after_final_output_root_fsync(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            output = Path(temporary) / "blocked"
+            target = output / GENERATOR.METHODS[0]["directory"]
+            real_fsync_directory = GENERATOR.fsync_directory
+            tampered = False
+
+            def tamper_report_after_output_root_fsync(path: Path) -> None:
+                nonlocal tampered
+                real_fsync_directory(path)
+                if path == output.resolve() and not tampered:
+                    tampered = True
+                    (target / "report.md").write_text(
+                        "tampered after output root fsync\n",
+                        encoding="utf-8",
+                    )
+
+            with (
+                mock.patch.object(
+                    GENERATOR,
+                    "fsync_directory",
+                    side_effect=tamper_report_after_output_root_fsync,
+                ),
+                self.assertRaisesRegex(
+                    ValueError,
+                    "blocked cross-check report manifest is stale for report.md",
+                ),
+            ):
+                GENERATOR.generate(output, "2026-07-17T00:00:00+00:00")
+
+            self.assertTrue(tampered)
+            self.assertFalse(output.exists())
+
     def test_reports_preserve_blocked_no_call_state(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             output = Path(temporary) / "blocked"
