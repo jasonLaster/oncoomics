@@ -241,6 +241,22 @@ class Phase3FastSvEvidenceRunTests(unittest.TestCase):
                 with self.subTest(hash_input=hash_input), self.assertRaisesRegex(run_sv.ManifestError, message):
                     run_sv._sha256_path(hash_input)
 
+    def test_hash_materialized_binds_size_and_sha_to_one_stable_payload(self) -> None:
+        with TemporaryDirectory() as tmp:
+            output = Path(tmp) / "idxstats.tsv"
+            output.write_text("changed after snapshot\n", encoding="utf-8")
+            payload = b"stable idxstats\n"
+
+            with patch.object(run_sv, "read_stable_real_file_bytes", return_value=payload):
+                materialized = run_sv._hash_materialized(
+                    output,
+                    "tumor idxstats",
+                    allow_empty=False,
+                )
+
+        self.assertEqual(len(payload), materialized["bytes"])
+        self.assertEqual(hashlib.sha256(payload).hexdigest(), materialized["sha256"])
+
     def test_rejects_missing_planned_command(self) -> None:
         with TemporaryDirectory() as tmp:
             plan = phase3_fast_sv_evidence_plan(Path(tmp))
