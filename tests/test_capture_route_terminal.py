@@ -852,6 +852,46 @@ class CaptureRouteTerminalTests(unittest.TestCase):
             self.assertTrue(all(not path.exists() for path in paths))
             self.assertEqual(relocated.read_bytes(), b"content-1")
 
+    def test_three_output_rejects_symlink_swap_before_final_open(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            paths = [root / f"{index}.json" for index in range(3)]
+            relocated = root / "relocated.json"
+            real_open = MODULE.os.open
+            swapped = False
+
+            def swap_before_verify_open(
+                path_arg: Path,
+                flags: int,
+                *args: int,
+            ) -> int:
+                nonlocal swapped
+                if path_arg == paths[1] and not args and not swapped:
+                    path_arg.unlink()
+                    relocated.write_bytes(b"content-1")
+                    relocated.chmod(0o600)
+                    path_arg.symlink_to(relocated)
+                    swapped = True
+                return real_open(path_arg, flags, *args)
+
+            with (
+                mock.patch.object(MODULE.os, "open", side_effect=swap_before_verify_open),
+                self.assertRaisesRegex(
+                    ValueError,
+                    "private output changed during write",
+                ),
+            ):
+                MODULE.create_private_outputs(
+                    [
+                        (path, f"content-{index}".encode())
+                        for index, path in enumerate(paths)
+                    ]
+                )
+
+            self.assertTrue(swapped)
+            self.assertTrue(all(not path.exists() for path in paths))
+            self.assertEqual(relocated.read_bytes(), b"content-1")
+
     def test_rejects_wrong_revision_queue_or_non_x86_compute_environment(self):
         fixture = self.fixture()
         wrong_definition = copy.deepcopy(fixture["job"])
