@@ -9,13 +9,18 @@ import hashlib
 import importlib.util
 import json
 import subprocess
+import sys
 import tempfile
 import unittest
 from pathlib import Path
 from unittest import mock
 
 HERE = Path(__file__).resolve().parent
-SCRIPT = HERE.parents[0] / "scripts" / "capture_route_terminal.py"
+SCRIPT_DIR = HERE.parents[0] / "scripts"
+if str(SCRIPT_DIR) not in sys.path:
+    sys.path.insert(0, str(SCRIPT_DIR))
+
+SCRIPT = SCRIPT_DIR / "capture_route_terminal.py"
 SPEC = importlib.util.spec_from_file_location("capture_route_terminal", SCRIPT)
 assert SPEC and SPEC.loader
 MODULE = importlib.util.module_from_spec(SPEC)
@@ -1096,6 +1101,7 @@ class CaptureRouteTerminalTests(unittest.TestCase):
             ("missing", lambda checks: checks.pop("sha256_exact")),
             ("unexpected", lambda checks: checks.__setitem__("forged_extra", True)),
             ("failed", lambda checks: checks.__setitem__("exact_kms", False)),
+            ("truthy-integer", lambda checks: checks.__setitem__("sha256_exact", 1)),
         ):
             terminal = copy.deepcopy(fixture["terminal"])
             mutate(terminal["publication_anchor"]["checks"])
@@ -1301,6 +1307,14 @@ class CaptureRouteTerminalTests(unittest.TestCase):
                 ),
             ),
             (
+                "receipt",
+                "truthy-integer",
+                lambda receipt: receipt["checks"].__setitem__(
+                    "all_outputs_create_only",
+                    1,
+                ),
+            ),
+            (
                 "object",
                 "missing",
                 lambda receipt: receipt["objects"][0]["checks"].pop("create_only_put"),
@@ -1319,6 +1333,14 @@ class CaptureRouteTerminalTests(unittest.TestCase):
                 lambda receipt: receipt["objects"][0]["checks"].__setitem__(
                     "version_exact",
                     False,
+                ),
+            ),
+            (
+                "object",
+                "truthy-integer",
+                lambda receipt: receipt["objects"][0]["checks"].__setitem__(
+                    "version_exact",
+                    1,
                 ),
             ),
             (
@@ -1342,6 +1364,14 @@ class CaptureRouteTerminalTests(unittest.TestCase):
                 lambda receipt: receipt["history_audit"][0]["checks"].__setitem__(
                     "exact_kms",
                     False,
+                ),
+            ),
+            (
+                "history",
+                "truthy-integer",
+                lambda receipt: receipt["history_audit"][0]["checks"].__setitem__(
+                    "exact_kms",
+                    1,
                 ),
             ),
         ):

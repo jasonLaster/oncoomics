@@ -350,6 +350,10 @@ def check_map_mismatches(value: dict[str, Any], expected: dict[str, bool]) -> li
     return errors
 
 
+def exact_check_map(value: Any, expected: dict[str, bool]) -> bool:
+    return isinstance(value, dict) and not check_map_mismatches(value, expected)
+
+
 def require_exact_checks(checks: dict[str, bool], expected: dict[str, bool], label: str) -> None:
     errors = check_map_mismatches(checks, expected)
     if errors:
@@ -663,7 +667,10 @@ def validate_logged_anchor(
     checks = {
         "outer_status": payload.get("status") == "passed",
         "anchor_schema_status": (exact_schema_version(anchor, 1) and anchor.get("status") == "passed"),
-        "anchor_checks_exact": anchor_checks == EXPECTED_RECEIPT_ANCHOR_CHECKS,
+        "anchor_checks_exact": exact_check_map(
+            anchor_checks,
+            EXPECTED_RECEIPT_ANCHOR_CHECKS,
+        ),
         "receipt_sha256_well_formed": is_sha256(receipt_sha),
         "receipt_bytes_positive": (isinstance(receipt_bytes, int) and not isinstance(receipt_bytes, bool) and receipt_bytes > 0),
         "receipt_version_nonempty": valid_version_id(receipt_version),
@@ -675,7 +682,10 @@ def validate_logged_anchor(
             and exact_int(receipt_upload.get("bytes"), receipt_bytes)
             and receipt_upload.get("kms_key_arn") == expected_kms_key_arn
         ),
-        "upload_checks_exact": upload_checks == EXPECTED_RECEIPT_UPLOAD_CHECKS,
+        "upload_checks_exact": exact_check_map(
+            upload_checks,
+            EXPECTED_RECEIPT_UPLOAD_CHECKS,
+        ),
         "logged_checksum_sha256": (
             isinstance(receipt_upload.get("checksums"), dict)
             and decode_sha256(
@@ -813,7 +823,10 @@ def outputs_are_exact(
             or not is_nonempty_text(output.get("etag"))
             or not is_sha256(output.get("sha256"))
             or output.get("kms_key_arn") != expected_kms_key_arn
-            or output.get("checks") != EXPECTED_RECEIPT_UPLOAD_CHECKS
+            or not exact_check_map(
+                output.get("checks"),
+                EXPECTED_RECEIPT_UPLOAD_CHECKS,
+            )
             or not upload_checksum_exact(output)
             or s3_key_or_none(output.get("uri")) is None
         ):
@@ -919,7 +932,10 @@ def validate_exact_receipt(
         "single_version_no_delete_history": exact_history,
         "receipt_schema_status": (exact_schema_version(receipt, 2) and receipt.get("status") == "passed"),
         "receipt_script_exact": receipt.get("script_sha256") == EXPECTED_MATERIALIZER_SHA256,
-        "receipt_checks_exact": receipt_checks == EXPECTED_MATERIALIZER_RECEIPT_CHECKS,
+        "receipt_checks_exact": exact_check_map(
+            receipt_checks,
+            EXPECTED_MATERIALIZER_RECEIPT_CHECKS,
+        ),
         "receipt_keys_exact": set(receipt) == EXPECTED_MATERIALIZER_RECEIPT_KEYS,
         "receipt_destination_exact": (
             receipt.get("destination_prefix") == expected_destination_prefix
