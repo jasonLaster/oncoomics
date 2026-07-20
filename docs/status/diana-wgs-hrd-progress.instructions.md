@@ -54,6 +54,9 @@ buckets and avoids partial same-day estimates.
   is not a valid dashboard refresh.
 - Keep the panel near the top of the dashboard as a plain-English
   "Yesterday's AWS cost" card so spend is visible alongside execution status.
+- Write the card as a reader-facing spend explanation: lead each row with what
+  cost money, then put the exact Cost Explorer labels in secondary text for
+  auditability.
 - Label each row in plain language first, then keep the raw Cost Explorer service and usage type in the smaller secondary text.
 - Refresh the covered UTC window, visible total, and row list even for
   source-only dashboard edits; if Cost Explorer returns the same values, leave

@@ -270,6 +270,32 @@ class WriteAiModelCatalogReceiptTests(unittest.TestCase):
             ):
                 WRITER.sha256_file(linked_parent / "model-catalog-receipt.json")
 
+    def test_sha256_file_rejects_mid_read_rewrites(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary).resolve()
+            source = root / "model-catalog-receipt.json"
+            source.write_text('{"stable": true}\n', encoding="utf-8")
+
+            original_read_bytes = Path.read_bytes
+            mutated = False
+
+            def mutate_after_first_read(path: Path) -> bytes:
+                nonlocal mutated
+                data = original_read_bytes(path)
+                if path == source and not mutated:
+                    mutated = True
+                    path.write_text('{"stable": false}\n', encoding="utf-8")
+                return data
+
+            with (
+                mock.patch.object(Path, "read_bytes", mutate_after_first_read),
+                self.assertRaisesRegex(
+                    ValueError,
+                    "model-catalog-receipt.json SHA-256 input changed during read",
+                ),
+            ):
+                WRITER.sha256_file(source)
+
     def test_requires_latest_model_attestation(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             output = Path(temporary).resolve() / "model-catalog-receipt.json"

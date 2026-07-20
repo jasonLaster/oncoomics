@@ -67,7 +67,11 @@ def require_installed_output(path: Path, expected_sha256: str) -> None:
 
 def sha256_file(path: Path) -> str:
     require_real_file(path, f"{path.name} SHA-256 input")
-    return hashlib.sha256(path.read_bytes()).hexdigest()
+    data = path.read_bytes()
+    digest = hashlib.sha256(data).hexdigest()
+    if hashlib.sha256(path.read_bytes()).hexdigest() != digest:
+        raise ValueError(f"{path.name} SHA-256 input changed during read")
+    return digest
 
 
 def require_real_file(path: Path, label: str) -> None:

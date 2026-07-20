@@ -363,25 +363,20 @@
         <p class="lede">
           Current evidence snapshot: the final Diana WGS artifacts are still
           missing, so the project is not allowed to make a Diana HRD call yet.
-          The useful work right now is making the handoff chain boring: when the
-          next real result arrives, each package for Rosalind, cross-checks,
-          AI review, and reviewed release must prove exactly which files it
-          used before the next step can trust it. The public HCC1395 rehearsal
-          path proves that packaging shape without standing in for Diana, and
-          the latest source-only guardrails make blocked FACETS/scarHRD,
-          CHORD, and HRDetect packets cite the exact upstream deterministic and
-          Rosalind manifests they already parsed and validated from stable
-          bytes; source-freeze then rereads every local report, hash input, and
-          forbidden-token list before it trusts those bytes; Phase 3 fast
-          validation and the AI handoff now use the same stable reads before
-          accepting locally staged reports. The selected GPU rerun remains
-          quota-blocked, the legacy CPU run remains stopped, and Diana HRD remains
+          The work here is preflight safety. We are making sure the next real
+          result can move from WGS output to Rosalind, cross-checks, AI review,
+          and public release only when each handoff can prove the exact reviewed
+          files it used. The public HCC1395 rehearsal still tests only packaging
+          mechanics; it does not stand in for Diana biology. The legacy CPU run
+          is stopped, the selected GPU rerun is still waiting on quota, and the
+          latest source-only guardrail keeps the pinned AI model receipt stable
+          while its SHA-256 is computed. Diana HRD remains
           <code>partial_evidence</code> / <code>no_call</code> until terminal
           artifacts and reviewed cross-check reports exist.
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-19</li>
-          <li class="pill">Latest milestone = blocked-generator hashes are rechecked</li>
+          <li class="pill">Latest milestone = AI receipt hashes stay stable</li>
           <li class="pill">Blocked generator hashes = stable</li>
           <li class="pill">Phase 3 fast manifest hashes = stable</li>
           <li class="pill">AI handoff report hashes = stable</li>
@@ -2632,6 +2627,15 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-19T21:14:00-07:00">Jul 19 · local</time>
+              <span>
+                <strong>Local patch · Keep AI model receipt hashes stable:</strong>
+                AI model provenance receipts are now read twice and rejected if
+                they change while the SHA-256 is being computed, so source-freeze
+                and synthesis cannot trust a racey local receipt.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-19T21:13:00-07:00">Jul 19 · local</time>
               <span>
