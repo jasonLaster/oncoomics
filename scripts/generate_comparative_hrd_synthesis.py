@@ -1635,6 +1635,12 @@ def require_synthesis_review_evidence(
         raise ValueError("comparative synthesis limitations are stale")
     if summary.get("unresolved_observations") != collect_unresolved(reviewers):
         raise ValueError("comparative synthesis unresolved observations are stale")
+    if agreement_rows != build_agreement_rows(
+        methods,
+        {"claims": reviewers[0]["claims"]},
+        {"claims": reviewers[1]["claims"]},
+    ):
+        raise ValueError("comparative synthesis review evidence agreement is stale")
 
 
 def require_synthesis_report_manifest(

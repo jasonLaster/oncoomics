@@ -1753,6 +1753,30 @@ class GenerateSynthesisTests(unittest.TestCase):
             ):
                 GENERATE.require_synthesis_report_manifest(fixture.output_dir)
 
+    def test_synthesis_manifest_rejects_stale_review_evidence_agreement(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory(prefix="hrd-synthesis-") as temporary:
+            fixture = SynthesisFixture(Path(temporary))
+            result = fixture.run()
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+
+            evidence_path = fixture.output_dir / "review_evidence.json"
+            evidence = json.loads(evidence_path.read_text(encoding="utf-8"))
+            evidence["reviewers"][0]["claims"][0]["disposition"] = "deferred"
+            write_json(evidence_path, evidence)
+
+            manifest_path = fixture.output_dir / "report_manifest.json"
+            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+            manifest["support_sha256"]["review_evidence.json"] = sha256(evidence_path)
+            write_json(manifest_path, manifest)
+
+            with self.assertRaisesRegex(
+                ValueError,
+                "comparative synthesis review evidence agreement is stale",
+            ):
+                GENERATE.require_synthesis_report_manifest(fixture.output_dir)
+
     def test_synthesis_manifest_rejects_incomplete_reviewer_model_summary(self) -> None:
         with tempfile.TemporaryDirectory(prefix="hrd-synthesis-") as temporary:
             fixture = SynthesisFixture(Path(temporary))
