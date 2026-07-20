@@ -560,6 +560,7 @@ class RenderReviewedPublicationRunbookTests(unittest.TestCase):
             ("receipt", "", "receipt path is malformed"),
             ("receipt", " /receipts/deterministic.json", "receipt path is malformed"),
             ("receipt", "/receipts/deterministic\n.json", "receipt path is malformed"),
+            ("receipt", "/receipts/deterministic\t.json", "receipt path is malformed"),
             ("receipt", "/receipts/deterministic\0.json", "receipt path is malformed"),
             ("receipt", "none", "receipt path is malformed"),
             ("receipt_sha256", "not-a-sha", "SHA-256 is malformed"),
