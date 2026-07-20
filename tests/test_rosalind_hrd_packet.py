@@ -382,6 +382,17 @@ def write_staged_rosalind_packet(root: Path) -> list[Path]:
     return [root / name for name in packet.PACKET_REPORT_FILES]
 
 
+def rewrite_packet_report_with_text(root: Path, text: str) -> None:
+    (root / "reviewer_packet.md").write_text(text, encoding="utf-8")
+    (root / "report.md").write_text(text, encoding="utf-8")
+    manifest = utils.read_json(root / "report_manifest.json")
+    manifest["support_sha256"]["reviewer_packet.md"] = packet.sha256_file(
+        root / "reviewer_packet.md"
+    )
+    manifest["report_sha256"] = packet.sha256_file(root / "report.md")
+    utils.write_json(root / "report_manifest.json", manifest)
+
+
 class RosalindHrdPacketTest(unittest.TestCase):
     def test_schema_version_checks_use_exact_integer_helper(self):
         for value, expected, accepted in (
@@ -2936,6 +2947,111 @@ class RosalindHrdPacketTest(unittest.TestCase):
                 packet.install_diana_wgs_packet(staged_paths, output)
 
             self.assertEqual(list(output.iterdir()), [])
+
+    def test_diana_wgs_packet_rescans_installed_packet(self):
+        with tempfile.TemporaryDirectory() as tmp, tempfile.TemporaryDirectory() as artifacts:
+            output_root = Path(tmp)
+            artifact_root = Path(artifacts)
+            write_diana_wgs_worker_artifacts(artifact_root)
+            deterministic_root = write_deterministic_report(
+                output_root / "deterministic",
+                artifact_root,
+            )
+            output_dir = output_root / "results/rosalind_hrd/diana_wgs/unit"
+            resolved_output_dir = output_dir.resolve()
+            real_fsync_directory = packet.fsync_directory
+            seen_complete_install = False
+            tampered = False
+
+            def tamper_after_final_install_fsync(path: Path) -> None:
+                nonlocal seen_complete_install, tampered
+                real_fsync_directory(path)
+                if (
+                    path.resolve() == resolved_output_dir
+                    and all((output_dir / name).is_file() for name in packet.PACKET_REPORT_FILES)
+                ):
+                    if seen_complete_install and not tampered:
+                        rewrite_packet_report_with_text(
+                            output_dir,
+                            "UNIT-FORBIDDEN-FINAL-INSTALL\n",
+                        )
+                        tampered = True
+                    seen_complete_install = True
+
+            with (
+                patch.object(packet, "path_from_root", lambda relative: output_root / relative),
+                patch.dict(
+                    "os.environ",
+                    {
+                        "ROSALIND_HRD_ARTIFACT_ROOT": str(artifact_root),
+                        "ROSALIND_HRD_DETERMINISTIC_REPORT_DIR": str(deterministic_root),
+                        "ROSALIND_HRD_FORBIDDEN_TOKENS_JSON": json.dumps(
+                            ["UNIT-FORBIDDEN-FINAL-INSTALL"]
+                        ),
+                    },
+                ),
+                patch.object(
+                    packet,
+                    "fsync_directory",
+                    side_effect=tamper_after_final_install_fsync,
+                ),
+                self.assertRaisesRegex(ValueError, "identifier scan failed"),
+            ):
+                packet.write_packet(packet.PACKET_SPECS["diana_wgs"], "unit")
+
+            self.assertTrue(tampered)
+            self.assertEqual(list(output_dir.iterdir()), [])
+
+    def test_diana_wgs_packet_summary_uses_installed_report_manifest_sha256(self):
+        with tempfile.TemporaryDirectory() as tmp, tempfile.TemporaryDirectory() as artifacts:
+            output_root = Path(tmp)
+            artifact_root = Path(artifacts)
+            write_diana_wgs_worker_artifacts(artifact_root)
+            deterministic_root = write_deterministic_report(
+                output_root / "deterministic",
+                artifact_root,
+            )
+            real_install = packet.install_diana_wgs_packet
+            tampered = False
+
+            def tamper_staging_before_install(
+                staged_paths: list[Path],
+                output: Path,
+                forbidden_tokens: list[str],
+            ) -> str:
+                nonlocal tampered
+                rewrite_packet_report_with_text(
+                    staged_paths[0].parent,
+                    "Post-scan safe report rewrite.\n",
+                )
+                tampered = True
+                return real_install(staged_paths, output, forbidden_tokens)
+
+            with (
+                patch.object(packet, "path_from_root", lambda relative: output_root / relative),
+                patch.dict(
+                    "os.environ",
+                    {
+                        "ROSALIND_HRD_ARTIFACT_ROOT": str(artifact_root),
+                        "ROSALIND_HRD_DETERMINISTIC_REPORT_DIR": str(deterministic_root),
+                    },
+                ),
+                patch.object(
+                    packet,
+                    "install_diana_wgs_packet",
+                    side_effect=tamper_staging_before_install,
+                ),
+            ):
+                summary = packet.write_packet(packet.PACKET_SPECS["diana_wgs"], "unit")
+
+            self.assertTrue(tampered)
+            report_manifest = (
+                output_root / "results/rosalind_hrd/diana_wgs/unit/report_manifest.json"
+            )
+            self.assertEqual(
+                summary["reportManifestSha256"],
+                packet.sha256_file(report_manifest),
+            )
 
     def test_diana_wgs_packet_rejects_stale_extra_output(self):
         with tempfile.TemporaryDirectory() as tmp, tempfile.TemporaryDirectory() as artifacts:

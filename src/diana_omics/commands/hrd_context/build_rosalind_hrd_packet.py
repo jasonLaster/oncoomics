@@ -206,13 +206,17 @@ def _sha256_bytes(data: bytes) -> str:
     return hashlib.sha256(data).hexdigest()
 
 
-def read_stable_json_file_bytes(path: Path, label: str) -> bytes:
+def read_stable_file_bytes(path: Path, label: str) -> bytes:
     path = require_real_nonempty_file(path, label)
     data = path.read_bytes()
     digest = _sha256_bytes(data)
     if _sha256_bytes(path.read_bytes()) != digest:
         raise ValueError(f"{label} changed during read: {path}")
     return data
+
+
+def read_stable_json_file_bytes(path: Path, label: str) -> bytes:
+    return read_stable_file_bytes(path, label)
 
 
 def read_json_file(path: Path, label: str) -> Any:
@@ -2309,7 +2313,16 @@ def diana_wgs_forbidden_tokens() -> list[str]:
 def scan_generated_packet(paths: Sequence[Path], forbidden_tokens: Sequence[str]) -> None:
     findings: list[str] = []
     for path in paths:
-        lowered = path.read_text(encoding="utf-8").casefold()
+        try:
+            lowered = read_stable_file_bytes(
+                path,
+                f"Diana WGS generated packet {path.name}",
+            ).decode("utf-8").casefold()
+        except UnicodeError as error:
+            raise ValueError(
+                "Diana WGS generated-output identifier scan failed: "
+                f"{path.name}: not valid UTF-8"
+            ) from error
         for token in forbidden_tokens:
             if token.casefold() in lowered:
                 findings.append(f"{path.name}: forbidden identifier token")
@@ -2491,7 +2504,11 @@ def copy_diana_wgs_packet_file(source: Path, destination: Path) -> None:
         raise
 
 
-def install_diana_wgs_packet(staged_paths: Sequence[Path], output: Path) -> None:
+def install_diana_wgs_packet(
+    staged_paths: Sequence[Path],
+    output: Path,
+    forbidden_tokens: Sequence[str] = (),
+) -> str:
     installed: list[Path] = []
     try:
         for path in staged_paths:
@@ -2506,6 +2523,11 @@ def install_diana_wgs_packet(staged_paths: Sequence[Path], output: Path) -> None
             installed.append(destination)
         fsync_directory(output)
         require_rosalind_report_manifest(output)
+        scan_generated_packet(
+            [output / path.name for path in staged_paths],
+            forbidden_tokens,
+        )
+        return sha256_file(output / "report_manifest.json")
     except Exception:
         for path in reversed(installed):
             path.unlink(missing_ok=True)
@@ -2775,7 +2797,11 @@ def write_packet_to_dir(
         raise
     report_manifest_sha256 = sha256_file(report_manifest_path)
     if final_output_path is not None:
-        install_diana_wgs_packet(packet_files, final_output_path)
+        report_manifest_sha256 = install_diana_wgs_packet(
+            packet_files,
+            final_output_path,
+            forbidden_tokens,
+        )
     return {
         "sampleSet": spec.sample_set,
         "title": spec.title,

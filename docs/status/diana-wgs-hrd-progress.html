@@ -372,9 +372,8 @@
           staged-validation downloader, input-contract finalizer, freeze steps,
           local materialization, input-contract publication, the selected
           fast-rerun handoff chain, and the Diana WGS Rosalind packet builder
-          now carry verified bytes forward so reviewer-facing evidence cannot
-          drift away from the manifest and route plan that provenance already
-          bound.
+          now carry verified bytes forward and re-check the final installed
+          reviewer packet before its digest is handed to the next report.
           The selected GPU rerun is still quota-blocked, the legacy CPU run
           remains stopped, and Diana HRD remains <code>partial_evidence</code> /
           <code>no_call</code> until terminal artifacts and reviewed cross-check
@@ -382,7 +381,8 @@
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-19</li>
-          <li class="pill">Latest milestone = Rosalind evidence uses verified inputs</li>
+          <li class="pill">Latest milestone = final Rosalind packets rechecked</li>
+          <li class="pill">Rosalind final install = rechecked</li>
           <li class="pill">Rosalind evidence reads = stable</li>
           <li class="pill">Rosalind manifest reads = stable</li>
           <li class="pill">Fast-rerun source reads = stable</li>
@@ -811,8 +811,8 @@
             </li>
             <li class="track" style="--tone: var(--queued)">
               <strong>Diana Rosalind packet</strong>
-              <span>60% · verified evidence binding</span>
-              <div class="bar" aria-hidden="true" style="--pct: 60%"><span></span></div>
+              <span>62% · final packet rechecked</span>
+              <div class="bar" aria-hidden="true" style="--pct: 62%"><span></span></div>
             </li>
             <li class="track" style="--tone: var(--queued)">
               <strong>Diana AI / freeform review</strong>
@@ -919,6 +919,10 @@
 
           <h3>Priority 1 · selected GPU NGS rerun prep</h3>
           <ol class="todo">
+            <li class="item" style="--tone: var(--done)">
+              <strong>Done · recheck final Rosalind packets</strong>
+              <span>The Diana WGS Rosalind packet installer now re-scans the final copied packet and returns the digest of that installed manifest, so later summaries bind what was actually installed.</span>
+            </li>
             <li class="item" style="--tone: var(--done)">
               <strong>Done · bind Rosalind evidence reads</strong>
               <span>The Diana WGS Rosalind packet now renders fast-rerun evidence from the manifest and route plan it already verified, so the reviewer packet cannot describe a later local rewrite.</span>
@@ -2529,6 +2533,16 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-19T19:35:06-07:00">Jul 19 · local</time>
+              <span>
+                <strong>Local patch · Recheck installed Rosalind packets:</strong>
+                the Diana WGS packet installer now validates and scans the
+                final copied packet before returning the installed
+                <code>report_manifest.json</code> digest for downstream
+                summaries.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-19T19:29:07-07:00">Jul 19 · local</time>
               <span>
