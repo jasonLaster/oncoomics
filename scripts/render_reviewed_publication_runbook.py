@@ -62,6 +62,20 @@ def require_summary_sha256(value: object, label: str) -> str:
     return value
 
 
+def require_summary_receipt(value: object, method_id: str) -> str:
+    if (
+        not isinstance(value, str)
+        or not value
+        or value.strip() != value
+        or "\n" in value
+        or "\r" in value
+        or "\0" in value
+        or value.lower() in {"null", "none"}
+    ):
+        raise ValueError(f"{method_id} private receipt path is malformed")
+    return value
+
+
 def validate_private_report_receipts(
     receipt_paths: Iterable[Path],
 ) -> tuple[dict[str, str | int], ...]:
@@ -305,9 +319,13 @@ def require_receipt_summaries(
             raise ValueError(
                 f"{summary['method_id']} private receipt object count is malformed"
             )
+        require_summary_receipt(
+            summary.get("receipt"),
+            method_id,
+        )
         require_summary_sha256(
             summary.get("receipt_sha256"),
-            f"{summary['method_id']} private receipt",
+            f"{method_id} private receipt",
         )
     return summaries
 

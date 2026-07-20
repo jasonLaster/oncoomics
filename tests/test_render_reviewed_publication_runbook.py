@@ -556,6 +556,11 @@ class RenderReviewedPublicationRunbookTests(unittest.TestCase):
         for field, value, message in (
             ("legacy_source_manifest", "0" * 64, "summary envelope is not exact"),
             ("destination_prefix", "s3://wrong/", "destination is malformed"),
+            ("receipt", "", "receipt path is malformed"),
+            ("receipt", " /receipts/deterministic.json", "receipt path is malformed"),
+            ("receipt", "/receipts/deterministic\n.json", "receipt path is malformed"),
+            ("receipt", "/receipts/deterministic\0.json", "receipt path is malformed"),
+            ("receipt", "none", "receipt path is malformed"),
             ("receipt_sha256", "not-a-sha", "SHA-256 is malformed"),
             ("receipt_sha256", int("1" * 64), "SHA-256 is malformed"),
             ("object_count", 0, "object count is malformed"),
