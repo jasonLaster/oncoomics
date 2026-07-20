@@ -883,6 +883,30 @@ class RecoverPublicAnalysisArtifactsTests(unittest.TestCase):
 
             self.assertFalse(receipt.exists())
 
+    def test_private_receipt_rechecks_output_after_parent_fsync(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            receipt = Path(temporary) / "receipt.json"
+            real_fsync_directory = MODULE.fsync_directory
+
+            def tamper_after_parent_fsync(parent: Path) -> None:
+                real_fsync_directory(parent)
+                receipt.write_text('{"status":"tampered"}\n', encoding="utf-8")
+
+            with (
+                mock.patch.object(
+                    MODULE,
+                    "fsync_directory",
+                    side_effect=tamper_after_parent_fsync,
+                ),
+                self.assertRaisesRegex(
+                    ValueError,
+                    "private receipt changed during write",
+                ),
+            ):
+                MODULE.write_private(receipt, {"status": "observing"}, create=True)
+
+            self.assertFalse(receipt.exists())
+
     def test_private_receipt_replacement_fsyncs_parent_after_replace(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             receipt = Path(temporary) / "receipt.json"
@@ -900,6 +924,31 @@ class RecoverPublicAnalysisArtifactsTests(unittest.TestCase):
                 json.loads(receipt.read_text(encoding="utf-8")),
                 {"status": "ready"},
             )
+
+    def test_private_receipt_replacement_rechecks_output_after_parent_fsync(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            receipt = Path(temporary) / "receipt.json"
+            MODULE.write_private(receipt, {"status": "observing"}, create=True)
+            real_fsync_directory = MODULE.fsync_directory
+
+            def tamper_after_parent_fsync(parent: Path) -> None:
+                real_fsync_directory(parent)
+                receipt.write_text('{"status":"tampered"}\n', encoding="utf-8")
+
+            with (
+                mock.patch.object(
+                    MODULE,
+                    "fsync_directory",
+                    side_effect=tamper_after_parent_fsync,
+                ),
+                self.assertRaisesRegex(
+                    ValueError,
+                    "private receipt changed during write",
+                ),
+            ):
+                MODULE.write_private(receipt, {"status": "ready"}, create=False)
 
     def test_main_rejects_receipt_symlink_parent_before_aws_observation(self) -> None:
         with tempfile.TemporaryDirectory() as value:

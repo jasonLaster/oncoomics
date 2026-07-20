@@ -368,17 +368,17 @@
           AI review, and reviewed release must prove exactly which files it
           used before the next step can trust it. The public HCC1395 rehearsal
           path proves that packaging shape without standing in for Diana, and
-          the latest source-only guardrails make private and public handoffs
-          reject stray source labels or report fields before freeze, AI review,
-          or reviewed release can trust a packet. The selected GPU rerun
-          remains quota-blocked, the legacy CPU run remains stopped, and Diana
-          HRD remains
+          the latest source-only guardrails make final report and recovery
+          receipts prove their exact bytes before any reviewed public handoff
+          can trust them. The selected GPU rerun remains quota-blocked, the
+          legacy CPU run remains stopped, and Diana HRD remains
           <code>partial_evidence</code> / <code>no_call</code> until terminal
           artifacts and reviewed cross-check reports exist.
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-19</li>
-          <li class="pill">Latest milestone = final source IDs canonical</li>
+          <li class="pill">Latest milestone = recovery receipts post-fsync checked</li>
+          <li class="pill">Public recovery receipts = post-fsync checked</li>
           <li class="pill">Private/public source IDs = canonical</li>
           <li class="pill">Private/public packet envelopes = exact</li>
           <li class="pill">Private packet-kind checks = explicit</li>
@@ -648,6 +648,7 @@
           <li class="pill">HRD method inventory = exact</li>
           <li class="pill">Phase 3 packet rows = exact</li>
           <li class="pill">Public recovery CRC = exact</li>
+          <li class="pill">Public recovery receipts = rechecked</li>
           <li class="pill">Public recovery staging paths = real</li>
           <li class="pill">Public recovery source metadata = private</li>
           <li class="pill">Public recovery final history = exact</li>
@@ -2595,6 +2596,10 @@
           <h3>Completed foundations</h3>
           <ol class="todo">
             <li class="item" style="--tone: var(--done)">
+              <strong>Done · recheck recovered-public receipts after fsync</strong>
+              <span>The pseudonymous artifact recovery publisher now reopens each private receipt after the file and parent directory are fsynced, so a changed receipt cannot stand in for the audit trail of restored reviewed outputs.</span>
+            </li>
+            <li class="item" style="--tone: var(--done)">
               <strong>Done · public data and access foundation</strong>
               <span>The reviewed index and current access view are available to collaborators, with publication receipts guarding reviewed outputs.</span>
             </li>
@@ -2608,6 +2613,16 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-19T20:43:37-07:00">Jul 19 · local</time>
+              <span>
+                <strong>Local patch · Recheck recovered-public receipts:</strong>
+                public artifact recovery now reopens each private receipt after
+                file and parent-directory fsync, verifies it is still mode
+                <code>0600</code>, and rejects byte drift before the recovery
+                audit trail can continue.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-19T20:42:00-07:00">Jul 19 · local</time>
               <span>

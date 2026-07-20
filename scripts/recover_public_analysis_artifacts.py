@@ -228,6 +228,8 @@ def write_private(path: pathlib.Path, value: Any, *, create: bool) -> None:
     if not create and (path.is_symlink() or not path.is_file()):
         raise ValueError(f"reserved receipt output is missing: {path}")
     path.parent.mkdir(parents=True, exist_ok=True)
+    data = canonical_bytes(value)
+    expected_sha256 = hashlib.sha256(data).hexdigest()
     if create:
         descriptor = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
         temporary: pathlib.Path | None = None
@@ -238,12 +240,13 @@ def write_private(path: pathlib.Path, value: Any, *, create: bool) -> None:
     try:
         with os.fdopen(descriptor, "wb") as handle:
             descriptor = -1
-            handle.write(canonical_bytes(value))
+            handle.write(data)
             handle.flush()
             os.fsync(handle.fileno())
         if temporary is not None:
             os.replace(temporary, path)
         fsync_directory(path.parent)
+        require_installed_private_output(path, expected_sha256)
     except Exception:
         if temporary is None:
             path.unlink(missing_ok=True)
@@ -253,6 +256,19 @@ def write_private(path: pathlib.Path, value: Any, *, create: bool) -> None:
             os.close(descriptor)
         if temporary is not None:
             temporary.unlink(missing_ok=True)
+
+
+def require_installed_private_output(
+    path: pathlib.Path,
+    expected_sha256: str,
+) -> None:
+    require_safe_private_output_parent(path)
+    if path.is_symlink() or not path.is_file():
+        raise ValueError(f"private receipt changed during write: {path}")
+    if (path.stat().st_mode & 0o777) != 0o600:
+        raise ValueError(f"private receipt mode is not 0600: {path}")
+    if hashlib.sha256(path.read_bytes()).hexdigest() != expected_sha256:
+        raise ValueError(f"private receipt changed during write: {path}")
 
 
 def list_objects(bucket: str, prefix: str) -> list[dict[str, Any]]:
