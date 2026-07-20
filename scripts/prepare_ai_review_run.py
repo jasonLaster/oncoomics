@@ -64,6 +64,25 @@ STAGE_RECEIPT_KEYS = {
     "reviewers",
     "checks",
 }
+PREPARE_RECEIPT_KEYS = {
+    "schema_version",
+    "status",
+    "generated_at",
+    "subject_alias",
+    "method_inventory",
+    "method_inventory_sha256",
+    "source_manifests",
+    "model_catalog_receipt_sha256",
+    "bundle_dir",
+    "bundle_manifest_sha256",
+    "review_bundle_sha256",
+    "prompt_sha256",
+    "stage_receipt_sha256",
+    "reviewer_inputs",
+    "checks",
+}
+SOURCE_MANIFEST_RECEIPT_KEYS = {"path", "sha256"}
+REVIEWER_INPUT_RECEIPT_KEYS = {"directory", "exact_two_file_inventory"}
 EXPECTED_PREPARE_POSTCONDITION_CHECKS = {
     "pinned_seven_method_inventory": True,
     "source_report_hashes_match": True,
@@ -716,6 +735,98 @@ def require_reviewer_input_files_bound(
             raise ValueError("prepared AI review run reviewer inputs are stale")
 
 
+def is_sha256(value: Any) -> bool:
+    return isinstance(value, str) and SHA256_PATTERN.fullmatch(value) is not None
+
+
+def exact_prompt_sha256(value: Any) -> bool:
+    return (
+        isinstance(value, dict)
+        and set(value) == set(REVIEWER_INPUTS)
+        and all(is_sha256(value.get(role)) for role in REVIEWER_INPUTS)
+    )
+
+
+def exact_source_manifest_receipts(
+    value: Any,
+    methods: tuple[str, ...],
+) -> bool:
+    if not isinstance(value, dict) or set(value) != set(methods):
+        return False
+
+    for method in methods:
+        receipt = value.get(method)
+        if (
+            not isinstance(receipt, dict)
+            or set(receipt) != SOURCE_MANIFEST_RECEIPT_KEYS
+            or not isinstance(receipt.get("path"), str)
+            or not receipt["path"]
+            or not is_sha256(receipt.get("sha256"))
+        ):
+            return False
+    return True
+
+
+def exact_reviewer_input_receipts(value: Any, output: Path) -> bool:
+    if not isinstance(value, dict) or set(value) != set(REVIEWER_INPUTS):
+        return False
+
+    for role, (directory, prompt) in REVIEWER_INPUTS.items():
+        receipt = value.get(role)
+        if (
+            not isinstance(receipt, dict)
+            or set(receipt) != REVIEWER_INPUT_RECEIPT_KEYS
+            or receipt.get("directory")
+            != str(output / "reviewer-inputs" / directory)
+            or receipt.get("exact_two_file_inventory")
+            != ["review_bundle.json", prompt]
+        ):
+            return False
+    return True
+
+
+def require_prepare_receipt(receipt: dict[str, Any], output: Path) -> None:
+    try:
+        inventory_id = require_inventory_binding(
+            receipt.get("method_inventory"),
+            receipt.get("method_inventory_sha256"),
+            "prepared AI review receipt",
+            inventory_id=None,
+        )
+        methods = required_method_ids(inventory_id)
+    except ValueError as error:
+        raise ValueError("prepared AI review run receipt is not exact") from error
+
+    if (
+        set(receipt) != PREPARE_RECEIPT_KEYS
+        or not is_exact_int(receipt.get("schema_version"), 1)
+        or receipt.get("status") != "passed"
+        or not isinstance(receipt.get("generated_at"), str)
+        or not receipt.get("generated_at")
+        or not isinstance(receipt.get("subject_alias"), str)
+        or not receipt.get("subject_alias")
+        or not exact_source_manifest_receipts(
+            receipt.get("source_manifests"),
+            methods,
+        )
+        or not is_sha256(receipt.get("model_catalog_receipt_sha256"))
+        or receipt.get("bundle_dir") != str(output / "bundle")
+        or not is_sha256(receipt.get("bundle_manifest_sha256"))
+        or not is_sha256(receipt.get("review_bundle_sha256"))
+        or not exact_prompt_sha256(receipt.get("prompt_sha256"))
+        or not is_sha256(receipt.get("stage_receipt_sha256"))
+        or not exact_reviewer_input_receipts(
+            receipt.get("reviewer_inputs"),
+            output,
+        )
+        or not exact_check_map(
+            receipt.get("checks"),
+            EXPECTED_PREPARE_POSTCONDITION_CHECKS,
+        )
+    ):
+        raise ValueError("prepared AI review run receipt is not exact")
+
+
 def move_staged_entry(source: Path, destination: Path) -> None:
     source.rename(destination)
 
@@ -785,8 +896,18 @@ def require_staged_run_inventory(path: Path) -> None:
         )
 
 
-def require_prepared_run_support(path: Path) -> None:
+def require_prepared_run_support(
+    path: Path,
+    receipt_output_root: Path | None = None,
+) -> None:
+    path = path.resolve()
+    receipt_output_root = (
+        receipt_output_root.resolve()
+        if receipt_output_root is not None
+        else path
+    )
     receipt = load_object(path / "prepare_ai_review_run_receipt.json")
+    require_prepare_receipt(receipt, receipt_output_root)
     bundle_dir = path / "bundle"
     current_hashes = {
         "bundle_manifest_sha256": sha256(bundle_dir / "bundle_manifest.json"),
@@ -960,7 +1081,7 @@ def prepare(args: argparse.Namespace) -> dict[str, Any]:
             "checks": postconditions["checks"],
         }
         write_json(staging / "prepare_ai_review_run_receipt.json", receipt, create=True)
-        require_prepared_run_support(staging)
+        require_prepared_run_support(staging, output)
 
         install_staged_run(staging, output)
         return receipt
