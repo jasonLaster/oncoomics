@@ -386,7 +386,8 @@
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-20</li>
-          <li class="pill">Latest milestone = staged-validation check maps</li>
+          <li class="pill">Latest milestone = daily cost guard hardening</li>
+          <li class="pill">$200/day limit = max-validated</li>
           <li class="pill">Staged-validation checks = exact</li>
           <li class="pill">Input-contract checks = exact</li>
           <li class="pill">Private report checks = exact</li>
@@ -999,7 +1000,7 @@
             </li>
             <li class="item" style="--tone: var(--done)">
               <strong>Done · install the daily cost kill switch</strong>
-              <span>The use1 and use2 stacks can now combine a $200/day AWS Budget backstop with a one-minute live EC2 spend poller that prices Diana-tagged Batch hosts into a UTC-day ledger, then disables only the Batch queues and compute environments present in that workspace before cancelling queued jobs and terminating visible running jobs when the live Batch EC2 estimate reaches 80% of the daily cap, or $160 by default.</span>
+              <span>The use1 and use2 stacks can now combine a $200/day maximum AWS Budget backstop with actual-spend Budget triggers plus a one-minute live EC2 spend poller that prices Diana-tagged Batch hosts into a UTC-day ledger, then disables only the Batch queues and compute environments present in that workspace before cancelling queued jobs and terminating visible running jobs when the live Batch EC2 estimate reaches 80% of the daily cap, or $160 by default.</span>
             </li>
             <li class="item" style="--tone: var(--queued)">
               <strong>Pending · hold the us-west-2 P-family quota hedge</strong>
@@ -3345,6 +3346,17 @@
                 empty, non-list, or non-object SV evidence rows before
                 aggregating BAM-derived SV counts for the known-answer
                 rehearsal.
+              </span>
+            </li>
+            <li class="item">
+              <time datetime="2026-07-20T00:36:30-07:00">Jul 20 · 12:36 AM</time>
+              <span>
+                <strong>Local patch · Harden the $200 daily cost guard:</strong>
+                the Terraform budget limit is now validated at no more than
+                $200/day, the live EC2 runtime estimator prices any unlisted
+                Batch instance type at the conservative GPU fallback, and the
+                actual-spend AWS Budget backstop stays wired to the same
+                SNS-to-Lambda Batch kill switch.
               </span>
             </li>
             <li class="item">
