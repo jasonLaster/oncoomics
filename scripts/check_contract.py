@@ -82,6 +82,15 @@ def exact_schema_version(payload: dict, expected: int) -> bool:
     return type(payload.get("schema_version")) is int and payload["schema_version"] == expected
 
 
+def exact_check_map(value: object, expected: dict[str, bool]) -> bool:
+    if not isinstance(value, dict) or set(value) != set(expected):
+        return False
+    return all(
+        type(value.get(key)) is bool and value.get(key) is expected_value
+        for key, expected_value in expected.items()
+    )
+
+
 class DuplicateJsonObjectName(ValueError):
     """Raised when a JSON object repeats a name."""
 
@@ -177,7 +186,7 @@ def validate(contract: dict) -> dict:
             if not valid_version_id(custody.get(key)):
                 shared.append(f"custody.{key} must be an exact S3 VersionId")
         checks = custody.get("checks")
-        if checks != EXPECTED_CUSTODY_CHECKS:
+        if not exact_check_map(checks, EXPECTED_CUSTODY_CHECKS):
             shared.append("custody.checks must exactly match the finalization checks")
         primary = custody.get("final_primary_artifacts")
         if not isinstance(primary, dict):

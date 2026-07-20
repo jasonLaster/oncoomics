@@ -374,7 +374,8 @@
           source-only guardrails now reject not-really-zero and not-quite-exact
           counters before terminal artifact freezing, exact-version
           materialization, private report replays, final alias-only input
-          contracts, alias-only cross-check materialization, alias-only
+          contracts, input-contract publication receipts, alias-only
+          cross-check materialization, alias-only
           materializer submission, materializer retry capture, captured
           terminal attempts, executable route replay checks,
           reviewed-public receipt checks, terminal materializer and route
@@ -385,7 +386,8 @@
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-20</li>
-          <li class="pill">Latest milestone = private report check maps</li>
+          <li class="pill">Latest milestone = input-contract check maps</li>
+          <li class="pill">Input-contract checks = exact</li>
           <li class="pill">Private report checks = exact</li>
           <li class="pill">Public-index receipts = exact</li>
           <li class="pill">Public-index checks = exact</li>
@@ -1669,6 +1671,10 @@
           <h3>Priority 3 · Rosalind packet and route reports</h3>
           <ol class="todo">
             <li class="item" style="--tone: var(--done)">
+              <strong>Done · require exact input-contract check maps</strong>
+              <span>Finalized contract checking and create-only input-contract publication now reject integer stand-ins inside finalized-custody, dry-run preflight, and destination verification check maps before alias-only route contracts can feed Rosalind, cross-check execution, AI review, or freeform synthesis.</span>
+            </li>
+            <li class="item" style="--tone: var(--done)">
               <strong>Done · require exact route replay checks</strong>
               <span>Executable cross-check report staging now rejects integer or float stand-ins inside route-download live-history and object check maps before replayed scarHRD, CHORD, or HRDetect reports can become compact no-call packets for source-freeze or AI/freeform review.</span>
             </li>
@@ -2858,6 +2864,20 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-20T00:26:00-07:00">Jul 20 · local</time>
+              <span>
+                <strong>Local patch · Reject loose input-contract checks:</strong>
+                alias-only input-contract validation and publication now
+                exact-check finalized-custody, dry-run preflight, and
+                destination verification maps, so JSON <code>1</code> cannot
+                masquerade as successful custody or publication evidence before
+                Rosalind packets, cross-check routes, AI review, or synthesis
+                consume final contracts. No S3, Batch, route, GPU, quota,
+                replacement compute, or apply-mode AWS work was launched; Cost
+                Explorer was refreshed read-only.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-20T00:20:00-07:00">Jul 20 · local</time>
               <span>

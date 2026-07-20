@@ -419,7 +419,7 @@ class CustodyHandoffTests(unittest.TestCase):
         return path
 
     def assert_contract_publication_rejects_checks(
-        self, checks: dict[str, bool]
+        self, checks: dict[str, object]
     ) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
@@ -459,7 +459,11 @@ class CustodyHandoffTests(unittest.TestCase):
 
             with (
                 patch.object(sys, "argv", argv),
-                patch.object(publisher, "aws_json", return_value={"Status": "Enabled"}),
+                patch.object(
+                    publisher,
+                    "aws_json",
+                    return_value={"Status": "Enabled"},
+                ),
                 patch.object(publisher, "version_history", side_effect=[[], history]),
                 patch.object(
                     publisher,
@@ -983,19 +987,73 @@ class CustodyHandoffTests(unittest.TestCase):
                 finalizer.load_object_with_sha256(receipt, "final freeze receipt")
 
     def test_contract_check_requires_exact_finalized_custody_checks(self):
-        contract = CustodyFixture().finalize()
-        contract["custody"]["checks"]["future_check"] = True
+        cases = {
+            "unexpected": lambda checks: checks.__setitem__("future_check", True),
+            "truthy_integer": lambda checks: checks.__setitem__(
+                "sbs96_independently_rederived_from_final_pass_vcf",
+                1,
+            ),
+        }
 
-        result = checker.validate(contract)
+        for label, mutate in cases.items():
+            with self.subTest(label=label):
+                contract = CustodyFixture().finalize()
+                mutate(contract["custody"]["checks"])
 
-        self.assertEqual(result["overall_status"], "blocked")
-        self.assertTrue(
-            any(
-                "custody.checks must exactly match" in reason
-                for route in result["routes"].values()
-                for reason in route["reasons"]
-            )
-        )
+                result = checker.validate(contract)
+
+                self.assertEqual(result["overall_status"], "blocked")
+                self.assertTrue(
+                    any(
+                        "custody.checks must exactly match" in reason
+                        for route in result["routes"].values()
+                        for reason in route["reasons"]
+                    )
+                )
+
+    def test_contract_publication_rejects_truthy_dry_run_preflight_check(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            contract = root / "contract.json"
+            dry_run = root / "anchor.dry.json"
+            anchor = root / "anchor.json"
+            write_json(contract, CustodyFixture().finalize())
+            self.write_contract_dry_run_receipt(dry_run, contract)
+            receipt = json.loads(dry_run.read_text(encoding="utf-8"))
+            receipt["checks"]["destination_history_empty"] = 1
+            write_json(dry_run, receipt)
+            argv = [
+                "publish_input_contract.py",
+                "--contract",
+                str(contract),
+                "--destination-prefix",
+                f"s3://{BUCKET}/runs/subject01/{RUN}/deterministic/contracts/",
+                "--kms-key-arn",
+                KMS,
+                "--anchor-output",
+                str(anchor),
+                "--dry-run-receipt",
+                str(dry_run),
+                "--apply",
+            ]
+
+            with (
+                patch.object(sys, "argv", argv),
+                patch.object(
+                    publisher,
+                    "aws_json",
+                    return_value={"Status": "Enabled"},
+                ),
+                patch.object(
+                    publisher,
+                    "put_create_only",
+                    side_effect=AssertionError("put called"),
+                ),
+                self.assertRaisesRegex(SystemExit, "preflight checks failed"),
+            ):
+                publisher.main()
+
+            self.assertFalse(anchor.exists())
 
     def test_contract_check_hash_and_version_fields_must_be_exact_strings(self):
         numeric_sha256 = int("1" * 64)
@@ -1213,6 +1271,13 @@ class CustodyHandoffTests(unittest.TestCase):
                 lambda checks: checks.__setitem__(
                     "sbs96_independently_rederived_from_final_pass_vcf",
                     False,
+                ),
+            ),
+            (
+                "truthy_integer",
+                lambda checks: checks.__setitem__(
+                    "sbs96_independently_rederived_from_final_pass_vcf",
+                    1,
                 ),
             ),
         ):
@@ -2731,6 +2796,12 @@ class CustodyHandoffTests(unittest.TestCase):
     def test_contract_publication_rejects_failed_verification_check(self):
         checks = dict(publisher.EXPECTED_CONTRACT_ANCHOR_CHECKS)
         checks["metadata_sha256_exact"] = False
+
+        self.assert_contract_publication_rejects_checks(checks)
+
+    def test_contract_publication_rejects_truthy_verification_check(self):
+        checks = dict(publisher.EXPECTED_CONTRACT_ANCHOR_CHECKS)
+        checks["metadata_sha256_exact"] = 1
 
         self.assert_contract_publication_rejects_checks(checks)
 

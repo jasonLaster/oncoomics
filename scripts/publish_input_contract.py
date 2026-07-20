@@ -18,7 +18,7 @@ from build_ai_review_bundle import (
     DuplicateJsonKeyError,
     reject_duplicate_json_object_names,
 )
-from check_contract import validate
+from check_contract import exact_check_map, validate
 
 S3_PREFIX = re.compile(
     r"^s3://(diana-omics-private-results-[^/]+)/"
@@ -463,8 +463,8 @@ def verify_publication(
         }
 
 
-def require_contract_anchor_checks(checks: dict[str, bool]) -> None:
-    if checks != EXPECTED_CONTRACT_ANCHOR_CHECKS:
+def require_contract_anchor_checks(checks: Any) -> None:
+    if not exact_check_map(checks, EXPECTED_CONTRACT_ANCHOR_CHECKS):
         raise ValueError(f"contract publication verification failed: {checks}")
 
 
@@ -483,7 +483,7 @@ def validate_dry_run_anchor(path: Path, expected: dict[str, Any]) -> None:
         raise ValueError(
             "contract publication dry-run receipt differs from requested publication"
         )
-    if observed.get("checks") != EXPECTED_CONTRACT_PREFLIGHT_CHECKS:
+    if not exact_check_map(observed.get("checks"), EXPECTED_CONTRACT_PREFLIGHT_CHECKS):
         raise ValueError(
             "contract publication dry-run receipt preflight checks failed: "
             f"{observed.get('checks')}"
@@ -494,7 +494,7 @@ def require_finalized_custody(custody: Any) -> None:
     if (
         not isinstance(custody, dict)
         or custody.get("status") != "passed"
-        or custody.get("checks") != EXPECTED_FINALIZED_CUSTODY_CHECKS
+        or not exact_check_map(custody.get("checks"), EXPECTED_FINALIZED_CUSTODY_CHECKS)
     ):
         raise SystemExit("Fail-closed: finalized contract lacks passed custody evidence")
 
