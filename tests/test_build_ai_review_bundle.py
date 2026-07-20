@@ -771,7 +771,7 @@ class BuildAiReviewBundleTests(unittest.TestCase):
                 ),
                 self.assertRaisesRegex(
                     ValueError,
-                    "AI review bundle manifest is stale for reviewer-b.prompt.md",
+                    "AI review bundle output changed during install: reviewer-b.prompt.md",
                 ),
             ):
                 BUILD.install_bundle_create_only(staged_paths, output)
@@ -821,6 +821,59 @@ class BuildAiReviewBundleTests(unittest.TestCase):
                 (output / "unexpected.tmp").read_text(encoding="utf-8"),
                 "unbound final file\n",
             )
+
+    def test_bundle_install_removes_installed_files_after_self_consistent_rewrite(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            staging = root / "staging"
+            output = root / "ai-review"
+            output.mkdir()
+            staged_paths = write_staged_bundle(staging)
+            real_fsync_directory = BUILD.fsync_directory
+            fsyncs = 0
+
+            def rewrite_bundle_after_final_fsync(path: Path) -> None:
+                nonlocal fsyncs
+                real_fsync_directory(path)
+                fsyncs += 1
+                if fsyncs == len(BUILD.BUNDLE_FILENAMES) + 1:
+                    bundle_path = output / "review_bundle.json"
+                    bundle = json.loads(bundle_path.read_text(encoding="utf-8"))
+                    bundle["generated_at"] = "2026-07-18T00:00:02+00:00"
+                    write_json(bundle_path, bundle)
+
+                    prompt_a = output / "reviewer-a.prompt.md"
+                    prompt_b = output / "reviewer-b.prompt.md"
+                    prompt_a.write_text("rewritten prompt a\n", encoding="utf-8")
+                    prompt_b.write_text("rewritten prompt b\n", encoding="utf-8")
+
+                    manifest_path = output / "bundle_manifest.json"
+                    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+                    manifest["generated_at"] = "2026-07-18T00:00:03+00:00"
+                    manifest["review_bundle_sha256"] = BUILD.sha256(bundle_path)
+                    manifest["prompt_sha256"] = {
+                        "A": BUILD.sha256(prompt_a),
+                        "B": BUILD.sha256(prompt_b),
+                    }
+                    write_json(manifest_path, manifest)
+
+            with (
+                mock.patch.object(
+                    BUILD,
+                    "fsync_directory",
+                    side_effect=rewrite_bundle_after_final_fsync,
+                ),
+                self.assertRaisesRegex(
+                    ValueError,
+                    "AI review bundle output changed during install: review_bundle.json",
+                ),
+            ):
+                BUILD.install_bundle_create_only(staged_paths, output)
+
+            self.assertTrue(output.is_dir())
+            self.assertEqual([], list(output.iterdir()))
 
     def test_bundle_install_rejects_manifest_that_differs_from_review_bundle(
         self,
