@@ -39,22 +39,28 @@ def is_platform_root_alias(path: Path) -> bool:
     return path.is_absolute() and path.parent == path.parent.parent
 
 
-def require_real_hash_input(path: Path) -> None:
-    label = f"{path.name} SHA-256 input"
+def require_no_symlinked_ancestors(path: Path, label: str) -> None:
     for parent in path.parents:
         if parent.is_symlink() and not is_platform_root_alias(parent):
             raise ValueError(f"{label} parent may not be a symlink: {parent}")
         if parent.exists() and not parent.is_dir():
             raise ValueError(f"{label} parent is not a directory: {parent}")
+
+
+def require_real_hash_input(path: Path) -> None:
+    label = f"{path.name} SHA-256 input"
+    require_no_symlinked_ancestors(path, label)
     if path.is_symlink() or not path.is_file():
         raise ValueError(f"{label} must be a real file: {path}")
 
 
 def sha256(path: Path) -> str:
     require_real_hash_input(path)
-    digest = sha256_file_once(path)
-    if sha256_file_once(path) != digest:
-        raise ValueError(f"{path.name} SHA-256 input changed during read")
+    _raw, digest = read_stable_file_with_sha256(
+        path,
+        f"{path.name} SHA-256 input",
+    )
+    require_real_hash_input(path)
     return digest
 
 
@@ -68,6 +74,17 @@ def sha256_file_once(path: Path) -> str:
 
 def sha256_bytes(value: bytes) -> str:
     return hashlib.sha256(value).hexdigest()
+
+
+def read_stable_file_with_sha256(path: Path, label: str) -> tuple[bytes, str]:
+    try:
+        raw = path.read_bytes()
+        digest = sha256_bytes(raw)
+        if sha256_bytes(path.read_bytes()) != digest:
+            raise ValueError(f"{label} changed during read: {path}")
+    except OSError as error:
+        raise ValueError(f"{label} changed during read: {path}") from error
+    return raw, digest
 
 
 def exact_schema_version(payload: dict[str, Any], expected: int) -> bool:
@@ -270,15 +287,13 @@ def recover_local_cutover(
 
 
 def load_object_with_sha256(path: Path, label: str) -> tuple[dict[str, Any], str]:
-    for parent in path.parents:
-        if parent.is_symlink() and not is_platform_root_alias(parent):
-            raise ValueError(f"{label} parent may not be a symlink: {parent}")
-        if parent.exists() and not parent.is_dir():
-            raise ValueError(f"{label} parent is not a directory: {parent}")
+    require_no_symlinked_ancestors(path, label)
     if path.is_symlink() or not path.is_file():
         raise ValueError(f"{label} must be a real JSON file: {path}")
-    raw = path.read_bytes()
-    digest = sha256_bytes(raw)
+    raw, digest = read_stable_file_with_sha256(path, label)
+    require_no_symlinked_ancestors(path, label)
+    if path.is_symlink() or not path.is_file():
+        raise ValueError(f"{label} must be a real JSON file: {path}")
     try:
         value = json.loads(
             raw.decode("utf-8"),
@@ -288,8 +303,6 @@ def load_object_with_sha256(path: Path, label: str) -> tuple[dict[str, Any], str
         raise ValueError(f"duplicate JSON object name in {label}: {error}") from error
     if not isinstance(value, dict):
         raise ValueError(f"{label} must be a JSON object")
-    if sha256(path) != digest:
-        raise ValueError(f"{label} changed during read: {path}")
     return value, digest
 
 
