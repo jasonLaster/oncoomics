@@ -54,6 +54,19 @@ REVIEW_PACKET_INPUT_FILES = {
     "validation.json",
 }
 REVIEW_PACKET_FILES = REVIEW_PACKET_INPUT_FILES | {"report_manifest.json"}
+REVIEW_SUMMARY_KEYS = {
+    "overall",
+    "reviewer_id",
+    "model",
+    "invocation_id",
+    "required_method_ids",
+    "method_inventory",
+    "method_inventory_sha256",
+    "claim_count",
+    "covered_evidence_ids",
+    "disagreement_claim_count",
+    "limitations",
+}
 
 
 def sha256(path: Path) -> str:
@@ -205,6 +218,63 @@ def require_exact_source_sha256(
 ) -> None:
     if manifest.get("source_sha256") != expected_source_sha256(paths):
         raise ValueError("AI review source hashes are not exact")
+
+
+def require_exact_review_summary(
+    manifest: Mapping[str, Any],
+    reviewer: str,
+) -> None:
+    summary = manifest.get("review_summary")
+    if not isinstance(summary, dict) or set(summary) != REVIEW_SUMMARY_KEYS:
+        raise ValueError("AI review summary envelope is not exact")
+    if summary.get("overall") != {
+        "evidence_status": manifest.get("evidence_status"),
+        "authorized_hrd_state": manifest.get("authorized_hrd_state"),
+        "classification_authorization": "none",
+    }:
+        raise ValueError("AI review overall summary is stale")
+    if (
+        summary.get("reviewer_id") != reviewer
+        or not isinstance(summary.get("model"), dict)
+        or not summary.get("model")
+        or not isinstance(summary.get("invocation_id"), str)
+        or not summary.get("invocation_id")
+    ):
+        raise ValueError("AI review summary reviewer binding is not exact")
+    inventory_id = require_inventory_binding(
+        summary.get("method_inventory"),
+        summary.get("method_inventory_sha256"),
+        "AI review summary method inventory",
+        None,
+    )
+    require_pinned_methods(
+        summary.get("required_method_ids", ()),
+        "AI review summary method inventory",
+        inventory_id,
+    )
+    claim_count = summary.get("claim_count")
+    covered_evidence_ids = summary.get("covered_evidence_ids")
+    disagreement_claim_count = summary.get("disagreement_claim_count")
+    limitations = summary.get("limitations")
+    if (
+        not is_positive_exact_int(claim_count)
+        or not isinstance(covered_evidence_ids, list)
+        or not covered_evidence_ids
+        or any(
+            type(evidence_id) is not str or not evidence_id
+            for evidence_id in covered_evidence_ids
+        )
+        or len(set(covered_evidence_ids)) != len(covered_evidence_ids)
+        or not is_nonnegative_exact_int(disagreement_claim_count)
+        or disagreement_claim_count > claim_count
+        or not isinstance(limitations, list)
+        or not limitations
+        or any(
+            type(limitation) is not str or not limitation
+            for limitation in limitations
+        )
+    ):
+        raise ValueError("AI review summary counts are not exact")
 
 
 def is_nonnegative_exact_int(value: Any) -> bool:
@@ -602,6 +672,7 @@ def finalize(
             REVIEWER_METHODS[reviewer],
         )
         require_exact_source_sha256(source_paths, manifest)
+        require_exact_review_summary(manifest, reviewer)
         require_installed_manifest(output, manifest_sha256)
     except ValueError:
         output.unlink(missing_ok=True)

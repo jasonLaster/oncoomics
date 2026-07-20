@@ -786,6 +786,49 @@ class FinalizeAiReviewTests(unittest.TestCase):
 
                 self.assertFalse((review / "report_manifest.json").exists())
 
+    def test_final_manifest_rejects_extra_review_summary_fields(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            fixture, review = self.validated_review(temporary)
+            real_build_manifest = FINALIZE.build_manifest
+
+            def build_manifest_with_legacy_summary(
+                bundle_dir: Path,
+                review_dir: Path,
+                reviewer: str,
+                model_catalog_receipt: Path,
+            ) -> dict:
+                manifest = real_build_manifest(
+                    bundle_dir,
+                    review_dir,
+                    reviewer,
+                    model_catalog_receipt,
+                )
+                manifest["review_summary"]["legacy_model_notes"] = {
+                    "stale": "not part of the finalized AI review contract",
+                }
+                return manifest
+
+            with (
+                mock.patch.object(
+                    FINALIZE,
+                    "build_manifest",
+                    side_effect=build_manifest_with_legacy_summary,
+                ),
+                self.assertRaisesRegex(
+                    ValueError,
+                    "AI review summary envelope is not exact",
+                ),
+            ):
+                FINALIZE.finalize(
+                    fixture.bundle_dir,
+                    review,
+                    "A",
+                    fixture.catalog_receipt,
+                    review / "report_manifest.json",
+                )
+
+            self.assertFalse((review / "report_manifest.json").exists())
+
     def test_rejects_validation_bound_to_stale_bundle_manifest(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             fixture, review = self.validated_review(temporary)
