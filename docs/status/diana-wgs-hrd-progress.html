@@ -393,7 +393,8 @@
           summary they are about to preserve,
           pre-route blocked cross-check packets now exact-check the top-level
           and nested review summary they are about to hand to AI/freeform
-          review,
+          review, and each blocked route now has to keep its method spec in
+          lockstep with its manifest after the spec hash is rebound,
           downloaded executable route manifests now have to keep the exact
           no-call cross-check envelope before route staging can compact them,
           prepared AI runs now reject model-catalog
@@ -421,7 +422,8 @@
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-20</li>
-          <li class="pill">Latest milestone = deterministic summary exact</li>
+          <li class="pill">Latest milestone = blocked method specs exact</li>
+          <li class="pill">Blocked method specs = exact</li>
           <li class="pill">Deterministic review summary = exact</li>
           <li class="pill">AI finalizer model = exact</li>
           <li class="pill">AI evidence rows = exact</li>
@@ -1087,6 +1089,10 @@
             <li class="item" style="--tone: var(--done)">
               <strong>Done · exact-check blocked nested summaries</strong>
               <span>Blocked FACETS/scarHRD, CHORD, and HRDetect reports now reject stale nested readiness, observation, limitation, and source-scope fields, so a blocked route cannot smuggle promoted local review text into Rosalind, source-freeze, or AI/freeform handoffs.</span>
+            </li>
+            <li class="item" style="--tone: var(--done)">
+              <strong>Done · exact-check blocked method specs</strong>
+              <span>Blocked cross-check manifests now reopen <code>method_spec.json</code> after its support hash matches and reject stale method IDs, route blockers, status fields, run IDs, and source-manifest bindings before FACETS/scarHRD, CHORD, or HRDetect packets can feed Rosalind or AI/freeform review.</span>
             </li>
             <li class="item" style="--tone: var(--done)">
               <strong>Done · bind blocked cross-checks to parsed upstream manifests</strong>
@@ -3050,6 +3056,19 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-20">Jul 20 · local</time>
+              <span>
+                <strong>Local patch · Exact-check blocked method specs:</strong>
+                blocked cross-check packets now reparse
+                <code>method_spec.json</code> after its support hash matches
+                and require its route contract, no-result status, run ID, and
+                source report bindings to match <code>report_manifest.json</code>
+                exactly. No S3, Batch, route, GPU, quota, replacement compute,
+                or apply-mode AWS work was launched; Cost Explorer was
+                refreshed read-only for 2026-07-19 UTC and remained at $5.24.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-20">Jul 20 · local</time>
               <span>

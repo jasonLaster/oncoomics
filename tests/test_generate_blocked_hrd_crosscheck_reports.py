@@ -9,6 +9,7 @@ import stat
 import sys
 import tempfile
 import unittest
+from collections.abc import Callable
 from pathlib import Path
 from unittest import mock
 
@@ -42,6 +43,27 @@ def write_duplicate_json_field(path: Path, key: str, stale_value: object) -> Non
         raise AssertionError(f"expected exactly one {description}")
     duplicate = f'  "{key}": {json.dumps(stale_value, sort_keys=True)},\n{current}'
     path.write_text(text.replace(current, duplicate, 1) + "\n", encoding="utf-8")
+
+
+def rebind_mutated_method_spec(
+    directory: Path,
+    mutate: Callable[[dict], None],
+) -> None:
+    spec_path = directory / "method_spec.json"
+    spec = json.loads(spec_path.read_text(encoding="utf-8"))
+    mutate(spec)
+    spec_path.write_text(
+        json.dumps(spec, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
+
+    manifest_path = directory / "report_manifest.json"
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    manifest["support_sha256"]["method_spec.json"] = sha256(spec_path)
+    manifest_path.write_text(
+        json.dumps(manifest, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
 
 
 def write_source_report_manifest(path: Path, **updates: object) -> None:
@@ -583,6 +605,74 @@ class GenerateBlockedHrdCrosscheckReportsTests(unittest.TestCase):
 
                 with self.assertRaisesRegex(ValueError, message):
                     GENERATOR.require_blocked_report_manifest(manifest_path.parent)
+
+    def test_packet_manifest_requires_exact_rebound_method_spec(self) -> None:
+        mutations = {
+            "extra_top_level": (
+                lambda spec: spec.__setitem__("legacy_note", "accepted"),
+                "method spec is not exact",
+            ),
+            "float_schema_version": (
+                lambda spec: spec.__setitem__("schema_version", 1.0),
+                "method spec is not exact",
+            ),
+            "stale_method_id": (
+                lambda spec: spec.__setitem__(
+                    "method_id",
+                    GENERATOR.METHODS[1]["method_id"],
+                ),
+                "method spec is not exact",
+            ),
+            "promoted_status": (
+                lambda spec: spec.__setitem__("evidence_status", "complete"),
+                "method spec is not exact",
+            ),
+            "added_blocker": (
+                lambda spec: spec["blockers"].append(
+                    "Late local rewrite accepted this blocked route.",
+                ),
+                "method spec is not exact",
+            ),
+            "rewritten_sources": (
+                lambda spec: spec.__setitem__("sources", []),
+                "method spec is not exact",
+            ),
+            "stale_run": (
+                lambda spec: spec.__setitem__(
+                    "run_id",
+                    "diana-wgs-hrd-late-rewrite",
+                ),
+                "method spec is not exact",
+            ),
+            "stale_scope": (
+                lambda spec: spec.__setitem__(
+                    "source_report_binding_scope",
+                    "pre_route_deterministic_rosalind",
+                ),
+                "method spec is not exact",
+            ),
+            "stale_source_report": (
+                lambda spec: spec["source_report_manifests"].__setitem__(
+                    "deterministic_full_wgs",
+                    "0" * 64,
+                ),
+                "method spec source reports are not exact",
+            ),
+        }
+
+        for label, (mutate, message) in mutations.items():
+            with self.subTest(label=label), tempfile.TemporaryDirectory() as temporary:
+                output = Path(temporary) / "blocked"
+                GENERATOR.generate(
+                    output,
+                    "2026-07-17T00:00:00+00:00",
+                    run_id="diana-wgs-hrd-unit",
+                )
+                directory = output / GENERATOR.METHODS[0]["directory"]
+                rebind_mutated_method_spec(directory, mutate)
+
+                with self.assertRaisesRegex(ValueError, message):
+                    GENERATOR.require_blocked_report_manifest(directory)
 
     def test_packet_manifest_rejects_duplicate_json_object_names(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
