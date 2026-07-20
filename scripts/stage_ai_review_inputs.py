@@ -177,18 +177,22 @@ def read_bound_file(path: Path, expected_sha256: str, label: str) -> bytes:
 
 
 def read_stable_file_with_sha256(path: Path, label: str) -> tuple[bytes, str]:
-    data = read_real_hash_input_once(path, label)
+    data, identity = read_real_hash_input_once(path, label)
     digest = hashlib.sha256(data).hexdigest()
+    stable_data, stable_identity = read_real_hash_input_once(path, label)
     if (
         not data
-        or hashlib.sha256(read_real_hash_input_once(path, label)).hexdigest()
-        != digest
+        or stable_identity != identity
+        or hashlib.sha256(stable_data).hexdigest() != digest
     ):
         raise ValueError(f"{label} changed during read: {path}")
     return data, digest
 
 
-def read_real_hash_input_once(path: Path, label: str) -> bytes:
+def read_real_hash_input_once(
+    path: Path,
+    label: str,
+) -> tuple[bytes, tuple[int, int, int, int, int, int]]:
     require_real_hash_input(path)
     flags = (
         os.O_RDONLY
@@ -218,7 +222,7 @@ def read_real_hash_input_once(path: Path, label: str) -> bytes:
         or stat_identity(after_read) != stat_identity(current)
     ):
         raise ValueError(f"{label} changed during read: {path}")
-    return data
+    return data, stat_identity(opened)
 
 
 def stat_identity(value: os.stat_result) -> tuple[int, int, int, int, int, int]:

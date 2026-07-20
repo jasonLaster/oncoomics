@@ -554,6 +554,34 @@ class StageAiReviewInputsTests(unittest.TestCase):
 
         self.assertTrue(swapped)
 
+    def test_sha256_rejects_same_byte_leaf_replacement(self) -> None:
+        input_path = self.root / "review_bundle.json"
+        replacement = self.root / "replacement_review_bundle.json"
+        input_path.write_text('{"status":"ready"}\n', encoding="utf-8")
+        replacement.write_text('{"status":"ready"}\n', encoding="utf-8")
+        real_read_once = STAGE.read_real_hash_input_once
+        swapped = False
+
+        def replace_after_initial_read(path: Path, label: str):
+            nonlocal swapped
+            data = real_read_once(path, label)
+            if path == input_path and not swapped:
+                swapped = True
+                replacement.replace(input_path)
+            return data
+
+        with (
+            mock.patch.object(
+                STAGE,
+                "read_real_hash_input_once",
+                side_effect=replace_after_initial_read,
+            ),
+            self.assertRaisesRegex(ValueError, "changed during read"),
+        ):
+            STAGE.sha256(input_path)
+
+        self.assertTrue(swapped)
+
     def test_write_once_removes_output_after_mode_change(self) -> None:
         output = self.root / "complete.json"
         real_fsync_directory = STAGE.fsync_directory
