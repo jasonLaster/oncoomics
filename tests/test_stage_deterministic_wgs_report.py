@@ -129,14 +129,80 @@ def write_minimal_report_packet(staging: Path) -> None:
                     "evidence_status": "partial_evidence",
                     "authorized_hrd_state": "no_call",
                 },
-                "custody": {},
-                "alignment": {},
-                "contamination": {},
-                "somatic_variants": {},
-                "sbs96": {},
-                "coverage_cnv": {},
-                "sv_evidence": {},
-                "readiness": {},
+                "custody": {
+                    "crosscheck_materialization_anchor_sha256": "b" * 64,
+                    "crosscheck_materialization_capture_sha256": "c" * 64,
+                    "crosscheck_materialization_receipt_sha256": "d" * 64,
+                    "exact_kms_match": True,
+                    "exact_materialization_receipt_sha256": "e" * 64,
+                    "executed_worker_freeze_receipt_sha256": "f" * 64,
+                    "executed_worker_freeze_receipt_upload_sha256": "1" * 64,
+                    "freeze_receipt_anchor_sha256": "2" * 64,
+                    "freeze_receipt_sha256": "3" * 64,
+                    "freeze_receipt_version_id": "freeze-version",
+                    "frozen_object_count": 1,
+                    "input_snapshot_receipt_sha256": "4" * 64,
+                    "private_freeze_status": "passed",
+                    "report_consumed_versioned_artifacts": 1,
+                    "stage_provenance_anchor_sha256": "5" * 64,
+                    "stage_provenance_receipt_sha256": "6" * 64,
+                    "stage_provenance_receipt_version_id": "stage-version",
+                    "staged_input_validation_download_receipt_sha256": "7" * 64,
+                },
+                "alignment": {
+                    "tumor": {
+                        "total_reads": 1,
+                        "mapped_reads": 1,
+                        "duplicate_reads": 0,
+                    },
+                    "normal": {
+                        "total_reads": 1,
+                        "mapped_reads": 1,
+                        "duplicate_reads": 0,
+                    },
+                },
+                "contamination": {
+                    "fraction": 0.01,
+                    "reported_error": 0.001,
+                    "boundary": "not_tumor_purity",
+                },
+                "somatic_variants": {
+                    "filtered_records": 1,
+                    "pass_records": 1,
+                    "pass_snv_records": 1,
+                    "pass_indel_records": 0,
+                    "bounded_brca_region_pass_records": 1,
+                    "boundary": "region_only_unannotated",
+                },
+                "sbs96": {
+                    "canonical_channels": 96,
+                    "usable_pass_snv_alleles": 1,
+                    "skipped_snv_alleles": 0,
+                    "matrix_equivalence": "passed",
+                    "sbs3_state": "no_call",
+                },
+                "coverage_cnv": {
+                    "bin_count": 1,
+                    "relative_gain_bins": 0,
+                    "relative_loss_bins": 0,
+                    "neutral_or_low_signal_bins": 1,
+                    "boundary": "not_allele_specific",
+                },
+                "sv_evidence": {
+                    "tumor": {
+                        "supplementary_alignments": 0,
+                        "discordant_mapped_pairs": 0,
+                        "interchromosomal_pairs": 0,
+                        "large_insert_pairs": 0,
+                    },
+                    "normal": {
+                        "supplementary_alignments": 0,
+                        "discordant_mapped_pairs": 0,
+                        "interchromosomal_pairs": 0,
+                        "large_insert_pairs": 0,
+                    },
+                },
+                "readiness": dict(REPORT_MODULE.REVIEW_SUMMARY_READINESS),
             },
         },
     )
@@ -1380,6 +1446,15 @@ class StageDeterministicWgsReportInstallTests(unittest.TestCase):
             "extra_review_summary_section": lambda manifest: manifest[
                 "review_summary"
             ].__setitem__("legacy_notes", {}),
+            "extra_custody_field": lambda manifest: manifest["review_summary"][
+                "custody"
+            ].__setitem__("legacy_receipt_sha256", "a" * 64),
+            "extra_alignment_field": lambda manifest: manifest["review_summary"][
+                "alignment"
+            ]["tumor"].__setitem__("legacy_total_reads", 1),
+            "extra_readiness_field": lambda manifest: manifest["review_summary"][
+                "readiness"
+            ].__setitem__("legacy_hrdetect", "ready"),
         }
         for name, mutate in mutations.items():
             with self.subTest(name=name), tempfile.TemporaryDirectory(

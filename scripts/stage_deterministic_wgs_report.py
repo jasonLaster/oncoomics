@@ -9,6 +9,7 @@ import csv
 import hashlib
 import io
 import json
+import math
 import os
 import re
 import shutil
@@ -110,6 +111,81 @@ REVIEW_SUMMARY_KEYS = {
     "coverage_cnv",
     "sv_evidence",
     "readiness",
+}
+REVIEW_SUMMARY_CUSTODY_KEYS = {
+    "crosscheck_materialization_anchor_sha256",
+    "crosscheck_materialization_capture_sha256",
+    "crosscheck_materialization_receipt_sha256",
+    "exact_kms_match",
+    "exact_materialization_receipt_sha256",
+    "executed_worker_freeze_receipt_sha256",
+    "executed_worker_freeze_receipt_upload_sha256",
+    "freeze_receipt_anchor_sha256",
+    "freeze_receipt_sha256",
+    "freeze_receipt_version_id",
+    "frozen_object_count",
+    "input_snapshot_receipt_sha256",
+    "private_freeze_status",
+    "report_consumed_versioned_artifacts",
+    "stage_provenance_anchor_sha256",
+    "stage_provenance_receipt_sha256",
+    "stage_provenance_receipt_version_id",
+    "staged_input_validation_download_receipt_sha256",
+}
+REVIEW_SUMMARY_ALIGNMENT_KEYS = {
+    "duplicate_reads",
+    "mapped_reads",
+    "total_reads",
+}
+REVIEW_SUMMARY_CONTAMINATION_KEYS = {
+    "boundary",
+    "fraction",
+    "reported_error",
+}
+REVIEW_SUMMARY_SOMATIC_KEYS = {
+    "boundary",
+    "bounded_brca_region_pass_records",
+    "filtered_records",
+    "pass_indel_records",
+    "pass_records",
+    "pass_snv_records",
+}
+REVIEW_SUMMARY_SBS96_KEYS = {
+    "canonical_channels",
+    "matrix_equivalence",
+    "sbs3_state",
+    "skipped_snv_alleles",
+    "usable_pass_snv_alleles",
+}
+REVIEW_SUMMARY_COVERAGE_CNV_KEYS = {
+    "bin_count",
+    "boundary",
+    "neutral_or_low_signal_bins",
+    "relative_gain_bins",
+    "relative_loss_bins",
+}
+REVIEW_SUMMARY_SV_KEYS = {
+    "discordant_mapped_pairs",
+    "interchromosomal_pairs",
+    "large_insert_pairs",
+    "supplementary_alignments",
+}
+REVIEW_SUMMARY_READINESS = {
+    surface: state for surface, state, _reason in OUTPUT_READINESS
+}
+REVIEW_SUMMARY_SHA256_KEYS = {
+    "crosscheck_materialization_anchor_sha256",
+    "crosscheck_materialization_capture_sha256",
+    "crosscheck_materialization_receipt_sha256",
+    "exact_materialization_receipt_sha256",
+    "executed_worker_freeze_receipt_sha256",
+    "executed_worker_freeze_receipt_upload_sha256",
+    "freeze_receipt_anchor_sha256",
+    "freeze_receipt_sha256",
+    "input_snapshot_receipt_sha256",
+    "stage_provenance_anchor_sha256",
+    "stage_provenance_receipt_sha256",
+    "staged_input_validation_download_receipt_sha256",
 }
 SBS_MUTATION_TYPES = ("C>A", "C>G", "C>T", "T>A", "T>C", "T>G")
 SBS_BASES = "ACGT"
@@ -1670,6 +1746,140 @@ def write_staged_csv(
     write_staged_text(path, buffer.getvalue())
 
 
+def require_exact_review_summary_section(
+    value: Any,
+    expected_keys: set[str],
+) -> dict[str, Any]:
+    if not isinstance(value, dict) or set(value) != expected_keys:
+        raise ValueError("report manifest review summary is not exact")
+    return value
+
+
+def require_finite_nonnegative_number(value: Any, label: str) -> None:
+    if (
+        isinstance(value, bool)
+        or not isinstance(value, (int, float))
+        or not math.isfinite(value)
+        or value < 0
+    ):
+        raise ValueError(f"report manifest review summary has invalid {label}")
+
+
+def require_exact_deterministic_review_summary(value: Any) -> None:
+    review_summary = require_exact_review_summary_section(value, REVIEW_SUMMARY_KEYS)
+    if review_summary.get("overall") != {
+        "evidence_status": "partial_evidence",
+        "authorized_hrd_state": "no_call",
+    }:
+        raise ValueError("report manifest review summary is not exact")
+
+    custody = require_exact_review_summary_section(
+        review_summary.get("custody"),
+        REVIEW_SUMMARY_CUSTODY_KEYS,
+    )
+    if (
+        custody.get("private_freeze_status") != "passed"
+        or custody.get("exact_kms_match") is not True
+    ):
+        raise ValueError("report manifest review summary is not exact")
+    for key in REVIEW_SUMMARY_SHA256_KEYS:
+        require_manifest_sha256(custody.get(key), f"review_summary.custody.{key}")
+    for key in (
+        "freeze_receipt_version_id",
+        "stage_provenance_receipt_version_id",
+    ):
+        if not valid_version_id(custody.get(key)):
+            raise ValueError("report manifest review summary is not exact")
+    for key in ("frozen_object_count", "report_consumed_versioned_artifacts"):
+        require_nonnegative_exact_int(
+            custody.get(key),
+            f"review_summary.custody.{key}",
+        )
+
+    alignment = require_exact_review_summary_section(
+        review_summary.get("alignment"),
+        {"tumor", "normal"},
+    )
+    for role in ("tumor", "normal"):
+        row = require_exact_review_summary_section(
+            alignment.get(role),
+            REVIEW_SUMMARY_ALIGNMENT_KEYS,
+        )
+        for key in REVIEW_SUMMARY_ALIGNMENT_KEYS:
+            require_nonnegative_exact_int(row.get(key), f"review_summary.{role}.{key}")
+
+    contamination = require_exact_review_summary_section(
+        review_summary.get("contamination"),
+        REVIEW_SUMMARY_CONTAMINATION_KEYS,
+    )
+    if contamination.get("boundary") != "not_tumor_purity":
+        raise ValueError("report manifest review summary is not exact")
+    require_finite_nonnegative_number(
+        contamination.get("fraction"),
+        "contamination fraction",
+    )
+    require_finite_nonnegative_number(
+        contamination.get("reported_error"),
+        "contamination reported_error",
+    )
+    if contamination.get("fraction") >= 1:
+        raise ValueError("report manifest review summary is not exact")
+
+    somatic = require_exact_review_summary_section(
+        review_summary.get("somatic_variants"),
+        REVIEW_SUMMARY_SOMATIC_KEYS,
+    )
+    if somatic.get("boundary") != "region_only_unannotated":
+        raise ValueError("report manifest review summary is not exact")
+    for key in REVIEW_SUMMARY_SOMATIC_KEYS - {"boundary"}:
+        require_nonnegative_exact_int(
+            somatic.get(key),
+            f"review_summary.somatic_variants.{key}",
+        )
+
+    sbs96 = require_exact_review_summary_section(
+        review_summary.get("sbs96"),
+        REVIEW_SUMMARY_SBS96_KEYS,
+    )
+    if (
+        sbs96.get("matrix_equivalence") != "passed"
+        or sbs96.get("sbs3_state") != "no_call"
+    ):
+        raise ValueError("report manifest review summary is not exact")
+    for key in REVIEW_SUMMARY_SBS96_KEYS - {"matrix_equivalence", "sbs3_state"}:
+        require_nonnegative_exact_int(sbs96.get(key), f"review_summary.sbs96.{key}")
+
+    coverage = require_exact_review_summary_section(
+        review_summary.get("coverage_cnv"),
+        REVIEW_SUMMARY_COVERAGE_CNV_KEYS,
+    )
+    if coverage.get("boundary") != "not_allele_specific":
+        raise ValueError("report manifest review summary is not exact")
+    for key in REVIEW_SUMMARY_COVERAGE_CNV_KEYS - {"boundary"}:
+        require_nonnegative_exact_int(
+            coverage.get(key),
+            f"review_summary.coverage_cnv.{key}",
+        )
+
+    sv_evidence = require_exact_review_summary_section(
+        review_summary.get("sv_evidence"),
+        {"tumor", "normal"},
+    )
+    for role in ("tumor", "normal"):
+        row = require_exact_review_summary_section(
+            sv_evidence.get(role),
+            REVIEW_SUMMARY_SV_KEYS,
+        )
+        for key in REVIEW_SUMMARY_SV_KEYS:
+            require_nonnegative_exact_int(
+                row.get(key),
+                f"review_summary.sv_evidence.{role}.{key}",
+            )
+
+    if review_summary.get("readiness") != REVIEW_SUMMARY_READINESS:
+        raise ValueError("report manifest review summary is not exact")
+
+
 def require_report_manifest(packet_dir: Path) -> None:
     manifest_path = packet_dir / "report_manifest.json"
     payload = load_json(manifest_path)
@@ -1685,17 +1895,7 @@ def require_report_manifest(packet_dir: Path) -> None:
         or payload.get("classification_qc_status") != "not_applicable"
     ):
         raise ValueError("report manifest identity is not exact")
-    review_summary = payload.get("review_summary")
-    if (
-        not isinstance(review_summary, dict)
-        or set(review_summary) != REVIEW_SUMMARY_KEYS
-        or review_summary.get("overall")
-        != {
-            "evidence_status": "partial_evidence",
-            "authorized_hrd_state": "no_call",
-        }
-    ):
-        raise ValueError("report manifest review summary is not exact")
+    require_exact_deterministic_review_summary(payload.get("review_summary"))
 
     support_hashes = payload.get("support_sha256")
     support_names = {
