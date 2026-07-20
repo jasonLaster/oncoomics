@@ -1097,6 +1097,8 @@ resource "aws_batch_compute_environment" "hrd_x86_ondemand" {
 }
 
 resource "aws_batch_compute_environment" "gpu_p5en_ondemand" {
+  count = var.enable_gpu_p5en_batch ? 1 : 0
+
   name         = "${local.name_prefix}-gpu-p5en-ondemand"
   service_role = local.batch_service_role_arn
   type         = "MANAGED"
@@ -1183,13 +1185,15 @@ resource "aws_batch_job_queue" "hrd_x86" {
 }
 
 resource "aws_batch_job_queue" "gpu_p5en" {
+  count = var.enable_gpu_p5en_batch ? 1 : 0
+
   name     = "${local.name_prefix}-gpu-p5en"
   state    = "ENABLED"
   priority = 30
 
   compute_environment_order {
     order               = 1
-    compute_environment = aws_batch_compute_environment.gpu_p5en_ondemand.arn
+    compute_environment = aws_batch_compute_environment.gpu_p5en_ondemand[0].arn
   }
 
   tags = {
@@ -1285,10 +1289,6 @@ resource "aws_dynamodb_table" "daily_cost_guard" {
     name = "guard_day"
     type = "S"
   }
-
-  server_side_encryption {
-    enabled = true
-  }
 }
 
 data "archive_file" "batch_cost_guard" {
@@ -1337,16 +1337,20 @@ data "aws_iam_policy_document" "batch_cost_guard" {
       "batch:UpdateComputeEnvironment",
       "batch:UpdateJobQueue"
     ]
-    resources = [
-      aws_batch_compute_environment.spot.arn,
-      aws_batch_compute_environment.ondemand.arn,
-      aws_batch_compute_environment.hrd_x86_ondemand.arn,
-      aws_batch_compute_environment.gpu_p5en_ondemand.arn,
-      aws_batch_job_queue.spot.arn,
-      aws_batch_job_queue.ondemand.arn,
-      aws_batch_job_queue.hrd_x86.arn,
-      aws_batch_job_queue.gpu_p5en.arn
-    ]
+    resources = concat(
+      [
+        aws_batch_compute_environment.spot.arn,
+        aws_batch_compute_environment.ondemand.arn,
+        aws_batch_compute_environment.hrd_x86_ondemand.arn,
+        aws_batch_job_queue.spot.arn,
+        aws_batch_job_queue.ondemand.arn,
+        aws_batch_job_queue.hrd_x86.arn
+      ],
+      var.enable_gpu_p5en_batch ? [
+        aws_batch_compute_environment.gpu_p5en_ondemand[0].arn,
+        aws_batch_job_queue.gpu_p5en[0].arn
+      ] : []
+    )
   }
 
   statement {
@@ -1406,21 +1410,25 @@ resource "aws_lambda_function" "batch_cost_guard" {
       BATCH_COST_GUARD_TAG_KEY   = local.daily_cost_guard_ec2_tag_key
       BATCH_COST_GUARD_TAG_VALUE = local.daily_cost_guard_ec2_tag_value
       BATCH_COST_LEDGER_TABLE    = aws_dynamodb_table.daily_cost_guard.name
-      BATCH_COMPUTE_ENVIRONMENTS = jsonencode([
-        aws_batch_compute_environment.spot.name,
-        aws_batch_compute_environment.ondemand.name,
-        aws_batch_compute_environment.hrd_x86_ondemand.name,
-        aws_batch_compute_environment.gpu_p5en_ondemand.name
-      ])
+      BATCH_COMPUTE_ENVIRONMENTS = jsonencode(concat(
+        [
+          aws_batch_compute_environment.spot.name,
+          aws_batch_compute_environment.ondemand.name,
+          aws_batch_compute_environment.hrd_x86_ondemand.name
+        ],
+        var.enable_gpu_p5en_batch ? [aws_batch_compute_environment.gpu_p5en_ondemand[0].name] : []
+      ))
       BATCH_DAILY_EC2_LIMIT_USD       = tostring(var.daily_cost_guard_limit_usd * var.daily_cost_guard_live_stop_threshold_percent / 100)
       BATCH_ESTIMATED_STOP_REASON     = "Diana estimated daily Batch EC2 spend guard tripped"
       BATCH_INSTANCE_HOURLY_RATES_USD = jsonencode(var.daily_cost_guard_instance_hourly_rates_usd)
-      BATCH_JOB_QUEUES = jsonencode([
-        aws_batch_job_queue.spot.name,
-        aws_batch_job_queue.ondemand.name,
-        aws_batch_job_queue.hrd_x86.name,
-        aws_batch_job_queue.gpu_p5en.name
-      ])
+      BATCH_JOB_QUEUES = jsonencode(concat(
+        [
+          aws_batch_job_queue.spot.name,
+          aws_batch_job_queue.ondemand.name,
+          aws_batch_job_queue.hrd_x86.name
+        ],
+        var.enable_gpu_p5en_batch ? [aws_batch_job_queue.gpu_p5en[0].name] : []
+      ))
       BATCH_UNKNOWN_INSTANCE_HOURLY_RATE_USD = tostring(var.daily_cost_guard_unknown_instance_hourly_rate_usd)
     }
   }
@@ -1475,9 +1483,9 @@ resource "local_file" "nextflow_params" {
     phase3_fast_cache_kms_key_arn = aws_kms_key.main.arn
     phase3_fast_cache_prefix      = "s3://${aws_s3_bucket.this["private_results"].bucket}/phase3-fast-cache/wgs-v2"
     phase3_fast_cache_region      = var.region
-    aws_gpu_queue                 = aws_batch_job_queue.gpu_p5en.name
-    batch_gpu_p5en_instance_types = var.batch_gpu_p5en_instance_types
-    gpu_p5en_max_vcpus            = var.gpu_p5en_max_vcpus
+    aws_gpu_queue                 = var.enable_gpu_p5en_batch ? aws_batch_job_queue.gpu_p5en[0].name : null
+    batch_gpu_p5en_instance_types = var.enable_gpu_p5en_batch ? var.batch_gpu_p5en_instance_types : []
+    gpu_p5en_max_vcpus            = var.enable_gpu_p5en_batch ? var.gpu_p5en_max_vcpus : 0
     aws_hrd_x86_queue             = aws_batch_job_queue.hrd_x86.name
     aws_spot_queue                = aws_batch_job_queue.spot.name
     aws_ondemand_queue            = aws_batch_job_queue.ondemand.name

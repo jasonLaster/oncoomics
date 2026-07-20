@@ -384,6 +384,7 @@ class CliParityTest(unittest.TestCase):
         assert plan_env is not None
         self.assertEqual("us-east-2", plan_env["TF_VAR_region"])
         self.assertEqual("prod-use2", plan_env["TF_VAR_environment"])
+        self.assertEqual("true", plan_env["TF_VAR_enable_gpu_p5en_batch"])
         self.assertEqual("true", plan_env["TF_VAR_enable_parabricks_mirror"])
         self.assertEqual("false", plan_env["TF_VAR_manage_service_linked_roles"])
         self.assertEqual("nextflow.aws.use2.json", plan_env["TF_VAR_nextflow_params_filename"])
@@ -392,6 +393,7 @@ class CliParityTest(unittest.TestCase):
         use1_env = use1_steps[1].env
         assert use1_env is not None
         self.assertEqual("nextflow.aws.json", use1_env["TF_VAR_nextflow_params_filename"])
+        self.assertNotIn("TF_VAR_enable_gpu_p5en_batch", use1_env)
 
     def test_use2_ecr_push_selects_gpu_workspace_and_region(self):
         task = TASKS["aws:ecr:push:use2"]

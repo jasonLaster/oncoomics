@@ -968,7 +968,7 @@
             </li>
             <li class="item" style="--tone: var(--done)">
               <strong>Done · install the daily cost kill switch</strong>
-              <span>The stack now combines the $200/day AWS Budget backstop with a one-minute live EC2 spend poller that prices Diana-tagged Batch hosts into a UTC-day ledger, then disables Diana Batch queues and compute environments before cancelling queued jobs and terminating visible running jobs when the live Batch EC2 estimate reaches 80% of the daily cap, or $160 by default.</span>
+              <span>The use1 and use2 stacks can now combine a $200/day AWS Budget backstop with a one-minute live EC2 spend poller that prices Diana-tagged Batch hosts into a UTC-day ledger, then disables only the Batch queues and compute environments present in that workspace before cancelling queued jobs and terminating visible running jobs when the live Batch EC2 estimate reaches 80% of the daily cap, or $160 by default.</span>
             </li>
             <li class="item" style="--tone: var(--queued)">
               <strong>Pending · hold the us-west-2 P-family quota hedge</strong>
@@ -2756,6 +2756,17 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-19T23:28:05-07:00">Jul 19 · local</time>
+              <span>
+                <strong>Local/live patch · Guard CPU and GPU workspaces separately:</strong>
+                the P5 Hopper Batch lane is now opt-in for the phase3-fast
+                us-east-2 workspace, so the same $200/day kill switch can be
+                installed on the us-east-1 CPU/x86 stack without creating a
+                stray GPU queue; live use1 and use2 Lambda pollers both
+                returned <code>status=monitored</code> at $0 Batch EC2 spend.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-19T23:20:28-07:00">Jul 19 · local</time>
               <span>

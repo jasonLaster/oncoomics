@@ -148,7 +148,9 @@ mixing Parabricks jobs into the ARM CPU queues:
 
 Provision the P5 lane in its own `us-east-2` Terraform workspace so the
 existing `sra-use1` CPU queues and `infra/aws/nextflow.aws.json` stay bound to
-`us-east-1`:
+`us-east-1`. The `use2` wrappers set `enable_gpu_p5en_batch=true`; the default
+workspace settings leave the P5 queue absent so the daily cost guard can be
+applied to CPU workspaces without creating a stray GPU lane.
 
 ```sh
 PYTHONPATH=src /usr/bin/python3 -m diana_omics infra:aws:plan:use2
@@ -490,7 +492,10 @@ transfer can create charges. Work-bucket objects expire by lifecycle policy,
 but Batch compute and failed runs should still be checked after testing.
 
 Each Terraform workspace also installs a two-layer daily Batch cost guard with
-a default `daily_cost_guard_limit_usd = 200`:
+a default `daily_cost_guard_limit_usd = 200`. The guard protects that
+workspace's existing Batch queues and compute environments: the use1 CPU/x86
+queues when `enable_gpu_p5en_batch=false`, and those queues plus the isolated
+P5 Hopper queue in the phase3-fast use2 workspace.
 
 - a live EventBridge rule invokes `${project}-${environment}-batch-cost-guard`
   every minute, estimates the current UTC day's Diana Batch EC2 spend from
