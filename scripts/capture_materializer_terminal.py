@@ -1043,8 +1043,22 @@ def require_installed_private_output(path: Path, expected_sha256: str) -> None:
         raise ValueError(f"private output changed during write: {path}")
     if (path.stat().st_mode & 0o777) != 0o600:
         raise ValueError(f"private output mode changed during write: {path}")
-    if sha256_bytes(path.read_bytes()) != expected_sha256:
+    if sha256_private_output(path) != expected_sha256:
         raise ValueError(f"private output changed during write: {path}")
+
+
+def sha256_private_output(path: Path) -> str:
+    digest = sha256_private_output_once(path)
+    if sha256_private_output_once(path) != digest:
+        raise ValueError(f"private output changed during write: {path}")
+    return digest
+
+
+def sha256_private_output_once(path: Path) -> str:
+    require_no_symlinked_ancestors(path, "private output")
+    if path.is_symlink() or not path.is_file():
+        raise ValueError(f"private output changed during write: {path}")
+    return sha256_bytes(path.read_bytes())
 
 
 def fsync_directory(path: Path) -> None:
