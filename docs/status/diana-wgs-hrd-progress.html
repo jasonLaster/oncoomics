@@ -370,13 +370,14 @@
           before private review or reviewed-public release can continue. The
           materializer registration, one-shot materializer submitter,
           staged-validation downloader, input-contract finalizer, freeze steps,
-          local materialization, input-contract publication, the selected
-          fast-rerun handoff chain, and the Diana WGS Rosalind packet builder
-          now carry verified bytes forward, bind the top-level run index and
-          cloud handoff to the run manifest, re-check per-packet manifests, and
-          re-check exact public HCC1395 rehearsal stack manifests,
-          inventories, reviewer input directories, and AI-review preparation
-          receipt links before they feed model-review inputs.
+          local materialization, input-contract final route checks,
+          input-contract publication, the selected fast-rerun handoff chain,
+          and the Diana WGS Rosalind packet builder now carry verified bytes
+          forward, bind the top-level run index and cloud handoff to the run
+          manifest, re-check per-packet manifests, and re-check exact public
+          HCC1395 rehearsal stack manifests, inventories, reviewer input
+          directories, and AI-review preparation receipt links before they feed
+          model-review inputs.
           The selected GPU rerun is still quota-blocked, the legacy CPU run
           remains stopped, and Diana HRD remains <code>partial_evidence</code> /
           <code>no_call</code> until terminal artifacts and reviewed cross-check
@@ -384,7 +385,8 @@
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-19</li>
-          <li class="pill">Latest milestone = HCC1395 AI prep receipt links rechecked</li>
+          <li class="pill">Latest milestone = input contracts route-checked</li>
+          <li class="pill">Input-contract finalizer = route-checked</li>
           <li class="pill">HCC1395 AI prep receipts = rechecked</li>
           <li class="pill">HCC1395 reviewer inputs = rechecked</li>
           <li class="pill">AI prep staging = cleaned</li>
@@ -835,8 +837,8 @@
             </li>
             <li class="track" style="--tone: var(--queued)">
               <strong>Public / private boundary posture</strong>
-              <span>70% · contracts guarded</span>
-              <div class="bar" aria-hidden="true" style="--pct: 70%"><span></span></div>
+              <span>71% · final contracts route-checked</span>
+              <div class="bar" aria-hidden="true" style="--pct: 71%"><span></span></div>
             </li>
           </ol>
           <p class="note">
@@ -971,6 +973,10 @@
             <li class="item" style="--tone: var(--done)">
               <strong>Done · publish stable input contracts</strong>
               <span>HRD input-contract publication now binds dry-run receipts, create-only uploads, and recovery checks to the exact finalized contract bytes before the contract can feed downstream Rosalind, executable route, or AI/freeform review.</span>
+            </li>
+            <li class="item" style="--tone: var(--done)">
+              <strong>Done · route-check finalized input contracts</strong>
+              <span>The alias-only input-contract finalizer now reuses the canonical readiness checker after attaching final custody, so a contract that still lacks route-specific evidence cannot be marked passed before publication.</span>
             </li>
             <li class="item" style="--tone: var(--done)">
               <strong>Done · bind cross-check staging reads</strong>
@@ -2566,6 +2572,15 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-19T20:08:48-07:00">Jul 19 · local</time>
+              <span>
+                <strong>Local patch · Route-check finalized input contracts:</strong>
+                the alias-only input-contract finalizer now runs the canonical
+                readiness check after adding final custody, so incomplete
+                route inputs fail before the final contract is accepted.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-19T20:05:38-07:00">Jul 19 · local</time>
               <span>

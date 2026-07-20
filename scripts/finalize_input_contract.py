@@ -24,6 +24,7 @@ from build_ai_review_bundle import (
     DuplicateJsonKeyError,
     reject_duplicate_json_object_names,
 )
+from check_contract import validate as validate_contract
 
 HEX64 = re.compile(r"^[0-9a-f]{64}$")
 FINAL_OUTPUTS = {
@@ -238,6 +239,20 @@ EXPECTED_FINALIZED_CUSTODY_CHECKS = {
     "alias_only_outputs_have_single_create_only_versions": True,
     "sbs96_independently_rederived_from_final_pass_vcf": True,
 }
+
+
+def require_finalized_contract_ready(contract: dict[str, Any]) -> None:
+    result = validate_contract(contract)
+    if result.get("overall_status") == "ready":
+        return
+    blocked_routes = sorted(
+        route
+        for route, route_result in result.get("routes", {}).items()
+        if isinstance(route_result, dict)
+        and route_result.get("status") != "ready"
+    )
+    detail = ",".join(blocked_routes) if blocked_routes else "unknown"
+    raise ValueError(f"finalized input contract is not ready: {detail}")
 
 
 def is_platform_root_alias(path: Path) -> bool:
@@ -824,6 +839,7 @@ def finalize(
         "final_primary_artifacts": bound_outputs,
         "checks": dict(EXPECTED_FINALIZED_CUSTODY_CHECKS),
     }
+    require_finalized_contract_ready(finalized)
     return finalized
 
 

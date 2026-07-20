@@ -814,6 +814,16 @@ class CustodyHandoffTests(unittest.TestCase):
         )
         self.assertEqual(checker.validate(contract)["overall_status"], "ready")
 
+    def test_finalizer_rejects_contract_that_remains_blocked_after_custody_binding(self):
+        fixture = CustodyFixture()
+        fixture.pending["routes"] = ["facets_scarhrd"]
+
+        with self.assertRaisesRegex(
+            ValueError,
+            "finalized input contract is not ready: facets_scarhrd",
+        ):
+            fixture.finalize()
+
     def test_finalizer_main_uses_hashes_from_loaded_receipt_bytes(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
