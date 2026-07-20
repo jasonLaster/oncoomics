@@ -2350,8 +2350,18 @@ def markdown_table(rows: Sequence[Mapping[str, Any]]) -> str:
 
 def diana_wgs_forbidden_tokens() -> list[str]:
     summary = read_json_or_empty("diana_hrd_summary.json")
-    input_summary = summary.get("input", {}) if isinstance(summary.get("input"), dict) else {}
-    tokens = [str(input_summary.get(key, "")).strip() for key in ("dataset", "pair")]
+    tokens: list[str] = []
+    if summary:
+        input_summary = summary.get("input")
+        if not isinstance(input_summary, dict):
+            raise ValueError("Diana WGS forbidden-token input summary is missing or malformed")
+        tokens.extend(
+            require_exact_nonempty_string(
+                input_summary.get(key),
+                f"Diana WGS forbidden-token {key}",
+            )
+            for key in ("dataset", "pair")
+        )
     raw = os.environ.get("ROSALIND_HRD_FORBIDDEN_TOKENS_JSON", "").strip()
     if raw:
         try:
