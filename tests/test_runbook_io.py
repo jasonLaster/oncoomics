@@ -124,6 +124,54 @@ class RunbookIoTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "missing or a symlink"):
                 MODULE.load_json_object(root / "missing.json", "missing receipt")
 
+    def test_load_json_object_rejects_receipts_that_change_during_read(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            receipt = Path(temporary) / "receipt.json"
+            receipt.write_text('{"status":"passed"}\n', encoding="utf-8")
+            real_sha256_bytes = MODULE.sha256_bytes
+
+            def tamper_after_initial_read(data: bytes) -> str:
+                digest = real_sha256_bytes(data)
+                receipt.write_text('{"status":"tampered"}\n', encoding="utf-8")
+                return digest
+
+            with (
+                mock.patch.object(
+                    MODULE,
+                    "sha256_bytes",
+                    side_effect=tamper_after_initial_read,
+                ),
+                self.assertRaisesRegex(
+                    ValueError,
+                    "private publication receipt changed during read",
+                ),
+            ):
+                MODULE.load_json_object(receipt, "private publication receipt")
+
+    def test_sha256_file_rejects_inputs_that_change_during_read(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            runbook = Path(temporary) / "runbook.md"
+            runbook.write_text("original\n", encoding="utf-8")
+            real_sha256_bytes = MODULE.sha256_bytes
+
+            def tamper_after_initial_read(data: bytes) -> str:
+                digest = real_sha256_bytes(data)
+                runbook.write_text("tampered\n", encoding="utf-8")
+                return digest
+
+            with (
+                mock.patch.object(
+                    MODULE,
+                    "sha256_bytes",
+                    side_effect=tamper_after_initial_read,
+                ),
+                self.assertRaisesRegex(
+                    ValueError,
+                    "runbook.md SHA-256 input changed during read",
+                ),
+            ):
+                MODULE.sha256_file(runbook)
+
     def test_write_once_is_mode_0600_and_refuses_replacement(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             output = Path(temporary) / "runbook.md"

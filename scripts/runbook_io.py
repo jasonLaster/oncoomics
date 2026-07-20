@@ -77,10 +77,10 @@ def preexisting_create_only_paths(paths: Iterable[Path]) -> tuple[Path, ...]:
 def load_json_object(path: Path, label: str) -> dict[str, Any]:
     """Load a required JSON object while rejecting symlinked receipts."""
 
-    require_real_input_file(path, label)
+    data = read_stable_file(path, label)
     try:
         value = json.loads(
-            path.read_text(encoding="utf-8"),
+            data.decode("utf-8"),
             object_pairs_hook=reject_duplicate_json_object_names,
         )
     except DuplicateJsonKeyError as error:
@@ -90,6 +90,21 @@ def load_json_object(path: Path, label: str) -> dict[str, Any]:
     if not isinstance(value, dict):
         raise ValueError(f"{label} is not a JSON object: {path}")
     return value
+
+
+def sha256_bytes(value: bytes) -> str:
+    return hashlib.sha256(value).hexdigest()
+
+
+def read_stable_file(path: Path, label: str) -> bytes:
+    """Read a required local input and reject mid-read rewrites."""
+
+    require_real_input_file(path, label)
+    data = path.read_bytes()
+    digest = sha256_bytes(data)
+    if sha256_bytes(path.read_bytes()) != digest:
+        raise ValueError(f"{label} changed during read: {path}")
+    return data
 
 
 def require_real_input_file(path: Path, label: str) -> None:
@@ -158,8 +173,7 @@ def fsync_directory(path: Path) -> None:
 
 
 def sha256_file(path: Path) -> str:
-    require_real_input_file(path, f"{path.name} SHA-256 input")
-    return hashlib.sha256(path.read_bytes()).hexdigest()
+    return sha256_bytes(read_stable_file(path, f"{path.name} SHA-256 input"))
 
 
 def write_once(path: Path, text: str) -> None:

@@ -336,7 +336,8 @@
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-19</li>
-          <li class="pill">Latest milestone = first post-run receipt reads guarded</li>
+          <li class="pill">Latest milestone = handoff files rechecked while reading</li>
+          <li class="pill">Runbook receipts = rechecked</li>
           <li class="pill">Batch worker receipts = rechecked</li>
           <li class="pill">Materializer request binding = guarded</li>
           <li class="pill">AI staging inputs = guarded</li>
@@ -2088,6 +2089,10 @@
           <h3>Priority 5 · reviewed-public publication</h3>
           <ol class="todo">
             <li class="item" style="--tone: var(--done)">
+              <strong>Done · recheck handoff files while reading</strong>
+              <span>Generated source-freeze, AI-synthesis, reviewed-public, and post-success runbooks now stop if a local receipt or manifest changes mid-read before the next handoff command can trust it.</span>
+            </li>
+            <li class="item" style="--tone: var(--done)">
               <strong>Done · require real public recovery staging paths</strong>
               <span>Reviewed-public recovery now rejects symlinked local download or public staging paths before reading or writing recovered alias-tree artifacts.</span>
             </li>
@@ -2325,6 +2330,17 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-19T17:59:12-07:00">Jul 19 · local</time>
+              <span>
+                <strong>Local patch · Recheck runbook handoff reads:</strong>
+                shared runbook JSON and SHA-256 helpers now reread local receipt,
+                manifest, and generated-runbook files after their first byte read
+                and fail closed if source-freeze, AI-synthesis, reviewed-public,
+                or Phase 3 report-packet inputs change before parsing or digest
+                binding.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-19T15:37:55-07:00">Jul 19 · local</time>
               <span>
