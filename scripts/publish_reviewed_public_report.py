@@ -741,6 +741,8 @@ def validate_private_receipt_payload(
             not isinstance(digest, str) or not SHA256_HEX.fullmatch(digest)
             for digest in forbidden_hashes
         )
+        or not exact_int(receipt.get("forbidden_token_count"), len(forbidden_hashes))
+        or len(set(forbidden_hashes)) != len(forbidden_hashes)
         or not isinstance(rows, list)
         or len(rows) != len(expected)
         or not exact_check_map(checks, PRIVATE_RECEIPT_APPLY_CHECKS)
