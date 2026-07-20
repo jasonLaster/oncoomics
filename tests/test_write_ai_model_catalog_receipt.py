@@ -276,25 +276,64 @@ class WriteAiModelCatalogReceiptTests(unittest.TestCase):
             source = root / "model-catalog-receipt.json"
             source.write_text('{"stable": true}\n', encoding="utf-8")
 
-            original_read_bytes = Path.read_bytes
+            original_sha256_file_once = WRITER.sha256_file_once
             mutated = False
 
-            def mutate_after_first_read(path: Path) -> bytes:
+            def mutate_after_first_read(path: Path) -> str:
                 nonlocal mutated
-                data = original_read_bytes(path)
+                digest = original_sha256_file_once(path)
                 if path == source and not mutated:
                     mutated = True
                     path.write_text('{"stable": false}\n', encoding="utf-8")
-                return data
+                return digest
 
             with (
-                mock.patch.object(Path, "read_bytes", mutate_after_first_read),
+                mock.patch.object(
+                    WRITER,
+                    "sha256_file_once",
+                    side_effect=mutate_after_first_read,
+                ),
                 self.assertRaisesRegex(
                     ValueError,
                     "model-catalog-receipt.json SHA-256 input changed during read",
                 ),
             ):
                 WRITER.sha256_file(source)
+
+    def test_sha256_file_rejects_symlink_swap_after_preflight(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary).resolve()
+            source = root / "model-catalog-receipt.json"
+            relocated = root / "relocated-model-catalog-receipt.json"
+            source.write_text('{"stable": true}\n', encoding="utf-8")
+            real_os_open = WRITER.os.open
+            swapped = False
+
+            def swap_before_open(
+                path: Path,
+                flags: int,
+                mode: int = 0o777,
+                *,
+                dir_fd: int | None = None,
+            ) -> int:
+                nonlocal swapped
+                if path == source and not swapped:
+                    swapped = True
+                    source.unlink()
+                    relocated.write_text('{"stable": true}\n', encoding="utf-8")
+                    source.symlink_to(relocated)
+                return real_os_open(path, flags, mode, dir_fd=dir_fd)
+
+            with (
+                mock.patch.object(WRITER.os, "open", side_effect=swap_before_open),
+                self.assertRaisesRegex(
+                    ValueError,
+                    "model-catalog-receipt.json SHA-256 input changed during read",
+                ),
+            ):
+                WRITER.sha256_file(source)
+
+            self.assertTrue(swapped)
 
     def test_requires_latest_model_attestation(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:

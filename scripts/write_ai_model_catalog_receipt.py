@@ -7,6 +7,7 @@ import argparse
 import hashlib
 import json
 import os
+import stat
 from pathlib import Path
 
 from ai_model_catalog import MODEL_CATALOG_VERIFIED_AT, model_catalog_receipt
@@ -67,11 +68,54 @@ def require_installed_output(path: Path, expected_sha256: str) -> None:
 
 def sha256_file(path: Path) -> str:
     require_real_file(path, f"{path.name} SHA-256 input")
-    data = path.read_bytes()
-    digest = hashlib.sha256(data).hexdigest()
-    if hashlib.sha256(path.read_bytes()).hexdigest() != digest:
+    digest = sha256_file_once(path)
+    if sha256_file_once(path) != digest:
         raise ValueError(f"{path.name} SHA-256 input changed during read")
     return digest
+
+
+def sha256_file_once(path: Path) -> str:
+    require_real_file(path, f"{path.name} SHA-256 input")
+    flags = (
+        os.O_RDONLY
+        | getattr(os, "O_CLOEXEC", 0)
+        | getattr(os, "O_NOFOLLOW", 0)
+        | getattr(os, "O_NONBLOCK", 0)
+    )
+    descriptor = -1
+    try:
+        descriptor = os.open(path, flags)
+        opened = os.fstat(descriptor)
+        if not stat.S_ISREG(opened.st_mode):
+            raise ValueError(f"{path.name} SHA-256 input is missing or a symlink")
+        with os.fdopen(descriptor, "rb") as handle:
+            descriptor = -1
+            data = handle.read()
+            after_read = os.fstat(handle.fileno())
+        current = os.stat(path, follow_symlinks=False)
+    except OSError as error:
+        raise ValueError(f"{path.name} SHA-256 input changed during read") from error
+    finally:
+        if descriptor >= 0:
+            os.close(descriptor)
+
+    if (
+        stat_identity(opened) != stat_identity(after_read)
+        or stat_identity(after_read) != stat_identity(current)
+    ):
+        raise ValueError(f"{path.name} SHA-256 input changed during read")
+    return hashlib.sha256(data).hexdigest()
+
+
+def stat_identity(value: os.stat_result) -> tuple[int, int, int, int, int, int]:
+    return (
+        value.st_dev,
+        value.st_ino,
+        value.st_mode,
+        value.st_size,
+        value.st_mtime_ns,
+        value.st_ctime_ns,
+    )
 
 
 def require_real_file(path: Path, label: str) -> None:
