@@ -1159,6 +1159,19 @@ class FreezeStageProvenanceTests(unittest.TestCase):
                     "did not pass preflight",
                 ),
                 (
+                    "boolean-passed-count",
+                    lambda payload: payload.__setitem__("passed_count", False),
+                    "did not pass preflight",
+                ),
+                (
+                    "float-destination-history-count",
+                    lambda payload: payload.__setitem__(
+                        "destination_initial_version_history_count",
+                        0.0,
+                    ),
+                    "did not pass preflight",
+                ),
+                (
                     "stale-object",
                     lambda payload: payload["objects"][0]["source"].__setitem__(
                         "sha256", "0" * 64

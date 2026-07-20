@@ -371,14 +371,14 @@
           is stopped, the selected GPU lane is live on all three allowed P5
           Hopper shapes and still waiting on quota, the prod-use2 daily cost
           guard now has a one-minute live spend poller, and the latest
-          source-only guardrail rejects loose reviewed-public dry-run history
-          counts before a final public publish apply can call AWS.
+          source-only guardrail rejects not-really-zero stage/final freeze
+          dry-run counters before terminal artifact freezing can call AWS.
           Diana HRD remains <code>partial_evidence</code> / <code>no_call</code> until terminal
           artifacts and reviewed cross-check reports exist.
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-19</li>
-          <li class="pill">Latest milestone = public dry-run counts</li>
+          <li class="pill">Latest milestone = freeze dry-run counts</li>
           <li class="pill">Live P5 placement = p5en / p5e / p5</li>
           <li class="pill">Daily $200 Batch guard = live</li>
           <li class="pill">Live spend poll = 1 minute</li>
@@ -559,6 +559,7 @@
           <li class="pill">Cross-check materializer ETags = exact</li>
           <li class="pill">Stage-freeze ETags = exact</li>
           <li class="pill">Final-freeze ETags = exact</li>
+          <li class="pill">Freeze dry-run zero counts = exact</li>
           <li class="pill">Final-freeze source-list markers = exact</li>
           <li class="pill">v4 materializer pagination markers = exact</li>
           <li class="pill">CloudWatch terminal pagination markers = exact</li>
@@ -1211,6 +1212,10 @@
 
           <h3>Priority 2 · terminal deterministic artifacts</h3>
           <ol class="todo">
+            <li class="item" style="--tone: var(--done)">
+              <strong>Done · require exact freeze dry-run zeroes</strong>
+              <span>Stage provenance and final artifact freezing now reject dry-run receipts whose zero success and destination-history counters are JSON booleans or floats, so the final post-terminal freezer cannot treat <code>false</code> or <code>0.0</code> as a reviewed empty preflight before AWS-side copy work.</span>
+            </li>
             <li class="item" style="--tone: var(--done)">
               <strong>Done · seal terminal cross-check inputs</strong>
               <span>Rosalind packet building now opens the terminal deterministic <code>crosscheck_input_plans.json</code> support file instead of trusting only its manifest hash, and rejects schema drift, route drift, promoted HRD states, stale SigProfiler materialized inputs, or Sequenza/scarHRD contract loosening before a terminal packet can feed model review.</span>
@@ -2765,6 +2770,18 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-19T23:36:00-07:00">Jul 19 · local</time>
+              <span>
+                <strong>Local patch · Reject loose freeze dry-run zeroes:</strong>
+                stage provenance and final artifact freezing now reject
+                dry-run receipts whose zero success or destination-history
+                counters are JSON booleans or floats before the terminal
+                freezer can capture, verify, and copy deterministic artifacts
+                for Rosalind and AI review. No S3, Batch, route, GPU, quota,
+                replacement compute, or AWS-side verification was launched.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-19T23:32:00-07:00">Jul 19 · local</time>
               <span>

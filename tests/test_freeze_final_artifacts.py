@@ -492,6 +492,16 @@ class FreezeFinalArtifactsTests(unittest.TestCase):
                     "did not pass preflight",
                 ),
                 (
+                    "boolean-passed-count",
+                    lambda payload: payload.__setitem__("passed_count", False),
+                    "did not pass preflight",
+                ),
+                (
+                    "float-passed-count",
+                    lambda payload: payload.__setitem__("passed_count", 0.0),
+                    "did not pass preflight",
+                ),
+                (
                     "stale-inventory",
                     lambda payload: payload["initial_inventory_identity"][0].__setitem__(
                         "version_id", "stale-version"

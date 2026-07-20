@@ -114,6 +114,10 @@ def exact_schema_version(payload: dict[str, Any], expected: int) -> bool:
     return type(payload.get("schema_version")) is int and payload["schema_version"] == expected
 
 
+def exact_int(value: Any, expected: int) -> bool:
+    return type(value) is int and type(expected) is int and value == expected
+
+
 def exact_s3_size(value: Any) -> int:
     if type(value) is not int or value < 0:
         raise RuntimeError("S3 object size must be an exact integer")
@@ -651,7 +655,7 @@ def validate_dry_run_receipt(path: Path, expected: dict[str, Any]) -> None:
         not exact_schema_version(receipt, 1)
         or receipt.get("status") != "dry_run"
         or receipt.get("batch_status") != "SUCCEEDED"
-        or receipt.get("passed_count") != 0
+        or not exact_int(receipt.get("passed_count"), 0)
         or not isinstance(receipt.get("generated_at"), str)
         or not receipt.get("generated_at")
         or not isinstance(receipt.get("completed_at"), str)

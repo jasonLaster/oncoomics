@@ -783,8 +783,11 @@ def validate_dry_run_receipt(path: Path, expected: dict[str, Any]) -> None:
         or receipt.get("status") != "dry_run"
         or receipt.get("batch_status") != "SUCCEEDED"
         or receipt.get("object_count") != len(SOURCE_NAMES)
-        or receipt.get("passed_count") != 0
-        or receipt.get("destination_initial_version_history_count") != 0
+        or not exact_int(receipt.get("passed_count"), 0)
+        or not exact_int(
+            receipt.get("destination_initial_version_history_count"),
+            0,
+        )
         or not isinstance(receipt.get("generated_at"), str)
         or not receipt.get("generated_at")
         or not isinstance(receipt.get("completed_at"), str)
