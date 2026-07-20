@@ -912,6 +912,13 @@ class PublishPrivateReportTests(unittest.TestCase):
                 "float schema_version",
                 lambda payload: payload.__setitem__("schema_version", 1.0),
             ),
+            (
+                "tabbed completed_at",
+                lambda payload: payload.__setitem__(
+                    "completed_at_utc",
+                    f"{payload['completed_at_utc']}\t",
+                ),
+            ),
         )
 
         for label, mutate in cases:

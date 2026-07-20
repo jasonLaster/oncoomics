@@ -32,6 +32,7 @@ from publish_reviewed_public_report import (
     exact_int,
     exact_check_map,
     exact_non_null_version_id,
+    exact_receipt_string,
     exact_schema_version,
     head_object,
     load_json_with_sha256,
@@ -240,10 +241,8 @@ def validate_dry_run_receipt(
         or dry_run.get("status") != "dry_run"
         or dry_run.get("apply") is not False
         or set(dry_run) != PRIVATE_DRY_RUN_RECEIPT_KEYS
-        or not isinstance(dry_run.get("generated_at_utc"), str)
-        or not dry_run.get("generated_at_utc")
-        or not isinstance(dry_run.get("completed_at_utc"), str)
-        or not dry_run.get("completed_at_utc")
+        or not exact_receipt_string(dry_run.get("generated_at_utc"))
+        or not exact_receipt_string(dry_run.get("completed_at_utc"))
         or not exact_int(dry_run.get("object_count"), receipt["object_count"])
         or not exact_int(dry_run.get("passed_count"), 0)
         or not exact_int(
