@@ -315,7 +315,8 @@ def require_receipt_summaries(
                 f"{summary['method_id']} private receipt destination is malformed"
             )
         object_count = summary.get("object_count")
-        if type(object_count) is not int or object_count <= 0:
+        expected_object_count = len(METHOD_CONTRACTS[method_id]["files"])
+        if type(object_count) is not int or object_count != expected_object_count:
             raise ValueError(
                 f"{summary['method_id']} private receipt object count is malformed"
             )

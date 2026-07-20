@@ -25,6 +25,7 @@ from hrd_report_inventory import (
 )
 from prepare_ai_review_run import MANIFEST_ARGUMENTS
 from publish_reviewed_public_report import (
+    METHOD_CONTRACTS,
     REGION,
     RUN_ID,
     SUBJECT_ALIAS,
@@ -253,7 +254,8 @@ def require_receipt_summaries(
             ) from error
         require_summary_receipt(summary.get("receipt"), method_id)
         object_count = summary.get("object_count")
-        if type(object_count) is not int or object_count <= 0:
+        expected_object_count = len(METHOD_CONTRACTS[method_id]["files"])
+        if type(object_count) is not int or object_count != expected_object_count:
             raise ValueError(
                 f"{method_id} private receipt object count is malformed"
             )

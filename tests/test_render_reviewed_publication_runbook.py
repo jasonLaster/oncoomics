@@ -113,7 +113,7 @@ def receipt_summaries(
             "receipt": str(receipt_paths[index - 1]),
             "receipt_sha256": f"{index:064x}",
             "destination_prefix": MODULE.destination_prefix(method_id),
-            "object_count": 3,
+            "object_count": len(MODULE.METHOD_CONTRACTS[method_id]["files"]),
         }
         for index, method_id in enumerate(MODULE.REPORT_METHOD_IDS, 1)
     )
@@ -157,8 +157,9 @@ class RenderReviewedPublicationRunbookTests(unittest.TestCase):
             self.assertIn(MODULE.destination_prefix(method_id), text)
             previous = index
         for index, method_id in enumerate(MODULE.REPORT_METHOD_IDS, 1):
+            object_count = len(MODULE.METHOD_CONTRACTS[method_id]["files"])
             self.assertIn(
-                f"- `{method_id}`: 3 files → private receipt SHA-256 "
+                f"- `{method_id}`: {object_count} files → private receipt SHA-256 "
                 f"`{index:064x}` -> `{MODULE.destination_prefix(method_id)}`",
                 text,
             )
@@ -563,6 +564,7 @@ class RenderReviewedPublicationRunbookTests(unittest.TestCase):
             ("receipt", "none", "receipt path is malformed"),
             ("receipt_sha256", "not-a-sha", "SHA-256 is malformed"),
             ("receipt_sha256", int("1" * 64), "SHA-256 is malformed"),
+            ("object_count", 999, "object count is malformed"),
             ("object_count", 0, "object count is malformed"),
             ("object_count", True, "object count is malformed"),
         ):
