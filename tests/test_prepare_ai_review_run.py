@@ -356,6 +356,10 @@ class PrepareAiReviewRunTests(unittest.TestCase):
                 PREPARE.sha256(output / "bundle/review_bundle.json"),
             )
             self.assertEqual(
+                receipt["model_catalog_receipt_sha256"],
+                PREPARE.sha256(fixture.catalog_receipt),
+            )
+            self.assertEqual(
                 receipt["stage_receipt_sha256"],
                 PREPARE.sha256(stage_receipt),
             )
@@ -681,6 +685,41 @@ class PrepareAiReviewRunTests(unittest.TestCase):
                 self.assertRaisesRegex(
                     ValueError,
                     "bundle_manifest_sha256 is stale",
+                ),
+            ):
+                PREPARE.prepare(namespace(fixture, output))
+
+            self.assertFalse(output.exists())
+            self.assertFalse(any(root.glob(".ai-review.*")))
+
+    def test_rejects_model_catalog_changed_after_bundle_build(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            fixture = AiReviewBundleFixture(root)
+            output = root / "ai-review"
+            real_build_bundle = PREPARE.build_bundle
+
+            def build_then_mutate_catalog(
+                args: SimpleNamespace,
+                manifest_paths: dict[str, Path],
+                bundle_dir: Path,
+            ) -> None:
+                real_build_bundle(args, manifest_paths, bundle_dir)
+                catalog = json.loads(
+                    args.model_catalog_receipt.read_text(encoding="utf-8")
+                )
+                catalog["schema_version"] = 2
+                write_json(args.model_catalog_receipt, catalog)
+
+            with (
+                mock.patch.object(
+                    PREPARE,
+                    "build_bundle",
+                    side_effect=build_then_mutate_catalog,
+                ),
+                self.assertRaisesRegex(
+                    ValueError,
+                    "model_catalog_receipt_sha256 is stale",
                 ),
             ):
                 PREPARE.prepare(namespace(fixture, output))

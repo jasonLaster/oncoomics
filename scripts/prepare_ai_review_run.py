@@ -803,6 +803,14 @@ def prepare(args: argparse.Namespace) -> dict[str, Any]:
         )
 
         bundle_manifest = postconditions["bundle_manifest"]
+        model_catalog_receipt_sha256 = sha256(
+            require_real_file(args.model_catalog_receipt, "model catalog receipt")
+        )
+        if (
+            bundle_manifest.get("model_catalog_receipt_sha256")
+            != model_catalog_receipt_sha256
+        ):
+            raise ValueError("model_catalog_receipt_sha256 is stale")
         receipt = {
             "schema_version": 1,
             "status": "passed",
@@ -811,7 +819,7 @@ def prepare(args: argparse.Namespace) -> dict[str, Any]:
             "method_inventory": inventory_payload(args.inventory_id),
             "method_inventory_sha256": inventory_sha256(args.inventory_id),
             "source_manifests": source_manifests,
-            "model_catalog_receipt_sha256": sha256(require_real_file(args.model_catalog_receipt, "model catalog receipt")),
+            "model_catalog_receipt_sha256": model_catalog_receipt_sha256,
             "bundle_dir": str(output / "bundle"),
             "bundle_manifest_sha256": postconditions["bundle_manifest_sha256"],
             "review_bundle_sha256": bundle_manifest["review_bundle_sha256"],
