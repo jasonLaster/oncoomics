@@ -1671,6 +1671,35 @@ class CustodyHandoffTests(unittest.TestCase):
         ):
             fixture.finalize()
 
+    def test_finalizer_rejects_coerced_final_freeze_relative_keys(self):
+        for label, mutate, message in (
+            (
+                "object row",
+                lambda fixture: fixture.freeze["objects"][0].__setitem__(
+                    "relative_key",
+                    True,
+                ),
+                "final artifact freeze row relative_key is not an exact string",
+            ),
+            (
+                "destination inventory",
+                lambda fixture: fixture.freeze["destination_inventory"][0].__setitem__(
+                    "relative_key",
+                    True,
+                ),
+                (
+                    "final artifact freeze destination inventory "
+                    "relative_key is not an exact string"
+                ),
+            ),
+        ):
+            with self.subTest(label=label):
+                fixture = CustodyFixture()
+                mutate(fixture)
+
+                with self.assertRaisesRegex(ValueError, message):
+                    fixture.finalize()
+
     def test_finalizer_rejects_boolean_destination_inventory_bytes(self):
         destination = {
             "key": "runs/subject01/unit/deterministic/final/sbs96.csv",

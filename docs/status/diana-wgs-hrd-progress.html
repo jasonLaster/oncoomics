@@ -433,6 +433,7 @@
           freezing, exact-version
           materialization, private report replays, final alias-only input
           contracts, final-freeze and materialized-final receipt checks,
+          final-freeze relative keys,
           deterministic WGS staging check maps,
           input-contract publication receipts, alias-only
           cross-check materialization, alias-only
@@ -1801,6 +1802,10 @@
               <span>Exact local materialization and HRD input-contract finalization now reject final-freeze receipts whose <code>destination_inventory</code> rows are missing, stale, extra, or diverge from the frozen destination rows before the materialized-final tree or alias-only cross-check contract can be trusted.</span>
             </li>
             <li class="item" style="--tone: var(--done)">
+              <strong>Done · require exact final-freeze relative keys</strong>
+              <span>Exact local materialization and HRD input-contract finalization now reject boolean, numeric, empty, or non-string final-freeze <code>relative_key</code> fields before frozen private objects can be normalized into local file paths or final alias-only inventory rows.</span>
+            </li>
+            <li class="item" style="--tone: var(--done)">
               <strong>Done · require real materialized-final hash inputs</strong>
               <span>Exact local materialization now rejects symlinked local SHA-256 inputs and symlinked hash-input ancestors before the materialized-final tree or materialization receipt can bind frozen files into local custody.</span>
             </li>
@@ -3146,6 +3151,19 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-20">Jul 20 · local</time>
+              <span>
+                <strong>Local patch · Reject coerced final-freeze paths:</strong>
+                exact local materialization and HRD input-contract finalization
+                now reject non-string final-freeze <code>relative_key</code>
+                fields instead of normalizing them through <code>str(...)</code>
+                before file-path or inventory comparisons. No S3, Batch,
+                route, GPU, quota, rerun, or apply-mode AWS work was launched;
+                Cost Explorer was refreshed read-only for 2026-07-19 UTC and
+                remained at $5.24.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-20">Jul 20 · local</time>
               <span>

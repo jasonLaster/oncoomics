@@ -412,6 +412,12 @@ def require_exact_keys(
     return value
 
 
+def require_relative_key(value: Any, label: str) -> str:
+    if not isinstance(value, str) or not value:
+        raise ValueError(f"{label} relative_key is not an exact string")
+    return value
+
+
 def require_final_destination_inventory(
     receipt: dict[str, Any],
     destination_by_relative: dict[str, dict[str, Any]],
@@ -430,9 +436,10 @@ def require_final_destination_inventory(
             EXPECTED_FINAL_DESTINATION_INVENTORY_KEYS,
             "final artifact freeze destination inventory",
         )
-        relative = str(row.get("relative_key", ""))
-        if not relative:
-            raise ValueError("final artifact freeze destination inventory is not exact")
+        relative = require_relative_key(
+            row.get("relative_key"),
+            "final artifact freeze destination inventory",
+        )
         require_version(
             row.get("version_id"),
             "final artifact freeze destination inventory",
@@ -562,9 +569,10 @@ def validate_freeze(
             raise ValueError("final artifact freeze destination is not exact")
         if uri in by_uri:
             raise ValueError("duplicate final artifact freeze destination URI")
-        relative = str(row.get("relative_key", ""))
-        if not relative:
-            raise ValueError("final artifact freeze row is missing its relative key")
+        relative = require_relative_key(
+            row.get("relative_key"),
+            "final artifact freeze row",
+        )
         if relative in destination_by_relative:
             raise ValueError("duplicate final artifact freeze relative key")
         by_uri[uri] = destination
