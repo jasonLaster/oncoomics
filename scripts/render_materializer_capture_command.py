@@ -20,6 +20,7 @@ import json
 import os
 import re
 import shlex
+import stat
 from pathlib import Path
 from typing import Any, Iterable
 
@@ -128,10 +129,7 @@ def one_shot_retry_strategy(value: Any) -> bool:
 
 def sha256_path_once(path: Path) -> str:
     label = f"{path.name} SHA-256 input"
-    require_no_symlinked_ancestors(path, label)
-    if path.is_symlink() or not path.is_file():
-        raise ValueError(f"{label} must be a real file: {path}")
-    return sha256_bytes(path.read_bytes())
+    return sha256_bytes(read_real_hash_input_once(path, label))
 
 
 def sha256_path(path: Path) -> str:
@@ -139,6 +137,60 @@ def sha256_path(path: Path) -> str:
     if sha256_path_once(path) != digest:
         raise ValueError(f"{path.name} SHA-256 input changed during read: {path}")
     return digest
+
+
+def read_stable_file_with_sha256(path: Path, label: str) -> tuple[bytes, str]:
+    data = read_real_hash_input_once(path, label)
+    digest = sha256_bytes(data)
+    if sha256_bytes(read_real_hash_input_once(path, label)) != digest:
+        raise ValueError(f"{label} changed during read: {path}")
+    return data, digest
+
+
+def read_real_hash_input_once(path: Path, label: str) -> bytes:
+    require_no_symlinked_ancestors(path, label)
+    if path.is_symlink() or not path.is_file():
+        raise ValueError(f"{label} must be a real file: {path}")
+    flags = (
+        os.O_RDONLY
+        | getattr(os, "O_CLOEXEC", 0)
+        | getattr(os, "O_NOFOLLOW", 0)
+        | getattr(os, "O_NONBLOCK", 0)
+    )
+    descriptor = -1
+    try:
+        descriptor = os.open(path, flags)
+        opened = os.fstat(descriptor)
+        if not stat.S_ISREG(opened.st_mode):
+            raise ValueError(f"{label} must be a real file: {path}")
+        with os.fdopen(descriptor, "rb") as handle:
+            descriptor = -1
+            data = handle.read()
+            after_read = os.fstat(handle.fileno())
+        current = os.stat(path, follow_symlinks=False)
+    except OSError as error:
+        raise ValueError(f"{path.name} SHA-256 input changed during read: {path}") from error
+    finally:
+        if descriptor >= 0:
+            os.close(descriptor)
+
+    if (
+        stat_identity(opened) != stat_identity(after_read)
+        or stat_identity(after_read) != stat_identity(current)
+    ):
+        raise ValueError(f"{label} changed during read: {path}")
+    return data
+
+
+def stat_identity(value: os.stat_result) -> tuple[int, int, int, int, int, int]:
+    return (
+        value.st_dev,
+        value.st_ino,
+        value.st_mode,
+        value.st_size,
+        value.st_mtime_ns,
+        value.st_ctime_ns,
+    )
 
 
 def shell_join(values: Iterable[str | os.PathLike[str]]) -> str:
@@ -213,10 +265,7 @@ def read_json_object_with_sha256(
     require_no_symlinked_ancestors(path, label)
     if path.is_symlink() or not path.is_file():
         raise ValueError(f"{label} must be a real JSON file: {path}")
-    data = path.read_bytes()
-    digest = sha256_bytes(data)
-    if sha256_path(path) != digest:
-        raise ValueError(f"{label} changed during read: {path}")
+    data, digest = read_stable_file_with_sha256(path, label)
     try:
         value = json.loads(
             data.decode("utf-8"),
