@@ -365,6 +365,40 @@ class GenerateBlockedHrdCrosscheckReportsTests(unittest.TestCase):
             ):
                 GENERATOR.sha256_file(source)
 
+    def test_sha256_file_rejects_same_byte_leaf_replacement(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            source = root / "report_manifest.json"
+            replacement = root / "replacement_report_manifest.json"
+            source.write_text('{"stable": true}\n', encoding="utf-8")
+            replacement.write_text('{"stable": true}\n', encoding="utf-8")
+
+            original_read_once = GENERATOR.read_real_nonempty_file_once
+            swapped = False
+
+            def replace_leaf_after_first_read(path: Path, label: str):
+                nonlocal swapped
+                data = original_read_once(path, label)
+                if path == source and not swapped:
+                    swapped = True
+                    replacement.replace(source)
+                return data
+
+            with (
+                mock.patch.object(
+                    GENERATOR,
+                    "read_real_nonempty_file_once",
+                    side_effect=replace_leaf_after_first_read,
+                ),
+                self.assertRaisesRegex(
+                    ValueError,
+                    "report_manifest.json SHA-256 input changed during read",
+                ),
+            ):
+                GENERATOR.sha256_file(source)
+
+            self.assertTrue(swapped)
+
     def test_sha256_file_rejects_symlink_swap_after_preflight(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
@@ -458,6 +492,42 @@ class GenerateBlockedHrdCrosscheckReportsTests(unittest.TestCase):
                 GENERATOR.write_file_create_only(output, b"first\n")
 
             self.assertTrue(relocated.exists())
+            self.assertFalse(output.exists())
+
+    def test_packet_file_rejects_same_byte_leaf_replacement_during_rehash(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            output = root / "report.md"
+            resolved_output = output.resolve(strict=False)
+            replacement = root / "replacement.md"
+            replacement.write_text("first\n", encoding="utf-8")
+            original_read_once = GENERATOR.read_real_nonempty_file_once
+            swapped = False
+
+            def replace_leaf_after_first_read(path: Path, label: str):
+                nonlocal swapped
+                data = original_read_once(path, label)
+                if path == resolved_output and not swapped:
+                    swapped = True
+                    replacement.replace(resolved_output)
+                return data
+
+            with (
+                mock.patch.object(
+                    GENERATOR,
+                    "read_real_nonempty_file_once",
+                    side_effect=replace_leaf_after_first_read,
+                ),
+                self.assertRaisesRegex(
+                    ValueError,
+                    "report.md SHA-256 input changed during read",
+                ),
+            ):
+                GENERATOR.write_file_create_only(output, b"first\n")
+
+            self.assertTrue(swapped)
             self.assertFalse(output.exists())
 
     def test_packet_manifest_rejects_stale_report_binding(self) -> None:

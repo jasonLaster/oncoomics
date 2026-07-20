@@ -404,9 +404,10 @@ def sha256_file(path: Path) -> str:
 
 
 def read_stable_file_with_sha256(path: Path, label: str) -> tuple[bytes, str]:
-    data = read_real_nonempty_file_once(path, label)
+    data, identity = read_real_nonempty_file_once(path, label)
     digest = hashlib.sha256(data).hexdigest()
-    if hashlib.sha256(read_real_nonempty_file_once(path, label)).hexdigest() != digest:
+    stable_data, stable_identity = read_real_nonempty_file_once(path, label)
+    if stable_identity != identity or hashlib.sha256(stable_data).hexdigest() != digest:
         raise ValueError(f"{label} changed during read")
     return data, digest
 
@@ -437,7 +438,10 @@ def require_real_nonempty_file(path: Path, label: str) -> None:
         raise ValueError(f"{label} must be a real non-empty file")
 
 
-def read_real_nonempty_file_once(path: Path, label: str) -> bytes:
+def read_real_nonempty_file_once(
+    path: Path,
+    label: str,
+) -> tuple[bytes, tuple[int, int, int, int, int, int]]:
     require_real_nonempty_file(path, label)
     flags = (
         os.O_RDONLY
@@ -468,7 +472,7 @@ def read_real_nonempty_file_once(path: Path, label: str) -> bytes:
         or stat_identity(after_read) != stat_identity(current)
     ):
         raise ValueError(f"{label} changed during read")
-    return data
+    return data, stat_identity(opened)
 
 
 def stat_identity(value: os.stat_result) -> tuple[int, int, int, int, int, int]:
