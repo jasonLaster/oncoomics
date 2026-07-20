@@ -1079,8 +1079,11 @@ class StageDeterministicWgsReportInstallTests(unittest.TestCase):
         with tempfile.TemporaryDirectory(
             prefix="synthetic-hrd-report-input-"
         ) as temporary:
-            path = Path(temporary) / "receipt.json"
+            root = Path(temporary)
+            path = root / "receipt.json"
+            replacement = root / "replacement-receipt.json"
             path.write_text('{"status":"stable"}\n', encoding="utf-8")
+            replacement.write_text('{"status":"rewritten"}\n', encoding="utf-8")
             original_sha256_bytes = REPORT_MODULE.sha256_bytes
             mutated = False
 
@@ -1089,7 +1092,7 @@ class StageDeterministicWgsReportInstallTests(unittest.TestCase):
                 digest = original_sha256_bytes(data)
                 if not mutated:
                     mutated = True
-                    path.write_text('{"status":"rewritten"}\n', encoding="utf-8")
+                    replacement.replace(path)
                 return digest
 
             with (
@@ -1104,6 +1107,43 @@ class StageDeterministicWgsReportInstallTests(unittest.TestCase):
                 ),
             ):
                 REPORT_MODULE.sha256(path)
+
+            self.assertTrue(mutated)
+
+    def test_sha256_rejects_same_byte_leaf_replacement(self) -> None:
+        with tempfile.TemporaryDirectory(
+            prefix="synthetic-hrd-report-input-"
+        ) as temporary:
+            root = Path(temporary)
+            path = root / "receipt.json"
+            replacement = root / "replacement-receipt.json"
+            path.write_text('{"status":"stable"}\n', encoding="utf-8")
+            replacement.write_text('{"status":"stable"}\n', encoding="utf-8")
+            original_sha256_bytes = REPORT_MODULE.sha256_bytes
+            mutated = False
+
+            def replace_after_first_hash(data: bytes) -> str:
+                nonlocal mutated
+                digest = original_sha256_bytes(data)
+                if not mutated:
+                    mutated = True
+                    replacement.replace(path)
+                return digest
+
+            with (
+                patch.object(
+                    REPORT_MODULE,
+                    "sha256_bytes",
+                    side_effect=replace_after_first_hash,
+                ),
+                self.assertRaisesRegex(
+                    ValueError,
+                    "receipt.json SHA-256 input changed during read",
+                ),
+            ):
+                REPORT_MODULE.sha256(path)
+
+            self.assertTrue(mutated)
 
     def test_sha256_rejects_hash_input_swapped_to_symlink_during_read(self) -> None:
         with tempfile.TemporaryDirectory(
