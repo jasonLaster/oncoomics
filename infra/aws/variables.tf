@@ -64,6 +64,24 @@ variable "gpu_p5en_max_vcpus" {
   default     = 384
 }
 
+variable "daily_cost_guard_limit_usd" {
+  description = "Account-wide daily AWS Budgets limit in USD for the Diana Batch kill switch."
+  type        = number
+  default     = 200
+}
+
+variable "daily_cost_guard_stop_threshold_percent" {
+  description = "Actual daily AWS spend percentage that invokes the Diana Batch kill switch."
+  type        = number
+  default     = 80
+}
+
+variable "daily_cost_guard_email" {
+  description = "Optional human email subscriber for daily cost guard notifications. Leave empty to keep only the SNS to Lambda stop path."
+  type        = string
+  default     = ""
+}
+
 variable "batch_arm_instance_families" {
   description = "ARM64 EC2 instance families for Batch. The local OrbStack image build is arm64."
   type        = list(string)

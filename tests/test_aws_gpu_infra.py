@@ -177,6 +177,9 @@ class AwsGpuInfraTests(unittest.TestCase):
         self.assertIn('"servicequotas:RequestServiceQuotaIncrease"', text)
         self.assertIn('"servicequotas:GetRequestedServiceQuotaChange"', text)
         self.assertIn('"servicequotas:GetServiceQuota"', text)
+        self.assertIn('"budgets:*"', text)
+        self.assertIn('"lambda:*"', text)
+        self.assertIn('"sns:*"', text)
 
     def test_use2_can_reuse_account_global_service_linked_roles(self) -> None:
         text = MAIN_TF.read_text(encoding="utf-8")
