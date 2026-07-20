@@ -20,6 +20,7 @@ from build_ai_review_bundle import (
 from hrd_report_inventory import EXECUTABLE_CROSSCHECK_METHOD_IDS
 
 SUPPORTED_ROUTES = set(EXECUTABLE_CROSSCHECK_METHOD_IDS)
+ALLOWED_EVIDENCE_STATES = {"partial_evidence", "no_call", "blocked"}
 SHA256_HEX = set("0123456789abcdef")
 CORE_REPORT_FILES = {"report.md", "report_manifest.json"}
 METHOD_SPEC_KEYS = {
@@ -165,6 +166,16 @@ def require_exact_string(value: Any, label: str) -> str:
     if not isinstance(value, str) or not value or value != value.strip():
         raise ValueError(f"{label} is not exact")
     return value
+
+
+def require_evidence_status(value: Any, label: str) -> str:
+    if not isinstance(value, str) or value not in ALLOWED_EVIDENCE_STATES:
+        raise ValueError(f"{label} is unsupported")
+    return value
+
+
+def is_supported_route(value: Any) -> bool:
+    return isinstance(value, str) and value in SUPPORTED_ROUTES
 
 
 def require_safe_relative_path(relative: str, label: str) -> Path:
@@ -371,9 +382,10 @@ def require_download_verification(
     ):
         raise ValueError("route report manifest is not an approved no-call cross-check")
 
-    evidence_status = str(manifest.get("evidence_status", ""))
-    if evidence_status not in {"partial_evidence", "no_call", "blocked"}:
-        raise ValueError("route report evidence_status is unsupported")
+    evidence_status = require_evidence_status(
+        manifest.get("evidence_status"),
+        "route report evidence_status",
+    )
 
     source_report_sha256 = sha256(source_dir / "report.md")
     if (
@@ -577,7 +589,7 @@ def require_staged_report_manifest(packet_dir: Path) -> None:
     )
     report = require_real_file(packet_dir / "report.md", "staged cross-check report")
 
-    route = str(manifest.get("route", ""))
+    route = manifest.get("route")
     if set(manifest) != REPORT_MANIFEST_KEYS:
         raise ValueError("staged cross-check report manifest envelope is not exact")
     if set(method_spec) != METHOD_SPEC_KEYS:
@@ -586,12 +598,12 @@ def require_staged_report_manifest(packet_dir: Path) -> None:
         not exact_schema_version(manifest)
         or manifest.get("method_id") != route
         or manifest.get("report_kind") != "executable_crosscheck_method"
-        or route not in SUPPORTED_ROUTES
+        or not is_supported_route(route)
         or manifest.get("authorized_hrd_state") != "no_call"
         or manifest.get("classification_authorized") is not False
         or manifest.get("classification_qc_status") != "not_applicable"
-        or str(manifest.get("evidence_status", ""))
-        not in {"partial_evidence", "no_call", "blocked"}
+        or not isinstance(manifest.get("evidence_status"), str)
+        or manifest.get("evidence_status") not in ALLOWED_EVIDENCE_STATES
         or not isinstance(manifest.get("review_summary"), dict)
         or not manifest["review_summary"]
     ):
