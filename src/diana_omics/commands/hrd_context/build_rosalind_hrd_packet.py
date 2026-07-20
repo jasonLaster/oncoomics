@@ -1226,6 +1226,32 @@ PACKET_REPORT_SUPPORT_FILES = PACKET_REPORT_FILES - {
     "report.md",
     "report_manifest.json",
 }
+ROSALIND_REPORT_MANIFEST_KEYS = {
+    "authorized_hrd_state",
+    "classification_authorized",
+    "classification_qc_status",
+    "evidence_status",
+    "method_id",
+    "report_kind",
+    "report_sha256",
+    "review_summary",
+    "schema_version",
+    "source_sha256",
+    "support_sha256",
+}
+ROSALIND_REVIEW_OVERALL_KEYS = {
+    "authorized_hrd_state",
+    "evidence_status",
+}
+ROSALIND_REVIEW_SUMMARY_KEYS = {
+    "adapters",
+    "allowed_conclusion",
+    "blockers",
+    "evidence",
+    "interpretation_gaps",
+    "overall",
+    "packet_type",
+}
 RUN_MANIFEST_SUPPORT_FILES = {"cloud_materialization_plan.md", "packet_index.md"}
 RUN_PACKET_SUMMARY_KEYS = {
     "adapterRows",
@@ -3142,6 +3168,110 @@ def expected_diana_wgs_source_sha256(packet_dir: Path) -> dict[str, str]:
     return expected
 
 
+def require_packet_csv_rows(packet_dir: Path, name: str, label: str) -> list[dict[str, str]]:
+    payload = read_stable_file_bytes(
+        packet_dir / name,
+        label,
+    )
+    try:
+        return parse_csv(payload.decode("utf-8"))
+    except UnicodeError as error:
+        raise ValueError(f"{label} is not valid UTF-8: {packet_dir / name}") from error
+
+
+def exact_review_evidence_rows(packet_dir: Path) -> list[dict[str, str]]:
+    return [
+        {key: str(row.get(key, "")) for key in ("evidence_id", "status", "detail", "caveat")}
+        for row in require_packet_csv_rows(
+            packet_dir,
+            "sample_validation_summary.csv",
+            "Rosalind packet sample validation summary",
+        )
+    ]
+
+
+def exact_review_adapter_rows(packet_dir: Path) -> list[dict[str, str]]:
+    return [
+        {key: str(row.get(key, "")) for key in ("adapter", "state", "blocker", "next_action")}
+        for row in require_packet_csv_rows(
+            packet_dir,
+            "hrd_adapter_status.csv",
+            "Rosalind packet HRD adapter status",
+        )
+    ]
+
+
+def require_rosalind_review_summary(
+    packet_dir: Path,
+    manifest: Mapping[str, Any],
+) -> None:
+    if set(manifest) != ROSALIND_REPORT_MANIFEST_KEYS:
+        raise ValueError("Rosalind report manifest is not exact")
+    if not is_exact_int(manifest.get("schema_version"), 1):
+        raise ValueError("Rosalind report manifest schema_version is not exact")
+    if manifest.get("report_kind") != "rosalind_hrd_reviewer_packet":
+        raise ValueError("Rosalind report manifest report_kind is not exact")
+    if manifest.get("authorized_hrd_state") != "no_call":
+        raise ValueError("Rosalind report manifest authorized_hrd_state must be no_call")
+    if manifest.get("classification_authorized") is not False:
+        raise ValueError("Rosalind report manifest may not authorize classification")
+    if manifest.get("classification_qc_status") != "not_applicable":
+        raise ValueError("Rosalind report manifest classification_qc_status is not exact")
+
+    method_id = require_exact_nonempty_string(
+        manifest.get("method_id"),
+        "Rosalind report manifest method_id",
+    )
+    if not method_id.startswith("rosalind_"):
+        raise ValueError("Rosalind report manifest method_id is not exact")
+    sample_set = method_id.removeprefix("rosalind_")
+    spec = PACKET_SPECS.get(sample_set)
+    if spec is None:
+        raise ValueError("Rosalind report manifest method_id is unknown")
+
+    expected_review_summary_keys = set(ROSALIND_REVIEW_SUMMARY_KEYS)
+    if sample_set == "diana_wgs":
+        expected_review_summary_keys.add("provenance")
+    review_summary = manifest.get("review_summary")
+    if (
+        not isinstance(review_summary, Mapping)
+        or set(review_summary) != expected_review_summary_keys
+    ):
+        raise ValueError("Rosalind report manifest review_summary is not exact")
+    if review_summary.get("packet_type") != sample_set:
+        raise ValueError("Rosalind report manifest review_summary packet_type is not exact")
+    if review_summary.get("allowed_conclusion") != spec.allowed_conclusion:
+        raise ValueError(
+            "Rosalind report manifest review_summary allowed_conclusion is not exact"
+        )
+
+    evidence = exact_review_evidence_rows(packet_dir)
+    adapters = exact_review_adapter_rows(packet_dir)
+    evidence_status = packet_evidence_status(evidence)
+    overall = review_summary.get("overall")
+    if (
+        not isinstance(overall, Mapping)
+        or set(overall) != ROSALIND_REVIEW_OVERALL_KEYS
+        or overall.get("evidence_status") != evidence_status
+        or overall.get("authorized_hrd_state") != "no_call"
+    ):
+        raise ValueError("Rosalind report manifest review_summary overall is not exact")
+    if manifest.get("evidence_status") != evidence_status:
+        raise ValueError("Rosalind report manifest evidence_status is not exact")
+    if review_summary.get("evidence") != evidence:
+        raise ValueError("Rosalind report manifest review_summary evidence is not exact")
+    if review_summary.get("adapters") != adapters:
+        raise ValueError("Rosalind report manifest review_summary adapters are not exact")
+    if review_summary.get("interpretation_gaps") != adapter_interpretation_gaps(adapters):
+        raise ValueError(
+            "Rosalind report manifest review_summary interpretation_gaps are not exact"
+        )
+    require_exact_string_list(
+        review_summary.get("blockers"),
+        "Rosalind report manifest review_summary blockers",
+    )
+
+
 def require_rosalind_report_manifest(packet_dir: Path) -> None:
     manifest = read_json_file(
         require_real_nonempty_file(
@@ -3171,6 +3301,7 @@ def require_rosalind_report_manifest(packet_dir: Path) -> None:
     else:
         if manifest.get("source_sha256") != expected_generic_source_sha256(packet_dir):
             raise ValueError("Rosalind report manifest source_sha256 is not exact")
+    require_rosalind_review_summary(packet_dir, manifest)
 
 
 def prepare_diana_wgs_output_dir(output: Path, expected_files: Iterable[str]) -> None:
