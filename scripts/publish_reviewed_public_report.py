@@ -1047,7 +1047,7 @@ def validate_dry_run_receipt(
         or not isinstance(dry_run.get("completed_at_utc"), str)
         or not dry_run.get("completed_at_utc")
         or dry_run.get("destination_objects") != []
-        or dry_run.get("destination_initial_history_count") != 0
+        or not exact_int(dry_run.get("destination_initial_history_count"), 0)
         or not isinstance(source_objects, list)
         or not source_objects
         or not isinstance(checks, dict)

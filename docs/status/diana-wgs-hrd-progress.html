@@ -371,14 +371,14 @@
           is stopped, the selected GPU lane is live on all three allowed P5
           Hopper shapes and still waiting on quota, the prod-use2 daily cost
           guard now has a one-minute live spend poller, and the latest
-          source-only guardrail rejects malformed private receipt paths before
-          the final reviewed-public publish recipe can render.
+          source-only guardrail rejects loose reviewed-public dry-run history
+          counts before a final public publish apply can call AWS.
           Diana HRD remains <code>partial_evidence</code> / <code>no_call</code> until terminal
           artifacts and reviewed cross-check reports exist.
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-19</li>
-          <li class="pill">Latest milestone = public receipt paths</li>
+          <li class="pill">Latest milestone = public dry-run counts</li>
           <li class="pill">Live P5 placement = p5en / p5e / p5</li>
           <li class="pill">Daily $200 Batch guard = live</li>
           <li class="pill">Live spend poll = 1 minute</li>
@@ -564,6 +564,7 @@
           <li class="pill">CloudWatch terminal pagination markers = exact</li>
           <li class="pill">Public-index pagination markers = exact</li>
           <li class="pill">Reviewed-public receipt paths = exact</li>
+          <li class="pill">Public dry-run histories = exact</li>
           <li class="pill">AI-synthesis private receipt paths = exact</li>
           <li class="pill">Phase 3 fast Sequenza AI provenance = exact</li>
           <li class="pill">Phase 3 fast Sequenza alias provenance = exact</li>
@@ -864,8 +865,8 @@
             </li>
             <li class="track" style="--tone: var(--queued)">
               <strong>Diana reviewed-public publication</strong>
-              <span>83% · receipt paths guarded</span>
-              <div class="bar" aria-hidden="true" style="--pct: 83%"><span></span></div>
+              <span>84% · dry-run histories exact</span>
+              <div class="bar" aria-hidden="true" style="--pct: 84%"><span></span></div>
             </li>
             <li class="track" style="--tone: var(--queued)">
               <strong>Public / private boundary posture</strong>
@@ -2695,6 +2696,10 @@
               <span>The public results index now rejects reviewed-public receipts whose forbidden-token count, source-object bytes, or destination-object bytes are JSON booleans or otherwise non-exact positive integers before those receipts can feed public index construction.</span>
             </li>
             <li class="item" style="--tone: var(--done)">
+              <strong>Done · require exact reviewed-public dry-run histories</strong>
+              <span>Reviewed-public apply now rejects dry-run receipts whose empty destination-history count is a JSON boolean, float, or any value other than the exact integer zero before a deterministic, Rosalind, cross-check, or AI report packet can be copied public.</span>
+            </li>
+            <li class="item" style="--tone: var(--done)">
               <strong>Done · require exact public index payloads</strong>
               <span>Public index dry-run and apply now reject <code>objects.json</code> payloads with stale top-level fields or per-object fields before final public index publication can call AWS.</span>
             </li>
@@ -2760,6 +2765,18 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-19T23:32:00-07:00">Jul 19 · local</time>
+              <span>
+                <strong>Local patch · Reject loose reviewed-public dry-run histories:</strong>
+                reviewed-public apply now rejects dry-run receipts whose
+                <code>destination_initial_history_count</code> is a JSON
+                boolean, float, or any value other than the exact integer zero
+                before deterministic, Rosalind, cross-check, or AI report
+                packets can be copied public. No S3, Batch, route, GPU, quota,
+                replacement compute, or AWS-side verification was launched.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-19T23:30:00-07:00">Jul 19 · local</time>
               <span>
