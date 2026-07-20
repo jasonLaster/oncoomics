@@ -293,8 +293,7 @@ def require_exact_review_summary(
         raise ValueError("AI review overall summary is stale")
     if (
         summary.get("reviewer_id") != reviewer
-        or not isinstance(summary.get("invocation_id"), str)
-        or not summary.get("invocation_id")
+        or not require_exact_summary_string(summary.get("invocation_id"))
     ):
         raise ValueError("AI review summary reviewer binding is not exact")
     require_exact_review_model_summary(summary.get("model"))

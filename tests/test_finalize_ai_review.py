@@ -993,6 +993,67 @@ class FinalizeAiReviewTests(unittest.TestCase):
 
             self.assertFalse((review / "report_manifest.json").exists())
 
+    def test_final_manifest_rejects_inexact_review_summary_invocation_id(
+        self,
+    ) -> None:
+        cases = (
+            (
+                "padded invocation ID",
+                lambda summary: summary.__setitem__(
+                    "invocation_id",
+                    f" {summary['invocation_id']} ",
+                ),
+            ),
+            (
+                "hidden-NUL invocation ID",
+                lambda summary: summary.__setitem__(
+                    "invocation_id",
+                    f"{summary['invocation_id']}\x00",
+                ),
+            ),
+        )
+
+        for label, mutate in cases:
+            with self.subTest(label=label), tempfile.TemporaryDirectory() as temporary:
+                fixture, review = self.validated_review(temporary)
+                real_build_manifest = FINALIZE.build_manifest
+
+                def build_manifest_with_inexact_invocation_id(
+                    bundle_dir: Path,
+                    review_dir: Path,
+                    reviewer: str,
+                    model_catalog_receipt: Path,
+                ) -> dict:
+                    manifest = real_build_manifest(
+                        bundle_dir,
+                        review_dir,
+                        reviewer,
+                        model_catalog_receipt,
+                    )
+                    mutate(manifest["review_summary"])
+                    return manifest
+
+                with (
+                    mock.patch.object(
+                        FINALIZE,
+                        "build_manifest",
+                        side_effect=build_manifest_with_inexact_invocation_id,
+                    ),
+                    self.assertRaisesRegex(
+                        ValueError,
+                        "AI review summary reviewer binding is not exact",
+                    ),
+                ):
+                    FINALIZE.finalize(
+                        fixture.bundle_dir,
+                        review,
+                        "A",
+                        fixture.catalog_receipt,
+                        review / "report_manifest.json",
+                    )
+
+                self.assertFalse((review / "report_manifest.json").exists())
+
     def test_final_manifest_rejects_inexact_review_summary_model(self) -> None:
         cases = (
             (
