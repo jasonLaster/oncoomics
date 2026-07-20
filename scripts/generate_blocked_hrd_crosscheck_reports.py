@@ -392,6 +392,19 @@ def is_sha256(value: Any) -> bool:
     return isinstance(value, str) and SHA256_HEX.fullmatch(value) is not None
 
 
+def has_ascii_control(value: str) -> bool:
+    return any(ord(character) < 32 or ord(character) == 127 for character in value)
+
+
+def is_exact_string(value: Any, *, allow_empty: bool = False) -> bool:
+    return (
+        isinstance(value, str)
+        and (bool(value) or allow_empty)
+        and value == value.strip()
+        and not has_ascii_control(value)
+    )
+
+
 def json_bytes(value: Any) -> bytes:
     return (json.dumps(value, indent=2, sort_keys=True) + "\n").encode("utf-8")
 
@@ -752,10 +765,8 @@ def require_blocked_report_text(
     binding_scope = manifest.get("source_report_binding_scope")
     if (
         method is None
-        or not isinstance(generated_at, str)
-        or not generated_at
-        or generated_at != generated_at.strip()
-        or not isinstance(run_id, str)
+        or not is_exact_string(generated_at)
+        or not is_exact_string(run_id, allow_empty=True)
         or binding_scope != source_report_binding_scope(source_report_manifests)
     ):
         raise ValueError("blocked cross-check report inputs are not exact")
@@ -931,6 +942,11 @@ def generate(
     source_report_manifests: Mapping[str, str],
     allow_pre_route_source_reports: bool = False,
 ) -> list[Path]:
+    if not is_exact_string(generated_at):
+        raise ValueError("blocked cross-check generated_at is not exact")
+    if not is_exact_string(run_id, allow_empty=True):
+        raise ValueError("blocked cross-check run_id is not exact")
+
     source_report_manifests = validate_source_report_manifests(
         source_report_manifests,
         allow_pre_route_source_reports=allow_pre_route_source_reports,

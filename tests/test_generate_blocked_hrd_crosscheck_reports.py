@@ -66,6 +66,41 @@ def rebind_mutated_method_spec(
     )
 
 
+def rebind_mutated_run_id(directory: Path, run_id: str) -> None:
+    manifest_path = directory / "report_manifest.json"
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    method = GENERATOR.METHODS_BY_ID[manifest["method_id"]]
+    source_report_manifests = manifest["review_summary"]["source_report_manifests"]
+    manifest["run_id"] = run_id
+
+    spec_path = directory / "method_spec.json"
+    spec = json.loads(spec_path.read_text(encoding="utf-8"))
+    spec["run_id"] = run_id
+    spec_path.write_text(
+        json.dumps(spec, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
+
+    report_path = directory / "report.md"
+    report_path.write_text(
+        GENERATOR.render_report(
+            method,
+            manifest["generated_at"],
+            run_id=run_id,
+            source_report_manifests=source_report_manifests,
+            source_report_binding_scope=manifest["source_report_binding_scope"],
+        ),
+        encoding="utf-8",
+    )
+
+    manifest["support_sha256"]["method_spec.json"] = sha256(spec_path)
+    manifest["report_sha256"] = sha256(report_path)
+    manifest_path.write_text(
+        json.dumps(manifest, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
+
+
 def write_source_report_manifest(path: Path, **updates: object) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     report = path.parent / "report.md"
@@ -675,7 +710,10 @@ class GenerateBlockedHrdCrosscheckReportsTests(unittest.TestCase):
                     manifest["review_summary"]["readiness"]["execution_status"],
                     "not_run",
                 )
-                self.assertEqual(manifest["report_sha256"], sha256(directory / "report.md"))
+                self.assertEqual(
+                    manifest["report_sha256"],
+                    sha256(directory / "report.md"),
+                )
                 self.assertEqual(
                     manifest["support_sha256"],
                     {"method_spec.json": sha256(directory / "method_spec.json")},
@@ -684,6 +722,34 @@ class GenerateBlockedHrdCrosscheckReportsTests(unittest.TestCase):
             serialized = "\n".join(path.read_text(encoding="utf-8") for path in output.rglob("*.*"))
             for forbidden in ("E019", "DRF-", "Personalis", "Echo"):
                 self.assertNotIn(forbidden.casefold(), serialized.casefold())
+
+    def test_generation_rejects_non_exact_timestamps_and_run_ids_before_output(
+        self,
+    ) -> None:
+        cases = (
+            {
+                "generated_at": "2026-07-17T00:00:00+00:00\t",
+                "run_id": "diana-wgs-hrd-unit",
+                "message": "blocked cross-check generated_at is not exact",
+            },
+            {
+                "generated_at": "2026-07-17T00:00:00+00:00",
+                "run_id": "diana-wgs-hrd-unit\x00",
+                "message": "blocked cross-check run_id is not exact",
+            },
+        )
+        for case in cases:
+            with self.subTest(case=case), tempfile.TemporaryDirectory() as temporary:
+                output = Path(temporary) / "blocked"
+
+                with self.assertRaisesRegex(ValueError, case["message"]):
+                    GENERATOR.generate(
+                        output,
+                        case["generated_at"],
+                        run_id=case["run_id"],
+                    )
+
+                self.assertFalse(output.exists())
 
     def test_packet_manifest_requires_exact_envelope_and_source_hashes(self) -> None:
         mutations = {
@@ -789,6 +855,25 @@ class GenerateBlockedHrdCrosscheckReportsTests(unittest.TestCase):
 
                 with self.assertRaisesRegex(ValueError, message):
                     GENERATOR.require_blocked_report_manifest(manifest_path.parent)
+
+    def test_packet_manifest_rejects_rebound_non_exact_run_id(self) -> None:
+        cases = ("diana-wgs-hrd-unit\t", "diana-wgs-hrd-unit\x00")
+        for run_id in cases:
+            with self.subTest(run_id=repr(run_id)), tempfile.TemporaryDirectory() as temporary:
+                output = Path(temporary) / "blocked"
+                GENERATOR.generate(
+                    output,
+                    "2026-07-17T00:00:00+00:00",
+                    run_id="diana-wgs-hrd-unit",
+                )
+                directory = output / GENERATOR.METHODS[0]["directory"]
+                rebind_mutated_run_id(directory, run_id)
+
+                with self.assertRaisesRegex(
+                    ValueError,
+                    "blocked cross-check report inputs are not exact",
+                ):
+                    GENERATOR.require_blocked_report_manifest(directory)
 
     def test_packet_manifest_requires_exact_rebound_method_spec(self) -> None:
         mutations = {
