@@ -382,17 +382,54 @@ def sha256_file_once(path: Path) -> str:
     return digest.hexdigest()
 
 
-def read_stable_file_with_sha256(path: Path, label: str) -> tuple[bytes, str]:
+def read_real_file_once(path: Path, label: str) -> bytes:
     require_real_input_path(path, label)
+    flags = (
+        os.O_RDONLY
+        | getattr(os, "O_CLOEXEC", 0)
+        | getattr(os, "O_NOFOLLOW", 0)
+        | getattr(os, "O_NONBLOCK", 0)
+    )
+    descriptor = -1
     try:
-        data = path.read_bytes()
-        digest = sha256_bytes(data)
-        if sha256_bytes(path.read_bytes()) != digest:
-            raise ValueError(f"{label} changed during read: {path}")
+        descriptor = os.open(path, flags)
+        opened = os.fstat(descriptor)
+        if not stat.S_ISREG(opened.st_mode) or opened.st_size <= 0:
+            raise ValueError(f"{label} must be a non-empty real file: {path}")
+        with os.fdopen(descriptor, "rb") as handle:
+            descriptor = -1
+            data = handle.read()
+            after_read = os.fstat(handle.fileno())
+        current = os.stat(path, follow_symlinks=False)
     except OSError as error:
         raise ValueError(f"{label} changed during read: {path}") from error
-    require_real_input_path(path, label)
+    finally:
+        if descriptor >= 0:
+            os.close(descriptor)
+
+    if (
+        not data
+        or stat_identity(opened) != stat_identity(after_read)
+        or stat_identity(after_read) != stat_identity(current)
+    ):
+        raise ValueError(f"{label} changed during read: {path}")
+    return data
+
+
+def read_stable_file_with_sha256(path: Path, label: str) -> tuple[bytes, str]:
+    data = read_real_file_once(path, label)
+    digest = sha256_bytes(data)
+    if sha256_bytes(read_real_file_once(path, label)) != digest:
+        raise ValueError(f"{label} changed during read: {path}")
     return data, digest
+
+
+def read_stable_text(path: Path, label: str) -> str:
+    data, _digest = read_stable_file_with_sha256(path, label)
+    try:
+        return data.decode("utf-8")
+    except UnicodeDecodeError as error:
+        raise ValueError(f"{label} must be UTF-8 text: {path}") from error
 
 
 def sha256_bytes(value: bytes) -> str:
@@ -1375,7 +1412,7 @@ def rank_forbidden_tokens(tokens: Iterable[str]) -> list[str]:
 def scan_outputs(paths: list[Path], tokens: list[str]) -> list[dict[str, str]]:
     findings: list[dict[str, str]] = []
     for path in paths:
-        text = path.read_text(encoding="utf-8")
+        text = read_stable_text(path, f"{path.name} forbidden-token scan input")
         lowered = text.lower()
         for token in tokens:
             if token.lower() in lowered:
@@ -2908,7 +2945,10 @@ def main() -> None:
 
     flagstat_consistent = True
     for role in ("tumor", "normal"):
-        text = paths[f"{role}_flagstat"].read_text(encoding="utf-8")
+        text = read_stable_text(
+            paths[f"{role}_flagstat"],
+            f"{role} flagstat input",
+        )
         patterns = {
             "total_reads": r"^(\d+) \+ \d+ in total",
             "mapped_reads": r"^(\d+) \+ \d+ mapped",

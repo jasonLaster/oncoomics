@@ -1013,12 +1013,15 @@ class StageDeterministicWgsReportInstallTests(unittest.TestCase):
             root = Path(temporary)
             path = root / "input.json"
             path.write_text('{"status":"stable"}\n', encoding="utf-8")
-            real_read_bytes = Path.read_bytes
+            real_read_once = REPORT_MODULE.read_real_file_once
             moved = False
 
-            def swap_to_symlink_after_first_read(input_path: Path) -> bytes:
+            def swap_to_symlink_after_first_read(
+                input_path: Path,
+                label: str,
+            ) -> bytes:
                 nonlocal moved
-                data = real_read_bytes(input_path)
+                data = real_read_once(input_path, label)
                 if input_path == path and not moved:
                     moved = True
                     real_path = root / "input.real.json"
@@ -1028,9 +1031,9 @@ class StageDeterministicWgsReportInstallTests(unittest.TestCase):
 
             with (
                 patch.object(
-                    Path,
-                    "read_bytes",
-                    swap_to_symlink_after_first_read,
+                    REPORT_MODULE,
+                    "read_real_file_once",
+                    side_effect=swap_to_symlink_after_first_read,
                 ),
                 self.assertRaisesRegex(
                     ValueError,
@@ -1109,12 +1112,15 @@ class StageDeterministicWgsReportInstallTests(unittest.TestCase):
             root = Path(temporary)
             path = root / "receipt.json"
             path.write_text('{"status":"stable"}\n', encoding="utf-8")
-            real_read_bytes = Path.read_bytes
+            real_read_once = REPORT_MODULE.read_real_file_once
             moved = False
 
-            def swap_to_symlink_after_first_read(input_path: Path) -> bytes:
+            def swap_to_symlink_after_first_read(
+                input_path: Path,
+                label: str,
+            ) -> bytes:
                 nonlocal moved
-                data = real_read_bytes(input_path)
+                data = real_read_once(input_path, label)
                 if input_path == path and not moved:
                     moved = True
                     real_path = root / "receipt.real.json"
@@ -1124,13 +1130,55 @@ class StageDeterministicWgsReportInstallTests(unittest.TestCase):
 
             with (
                 patch.object(
-                    Path,
-                    "read_bytes",
-                    swap_to_symlink_after_first_read,
+                    REPORT_MODULE,
+                    "read_real_file_once",
+                    side_effect=swap_to_symlink_after_first_read,
                 ),
                 self.assertRaisesRegex(
                     ValueError,
                     "receipt.json SHA-256 input must be a non-empty real file",
+                ),
+            ):
+                REPORT_MODULE.sha256(path)
+
+            self.assertTrue(moved)
+
+    def test_sha256_rejects_hash_input_swapped_to_symlink_after_preflight(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory(
+            prefix="synthetic-hrd-report-input-"
+        ) as temporary:
+            root = Path(temporary)
+            path = root / "receipt.json"
+            path.write_text('{"status":"stable"}\n', encoding="utf-8")
+            real_os_open = REPORT_MODULE.os.open
+            moved = False
+
+            def swap_to_symlink_before_open(
+                input_path: Path,
+                flags: int,
+                mode: int = 0o777,
+                *,
+                dir_fd: int | None = None,
+            ) -> int:
+                nonlocal moved
+                if input_path == path and not moved:
+                    moved = True
+                    real_path = root / "receipt.real.json"
+                    path.rename(real_path)
+                    path.symlink_to(real_path)
+                return real_os_open(input_path, flags, mode, dir_fd=dir_fd)
+
+            with (
+                patch.object(
+                    REPORT_MODULE.os,
+                    "open",
+                    side_effect=swap_to_symlink_before_open,
+                ),
+                self.assertRaisesRegex(
+                    ValueError,
+                    "receipt.json SHA-256 input changed during read",
                 ),
             ):
                 REPORT_MODULE.sha256(path)
@@ -3499,6 +3547,34 @@ class StageDeterministicWgsReportTests(unittest.TestCase):
                 result.stdout + result.stderr,
             )
             self.assertFalse((fixture.output / "report.md").exists())
+
+    def test_scan_outputs_rejects_output_that_changes_during_read(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="synthetic-hrd-report-") as temporary:
+            path = Path(temporary) / "report.md"
+            path.write_text("stable\n", encoding="utf-8")
+            original_sha256_bytes = REPORT_MODULE.sha256_bytes
+            mutated = False
+
+            def mutate_before_rehash(data: bytes) -> str:
+                nonlocal mutated
+                digest = original_sha256_bytes(data)
+                if not mutated:
+                    mutated = True
+                    path.write_text("rewritten\n", encoding="utf-8")
+                return digest
+
+            with (
+                patch.object(
+                    REPORT_MODULE,
+                    "sha256_bytes",
+                    side_effect=mutate_before_rehash,
+                ),
+                self.assertRaisesRegex(
+                    ValueError,
+                    "report.md forbidden-token scan input changed during read",
+                ),
+            ):
+                REPORT_MODULE.scan_outputs([path], ["sample-id"])
 
     def test_variant_count_inconsistency_fails_before_report_publication(self) -> None:
         with tempfile.TemporaryDirectory(prefix="synthetic-hrd-report-") as temporary:
