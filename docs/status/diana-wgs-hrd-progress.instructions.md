@@ -27,6 +27,8 @@ buckets and avoids partial same-day estimates.
 - Request `UnblendedCost`.
 - Group by `SERVICE` first and `USAGE_TYPE` second.
 - Display the covered UTC date, total unblended cost, and the top service / usage-type rows.
+- Keep the panel near the top of the dashboard as a plain-English
+  "Yesterday's AWS cost" card so spend is visible alongside execution status.
 - Label each row in plain language first, then keep the raw Cost Explorer service and usage type in the smaller secondary text.
 - Fold tiny rows into `Other` if that keeps the card readable.
 - Refresh the visible total and row list even for source-only dashboard edits.

@@ -127,7 +127,7 @@ def checksum_sha256(digest: str) -> str:
     return base64.b64encode(bytes.fromhex(digest)).decode("ascii")
 
 
-def load_json(path: Path) -> dict[str, Any]:
+def load_json_with_sha256(path: Path) -> tuple[dict[str, Any], str]:
     for parent in path.parents:
         if parent.is_symlink() and not is_platform_root_alias(parent):
             raise ValueError(f"JSON document parent must not be a symlink: {parent}")
@@ -135,16 +135,24 @@ def load_json(path: Path) -> dict[str, Any]:
             raise ValueError(f"JSON document parent must be a directory: {parent}")
     if path.is_symlink() or not path.is_file():
         raise ValueError(f"JSON document must be a real file: {path}")
+    raw = path.read_bytes()
+    digest = hashlib.sha256(raw).hexdigest()
     try:
         value = json.loads(
-            path.read_text(encoding="utf-8"),
+            raw.decode("utf-8"),
             object_pairs_hook=reject_duplicate_json_object_names,
         )
     except DuplicateJsonKeyError as error:
         raise ValueError(f"duplicate JSON object name in JSON document: {error}") from error
     if not isinstance(value, dict):
         raise ValueError(f"JSON document is not an object: {path}")
-    return value
+    if sha256(path) != digest:
+        raise ValueError(f"JSON document changed during read: {path}")
+    return value, digest
+
+
+def load_json(path: Path) -> dict[str, Any]:
+    return load_json_with_sha256(path)[0]
 
 
 def valid_version_id(value: Any) -> bool:
@@ -721,10 +729,10 @@ def prepare_source_row(
     ):
         raise RuntimeError(f"source get response did not match head: {name}")
     try:
-        validate_source_document(name, load_json(source_local), run_id)
+        source_document, source_sha = load_json_with_sha256(source_local)
+        validate_source_document(name, source_document, run_id)
     except ValueError as error:
         raise RuntimeError(str(error)) from error
-    source_sha = sha256(source_local)
     return (
         {
             "name": name,

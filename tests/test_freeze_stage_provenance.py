@@ -568,6 +568,75 @@ class FreezeStageProvenanceTests(unittest.TestCase):
                         temp=Path(raw),
                     )
 
+    def test_prepare_source_row_hashes_validated_source_bytes(self) -> None:
+        payload = (
+            json.dumps(preflight_payload(), sort_keys=True) + "\n"
+        ).encode()
+        tampered_payload = (
+            json.dumps(
+                {**preflight_payload(), "boundary": "tampered"},
+                sort_keys=True,
+            )
+            + "\n"
+        ).encode()
+        head = object_head(payload)
+        expected_sha = hashlib.sha256(payload).hexdigest()
+        real_validate_source_document = MODULE.validate_source_document
+
+        with tempfile.TemporaryDirectory() as raw:
+            temp = Path(raw)
+            source_local = temp / "source-preflight.json"
+
+            def download(
+                _bucket: str,
+                _key: str,
+                destination: Path,
+                _region: str,
+                *,
+                etag: str = "",
+                version_id: str = "",
+            ) -> dict:
+                self.assertEqual('"etag"', etag)
+                self.assertEqual("", version_id)
+                destination.write_bytes(payload)
+                return head
+
+            def validate_then_tamper(
+                name: str,
+                document: dict,
+                run_id: str,
+            ) -> None:
+                real_validate_source_document(name, document, run_id)
+                source_local.write_bytes(tampered_payload)
+
+            with (
+                patch.object(MODULE, "head_object", return_value=head),
+                patch.object(MODULE, "download_object", side_effect=download),
+                patch.object(
+                    MODULE,
+                    "validate_source_document",
+                    side_effect=validate_then_tamper,
+                ),
+            ):
+                row, before, source_sha = MODULE.prepare_source_row(
+                    name="preflight.json",
+                    source_bucket=SOURCE_BUCKET,
+                    source_prefix=f"runs/diana-hrd/{RUN_ID}/private-results/",
+                    destination_bucket=DESTINATION_BUCKET,
+                    destination_prefix=(
+                        f"runs/subject01/{RUN_ID}/deterministic/"
+                        "provenance/wgs-stage/"
+                    ),
+                    kms_key_arn=KMS,
+                    run_id=RUN_ID,
+                    region=REGION,
+                    temp=temp,
+                )
+
+        self.assertEqual(head, before)
+        self.assertEqual(expected_sha, source_sha)
+        self.assertEqual(expected_sha, row["source"]["sha256"])
+
     def test_download_object_rejects_symlinked_destination(self) -> None:
         with tempfile.TemporaryDirectory() as value:
             destination = Path(value) / "downloaded.json"
@@ -953,6 +1022,29 @@ class FreezeStageProvenanceTests(unittest.TestCase):
                 "duplicate JSON object name in JSON document: schema_version",
             ):
                 MODULE.load_json(receipt)
+
+    def test_load_json_with_sha256_hashes_parsed_bytes(self) -> None:
+        with tempfile.TemporaryDirectory() as value:
+            receipt = Path(value) / "stage.dry.json"
+            payload = b'{"status":"passed"}\n'
+            receipt.write_bytes(payload)
+
+            document, digest = MODULE.load_json_with_sha256(receipt)
+
+        self.assertEqual({"status": "passed"}, document)
+        self.assertEqual(hashlib.sha256(payload).hexdigest(), digest)
+
+    def test_load_json_with_sha256_rejects_stale_local_bytes(self) -> None:
+        with tempfile.TemporaryDirectory() as value:
+            receipt = Path(value) / "stage.dry.json"
+            payload = b'{"status":"passed"}\n'
+            receipt.write_bytes(payload)
+
+            with (
+                patch.object(MODULE, "sha256", return_value="0" * 64),
+                self.assertRaisesRegex(ValueError, "JSON document changed during read"),
+            ):
+                MODULE.load_json_with_sha256(receipt)
 
     def test_apply_requires_dry_run_receipt_before_aws(self) -> None:
         with (

@@ -367,16 +367,20 @@
           build deterministic, Rosalind, cross-check, AI-review, and synthesis
           packets from a public known-answer dataset; it is not a Diana result.
           Recent hardening makes each handoff re-check the files it depends on
-          before private review or reviewed-public release can continue, and
-          the final publication publishers now carry exact index and receipt
-          digests from the bytes they parsed. The selected GPU rerun is still
-          quota-blocked, the legacy CPU run remains stopped, and Diana HRD remains
-          <code>partial_evidence</code> / <code>no_call</code> until terminal
-          artifacts and reviewed cross-check reports exist.
+          before private review or reviewed-public release can continue. The
+          final publication publishers now carry exact index and receipt
+          digests from the bytes they parsed, and stage-freeze inputs now keep
+          validation and hashing on the same downloaded JSON bytes. The
+          selected GPU rerun is still quota-blocked, the legacy CPU run remains
+          stopped, and Diana HRD remains <code>partial_evidence</code> /
+          <code>no_call</code> until terminal artifacts and reviewed
+          cross-check reports exist.
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-19</li>
-          <li class="pill">Latest milestone = final publication digests carried</li>
+          <li class="pill">Latest milestone = stage-freeze source reads stable</li>
+          <li class="pill">Stage-freeze source reads = stable</li>
+          <li class="pill">Final publication digests = carried</li>
           <li class="pill">Public-index publish reads = stable</li>
           <li class="pill">Private-report dry-run reads = stable</li>
           <li class="pill">Reviewed-public receipt digests = stable</li>
@@ -898,6 +902,10 @@
 
           <h3>Priority 1 · selected GPU NGS rerun prep</h3>
           <ol class="todo">
+            <li class="item" style="--tone: var(--done)">
+              <strong>Done · bind stage-freeze source reads</strong>
+              <span>Stage provenance freezing now hashes each downloaded preflight/gather JSON from the same bytes it validated, so a local rewrite cannot swap the digest recorded for the post-run handoff.</span>
+            </li>
             <li class="item" style="--tone: var(--done)">
               <strong>Done · bind final publication reads</strong>
               <span>Private report applies and public-index publication now record index and receipt hashes from the exact JSON bytes they parsed, so a mid-run rewrite cannot swap the digest carried into publication receipts.</span>
@@ -2452,6 +2460,15 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-19T18:39:00-07:00">Jul 19 · local</time>
+              <span>
+                <strong>Local patch · Bind stage-freeze source digests:</strong>
+                <code>freeze_stage_provenance.py</code> now hashes downloaded
+                preflight/gather source JSON from the same stable bytes it
+                validates before carrying source digests into dry-run receipts.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-19T18:50:00-07:00">Jul 19 · local</time>
               <span>
