@@ -27,11 +27,15 @@ buckets and avoids partial same-day estimates.
 - Request `UnblendedCost`.
 - Group by `SERVICE` first and `USAGE_TYPE` second.
 - Display the covered UTC date, total unblended cost, and the top service / usage-type rows.
+- Sort rows by descending unblended cost, sum all returned rows into the visible
+  total, and aggregate low-dollar rows into `Other` only after preserving the
+  largest cost drivers as their own rows.
 - Keep the panel near the top of the dashboard as a plain-English
   "Yesterday's AWS cost" card so spend is visible alongside execution status.
 - Label each row in plain language first, then keep the raw Cost Explorer service and usage type in the smaller secondary text.
-- Fold tiny rows into `Other` if that keeps the card readable.
-- Refresh the visible total and row list even for source-only dashboard edits.
+- Refresh the covered UTC window, visible total, and row list even for
+  source-only dashboard edits; if Cost Explorer returns the same values, leave
+  the card values unchanged and record only the source milestone.
 - Do not expose AWS account IDs, quota case IDs, raw private S3 paths, or
   collaborator transfer identifiers in the cost card.
 - If Cost Explorer is unavailable or permission denied, keep the cost card visible and state the attempted UTC window plus the read-only error class; do not omit the card.

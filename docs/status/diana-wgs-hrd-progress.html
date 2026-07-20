@@ -368,17 +368,17 @@
           packets from a public known-answer dataset; it is not a Diana result.
           Recent hardening makes each handoff re-check the files it depends on
           before private review or reviewed-public release can continue. The
-          final publication publishers now carry exact index and receipt
-          digests from the bytes they parsed, and the freeze/materialization
-          steps keep validation and hashing on the same local JSON bytes. The
-          selected GPU rerun is still quota-blocked, the legacy CPU run remains
-          stopped, and Diana HRD remains <code>partial_evidence</code> /
-          <code>no_call</code> until terminal artifacts and reviewed
-          cross-check reports exist.
+          one-shot materializer submitter, freeze steps, and local
+          materialization now carry the exact digests of the JSON bytes they
+          parsed instead of trusting a later filesystem read. The selected GPU
+          rerun is still quota-blocked, the legacy CPU run remains stopped, and
+          Diana HRD remains <code>partial_evidence</code> / <code>no_call</code>
+          until terminal artifacts and reviewed cross-check reports exist.
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-19</li>
-          <li class="pill">Latest milestone = materialization receipt reads stable</li>
+          <li class="pill">Latest milestone = materializer submit reads stable</li>
+          <li class="pill">Materializer submit reads = stable</li>
           <li class="pill">Materialization receipt reads = stable</li>
           <li class="pill">Final-freeze receipt reads = stable</li>
           <li class="pill">Stage-freeze source reads = stable</li>
@@ -904,6 +904,10 @@
 
           <h3>Priority 1 · selected GPU NGS rerun prep</h3>
           <ol class="todo">
+            <li class="item" style="--tone: var(--done)">
+              <strong>Done · bind materializer submit reads</strong>
+              <span>The one-shot cross-check materializer submitter now records final, reference, script, registration, job-definition, and dry-run receipt hashes from the same JSON bytes it validated, so a local rewrite cannot swap the digest recorded in the submission paperwork.</span>
+            </li>
             <li class="item" style="--tone: var(--done)">
               <strong>Done · bind materialization receipt reads</strong>
               <span>Exact-version final artifact materialization now records final-freeze and prior recovery receipt hashes from the same JSON bytes it validated, so recovery cannot carry a digest from a later local rewrite.</span>
@@ -2470,6 +2474,16 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-19T18:46:00-07:00">Jul 19 · local</time>
+              <span>
+                <strong>Local patch · Bind materializer submit digests:</strong>
+                <code>submit_materializer_v4.py</code> now carries final,
+                reference, script, registration, job-definition, and dry-run
+                receipt hashes from the stable JSON bytes it parsed before
+                rendering the one-shot materializer submit request.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-19T18:43:00-07:00">Jul 19 · local</time>
               <span>

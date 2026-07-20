@@ -692,6 +692,78 @@ class SubmitMaterializerV4Tests(unittest.TestCase):
             "exact_existing_freeze_plus_aws_sha_receipts",
         )
 
+    def test_preflight_hashes_stable_loaded_input_bytes(self) -> None:
+        expected = {
+            self.final_freeze: MODULE.sha256_path(self.final_freeze),
+            self.final_anchor: MODULE.sha256_path(self.final_anchor),
+            self.exact_materialization: MODULE.sha256_path(
+                self.exact_materialization
+            ),
+            self.reference_freeze: MODULE.sha256_path(self.reference_freeze),
+            self.reference_sha: MODULE.sha256_path(self.reference_sha),
+            self.script_anchor: MODULE.sha256_path(self.script_anchor),
+            self.registration: MODULE.sha256_path(self.registration),
+            self.job_definition: MODULE.sha256_path(self.job_definition),
+        }
+        expected_by_resolved = {path.resolve(): digest for path, digest in expected.items()}
+        original_load = MODULE.load_object_with_sha256
+        rewrites: set[Path] = set()
+
+        def load_then_rewrite(
+            path: Path,
+            label: str,
+        ) -> tuple[dict[str, object], str, int]:
+            value, digest, size = original_load(path, label)
+            resolved = path.resolve()
+            if resolved in expected_by_resolved and resolved not in rewrites:
+                rewrites.add(resolved)
+                replacement = copy.deepcopy(value)
+                replacement["synthetic_late_rewrite"] = label
+                self._write(path, replacement)
+                self.assertNotEqual(MODULE.sha256_path(path), digest)
+            return value, digest, size
+
+        with mock.patch.object(
+            MODULE,
+            "load_object_with_sha256",
+            side_effect=load_then_rewrite,
+        ):
+            result = self.run_preflight()
+
+        self.assertEqual(rewrites, set(expected_by_resolved))
+        self.assertEqual(
+            result["input_receipts"]["final_freeze"]["sha256"],
+            expected[self.final_freeze],
+        )
+        self.assertEqual(
+            result["input_receipts"]["final_freeze_anchor"]["sha256"],
+            expected[self.final_anchor],
+        )
+        self.assertEqual(
+            result["input_receipts"]["exact_materialization"]["sha256"],
+            expected[self.exact_materialization],
+        )
+        self.assertEqual(
+            result["input_receipts"]["reference_freeze"]["sha256"],
+            expected[self.reference_freeze],
+        )
+        self.assertEqual(
+            result["input_receipts"]["reference_sha256"]["sha256"],
+            expected[self.reference_sha],
+        )
+        self.assertEqual(
+            result["input_receipts"]["materializer_script_anchor"]["sha256"],
+            expected[self.script_anchor],
+        )
+        self.assertEqual(
+            result["input_receipts"]["registration_v4"]["sha256"],
+            expected[self.registration],
+        )
+        self.assertEqual(
+            result["input_receipts"]["job_definition_v4"]["sha256"],
+            expected[self.job_definition],
+        )
+
     def test_tampered_final_anchor_fails_before_aws(self) -> None:
         anchor = json.loads(self.final_anchor.read_text(encoding="utf-8"))
         anchor["receipt_sha256"] = "0" * 64
@@ -1421,17 +1493,23 @@ class SubmitMaterializerV4Tests(unittest.TestCase):
                     )
 
     def test_batch_pagination_rejects_malformed_next_token(self) -> None:
+        def make_aws(
+            next_token: object,
+            calls: list[tuple[str, ...]],
+        ):
+            def aws(region: str, *arguments: str):
+                self.assertEqual(region, MODULE.REGION)
+                calls.append(arguments)
+                return {"jobQueues": [], "nextToken": next_token}
+
+            return aws
+
         for value in (None, True):
             with self.subTest(nextToken=value):
                 calls: list[tuple[str, ...]] = []
 
-                def aws(region: str, *arguments: str):
-                    self.assertEqual(region, MODULE.REGION)
-                    calls.append(arguments)
-                    return {"jobQueues": [], "nextToken": value}
-
                 with (
-                    mock.patch.object(MODULE, "aws_json", side_effect=aws),
+                    mock.patch.object(MODULE, "aws_json", side_effect=make_aws(value, calls)),
                     self.assertRaisesRegex(
                         ValueError,
                         "malformed nextToken",
@@ -1663,6 +1741,34 @@ class SubmitMaterializerV4Tests(unittest.TestCase):
 
         with self.assertRaisesRegex(ValueError, "contract is malformed"):
             MODULE.validate_dry_run_receipt(dry_run, request)
+
+    def test_dry_run_validation_hashes_stable_loaded_input_bytes(self) -> None:
+        request = self.preflight_receipt()
+        dry_run = self.write_dry_run_receipt(request)
+        expected = MODULE.sha256_path(dry_run)
+        original_load = MODULE.load_object_with_sha256
+
+        def load_then_rewrite(
+            path: Path,
+            label: str,
+        ) -> tuple[dict[str, object], str, int]:
+            value, digest, size = original_load(path, label)
+            self.assertEqual(path.resolve(), dry_run.resolve())
+            self.assertEqual(digest, expected)
+            replacement = copy.deepcopy(value)
+            replacement["generated_at_utc"] = "late-rewrite"
+            self._write(path, replacement)
+            self.assertNotEqual(MODULE.sha256_path(path), expected)
+            return value, digest, size
+
+        with mock.patch.object(
+            MODULE,
+            "load_object_with_sha256",
+            side_effect=load_then_rewrite,
+        ):
+            result = MODULE.validate_dry_run_receipt(dry_run, request)
+
+        self.assertEqual(result["sha256"], expected)
 
     def test_submit_writes_distinct_request_and_response_receipts(self) -> None:
         response = {

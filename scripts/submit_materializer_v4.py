@@ -234,17 +234,23 @@ def sha256_path(path: Path) -> str:
     return digest.hexdigest()
 
 
-def load_object(path: Path, label: str) -> dict[str, Any]:
+def load_object_with_sha256(path: Path, label: str) -> tuple[dict[str, Any], str, int]:
     path = require_real_input_file(path, label)
+    data = path.read_bytes()
     try:
         value = json.loads(
-            path.read_text(encoding="utf-8"),
+            data,
             object_pairs_hook=reject_duplicate_json_object_names,
         )
     except DuplicateJsonKeyError as error:
         raise ValueError(f"duplicate JSON object name in {label}: {error}") from error
     if not isinstance(value, dict):
         raise ValueError(f"{label} must be a JSON object")
+    return value, sha256_bytes(data), len(data)
+
+
+def load_object(path: Path, label: str) -> dict[str, Any]:
+    value, _digest, _size = load_object_with_sha256(path, label)
     return value
 
 
@@ -330,24 +336,23 @@ def require_private_uri(uri: Any, expected_key: str | None = None) -> tuple[str,
 
 def require_anchor(
     path: Path,
-    receipt_path: Path,
     *,
+    receipt_sha256: str,
+    receipt_bytes: int,
     run_id: str | None,
     batch_job_id: str | None,
     expected_key_prefix: str | None = None,
-) -> dict[str, Any]:
-    anchor = load_object(path, "freeze anchor")
-    receipt_sha = sha256_path(receipt_path)
-    receipt_bytes = receipt_path.stat().st_size
+) -> tuple[dict[str, Any], str]:
+    anchor, anchor_sha256, _anchor_bytes = load_object_with_sha256(path, "freeze anchor")
     uri = str(anchor.get("receipt_uri", ""))
     _bucket, key = require_private_uri(uri)
-    expected_suffix = f"/{receipt_sha}.json"
+    expected_suffix = f"/{receipt_sha256}.json"
     checks = {
         "schema_status": exact_schema_version(anchor, 1) and anchor.get("status") == "passed",
-        "receipt_hash": anchor.get("receipt_sha256") == receipt_sha,
+        "receipt_hash": anchor.get("receipt_sha256") == receipt_sha256,
         "receipt_bytes": anchor.get("receipt_bytes") == receipt_bytes,
         "content_addressed_uri": key.endswith(expected_suffix.lstrip("/")) or uri.endswith(expected_suffix),
-        "expected_prefix": expected_key_prefix is None or key == f"{expected_key_prefix}{receipt_sha}.json",
+        "expected_prefix": expected_key_prefix is None or key == f"{expected_key_prefix}{receipt_sha256}.json",
         "receipt_version": valid_version(anchor.get("receipt_version_id")),
         "checks_exact": passed_checks(anchor.get("checks"), exact=EXPECTED_ANCHOR_CHECKS),
         "run_id": run_id is None or anchor.get("run_id") == run_id,
@@ -355,7 +360,7 @@ def require_anchor(
     }
     if not all(checks.values()):
         raise ValueError(f"freeze anchor does not bind the exact receipt: {checks}")
-    return anchor
+    return anchor, anchor_sha256
 
 
 def require_unique_rows(
@@ -384,7 +389,7 @@ def validate_final_sources(
     anchor_path: Path,
     materialization_path: Path,
 ) -> tuple[dict[str, str], dict[str, Any]]:
-    freeze = load_object(freeze_path, "final freeze receipt")
+    freeze, freeze_sha256, freeze_bytes = load_object_with_sha256(freeze_path, "final freeze receipt")
     expected_count = freeze.get("object_count")
     if not isinstance(expected_count, int) or isinstance(expected_count, bool) or expected_count <= 0:
         raise ValueError("final freeze object_count must be a positive integer")
@@ -479,14 +484,18 @@ def validate_final_sources(
         ):
             raise ValueError(f"final freeze source/destination inventories do not bind row: {relative}")
 
-    require_anchor(
+    _anchor, anchor_sha256 = require_anchor(
         anchor_path,
-        freeze_path,
+        receipt_sha256=freeze_sha256,
+        receipt_bytes=freeze_bytes,
         run_id=run_id,
         batch_job_id=job_id,
         expected_key_prefix=(f"runs/subject01/{run_id}/deterministic/provenance/final-artifact-freeze-receipts/"),
     )
-    materialized = load_object(materialization_path, "exact local materialization receipt")
+    materialized, materialized_sha256, _materialized_bytes = load_object_with_sha256(
+        materialization_path,
+        "exact local materialization receipt",
+    )
     materialized_count = materialized.get("object_count")
     materialized_rows = require_unique_rows(
         materialized.get("objects"),
@@ -498,7 +507,7 @@ def validate_final_sources(
         "schema_status": exact_schema_version(materialized, 1) and materialized.get("status") == "passed",
         "run_id": materialized.get("run_id") == run_id,
         "batch_job_id": materialized.get("batch_job_id") == job_id,
-        "freeze_hash": materialized.get("freeze_receipt_sha256") == sha256_path(freeze_path),
+        "freeze_hash": materialized.get("freeze_receipt_sha256") == freeze_sha256,
         "kms": materialized.get("expected_kms_key_arn") == kms,
         "object_count": materialized_count == expected_count,
         "passed_count": materialized.get("passed_count") == expected_count,
@@ -533,9 +542,9 @@ def validate_final_sources(
     return values, {
         "kms_key_arn": kms,
         "batch_job_id": job_id,
-        "final_freeze_sha256": sha256_path(freeze_path),
-        "final_freeze_anchor_sha256": sha256_path(anchor_path),
-        "exact_materialization_sha256": sha256_path(materialization_path),
+        "final_freeze_sha256": freeze_sha256,
+        "final_freeze_anchor_sha256": anchor_sha256,
+        "exact_materialization_sha256": materialized_sha256,
         "object_count": expected_count,
     }
 
@@ -554,8 +563,11 @@ def validate_reference_sources(
     required to pass the same strict content-addressed checks.
     """
 
-    freeze = load_object(freeze_path, "reference freeze receipt")
-    sha_receipt = load_object(sha_path, "reference SHA-256 receipt")
+    freeze, freeze_sha256, freeze_bytes = load_object_with_sha256(freeze_path, "reference freeze receipt")
+    sha_receipt, sha_receipt_sha256, _sha_receipt_bytes = load_object_with_sha256(
+        sha_path,
+        "reference SHA-256 receipt",
+    )
     count = freeze.get("object_count")
     if count != 3:
         raise ValueError("reference freeze must contain exactly FASTA, FAI, and dict")
@@ -608,7 +620,7 @@ def validate_reference_sources(
     sha_checks = {
         "schema_status": exact_schema_version(sha_receipt, 1) and sha_receipt.get("status") == "passed",
         "count": sha_count == 3,
-        "freeze_hash": sha_receipt.get("freeze_receipt_sha256") == sha256_path(freeze_path),
+        "freeze_hash": sha_receipt.get("freeze_receipt_sha256") == freeze_sha256,
         "algorithm": sha_receipt.get("algorithm") == "sha256_full_object_aws_side_stream",
         "hash_status": isinstance(sha_receipt.get("execution"), dict)
         and sha_receipt["execution"].get("hash_computation_status") == "passed",
@@ -639,12 +651,15 @@ def validate_reference_sources(
         if not exact:
             raise ValueError(f"reference SHA-256 row does not bind freeze: {artifact}")
     if anchor_path is not None:
-        require_anchor(
+        _anchor, anchor_sha256 = require_anchor(
             anchor_path,
-            freeze_path,
+            receipt_sha256=freeze_sha256,
+            receipt_bytes=freeze_bytes,
             run_id=None,
             batch_job_id=None,
         )
+    else:
+        anchor_sha256 = None
 
     values: dict[str, str] = {}
     for logical, artifact in REFERENCE_ARTIFACTS.items():
@@ -655,9 +670,9 @@ def validate_reference_sources(
         values[f"{logical}_sha256"] = str(sha_row["sha256"])
     return values, {
         "kms_key_arn": kms,
-        "reference_freeze_sha256": sha256_path(freeze_path),
-        "reference_sha256_receipt_sha256": sha256_path(sha_path),
-        "reference_freeze_anchor_sha256": sha256_path(anchor_path) if anchor_path else None,
+        "reference_freeze_sha256": freeze_sha256,
+        "reference_sha256_receipt_sha256": sha_receipt_sha256,
+        "reference_freeze_anchor_sha256": anchor_sha256,
         "object_count": 3,
         "custody_mode": "anchored_receipt_plus_aws_sha" if anchor_path else "exact_existing_freeze_plus_aws_sha_receipts",
     }
@@ -702,9 +717,18 @@ def validate_registration(
         EXPECTED_SHELL_VALUES,
         "expected materializer shell value map",
     )
-    receipt = load_object(receipt_path, "materializer registration receipt v4")
-    script_anchor = load_object(script_anchor_path, "materializer script freeze anchor")
-    definition = load_object(definition_path, "materializer job definition payload")
+    receipt, receipt_sha256, _receipt_bytes = load_object_with_sha256(
+        receipt_path,
+        "materializer registration receipt v4",
+    )
+    script_anchor, script_anchor_sha256, _script_anchor_bytes = load_object_with_sha256(
+        script_anchor_path,
+        "materializer script freeze anchor",
+    )
+    definition, definition_sha256, _definition_bytes = load_object_with_sha256(
+        definition_path,
+        "materializer job definition payload",
+    )
     expected_refs = list(PARAMETER_NAMES)
     command = definition.get("containerProperties", {}).get("command")
     shell = command[2] if isinstance(command, list) and len(command) == 12 else ""
@@ -738,7 +762,7 @@ def validate_registration(
         "schema_status": exact_schema_version(receipt, 3) and receipt.get("status") == "registered_not_submitted",
         "no_call_boundary": receipt.get("classification_authorization") == "none" and receipt.get("authorized_hrd_state") == "no_call",
         "receipt_checks": passed_checks(receipt.get("checks"), exact=EXPECTED_REGISTRATION_CHECKS),
-        "script_anchor_hash": receipt_script.get("anchor_sha256") == sha256_path(script_anchor_path),
+        "script_anchor_hash": receipt_script.get("anchor_sha256") == script_anchor_sha256,
         "script_status": exact_schema_version(script_anchor, 1) and script_anchor.get("status") == "passed",
         "script_sha": script_source.get("sha256") == EXPECTED_MATERIALIZER_SHA256,
         "script_object_version": valid_version(script_object.get("version_id")),
@@ -746,7 +770,7 @@ def validate_registration(
         "script_receipt_binding": receipt_script.get("object") == script_object
         and receipt_script.get("source") == script_source
         and receipt_script.get("checks") == script_anchor.get("checks"),
-        "definition_hash": batch.get("definition_sha256") == sha256_path(definition_path),
+        "definition_hash": batch.get("definition_sha256") == definition_sha256,
         "definition_arn": batch.get("job_definition_arn") == JOB_DEFINITION_ARN
         and registration.get("jobDefinitionArn") == JOB_DEFINITION_ARN,
         "definition_revision": exact_int(batch.get("revision"), 4)
@@ -768,7 +792,11 @@ def validate_registration(
             f"{checks}; errors={check_errors}; command={command_checks}; "
             f"command_errors={command_errors}"
         )
-    return receipt, definition
+    return receipt, definition, {
+        "materializer_script_anchor_sha256": script_anchor_sha256,
+        "registration_v4_sha256": receipt_sha256,
+        "job_definition_v4_sha256": definition_sha256,
+    }
 
 
 def aws_json(region: str, *arguments: str) -> dict[str, Any]:
@@ -1242,7 +1270,7 @@ def preflight(args: argparse.Namespace) -> dict[str, Any]:
         "receipt_prefix": receipt_prefix.rstrip("/"),
         "kms_key_arn": final_custody["kms_key_arn"],
     }
-    _registration, definition = validate_registration(
+    _registration, definition, registration_custody = validate_registration(
         args.registration_receipt,
         args.materializer_script_anchor,
         args.job_definition_payload,
@@ -1302,15 +1330,15 @@ def preflight(args: argparse.Namespace) -> dict[str, Any]:
             ),
             "materializer_script_anchor": {
                 "path": str(args.materializer_script_anchor.resolve()),
-                "sha256": sha256_path(args.materializer_script_anchor),
+                "sha256": registration_custody["materializer_script_anchor_sha256"],
             },
             "registration_v4": {
                 "path": str(args.registration_receipt.resolve()),
-                "sha256": sha256_path(args.registration_receipt),
+                "sha256": registration_custody["registration_v4_sha256"],
             },
             "job_definition_v4": {
                 "path": str(args.job_definition_payload.resolve()),
-                "sha256": sha256_path(args.job_definition_payload),
+                "sha256": registration_custody["job_definition_v4_sha256"],
             },
         },
         "custody": {
@@ -1370,7 +1398,10 @@ def validate_dry_run_receipt(
     expected: dict[str, Any],
 ) -> dict[str, str]:
     path = require_real_input_file(path, "materializer dry-run request receipt")
-    dry_run = load_object(path, "materializer dry-run request receipt")
+    dry_run, dry_run_sha256, _dry_run_bytes = load_object_with_sha256(
+        path,
+        "materializer dry-run request receipt",
+    )
     if (
         set(dry_run) != REQUEST_DRY_RUN_RECEIPT_KEYS
         or not exact_schema_version(dry_run, 1)
@@ -1395,7 +1426,7 @@ def validate_dry_run_receipt(
 
     return {
         "path": str(path.resolve()),
-        "sha256": sha256_path(path),
+        "sha256": dry_run_sha256,
         "submit_job_request_sha256": sha256_bytes(
             canonical_bytes(dry_run["submit_job_request"])
         ),
