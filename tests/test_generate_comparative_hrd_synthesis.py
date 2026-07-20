@@ -2877,6 +2877,55 @@ class GenerateSynthesisTests(unittest.TestCase):
                 self.assertIn("authorized ceiling", result.stdout + result.stderr)
                 self.assertFalse((fixture.output_dir / "report_manifest.json").exists())
 
+    def test_authorized_state_aggregation_requires_exact_state_strings(self) -> None:
+        row = {
+            "evidence_status": "partial_evidence",
+            "authorized_hrd_state": "no_call",
+            "classification_authorized": False,
+            "classification_qc_status": "not_applicable",
+        }
+        coerced_authorized = {**row, "authorized_hrd_state": False}
+        coerced_evidence = {**row, "evidence_status": True}
+
+        with self.assertRaisesRegex(ValueError, "invalid authorized HRD state"):
+            GENERATE.derive_authorized_state([coerced_authorized])
+
+        with self.assertRaisesRegex(ValueError, "invalid evidence status"):
+            GENERATE.aggregate_evidence_state([coerced_evidence])
+
+    def test_source_authorized_state_cannot_fall_back_after_coercible_value(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory(
+            prefix="hrd-synthesis-authorization-"
+        ) as temporary:
+            fixture = SynthesisFixture(Path(temporary))
+            source_path = fixture.source_manifests[0]
+            source = json.loads(source_path.read_text(encoding="utf-8"))
+            source["authorized_hrd_state"] = False
+            source["interpretation_status"] = "no_call"
+            write_json(source_path, source)
+
+            bundle = json.loads(
+                (fixture.bundle_dir / "review_bundle.json").read_text(
+                    encoding="utf-8"
+                )
+            )
+            bundle_manifest = json.loads(
+                (fixture.bundle_dir / "bundle_manifest.json").read_text(
+                    encoding="utf-8"
+                )
+            )
+            bundle_manifest["input_manifest_sha256"]["E001"] = sha256(source_path)
+
+            with self.assertRaisesRegex(ValueError, "invalid authorized HRD state"):
+                GENERATE.verify_sources(
+                    fixture.source_manifests,
+                    fixture.methods,
+                    bundle,
+                    bundle_manifest,
+                )
+
     def test_no_call_classification_authorization_fails_closed(self) -> None:
         with tempfile.TemporaryDirectory(
             prefix="hrd-synthesis-authorization-"
