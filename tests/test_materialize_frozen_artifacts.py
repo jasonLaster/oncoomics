@@ -706,6 +706,39 @@ class MaterializeFrozenArtifactsTests(unittest.TestCase):
 
             self.assertTrue(moved)
 
+    def test_load_object_with_sha256_rejects_same_byte_leaf_replacement(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            receipt = root / "receipt.json"
+            replacement = root / "replacement-receipt.json"
+            receipt.write_text('{"status":"passed"}\n', encoding="utf-8")
+            replacement.write_text('{"status":"passed"}\n', encoding="utf-8")
+            real_read_once = MODULE.read_real_hash_input_once
+            swapped = False
+
+            def replace_after_first_read(
+                path: Path,
+                label: str,
+            ) -> tuple[bytes, tuple[int, int, int, int, int, int]]:
+                nonlocal swapped
+                raw = real_read_once(path, label)
+                if path == receipt and not swapped:
+                    swapped = True
+                    replacement.replace(receipt)
+                return raw
+
+            with (
+                patch.object(
+                    MODULE,
+                    "read_real_hash_input_once",
+                    replace_after_first_read,
+                ),
+                self.assertRaisesRegex(ValueError, "receipt changed during read"),
+            ):
+                MODULE.load_object_with_sha256(receipt, "receipt")
+
+            self.assertTrue(swapped)
+
     def test_prepared_receipt_recovery_requires_exact_schema(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)

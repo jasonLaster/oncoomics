@@ -63,7 +63,11 @@ def sha256(path: Path) -> str:
 
 
 def sha256_once(path: Path) -> str:
-    return sha256_bytes(read_real_hash_input_once(path, f"{path.name} SHA-256 input"))
+    data, _identity = read_real_hash_input_once(
+        path,
+        f"{path.name} SHA-256 input",
+    )
+    return sha256_bytes(data)
 
 
 def sha256_file_once(path: Path) -> str:
@@ -79,14 +83,18 @@ def sha256_bytes(value: bytes) -> str:
 
 
 def read_stable_file_with_sha256(path: Path, label: str) -> tuple[bytes, str]:
-    raw = read_real_hash_input_once(path, label)
+    raw, identity = read_real_hash_input_once(path, label)
     digest = sha256_bytes(raw)
-    if sha256_bytes(read_real_hash_input_once(path, label)) != digest:
+    stable_raw, stable_identity = read_real_hash_input_once(path, label)
+    if stable_identity != identity or sha256_bytes(stable_raw) != digest:
         raise ValueError(f"{label} changed during read: {path}")
     return raw, digest
 
 
-def read_real_hash_input_once(path: Path, label: str) -> bytes:
+def read_real_hash_input_once(
+    path: Path,
+    label: str,
+) -> tuple[bytes, tuple[int, int, int, int, int, int]]:
     require_real_hash_input(path)
     flags = (
         os.O_RDONLY
@@ -116,7 +124,7 @@ def read_real_hash_input_once(path: Path, label: str) -> bytes:
         or stat_identity(after_read) != stat_identity(current)
     ):
         raise ValueError(f"{label} changed during read: {path}")
-    return data
+    return data, stat_identity(opened)
 
 
 def stat_identity(value: os.stat_result) -> tuple[int, int, int, int, int, int]:
