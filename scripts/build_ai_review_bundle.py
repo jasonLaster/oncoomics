@@ -240,14 +240,22 @@ def load_object_with_sha256(path: Path) -> tuple[dict[str, Any], str]:
 
 
 def read_stable_file_with_sha256(path: Path, label: str) -> tuple[bytes, str]:
-    data = read_real_hash_input_once(path, label)
+    data, identity = read_real_hash_input_once(path, label)
     digest = sha256_bytes(data)
-    if not data or sha256_bytes(read_real_hash_input_once(path, label)) != digest:
+    stable_data, stable_identity = read_real_hash_input_once(path, label)
+    if (
+        not data
+        or stable_identity != identity
+        or sha256_bytes(stable_data) != digest
+    ):
         raise ValueError(f"{label} changed during read: {path}")
     return data, digest
 
 
-def read_real_hash_input_once(path: Path, label: str) -> bytes:
+def read_real_hash_input_once(
+    path: Path,
+    label: str,
+) -> tuple[bytes, tuple[int, int, int, int, int, int]]:
     require_real_hash_input(path)
     flags = os.O_RDONLY
     flags |= getattr(os, "O_NOFOLLOW", 0)
@@ -270,12 +278,23 @@ def read_real_hash_input_once(path: Path, label: str) -> bytes:
             os.close(descriptor)
 
     require_no_symlinked_ancestors(path, label)
-    if not os.path.samestat(opened, after_read) or not os.path.samestat(
-        after_read,
-        current,
+    if (
+        stat_identity(opened) != stat_identity(after_read)
+        or stat_identity(after_read) != stat_identity(current)
     ):
         raise ValueError(f"{label} changed during read: {path}")
-    return data
+    return data, stat_identity(opened)
+
+
+def stat_identity(value: os.stat_result) -> tuple[int, int, int, int, int, int]:
+    return (
+        value.st_dev,
+        value.st_ino,
+        value.st_mode,
+        value.st_size,
+        value.st_mtime_ns,
+        value.st_ctime_ns,
+    )
 
 
 def scan_text(text: str, forbidden_tokens: list[str], context: str) -> None:
