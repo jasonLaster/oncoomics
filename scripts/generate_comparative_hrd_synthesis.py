@@ -251,12 +251,16 @@ def load_object_with_sha256(path: Path, label: str) -> Tuple[Dict[str, Any], str
 
 
 def read_stable_file_with_sha256(path: Path, label: str) -> Tuple[bytes, str]:
-    require_real_nonempty_file(path, label)
-    data = path.read_bytes()
+    data = read_real_nonempty_file_once(path, label)
     digest = sha256_bytes(data)
-    if not data or sha256_bytes(path.read_bytes()) != digest:
+    if sha256_bytes(read_real_nonempty_file_once(path, label)) != digest:
         raise ValueError(f"{label} changed during read: {path}")
     return data, digest
+
+
+def read_real_nonempty_file_once(path: Path, label: str) -> bytes:
+    require_real_nonempty_file(path, label)
+    return path.read_bytes()
 
 
 def read_stable_text_with_sha256(path: Path, label: str) -> Tuple[str, str]:

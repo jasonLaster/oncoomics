@@ -2440,6 +2440,34 @@ class GenerateSynthesisTests(unittest.TestCase):
                 with self.assertRaisesRegex(ValueError, "changed during read"):
                     GENERATE.sha256(input_path)
 
+    def test_synthesis_sha256_rejects_symlink_swap_between_reads(self) -> None:
+        with tempfile.TemporaryDirectory(
+            prefix="hrd-synthesis-stable-hash-"
+        ) as temporary:
+            root = Path(temporary)
+            input_path = root / "input.json"
+            relocated = root / "relocated-input.json"
+            input_path.write_text('{"status": "ready"}\n', encoding="utf-8")
+            real_read_bytes = Path.read_bytes
+            calls = 0
+
+            def swapping_read_bytes(path: Path) -> bytes:
+                nonlocal calls
+                data = real_read_bytes(path)
+                if path == input_path and calls == 0:
+                    input_path.unlink()
+                    relocated.write_text('{"status": "ready"}\n', encoding="utf-8")
+                    input_path.symlink_to(relocated)
+                calls += 1
+                return data
+
+            with mock.patch.object(Path, "read_bytes", swapping_read_bytes):
+                with self.assertRaisesRegex(
+                    ValueError,
+                    "missing or unsafe input.json SHA-256 input",
+                ):
+                    GENERATE.sha256(input_path)
+
     def test_synthesis_json_rejects_input_that_changes_during_read(self) -> None:
         with tempfile.TemporaryDirectory(
             prefix="hrd-synthesis-stable-json-"
