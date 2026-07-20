@@ -1024,6 +1024,8 @@ def generate(
             write_tracked(manifest_path, json_bytes(manifest))
             require_blocked_report_manifest(target)
         fsync_directory(output_root)
+        for method in METHODS:
+            require_blocked_report_manifest(output_root / str(method["directory"]))
     except Exception:
         for path in reversed(written):
             path.unlink(missing_ok=True)
