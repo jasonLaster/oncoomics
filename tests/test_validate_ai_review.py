@@ -471,18 +471,22 @@ class ValidateAiReviewTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temporary:
             input_path = Path(temporary) / "input.json"
             input_path.write_text('{"status": "ready"}\n', encoding="utf-8")
-            real_read_bytes = Path.read_bytes
+            real_read_once = VALIDATE.read_real_hash_input_once
             calls = 0
 
-            def mutating_read_bytes(path: Path) -> bytes:
+            def mutating_read_once(path: Path, label: str) -> bytes:
                 nonlocal calls
-                data = real_read_bytes(path)
+                data = real_read_once(path, label)
                 calls += 1
                 if calls == 1:
                     input_path.write_text('{"status": "mutated"}\n', encoding="utf-8")
                 return data
 
-            with mock.patch.object(Path, "read_bytes", mutating_read_bytes):
+            with mock.patch.object(
+                VALIDATE,
+                "read_real_hash_input_once",
+                side_effect=mutating_read_once,
+            ):
                 with self.assertRaisesRegex(ValueError, "changed during read"):
                     VALIDATE.sha256(input_path)
 
@@ -490,20 +494,50 @@ class ValidateAiReviewTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temporary:
             input_path = Path(temporary) / "input.json"
             input_path.write_text('{"status": "ready"}\n', encoding="utf-8")
-            real_read_bytes = Path.read_bytes
+            real_read_once = VALIDATE.read_real_hash_input_once
             calls = 0
 
-            def mutating_read_bytes(path: Path) -> bytes:
+            def mutating_read_once(path: Path, label: str) -> bytes:
                 nonlocal calls
-                data = real_read_bytes(path)
+                data = real_read_once(path, label)
                 calls += 1
                 if calls == 1:
                     input_path.write_text('{"status": "mutated"}\n', encoding="utf-8")
                 return data
 
-            with mock.patch.object(Path, "read_bytes", mutating_read_bytes):
+            with mock.patch.object(
+                VALIDATE,
+                "read_real_hash_input_once",
+                side_effect=mutating_read_once,
+            ):
                 with self.assertRaisesRegex(ValueError, "changed during read"):
                     VALIDATE.load_object(input_path)
+
+    def test_hash_input_rejects_leaf_replaced_after_preflight(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            input_path = root / "input.json"
+            target_path = root / "target.json"
+            input_path.write_text('{"status": "ready"}\n', encoding="utf-8")
+            target_path.write_text('{"status": "redirected"}\n', encoding="utf-8")
+            real_require = VALIDATE.require_real_hash_input
+            swapped = False
+
+            def swap_leaf_after_preflight(path: Path) -> None:
+                nonlocal swapped
+                real_require(path)
+                if path == input_path and not swapped:
+                    swapped = True
+                    input_path.unlink()
+                    input_path.symlink_to(target_path)
+
+            with mock.patch.object(
+                VALIDATE,
+                "require_real_hash_input",
+                side_effect=swap_leaf_after_preflight,
+            ):
+                with self.assertRaisesRegex(ValueError, "changed during read"):
+                    VALIDATE.sha256(input_path)
 
     def test_validation_scans_reviewer_claims_from_stable_bytes(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:

@@ -10,6 +10,7 @@ import io
 import json
 import os
 import re
+import stat
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Sequence
@@ -221,12 +222,46 @@ def load_object_with_sha256(path: Path) -> tuple[dict[str, Any], str]:
 
 
 def read_stable_file_with_sha256(path: Path, label: str) -> tuple[bytes, str]:
-    require_real_hash_input(path)
-    data = path.read_bytes()
+    data = read_real_hash_input_once(path, label)
     digest = hashlib.sha256(data).hexdigest()
-    if not data or hashlib.sha256(path.read_bytes()).hexdigest() != digest:
+    if (
+        not data
+        or hashlib.sha256(read_real_hash_input_once(path, label)).hexdigest()
+        != digest
+    ):
         raise ValueError(f"{label} changed during read: {path}")
     return data, digest
+
+
+def read_real_hash_input_once(path: Path, label: str) -> bytes:
+    require_real_hash_input(path)
+    flags = os.O_RDONLY
+    flags |= getattr(os, "O_NOFOLLOW", 0)
+    flags |= getattr(os, "O_NONBLOCK", 0)
+    descriptor = -1
+    try:
+        descriptor = os.open(path, flags)
+        opened = os.fstat(descriptor)
+        if not stat.S_ISREG(opened.st_mode):
+            raise ValueError(f"{label} must be a real file: {path}")
+        with os.fdopen(descriptor, "rb") as handle:
+            descriptor = -1
+            data = handle.read()
+            after_read = os.fstat(handle.fileno())
+        current = path.stat(follow_symlinks=False)
+    except OSError as error:
+        raise ValueError(f"{label} changed during read: {path}") from error
+    finally:
+        if descriptor >= 0:
+            os.close(descriptor)
+
+    require_no_symlinked_ancestors(path, label)
+    if not os.path.samestat(opened, after_read) or not os.path.samestat(
+        after_read,
+        current,
+    ):
+        raise ValueError(f"{label} changed during read: {path}")
+    return data
 
 
 def read_stable_text(path: Path, label: str) -> str:
