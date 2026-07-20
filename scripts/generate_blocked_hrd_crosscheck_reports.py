@@ -36,10 +36,30 @@ STATUS = {
     "classification_authorization": "none",
     "patient_result": "none",
 }
+EXPLICIT_NO_PATIENT_RESULT = (
+    "The method was not run and no patient result was generated, inferred, or "
+    "reported."
+)
 REPORT_MANIFEST_STATUS = {
     key: value
     for key, value in STATUS.items()
     if key != "execution_status"
+}
+BLOCKED_METHOD_SPEC_KEYS = {
+    "schema_version",
+    "method_id",
+    "title",
+    *STATUS,
+    "explicit_no_patient_result",
+    "alias_scope",
+    "intended_computation",
+    "prerequisites",
+    "blockers",
+    "next_gate",
+    "sources",
+    "run_id",
+    "source_report_binding_scope",
+    "source_report_manifests",
 }
 BLOCKED_REPORT_MANIFEST_KEYS = {
     "schema_version",
@@ -351,6 +371,7 @@ METHODS: tuple[dict[str, Any], ...] = (
 # fmt: on
 if tuple(method["method_id"] for method in METHODS) != BLOCKED_CROSSCHECK_METHOD_IDS:
     raise ValueError("blocked method generator drifted from the HRD report inventory")
+METHODS_BY_ID = {str(method["method_id"]): method for method in METHODS}
 
 SOURCE_REPORT_METHOD_IDS = (
     "deterministic_full_wgs",
@@ -619,6 +640,46 @@ def require_blocked_review_summary(manifest: Mapping[str, Any]) -> dict[str, str
     return validated_source_report_manifests
 
 
+def require_blocked_method_spec(
+    packet_dir: Path,
+    manifest: Mapping[str, Any],
+    source_report_manifests: Mapping[str, str],
+) -> None:
+    spec = load_json_object(
+        packet_dir / "method_spec.json",
+        "blocked cross-check method spec",
+    )
+    method_id = spec.get("method_id")
+    method = METHODS_BY_ID.get(str(method_id))
+    if (
+        set(spec) != BLOCKED_METHOD_SPEC_KEYS
+        or not exact_schema_version(spec)
+        or method is None
+        or manifest.get("method_id") != method_id
+        or spec.get("title") != method["title"]
+        or any(spec.get(key) != value for key, value in STATUS.items())
+        or spec.get("explicit_no_patient_result") != EXPLICIT_NO_PATIENT_RESULT
+        or spec.get("alias_scope") != method["alias_scope"]
+        or spec.get("intended_computation") != method["intended_computation"]
+        or spec.get("prerequisites") != method["prerequisites"]
+        or spec.get("blockers") != method["blockers"]
+        or spec.get("next_gate") != method["next_gate"]
+        or spec.get("sources") != method["sources"]
+        or spec.get("run_id") != manifest.get("run_id")
+        or spec.get("source_report_binding_scope")
+        != manifest.get("source_report_binding_scope")
+    ):
+        raise ValueError("blocked cross-check method spec is not exact")
+
+    spec_source_report_manifests = spec.get("source_report_manifests")
+    if (
+        not isinstance(spec_source_report_manifests, dict)
+        or spec_source_report_manifests != source_report_manifests
+        or tuple(spec_source_report_manifests) != tuple(source_report_manifests)
+    ):
+        raise ValueError("blocked cross-check method spec source reports are not exact")
+
+
 def require_blocked_report_manifest(packet_dir: Path) -> None:
     manifest_path = packet_dir / "report_manifest.json"
     manifest = load_json_object(manifest_path, "blocked cross-check packet")
@@ -662,6 +723,7 @@ def require_blocked_report_manifest(packet_dir: Path) -> None:
         "method_spec.json",
         support_hashes.get("method_spec.json"),
     )
+    require_blocked_method_spec(packet_dir, manifest, source_report_manifests)
 
 
 def fsync_directory(path: Path) -> None:
@@ -803,7 +865,7 @@ def generate(
                 "method_id": method["method_id"],
                 "title": method["title"],
                 **STATUS,
-                "explicit_no_patient_result": ("The method was not run and no patient result was generated, inferred, or reported."),
+                "explicit_no_patient_result": EXPLICIT_NO_PATIENT_RESULT,
                 "alias_scope": method["alias_scope"],
                 "intended_computation": method["intended_computation"],
                 "prerequisites": method["prerequisites"],
@@ -836,7 +898,7 @@ def generate(
                 "authorized_hrd_state": "no_call",
                 "classification_authorized": False,
                 "classification_qc_status": "not_applicable",
-                "explicit_no_patient_result": ("The method was not run and no patient result was generated, inferred, or reported."),
+                "explicit_no_patient_result": EXPLICIT_NO_PATIENT_RESULT,
                 "alias_scope": method["alias_scope"],
                 "intended_computation": method["intended_computation"],
                 "prerequisites": method["prerequisites"],
