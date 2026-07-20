@@ -1155,6 +1155,7 @@ class RenderSourceReportFreezeRunbookTests(unittest.TestCase):
                 if path == output and not swapped and output.exists():
                     swapped = True
                     relocated.write_text("one\n", encoding="utf-8")
+                    relocated.chmod(0o600)
                     output.unlink()
                     output.symlink_to(relocated)
                     return True
