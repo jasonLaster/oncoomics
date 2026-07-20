@@ -371,14 +371,14 @@
           is stopped, the selected GPU lane is live on all three allowed P5
           Hopper shapes and still waiting on quota, the prod-use2 daily cost
           guard now has a one-minute live spend poller, and the latest
-          source-only guardrail rejects loose public known-answer counters
+          source-only guardrail rejects malformed public known-answer SV rows
           before they can enter the AI/freeform review rehearsal.
           Diana HRD remains <code>partial_evidence</code> / <code>no_call</code> until terminal
           artifacts and reviewed cross-check reports exist.
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-19</li>
-          <li class="pill">Latest milestone = HCC exact counts</li>
+          <li class="pill">Latest milestone = HCC exact SV rows</li>
           <li class="pill">Live P5 placement = p5en / p5e / p5</li>
           <li class="pill">Daily $200 Batch guard = live</li>
           <li class="pill">Live spend poll = 1 minute</li>
@@ -403,6 +403,7 @@
           <li class="pill">Comparative reviewer rows = exact</li>
           <li class="pill">Input-contract finalizer = route-checked</li>
           <li class="pill">HCC1395 AI prep receipts = rechecked</li>
+          <li class="pill">HCC1395 SV evidence rows = exact</li>
           <li class="pill">HCC1395 measured counts = exact</li>
           <li class="pill">HCC1395 reviewer inputs = rechecked</li>
           <li class="pill">AI prep staging = cleaned</li>
@@ -2107,6 +2108,10 @@
               <span><code>generate_comparative_hrd_synthesis.py</code> now rejects padded, multiline, NUL-containing, or semicolon-list-padded reviewer <code>claims.csv</code> and generated <code>agreement_disagreement.csv</code> fields before independent AI claims or comparative agreement rows can feed synthesis manifests.</span>
             </li>
             <li class="item" style="--tone: var(--done)">
+              <strong>Done · require exact HCC SV rows</strong>
+              <span>The public HCC1395 stack now rejects missing, empty, non-list, or non-object SV evidence rows before BAM-derived SV counts can enter deterministic, AI/freeform, or source-freeze rehearsal manifests.</span>
+            </li>
+            <li class="item" style="--tone: var(--done)">
               <strong>Done · require exact HCC measured counts</strong>
               <span>The public HCC1395 stack now rejects booleans, floats, strings, nulls, or negative values in deterministic WGS counters and BAM-derived SV counts before those measured values can feed deterministic, AI/freeform, or source-freeze rehearsal manifests.</span>
             </li>
@@ -2676,6 +2681,16 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-19T22:36:00-07:00">Jul 19 · local</time>
+              <span>
+                <strong>Local patch · Reject malformed HCC SV rows:</strong>
+                the public HCC1395 deterministic report now rejects missing,
+                empty, non-list, or non-object SV evidence rows before
+                aggregating BAM-derived SV counts for the known-answer
+                rehearsal.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-19T22:35:00-07:00">Jul 19 · local</time>
               <span>

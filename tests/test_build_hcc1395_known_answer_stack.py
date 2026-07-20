@@ -514,6 +514,39 @@ class BuildHcc1395KnownAnswerStackTests(unittest.TestCase):
 
             self.assertFalse(args.output_dir.exists())
 
+    def test_rejects_malformed_deterministic_sv_rows(self) -> None:
+        row_mutations = (
+            ("missing", None),
+            ("empty", []),
+            ("object", {}),
+            ("non_object_row", [{"discordant_mapped_pairs": 1}, True]),
+        )
+
+        for label, rows in row_mutations:
+            with self.subTest(label=label), tempfile.TemporaryDirectory() as temporary:
+                root = Path(temporary)
+                artifact_root = copy_artifact_root(root)
+                sv_path = artifact_root / "results/phase3_wgs_smoke/sv_evidence_summary.json"
+                sv = json.loads(sv_path.read_text(encoding="utf-8"))
+                if label == "missing":
+                    sv.pop("rows")
+                else:
+                    sv["rows"] = rows
+                sv_path.write_text(
+                    json.dumps(sv, indent=2, sort_keys=True) + "\n",
+                    encoding="utf-8",
+                )
+                args = args_for(root, root / "stack")
+                args.artifact_root = artifact_root
+
+                with self.assertRaisesRegex(
+                    ValueError,
+                    "SV evidence rows must be a non-empty list of JSON objects",
+                ):
+                    STACK.build(args)
+
+                self.assertFalse(args.output_dir.exists())
+
     def test_stack_manifest_rechecks_reviewer_inputs_after_stack_manifest(
         self,
     ) -> None:

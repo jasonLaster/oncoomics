@@ -292,6 +292,16 @@ def require_nonnegative_int(value: Any, label: str) -> int:
     return value
 
 
+def require_object_rows(value: Any, label: str) -> list[dict[str, Any]]:
+    if (
+        not isinstance(value, list)
+        or not value
+        or any(not isinstance(row, dict) for row in value)
+    ):
+        raise ValueError(f"{label} must be a non-empty list of JSON objects")
+    return value
+
+
 def require_relative_file(root: Path, relative: Any, label: str) -> Path:
     if not isinstance(relative, str) or not relative:
         raise ValueError(f"{label} path is not exact")
@@ -518,7 +528,7 @@ def build_deterministic_packet(
         and summary.get("mutect2Status") == "passed"
     ):
         raise ValueError("HCC1395 deterministic known-answer mechanics are not passed")
-    sv_rows = sv.get("rows") if isinstance(sv.get("rows"), list) else []
+    sv_rows = require_object_rows(sv.get("rows"), "SV evidence rows")
     discordant_pairs = sum(
         require_nonnegative_int(
             row.get("discordant_mapped_pairs"),
