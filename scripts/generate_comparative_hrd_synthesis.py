@@ -164,12 +164,10 @@ def reject_duplicate_json_object_names(pairs: Sequence[Tuple[str, Any]]) -> Dict
 
 
 def sha256(path: Path) -> str:
-    path = require_real_nonempty_file(path, f"{path.name} SHA-256 input")
-    digest = hashlib.sha256()
-    with path.open("rb") as handle:
-        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
-            digest.update(chunk)
-    return digest.hexdigest()
+    return read_stable_file_with_sha256(
+        path,
+        f"{path.name} SHA-256 input",
+    )[1]
 
 
 def canonical_json_bytes(value: Dict[str, Any]) -> bytes:
@@ -181,10 +179,15 @@ def sha256_bytes(payload: bytes) -> str:
 
 
 def load_object(path: Path, label: str) -> Dict[str, Any]:
-    require_real_nonempty_file(path, label)
+    data, _ = load_object_with_sha256(path, label)
+    return data
+
+
+def load_object_with_sha256(path: Path, label: str) -> Tuple[Dict[str, Any], str]:
+    data, digest = read_stable_file_with_sha256(path, label)
     try:
         value = json.loads(
-            path.read_text(encoding="utf-8"),
+            data.decode("utf-8"),
             object_pairs_hook=reject_duplicate_json_object_names,
         )
     except DuplicateJsonKeyError as error:
@@ -193,7 +196,24 @@ def load_object(path: Path, label: str) -> Dict[str, Any]:
         raise ValueError("invalid JSON in " + label) from error
     if not isinstance(value, dict):
         raise ValueError(label + " must be a JSON object")
-    return value
+    return value, digest
+
+
+def read_stable_file_with_sha256(path: Path, label: str) -> Tuple[bytes, str]:
+    require_real_nonempty_file(path, label)
+    data = path.read_bytes()
+    digest = sha256_bytes(data)
+    if not data or sha256_bytes(path.read_bytes()) != digest:
+        raise ValueError(f"{label} changed during read: {path}")
+    return data, digest
+
+
+def read_stable_text_with_sha256(path: Path, label: str) -> Tuple[str, str]:
+    data, digest = read_stable_file_with_sha256(path, label)
+    try:
+        return data.decode("utf-8"), digest
+    except UnicodeError as error:
+        raise ValueError("invalid UTF-8 in " + label) from error
 
 
 def is_platform_root_alias(path: Path) -> bool:
@@ -586,12 +606,16 @@ def require_exact_review_invocation(invocation: Any, reviewer: str) -> Dict[str,
     return dict(invocation)
 
 
-def read_claims(path: Path, evidence_by_id: Dict[str, Dict[str, Any]], ceiling: str) -> List[Dict[str, str]]:
-    with path.open(newline="", encoding="utf-8") as handle:
-        reader = csv.DictReader(handle)
-        if reader.fieldnames != CLAIMS_FIELDS:
-            raise ValueError("claims.csv header is missing or altered")
-        rows = list(reader)
+def read_claims_text(
+    text: str,
+    evidence_by_id: Dict[str, Dict[str, Any]],
+    ceiling: str,
+) -> List[Dict[str, str]]:
+    handle = io.StringIO(text, newline="")
+    reader = csv.DictReader(handle)
+    if reader.fieldnames != CLAIMS_FIELDS:
+        raise ValueError("claims.csv header is missing or altered")
+    rows = list(reader)
     if not rows:
         raise ValueError("claims.csv contains no claims")
     seen = set()
@@ -648,6 +672,15 @@ def read_claims(path: Path, evidence_by_id: Dict[str, Dict[str, Any]], ceiling: 
     return exact_rows
 
 
+def read_claims(
+    path: Path,
+    evidence_by_id: Dict[str, Dict[str, Any]],
+    ceiling: str,
+) -> List[Dict[str, str]]:
+    text, _ = read_stable_text_with_sha256(path, "claims.csv")
+    return read_claims_text(text, evidence_by_id, ceiling)
+
+
 def verify_review(
     directory: Path,
     reviewer: str,
@@ -664,8 +697,14 @@ def verify_review(
     manifest_path = directory / "review_manifest.json"
     report_path = directory / "report.md"
     claims_path = directory / "claims.csv"
-    validation = load_object(validation_path, "reviewer " + reviewer + " validation")
-    manifest = load_object(manifest_path, "reviewer " + reviewer + " manifest")
+    validation, validation_sha256 = load_object_with_sha256(
+        validation_path,
+        "reviewer " + reviewer + " validation",
+    )
+    manifest, manifest_sha256 = load_object_with_sha256(
+        manifest_path,
+        "reviewer " + reviewer + " manifest",
+    )
     if set(validation) != VALIDATION_KEYS:
         raise ValueError("reviewer " + reviewer + " validation envelope is not exact")
     if set(manifest) != REVIEW_MANIFEST_KEYS:
@@ -714,9 +753,17 @@ def verify_review(
         raise ValueError("reviewer " + reviewer + " input inventory is not exact")
     if manifest.get("independence_attestation") != REQUIRED_ATTESTATION:
         raise ValueError("reviewer " + reviewer + " independence attestation changed")
-    if validation.get("review_manifest_sha256") != sha256(manifest_path):
+    if validation.get("review_manifest_sha256") != manifest_sha256:
         raise ValueError("reviewer " + reviewer + " manifest changed after validation")
-    current_outputs = {"report.md": sha256(report_path), "claims.csv": sha256(claims_path)}
+    report_text, report_sha256 = read_stable_text_with_sha256(
+        report_path,
+        "reviewer " + reviewer + " report.md",
+    )
+    claims_text, claims_sha256 = read_stable_text_with_sha256(
+        claims_path,
+        "reviewer " + reviewer + " claims.csv",
+    )
+    current_outputs = {"report.md": report_sha256, "claims.csv": claims_sha256}
     if manifest.get("output_sha256") != current_outputs:
         raise ValueError("reviewer " + reviewer + " output differs from review_manifest.json")
     if validation.get("report_sha256") != current_outputs["report.md"]:
@@ -725,7 +772,11 @@ def verify_review(
         raise ValueError("reviewer " + reviewer + " claims changed after validation")
     require_exact_review_invocation(manifest.get("invocation"), reviewer)
     evidence_by_id = {str(row["evidence_id"]): row for row in bundle["evidence_sources"]}
-    claims = read_claims(claims_path, evidence_by_id, str(bundle["authorized_hrd_state"]))
+    claims = read_claims_text(
+        claims_text,
+        evidence_by_id,
+        str(bundle["authorized_hrd_state"]),
+    )
     claim_count = validation.get("claim_count")
     if (
         not is_positive_exact_int(claim_count)
@@ -741,7 +792,7 @@ def verify_review(
         raise ValueError("reviewer " + reviewer + " disagreement count changed")
     if validation.get("covered_evidence_ids") != sorted(evidence_by_id):
         raise ValueError("reviewer " + reviewer + " validation omits source evidence")
-    narrative = report_path.read_text(encoding="utf-8") + "\n" + claims_path.read_text(encoding="utf-8")
+    narrative = report_text + "\n" + claims_text
     if bundle["authorized_hrd_state"] == "no_call" and has_unauthorized_hrd_classification(narrative):
         raise ValueError("reviewer " + reviewer + " contains an unauthorized categorical conclusion")
     return {
@@ -750,8 +801,8 @@ def verify_review(
         "manifest": manifest,
         "claims": claims,
         "hashes": {
-            "validation.json": sha256(validation_path),
-            "review_manifest.json": sha256(manifest_path),
+            "validation.json": validation_sha256,
+            "review_manifest.json": manifest_sha256,
             "report.md": current_outputs["report.md"],
             "claims.csv": current_outputs["claims.csv"],
         },
@@ -1010,11 +1061,12 @@ def write_agreement(path: Path, rows: Sequence[Dict[str, str]]) -> None:
 
 
 def read_agreement(path: Path) -> List[Dict[str, str]]:
-    with path.open(newline="", encoding="utf-8") as handle:
-        reader = csv.DictReader(handle)
-        if reader.fieldnames != AGREEMENT_FIELDS:
-            raise ValueError("agreement_disagreement.csv header is missing or altered")
-        rows = list(reader)
+    text, _ = read_stable_text_with_sha256(path, "agreement_disagreement.csv")
+    handle = io.StringIO(text, newline="")
+    reader = csv.DictReader(handle)
+    if reader.fieldnames != AGREEMENT_FIELDS:
+        raise ValueError("agreement_disagreement.csv header is missing or altered")
+    rows = list(reader)
     if not rows:
         raise ValueError("agreement_disagreement.csv contains no comparisons")
     return [

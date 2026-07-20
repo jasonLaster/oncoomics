@@ -1931,6 +1931,48 @@ class GenerateSynthesisTests(unittest.TestCase):
             ):
                 GENERATE.sha256(linked_input)
 
+    def test_synthesis_sha256_rejects_hash_input_that_changes_during_read(self) -> None:
+        with tempfile.TemporaryDirectory(
+            prefix="hrd-synthesis-stable-hash-"
+        ) as temporary:
+            input_path = Path(temporary) / "input.json"
+            input_path.write_text('{"status": "ready"}\n', encoding="utf-8")
+            real_read_bytes = Path.read_bytes
+            calls = 0
+
+            def mutating_read_bytes(path: Path) -> bytes:
+                nonlocal calls
+                data = real_read_bytes(path)
+                calls += 1
+                if calls == 1:
+                    input_path.write_text('{"status": "mutated"}\n', encoding="utf-8")
+                return data
+
+            with mock.patch.object(Path, "read_bytes", mutating_read_bytes):
+                with self.assertRaisesRegex(ValueError, "changed during read"):
+                    GENERATE.sha256(input_path)
+
+    def test_synthesis_json_rejects_input_that_changes_during_read(self) -> None:
+        with tempfile.TemporaryDirectory(
+            prefix="hrd-synthesis-stable-json-"
+        ) as temporary:
+            input_path = Path(temporary) / "input.json"
+            input_path.write_text('{"status": "ready"}\n', encoding="utf-8")
+            real_read_bytes = Path.read_bytes
+            calls = 0
+
+            def mutating_read_bytes(path: Path) -> bytes:
+                nonlocal calls
+                data = real_read_bytes(path)
+                calls += 1
+                if calls == 1:
+                    input_path.write_text('{"status": "mutated"}\n', encoding="utf-8")
+                return data
+
+            with mock.patch.object(Path, "read_bytes", mutating_read_bytes):
+                with self.assertRaisesRegex(ValueError, "changed during read"):
+                    GENERATE.load_object(input_path, "input")
+
     def test_changed_ai_output_fails_closed(self) -> None:
         with tempfile.TemporaryDirectory(prefix="hrd-synthesis-") as temporary:
             fixture = SynthesisFixture(Path(temporary))
@@ -1939,6 +1981,39 @@ class GenerateSynthesisTests(unittest.TestCase):
             result = fixture.run()
             self.assertNotEqual(result.returncode, 0)
             self.assertIn("output differs", result.stdout + result.stderr)
+
+    def test_synthesis_parses_reviewer_claims_from_hash_bound_bytes(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="hrd-synthesis-stable-claims-") as temporary:
+            fixture = SynthesisFixture(Path(temporary))
+            bundle, bundle_manifest, bundle_hash, _, inventory_id = GENERATE.verify_bundle(
+                fixture.bundle_dir / "review_bundle.json",
+                fixture.bundle_dir / "bundle_manifest.json",
+                fixture.methods,
+            )
+            claims_path = fixture.review_a / "claims.csv"
+            real_stable_text = GENERATE.read_stable_text_with_sha256
+
+            def mutate_claims_after_read(path: Path, label: str) -> tuple[str, str]:
+                text, digest = real_stable_text(path, label)
+                if path == claims_path:
+                    claims_path.write_text("tampered\n", encoding="utf-8")
+                return text, digest
+
+            with mock.patch.object(
+                GENERATE,
+                "read_stable_text_with_sha256",
+                side_effect=mutate_claims_after_read,
+            ):
+                review = GENERATE.verify_review(
+                    fixture.review_a,
+                    "A",
+                    bundle,
+                    bundle_manifest,
+                    bundle_hash,
+                    inventory_id,
+                )
+
+            self.assertEqual(len(fixture.methods), len(review["claims"]))
 
     def test_boolean_reviewer_validation_counts_fail_closed(self) -> None:
         cases = (
