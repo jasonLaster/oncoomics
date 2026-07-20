@@ -769,6 +769,72 @@ class CustodyHandoffTests(unittest.TestCase):
             ):
                 checker.sha256(linked_parent / "input-contract.readiness.json")
 
+    def test_contract_check_sha256_rejects_mid_read_rewrites(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary).resolve()
+            output = root / "input-contract.readiness.json"
+            output.write_text('{"stable": true}\n', encoding="utf-8")
+
+            real_read_once = checker.read_real_hash_input_once
+            mutated = False
+
+            def mutate_after_first_read(path: Path):
+                nonlocal mutated
+                result = real_read_once(path)
+                if path == output and not mutated:
+                    mutated = True
+                    output.write_text('{"stable": false}\n', encoding="utf-8")
+                return result
+
+            with (
+                mock.patch.object(
+                    checker,
+                    "read_real_hash_input_once",
+                    side_effect=mutate_after_first_read,
+                ),
+                self.assertRaisesRegex(
+                    ValueError,
+                    "input-contract.readiness.json SHA-256 input changed during read",
+                ),
+            ):
+                checker.sha256(output)
+
+            self.assertTrue(mutated)
+
+    def test_contract_check_sha256_rejects_same_byte_leaf_replacement(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary).resolve()
+            output = root / "input-contract.readiness.json"
+            replacement = root / "replacement-input-contract.readiness.json"
+            output.write_text('{"stable": true}\n', encoding="utf-8")
+            replacement.write_text('{"stable": true}\n', encoding="utf-8")
+
+            real_read_once = checker.read_real_hash_input_once
+            swapped = False
+
+            def replace_after_first_read(path: Path):
+                nonlocal swapped
+                result = real_read_once(path)
+                if path == output and not swapped:
+                    swapped = True
+                    replacement.replace(output)
+                return result
+
+            with (
+                mock.patch.object(
+                    checker,
+                    "read_real_hash_input_once",
+                    side_effect=replace_after_first_read,
+                ),
+                self.assertRaisesRegex(
+                    ValueError,
+                    "input-contract.readiness.json SHA-256 input changed during read",
+                ),
+            ):
+                checker.sha256(output)
+
+            self.assertTrue(swapped)
+
     def test_contract_check_rejects_output_below_symlinked_parent(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary).resolve()
