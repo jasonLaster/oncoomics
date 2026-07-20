@@ -783,6 +783,33 @@ class CaptureRouteTerminalTests(unittest.TestCase):
 
             self.assertTrue(all(not path.exists() for path in paths))
 
+    def test_three_output_rechecks_mode_after_parent_fsync(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            paths = [root / f"{index}.json" for index in range(3)]
+            real_fsync_directory = MODULE.fsync_directory
+
+            def chmod_after_parent_fsync(parent: Path) -> None:
+                real_fsync_directory(parent)
+                paths[1].chmod(0o644)
+
+            with (
+                mock.patch.object(
+                    MODULE,
+                    "fsync_directory",
+                    side_effect=chmod_after_parent_fsync,
+                ),
+                self.assertRaisesRegex(
+                    ValueError,
+                    "private output mode changed during write",
+                ),
+            ):
+                MODULE.create_private_outputs(
+                    [(path, f"content-{index}".encode()) for index, path in enumerate(paths)]
+                )
+
+            self.assertTrue(all(not path.exists() for path in paths))
+
     def test_rejects_wrong_revision_queue_or_non_x86_compute_environment(self):
         fixture = self.fixture()
         wrong_definition = copy.deepcopy(fixture["job"])
