@@ -5,7 +5,6 @@ import hashlib
 import io
 import json
 import os
-import shutil
 import tempfile
 from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
@@ -18,6 +17,7 @@ from .render_phase3_fast_input_manifest import HEX64, ManifestError, normalize_m
 from .safe_json_output import (
     read_real_json,
     read_real_json_with_sha256_and_size,
+    read_stable_real_file_bytes,
     require_no_symlinked_ancestors,
     sha256_real_file,
 )
@@ -939,6 +939,18 @@ def _require_staged_report_manifest(staging: Path) -> None:
             raise ManifestError(f"deterministic report manifest is stale for {name}")
 
 
+def _read_staged_packet_bytes(source: Path, name: str) -> tuple[bytes, str]:
+    _require_staged_packet(source)
+    payload = read_stable_real_file_bytes(
+        source,
+        f"staged deterministic report packet {name}",
+        ManifestError,
+    )
+    expected_sha256 = _sha256_bytes(payload)
+    _require_staged_packet(source, expected_sha256)
+    return payload, expected_sha256
+
+
 def _install_packet(
     output: Path,
     *,
@@ -948,23 +960,19 @@ def _install_packet(
     try:
         for name in sorted(OUTPUT_NAMES):
             source = staging / name
-            _require_staged_packet(source)
-            expected_sha256 = _sha256_path(source)
+            payload, expected_sha256 = _read_staged_packet_bytes(source, name)
             destination = output / name
             destination_preexisted = destination.exists() or destination.is_symlink()
             descriptor = -1
             try:
                 descriptor = os.open(destination, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o644)
-                with source.open("rb") as source_handle:
-                    with os.fdopen(descriptor, "wb") as destination_handle:
-                        descriptor = -1
-                        shutil.copyfileobj(source_handle, destination_handle)
-                        destination_handle.flush()
-                        os.fsync(destination_handle.fileno())
+                with os.fdopen(descriptor, "wb") as destination_handle:
+                    descriptor = -1
+                    destination_handle.write(payload)
+                    destination_handle.flush()
+                    os.fsync(destination_handle.fileno())
                 _fsync_directory(output)
                 _require_installed_packet(destination, expected_sha256)
-                if _sha256_path(source) != expected_sha256:
-                    raise ManifestError(f"staged deterministic report packet changed during copy: {name}")
             except Exception:
                 if descriptor >= 0:
                     os.close(descriptor)

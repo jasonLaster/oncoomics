@@ -364,12 +364,15 @@ class Phase3FastFinalEvidenceTests(unittest.TestCase):
         with TemporaryDirectory() as tmp:
             root = Path(tmp)
             output_root = root / "final"
+            original_write_bytes = Path.write_bytes
 
-            def fail_after_partial_copy(_source: Path, destination: Path) -> None:
-                Path(destination).write_bytes(b"partial final artifact")
-                raise OSError("simulated copy interruption")
+            def fail_after_partial_write(destination: Path, payload: bytes) -> int:
+                if destination.name.startswith(".") and destination.name.endswith(".tmp"):
+                    original_write_bytes(destination, b"partial final artifact")
+                    raise OSError("simulated copy interruption")
+                return original_write_bytes(destination, payload)
 
-            with patch.object(final_evidence.shutil, "copyfile", side_effect=fail_after_partial_copy):
+            with patch.object(Path, "write_bytes", fail_after_partial_write):
                 with self.assertRaisesRegex(OSError, "simulated copy interruption"):
                     final_evidence.build_phase3_fast_final_evidence_manifest(
                         _join_manifest(root),
@@ -383,17 +386,55 @@ class Phase3FastFinalEvidenceTests(unittest.TestCase):
 
             self.assertEqual([], [path for path in output_root.rglob("*") if path.is_file()])
 
+    def test_copies_previously_validated_source_bytes(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            output_root = root / "final"
+            join = _join_manifest(root)
+            source = root / "bam_qc" / "normal" / "idxstats.tsv"
+            source_payload = source.read_bytes()
+            target_temporary = output_root / "artifacts" / "bam_qc" / "normal" / "idxstats" / ".idxstats.tsv.tmp"
+            original_write_bytes = Path.write_bytes
+            mutated = False
+
+            def mutate_source_before_temporary_write(destination: Path, payload: bytes) -> int:
+                nonlocal mutated
+                if destination == target_temporary:
+                    mutated = True
+                    original_write_bytes(source, b"changed\n")
+                return original_write_bytes(destination, payload)
+
+            with patch.object(Path, "write_bytes", mutate_source_before_temporary_write):
+                manifest = final_evidence.build_phase3_fast_final_evidence_manifest(
+                    join,
+                    evidence_join_sha256=SHA_4,
+                    small_variant_artifact_root=root / "small_variant_export",
+                    bam_qc_artifact_root=root / "bam_qc",
+                    cnv_evidence_artifact_root=root / "cnv_evidence",
+                    sv_evidence_artifact_root=root / "sv_evidence",
+                    output_root=output_root,
+                )
+
+            destination = output_root / manifest["artifacts"]["bam_qc"]["normal"]["idxstats"]["relative_path"]
+            self.assertTrue(mutated)
+            self.assertEqual(source_payload, destination.read_bytes())
+            self.assertEqual(b"changed\n", source.read_bytes())
+
     def test_rejects_symlinked_temporary_copy_before_installing_artifact(self) -> None:
         with TemporaryDirectory() as tmp:
             root = Path(tmp)
             output_root = root / "final"
             redirected = root / "redirected-final-artifact"
+            original_write_bytes = Path.write_bytes
 
-            def write_symlink(_source: Path, destination: Path) -> None:
-                redirected.write_bytes(b"redirected final artifact")
-                Path(destination).symlink_to(redirected)
+            def write_symlink(destination: Path, payload: bytes) -> int:
+                if destination.name.startswith(".") and destination.name.endswith(".tmp"):
+                    original_write_bytes(redirected, b"redirected final artifact")
+                    destination.symlink_to(redirected)
+                    return len(payload)
+                return original_write_bytes(destination, payload)
 
-            with patch.object(final_evidence.shutil, "copyfile", side_effect=write_symlink):
+            with patch.object(Path, "write_bytes", write_symlink):
                 with self.assertRaisesRegex(final_evidence.ManifestError, "may not be a symlink"):
                     final_evidence.build_phase3_fast_final_evidence_manifest(
                         _join_manifest(root),

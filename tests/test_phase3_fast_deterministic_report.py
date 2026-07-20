@@ -705,27 +705,44 @@ class Phase3FastDeterministicReportTests(unittest.TestCase):
     def test_preserves_unexpected_child_after_copy_failure(self) -> None:
         with TemporaryDirectory() as tmp:
             root = Path(tmp)
-            manifest_path, final_root, final_manifest = _write_final_manifest(root)
+            staging = root / "staging"
             output = root / "deterministic"
+            staging.mkdir()
+            output.mkdir()
+            _write_minimal_staged_report(staging)
+            real_fdopen = stage_report.os.fdopen
 
-            def fail_after_partial_copy(_source, destination_handle) -> None:
-                destination_handle.write(b"partial deterministic report")
-                (output / "unexpected.tmp").write_text(
-                    "stray partial file\n",
-                    encoding="utf-8",
-                )
-                raise OSError("simulated deterministic report interruption")
+            class PartialHandle:
+                def __init__(self, handle) -> None:
+                    self.handle = handle
 
-            with patch.object(stage_report.shutil, "copyfileobj", side_effect=fail_after_partial_copy):
-                with self.assertRaisesRegex(OSError, "simulated deterministic report interruption"):
-                    stage_report.stage_phase3_fast_deterministic_report(
-                        final_manifest,
-                        _crosscheck_materialization_plan(final_manifest, manifest_path),
-                        final_manifest_sha256=_sha256_path(manifest_path),
-                        final_manifest_bytes=manifest_path.stat().st_size,
-                        final_root=final_root,
-                        output_dir=output,
+                def __enter__(self):
+                    self.handle.__enter__()
+                    return self
+
+                def __exit__(self, *args) -> None:
+                    self.handle.__exit__(*args)
+
+                def write(self, _payload: bytes) -> int:
+                    self.handle.write(b"partial deterministic report")
+                    (output / "unexpected.tmp").write_text(
+                        "stray partial file\n",
+                        encoding="utf-8",
                     )
+                    raise OSError("simulated deterministic report interruption")
+
+                def flush(self) -> None:
+                    self.handle.flush()
+
+                def fileno(self) -> int:
+                    return self.handle.fileno()
+
+            def fail_after_partial_copy(*args, **kwargs) -> PartialHandle:
+                return PartialHandle(real_fdopen(*args, **kwargs))
+
+            with patch.object(stage_report.os, "fdopen", side_effect=fail_after_partial_copy):
+                with self.assertRaisesRegex(OSError, "simulated deterministic report interruption"):
+                    stage_report._install_packet(output, staging=staging)
 
             self.assertTrue(output.is_dir())
             self.assertEqual(
@@ -782,6 +799,32 @@ class Phase3FastDeterministicReportTests(unittest.TestCase):
                     stage_report._install_packet(output, staging=staging)
 
             self.assertEqual([], list(output.iterdir()))
+
+    def test_install_packet_copies_stable_staged_bytes(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            staging = root / "staging"
+            output = root / "deterministic"
+            staging.mkdir()
+            output.mkdir()
+            _write_minimal_staged_report(staging)
+            real_open = stage_report.os.open
+            mutated = False
+
+            def mutate_report_source_after_read(path, *args, **kwargs):
+                nonlocal mutated
+                descriptor = real_open(path, *args, **kwargs)
+                if Path(path).name == "report.md":
+                    mutated = True
+                    (staging / "report.md").write_text("mutated\n", encoding="utf-8")
+                return descriptor
+
+            with patch.object(stage_report.os, "open", side_effect=mutate_report_source_after_read):
+                stage_report._install_packet(output, staging=staging)
+
+            self.assertTrue(mutated)
+            self.assertEqual("# Deterministic report\n", (output / "report.md").read_text(encoding="utf-8"))
+            self.assertEqual("mutated\n", (staging / "report.md").read_text(encoding="utf-8"))
 
     def test_rejects_stale_staged_report_manifest_binding(self) -> None:
         with TemporaryDirectory() as tmp:
