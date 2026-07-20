@@ -292,6 +292,13 @@ def require_nonnegative_int(value: Any, label: str) -> int:
     return value
 
 
+def exact_schema_version(payload: Mapping[str, Any], expected: int = 1) -> bool:
+    return (
+        type(payload.get("schema_version")) is int
+        and payload["schema_version"] == expected
+    )
+
+
 def require_object_rows(value: Any, label: str) -> list[dict[str, Any]]:
     if (
         not isinstance(value, list)
@@ -420,7 +427,7 @@ def require_stack_manifest(
     manifest = read_object(root / "stack_manifest.json", "HCC1395 stack manifest")
     if (
         set(manifest) != STACK_MANIFEST_KEYS
-        or manifest.get("schema_version") != 1
+        or not exact_schema_version(manifest)
         or manifest.get("status") != "passed"
         or manifest.get("authorized_hrd_state") != "no_call"
         or manifest.get("models_invoked") is not False

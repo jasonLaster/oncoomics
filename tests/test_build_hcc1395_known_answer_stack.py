@@ -457,6 +457,38 @@ class BuildHcc1395KnownAnswerStackTests(unittest.TestCase):
 
             self.assertFalse(output.exists())
 
+    def test_stack_manifest_rejects_boolean_schema_version_after_install(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            output = root / "stack"
+            real_fsync_directory = STACK.fsync_directory
+
+            def replace_schema_after_install_fsync(path: Path) -> None:
+                real_fsync_directory(path)
+                if path == output.parent and output.exists():
+                    manifest_path = output / "stack_manifest.json"
+                    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+                    manifest["schema_version"] = True
+                    manifest_path.write_text(
+                        json.dumps(manifest, indent=2, sort_keys=True) + "\n",
+                        encoding="utf-8",
+                    )
+
+            with (
+                mock.patch.object(
+                    STACK,
+                    "fsync_directory",
+                    side_effect=replace_schema_after_install_fsync,
+                ),
+                self.assertRaisesRegex(
+                    ValueError,
+                    "HCC1395 stack manifest envelope is not exact",
+                ),
+            ):
+                STACK.build(args_for(root, output))
+
+            self.assertFalse(output.exists())
+
     def test_rejects_loose_deterministic_summary_counts(self) -> None:
         count_mutations = {
             "readPairsPerEnd": True,
