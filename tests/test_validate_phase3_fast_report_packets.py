@@ -382,6 +382,14 @@ class ValidatePhase3FastReportPacketsTests(unittest.TestCase):
                 write_packet(directory, method_id, source_report_manifests)
         return packet_dirs
 
+    def snapshot_packet(
+        self,
+        packet_dirs: dict[str, Path],
+        method_id: str,
+    ) -> dict[str, object]:
+        rows = VALIDATOR.validate_packet_dir(packet_dirs[method_id], method_id, ())
+        return VALIDATOR.packet_rows_by_name(rows)
+
     def test_validates_all_five_phase3_fast_report_packets(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
@@ -453,6 +461,111 @@ class ValidatePhase3FastReportPacketsTests(unittest.TestCase):
                     packet_dirs,
                     json.dumps(["Run-Private-Token"]),
                 )
+
+    def test_validates_report_manifest_against_captured_report_bytes(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            packet_dirs = self.write_phase3_fast_packets(root)
+            deterministic = packet_dirs["deterministic_full_wgs"].resolve()
+            real_stable_packet_file_row = VALIDATOR.stable_packet_file_row
+            mutated = False
+
+            def mutate_packet_after_report_snapshot(
+                path: Path,
+                relative_path: str,
+                tokens: tuple[str, ...],
+            ) -> dict[str, object]:
+                nonlocal mutated
+                row = real_stable_packet_file_row(path, relative_path, tokens)
+                if path.parent == deterministic and relative_path == "report.md" and not mutated:
+                    mutated = True
+                    report_path = deterministic / "report.md"
+                    report_path.write_text(
+                        "self-consistent rewritten no_call report\n",
+                        encoding="utf-8",
+                    )
+                    manifest_path = deterministic / "report_manifest.json"
+                    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+                    manifest["report_sha256"] = sha256(report_path)
+                    manifest_path.write_text(
+                        json.dumps(manifest, sort_keys=True) + "\n",
+                        encoding="utf-8",
+                    )
+                return row
+
+            with (
+                mock.patch.object(
+                    VALIDATOR,
+                    "stable_packet_file_row",
+                    side_effect=mutate_packet_after_report_snapshot,
+                ),
+                self.assertRaisesRegex(
+                    ValueError,
+                    "report manifest does not preserve the reviewed no-call contract",
+                ),
+            ):
+                VALIDATOR.validate_packets(
+                    packet_dirs,
+                    json.dumps(["Run-Private-Token"]),
+                )
+            self.assertTrue(mutated)
+
+    def test_validates_blocked_manifest_against_captured_support_bytes(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            packet_dirs = self.write_phase3_fast_packets(root)
+            blocked = packet_dirs["facets_scarhrd_blocked"].resolve()
+            real_stable_packet_file_row = VALIDATOR.stable_packet_file_row
+            mutated = False
+
+            def mutate_packet_after_method_spec_snapshot(
+                path: Path,
+                relative_path: str,
+                tokens: tuple[str, ...],
+            ) -> dict[str, object]:
+                nonlocal mutated
+                row = real_stable_packet_file_row(path, relative_path, tokens)
+                if (
+                    path.parent == blocked
+                    and relative_path == "method_spec.json"
+                    and not mutated
+                ):
+                    mutated = True
+                    method_spec_path = blocked / "method_spec.json"
+                    method_spec = json.loads(
+                        method_spec_path.read_text(encoding="utf-8")
+                    )
+                    method_spec_path.write_text(
+                        json.dumps(method_spec, indent=2, sort_keys=True) + "\n",
+                        encoding="utf-8",
+                    )
+                    manifest_path = blocked / "report_manifest.json"
+                    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+                    manifest["support_sha256"]["method_spec.json"] = sha256(
+                        method_spec_path
+                    )
+                    manifest_path.write_text(
+                        json.dumps(manifest, sort_keys=True) + "\n",
+                        encoding="utf-8",
+                    )
+                return row
+
+            with (
+                mock.patch.object(
+                    VALIDATOR,
+                    "stable_packet_file_row",
+                    side_effect=mutate_packet_after_method_spec_snapshot,
+                ),
+                self.assertRaisesRegex(
+                    ValueError,
+                    "report manifest support hash differs for method_spec.json",
+                ),
+            ):
+                VALIDATOR.validate_packets(
+                    packet_dirs,
+                    json.dumps(["Run-Private-Token"]),
+                )
+            self.assertTrue(mutated)
 
     def test_rejects_terminal_bound_blocked_packets_in_fast_validation(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
@@ -577,38 +690,72 @@ class ValidatePhase3FastReportPacketsTests(unittest.TestCase):
                 "report manifest",
                 "report_manifest.json",
                 "schema_version",
-                "facets_scarhrd_blocked blocked report manifest",
+                "report manifest",
+                True,
             ),
             (
                 "method spec",
                 "method_spec.json",
                 "method_id",
                 "facets_scarhrd_blocked blocked method spec",
+                False,
             ),
         )
 
-        for label, name, key, input_label in cases:
+        for label, name, key, input_label, validate_all in cases:
             with self.subTest(label=label), tempfile.TemporaryDirectory() as temporary:
                 root = Path(temporary)
                 packet_dirs = self.write_phase3_fast_packets(root)
-                source_report_manifests = VALIDATOR.pre_route_source_report_manifests(
-                    packet_dirs
-                )
                 write_duplicate_json_field(
                     packet_dirs["facets_scarhrd_blocked"] / name,
                     key,
                     "legacy",
                 )
+                if name == "method_spec.json":
+                    manifest_path = (
+                        packet_dirs["facets_scarhrd_blocked"]
+                        / "report_manifest.json"
+                    )
+                    manifest = json.loads(
+                        manifest_path.read_text(encoding="utf-8")
+                    )
+                    manifest["support_sha256"][name] = sha256(
+                        packet_dirs["facets_scarhrd_blocked"] / name
+                    )
+                    manifest_path.write_text(
+                        json.dumps(manifest, sort_keys=True) + "\n",
+                        encoding="utf-8",
+                    )
 
                 with self.assertRaisesRegex(
                     ValueError,
                     f"duplicate JSON object name in {input_label}: {key}",
                 ):
-                    VALIDATOR.validate_pre_route_blocked_packet(
-                        packet_dirs["facets_scarhrd_blocked"],
-                        "facets_scarhrd_blocked",
-                        source_report_manifests,
-                    )
+                    if validate_all:
+                        VALIDATOR.validate_packets(
+                            packet_dirs,
+                            json.dumps(["Run-Private-Token"]),
+                        )
+                    else:
+                        source_report_manifests = (
+                            VALIDATOR.pre_route_source_report_manifests(
+                                {
+                                    method_id: self.snapshot_packet(
+                                        packet_dirs,
+                                        method_id,
+                                    )
+                                    for method_id in VALIDATOR.PRE_ROUTE_SOURCE_REPORT_METHOD_IDS
+                                }
+                            )
+                        )
+                        VALIDATOR.validate_pre_route_blocked_packet(
+                            self.snapshot_packet(
+                                packet_dirs,
+                                "facets_scarhrd_blocked",
+                            ),
+                            "facets_scarhrd_blocked",
+                            source_report_manifests,
+                        )
 
     def test_rejects_pre_route_blocked_packet_extra_source_hash(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:

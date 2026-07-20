@@ -14,8 +14,16 @@ from typing import Any, Mapping
 
 from forbidden_text import (
     DEFAULT_FORBIDDEN_TOKENS,
+    has_unauthorized_hrd_classification,
     normalize_forbidden_tokens_json,
     normalized_scan_text,
+)
+from build_ai_review_bundle import (
+    CORE_REPORT_FILES,
+    CORE_REPORT_MANIFEST_KEYS,
+    REPORT_KIND_EXTRA_KEYS,
+    DuplicateJsonKeyError,
+    reject_duplicate_json_object_names,
 )
 from generate_blocked_hrd_crosscheck_reports import (
     BLOCKED_REVIEW_SUMMARY_KEYS,
@@ -31,10 +39,6 @@ from publish_reviewed_public_report import (
     MAX_PACKET_BYTES,
     METHOD_CONTRACTS,
     checked_final_source_artifact_id,
-    load_json,
-    scan_no_call_language,
-    sha256,
-    validate_report_manifest_support,
 )
 from runbook_io import (
     load_json_object,
@@ -127,18 +131,15 @@ def checksum_sha256(digest: str) -> str:
 
 
 def validate_report_packet(
-    paths: dict[str, Path],
+    rows_by_name: Mapping[str, Mapping[str, Any]],
     method_id: str,
     expected: tuple[str, ...],
 ) -> dict[str, Any]:
-    manifest = load_json(paths["report_manifest.json"], "report manifest")
+    manifest = load_packet_json(rows_by_name, "report_manifest.json", "report manifest")
     if manifest.get("report_kind") not in PHASE3_FAST_REPORT_KINDS[method_id]:
         raise ValueError("report manifest report_kind is not exact")
-    validate_report_manifest_support(
-        paths["report_manifest.json"].parent,
-        manifest,
-        method_id,
-    )
+    expected_support = set(expected) - CORE_REPORT_FILES
+    validate_report_manifest_envelope(manifest, method_id, expected_support)
     if (
         not exact_schema_version(manifest)
         or manifest.get("method_id") != method_id
@@ -146,17 +147,16 @@ def validate_report_packet(
         or manifest.get("authorized_hrd_state") != "no_call"
         or manifest.get("classification_authorized") is not False
         or manifest.get("classification_qc_status") != "not_applicable"
-        or manifest.get("report_sha256") != sha256(paths["report.md"])
+        or manifest.get("report_sha256") != rows_by_name["report.md"]["sha256"]
         or not isinstance(manifest.get("review_summary"), dict)
         or not manifest.get("review_summary")
     ):
         raise ValueError("report manifest does not preserve the reviewed no-call contract")
     support = manifest.get("support_sha256")
-    expected_support = set(expected) - {"report.md", "report_manifest.json"}
     if not isinstance(support, dict) or set(support) != expected_support:
         raise ValueError("report manifest support inventory is not exact")
     for name in expected_support:
-        if support.get(name) != sha256(paths[name]):
+        if support.get(name) != rows_by_name[name]["sha256"]:
             raise ValueError(f"report manifest support hash differs for {name}")
     sources = manifest.get("source_sha256")
     if (
@@ -171,11 +171,52 @@ def validate_report_packet(
     ):
         raise ValueError("report manifest source SHA-256 inventory is malformed")
     for name in sorted(set(sources) & expected_support):
-        if sources[name] != sha256(paths[name]):
+        if sources[name] != rows_by_name[name]["sha256"]:
             raise ValueError(f"report manifest source hash differs for {name}")
     for name in sorted(expected):
-        scan_no_call_language(paths[name])
+        scan_packet_no_call_language(name, row_payload(rows_by_name, name))
     return manifest
+
+
+def validate_report_manifest_envelope(
+    manifest: Mapping[str, Any],
+    method_id: str,
+    expected_support: set[str],
+) -> None:
+    report_kind = str(manifest.get("report_kind", ""))
+    expected_extra = REPORT_KIND_EXTRA_KEYS.get(report_kind)
+    if (
+        not exact_schema_version(manifest)
+        or manifest.get("method_id") != method_id
+        or expected_extra is None
+        or set(manifest) != CORE_REPORT_MANIFEST_KEYS | set(expected_extra)
+    ):
+        raise ValueError(f"report manifest envelope is not exact for {method_id}")
+    if not isinstance(manifest.get("classification_authorized"), bool):
+        raise ValueError(
+            f"report manifest classification authorization is not exact for {method_id}"
+        )
+
+    support = manifest.get("support_sha256")
+    if not isinstance(support, dict) or not support:
+        raise ValueError(f"missing support hashes for {method_id}")
+
+    bound_support_files: set[str] = set()
+    for relative, digest in support.items():
+        if (
+            not isinstance(relative, str)
+            or not relative
+            or Path(relative).name != relative
+            or relative in CORE_REPORT_FILES
+        ):
+            raise ValueError(f"malformed support path for {method_id}: {relative}")
+
+        if not isinstance(digest, str) or not SHA256_HEX.fullmatch(digest):
+            raise ValueError(f"malformed support SHA-256 for {method_id}: {relative}")
+        bound_support_files.add(relative)
+
+    if bound_support_files != expected_support:
+        raise ValueError(f"support inventory is not exact for {method_id}")
 
 
 def validate_packet_dir(
@@ -189,19 +230,18 @@ def validate_packet_dir(
     if present != list(expected):
         raise ValueError("packet directory inventory is not exact")
 
-    paths: dict[str, Path] = {}
     rows: list[dict[str, Any]] = []
     total_bytes = 0
     for relative in expected:
         path = packet_dir / relative
         row = stable_packet_file_row(path, relative, tokens)
-        paths[relative] = path
         rows.append(row)
         total_bytes += row["bytes"]
 
     if total_bytes > MAX_PACKET_BYTES:
         raise ValueError("packet directory is too large")
-    validate_report_packet(paths, method_id, expected)
+    rows_by_name = packet_rows_by_name(rows)
+    validate_report_packet(rows_by_name, method_id, expected)
     return rows
 
 
@@ -223,6 +263,7 @@ def stable_packet_file_row(
     return {
         "relative_path": relative_path,
         "path": path,
+        "payload": payload,
         "bytes": size,
         "sha256": digest,
         "checksum_sha256": checksum_sha256(digest),
@@ -272,6 +313,14 @@ def scan_packet_payload(
         for haystack in normalized_haystacks
     ):
         raise ValueError(f"forbidden identifier token remains in {relative_path}")
+
+
+def scan_packet_no_call_language(relative_path: str, payload: bytes) -> None:
+    if any(
+        has_unauthorized_hrd_classification(haystack)
+        for haystack in packet_payload_scan_haystacks(relative_path, payload)
+    ):
+        raise ValueError(f"unauthorized HRD classification remains in {relative_path}")
 
 
 def sha256_file(path: Path) -> str:
@@ -438,32 +487,73 @@ def validate_validation_receipt_matches_packets(
         raise ValueError("report packet validation receipt does not match current packets")
 
 
-def load_packet_json(packet_dir: Path, name: str, label: str) -> dict[str, Any]:
-    return load_json_object(packet_dir / name, label)
+def packet_rows_by_name(
+    rows: list[dict[str, Any]],
+) -> dict[str, Mapping[str, Any]]:
+    rows_by_name: dict[str, Mapping[str, Any]] = {}
+    for row in rows:
+        relative_path = row.get("relative_path")
+        if (
+            not isinstance(relative_path, str)
+            or relative_path in rows_by_name
+        ):
+            raise ValueError("packet rows are not exact")
+        rows_by_name[relative_path] = row
+    return rows_by_name
+
+
+def row_payload(
+    rows_by_name: Mapping[str, Mapping[str, Any]],
+    name: str,
+) -> bytes:
+    payload = rows_by_name[name].get("payload")
+    if not isinstance(payload, bytes):
+        raise ValueError(f"packet row payload is missing for {name}")
+    return payload
+
+
+def load_packet_json(
+    rows_by_name: Mapping[str, Mapping[str, Any]],
+    name: str,
+    label: str,
+) -> dict[str, Any]:
+    try:
+        value = json.loads(
+            row_payload(rows_by_name, name).decode("utf-8"),
+            object_pairs_hook=reject_duplicate_json_object_names,
+        )
+    except DuplicateJsonKeyError as error:
+        raise ValueError(f"duplicate JSON object name in {label}: {error}") from error
+    except (UnicodeError, json.JSONDecodeError) as error:
+        raise ValueError(f"invalid JSON in {label}: {name}") from error
+    if not isinstance(value, dict):
+        raise ValueError(f"{label} is not a JSON object: {name}")
+    return value
 
 
 def pre_route_source_report_manifests(
-    packet_dirs: Mapping[str, Path],
+    packet_rows_by_method: Mapping[str, Mapping[str, Mapping[str, Any]]],
 ) -> dict[str, str]:
     manifests: dict[str, str] = {}
     for method_id in PRE_ROUTE_SOURCE_REPORT_METHOD_IDS:
-        manifest_path = packet_dirs[method_id] / "report_manifest.json"
-        manifests[method_id] = sha256_file(manifest_path)
+        manifests[method_id] = packet_rows_by_method[method_id][
+            "report_manifest.json"
+        ]["sha256"]
     return manifests
 
 
 def validate_pre_route_blocked_packet(
-    packet_dir: Path,
+    rows_by_name: Mapping[str, Mapping[str, Any]],
     method_id: str,
     expected_source_report_manifests: Mapping[str, str],
 ) -> None:
     manifest = load_packet_json(
-        packet_dir,
+        rows_by_name,
         "report_manifest.json",
         f"{method_id} blocked report manifest",
     )
     method_spec = load_packet_json(
-        packet_dir,
+        rows_by_name,
         "method_spec.json",
         f"{method_id} blocked method spec",
     )
@@ -519,7 +609,7 @@ def validate_pre_route_blocked_packet(
             f"{PRE_ROUTE_SOURCE_REPORT_BINDING_SCOPE} source binding"
         )
     validate_pre_route_blocked_report(
-        packet_dir,
+        rows_by_name,
         method_id,
         manifest,
         expected_source_report_manifests,
@@ -527,7 +617,7 @@ def validate_pre_route_blocked_packet(
 
 
 def validate_pre_route_blocked_report(
-    packet_dir: Path,
+    rows_by_name: Mapping[str, Mapping[str, Any]],
     method_id: str,
     manifest: Mapping[str, Any],
     source_report_manifests: Mapping[str, str],
@@ -545,12 +635,8 @@ def validate_pre_route_blocked_report(
     ):
         raise ValueError(f"{method_id} blocked report inputs are not exact")
 
-    report_path = packet_dir / "report.md"
     try:
-        report_text = read_stable_file(
-            report_path,
-            f"{method_id} blocked report.md",
-        ).decode("utf-8")
+        report_text = row_payload(rows_by_name, "report.md").decode("utf-8")
     except UnicodeError as error:
         raise ValueError(f"{method_id} blocked report.md is not UTF-8") from error
 
@@ -578,16 +664,19 @@ def validate_packets(
     expected_pre_route_source_report_manifests: dict[str, str] | None = None
 
     packets = []
+    packet_rows_by_method: dict[str, dict[str, Mapping[str, Any]]] = {}
     for _, method_id in PACKET_ARG_TO_METHOD:
         rows = validate_packet_dir(packet_dirs[method_id], method_id, forbidden_tokens)
+        rows_by_name = packet_rows_by_name(rows)
+        packet_rows_by_method[method_id] = rows_by_name
         serialized_rows = serializable_rows(rows)
         if method_id in BLOCKED_CROSSCHECK_METHOD_IDS:
             if expected_pre_route_source_report_manifests is None:
                 expected_pre_route_source_report_manifests = (
-                    pre_route_source_report_manifests(packet_dirs)
+                    pre_route_source_report_manifests(packet_rows_by_method)
                 )
             validate_pre_route_blocked_packet(
-                packet_dirs[method_id],
+                rows_by_name,
                 method_id,
                 expected_pre_route_source_report_manifests,
             )
