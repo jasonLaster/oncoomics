@@ -523,6 +523,11 @@ Budgets metering. That makes a GPU run stop early rather than late. AWS billing
 telemetry is still delayed, so leave GPU smoke and execute runs bounded and
 re-check Batch state after every high-cost test.
 
+If the live estimator cannot inventory the protected Diana Batch EC2 hosts or
+update the UTC-day ledger, the Lambda fails closed and disables the protected
+queues and compute environments instead of leaving P5 or CPU capacity running
+without a fresh same-day estimate.
+
 Mutating submitters that bypass Nextflow must also re-read the same UTC-day
 DynamoDB ledger immediately before `SubmitJob`. The static HRD route submitter,
 v4 cross-check materializer submitter, and bounded cloud Rosalind packet helper

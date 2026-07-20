@@ -77,6 +77,11 @@ class FakeEc2:
         return self.pages.pop(0)
 
 
+class FailingEc2:
+    def describe_instances(self, **kwargs: object) -> dict:
+        raise RuntimeError("live EC2 inventory unavailable")
+
+
 class FakeTable:
     def __init__(self, item: dict | None = None) -> None:
         self.item = item
@@ -445,6 +450,71 @@ class AwsCostGuardTests(unittest.TestCase):
             table.item["instances"],
         )
 
+    def test_handler_stops_batch_when_live_estimator_fails(self) -> None:
+        batch = FakeBatch()
+
+        class FakeBoto3:
+            @staticmethod
+            def client(service: str, **kwargs: object) -> object:
+                if service == "batch":
+                    return batch
+                if service == "ec2":
+                    return FailingEc2()
+                raise AssertionError(f"unexpected client: {service}")
+
+            @staticmethod
+            def resource(service: str, **kwargs: object) -> object:
+                if service != "dynamodb":
+                    raise AssertionError(f"unexpected resource: {service}")
+
+                class FakeDynamoDB:
+                    @staticmethod
+                    def Table(table_name: str) -> FakeTable:
+                        return FakeTable()
+
+                return FakeDynamoDB()
+
+        with mock.patch.dict(
+            sys.modules,
+            {"boto3": FakeBoto3},
+        ), mock.patch.dict(
+            os.environ,
+            {
+                "BATCH_COMPUTE_ENVIRONMENTS": json.dumps(["gpu-ce"]),
+                "BATCH_COST_GUARD_REGIONS": json.dumps(["us-east-2"]),
+                "BATCH_COST_GUARD_TAG_KEY": "DianaBatchCostGuard",
+                "BATCH_COST_GUARD_TAG_VALUE": "diana-omics",
+                "BATCH_COST_LEDGER_TABLE": "daily-cost",
+                "BATCH_DAILY_EC2_LIMIT_USD": "160",
+                "BATCH_ESTIMATED_FAILURE_STOP_REASON": "estimator failed closed",
+                "BATCH_INSTANCE_HOURLY_RATES_USD": json.dumps({"p5en.48xlarge": 140}),
+                "BATCH_JOB_QUEUES": json.dumps(["gpu"]),
+                "BATCH_UNKNOWN_INSTANCE_HOURLY_RATE_USD": "140",
+            },
+            clear=True,
+        ):
+            result = GUARD.handler({}, None)
+
+        self.assertEqual("stopped", result["status"])
+        self.assertEqual("RuntimeError", result["estimator_error"])
+        self.assertIn(
+            (
+                "update_job_queue",
+                {"jobQueue": "gpu", "state": "DISABLED"},
+            ),
+            batch.calls,
+        )
+        self.assertIn(
+            (
+                "terminate_job",
+                {
+                    "jobId": "running",
+                    "reason": "estimator failed closed",
+                },
+            ),
+            batch.calls,
+        )
+
     def test_handler_requires_exact_nonempty_environment_lists(self) -> None:
         with mock.patch.dict(
             os.environ,
@@ -478,7 +548,7 @@ class AwsCostGuardTests(unittest.TestCase):
         self.assertIn(
             (
                 "var.daily_cost_guard_stop_threshold_percent > 0 && "
-                "var.daily_cost_guard_stop_threshold_percent <= 100"
+                "var.daily_cost_guard_stop_threshold_percent <= 80"
             ),
             variables,
         )
