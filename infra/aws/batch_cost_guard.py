@@ -6,6 +6,8 @@ from __future__ import annotations
 import json
 import logging
 import os
+from datetime import datetime, timezone
+from decimal import Decimal, InvalidOperation
 from typing import Any, Iterable
 
 LOGGER = logging.getLogger(__name__)
@@ -13,6 +15,9 @@ LOGGER.setLevel(logging.INFO)
 
 CANCELABLE_JOB_STATUSES = ("SUBMITTED", "PENDING", "RUNNABLE")
 TERMINABLE_JOB_STATUSES = ("STARTING", "RUNNING")
+ACTIVE_EC2_STATES = ("pending", "running", "stopping", "shutting-down")
+MICRO_USD = Decimal("0.000001")
+ZERO_USD = Decimal("0")
 TERMINAL_RACE_ERROR_CODES = {"ClientException"}
 
 
@@ -36,6 +41,258 @@ def env_string_list(name: str) -> list[str]:
     ):
         raise ValueError(f"{name} must be a JSON array of non-empty strings")
     return unique(value)
+
+
+def require_decimal(value: Any, label: str) -> Decimal:
+    if isinstance(value, bool):
+        raise ValueError(f"{label} must be a positive decimal")
+    try:
+        parsed = Decimal(str(value))
+    except (InvalidOperation, ValueError) as error:
+        raise ValueError(f"{label} must be a positive decimal") from error
+    if parsed <= 0:
+        raise ValueError(f"{label} must be a positive decimal")
+    return parsed
+
+
+def env_decimal(name: str) -> Decimal:
+    return require_decimal(os.environ.get(name), name)
+
+
+def env_decimal_map(name: str) -> dict[str, Decimal]:
+    value = json.loads(os.environ.get(name, "{}"))
+    if not isinstance(value, dict) or not value:
+        raise ValueError(f"{name} must be a JSON object of positive decimal rates")
+    parsed: dict[str, Decimal] = {}
+    for key, raw in value.items():
+        if not isinstance(key, str) or not key:
+            raise ValueError(f"{name} must use non-empty string instance types")
+        parsed[key] = require_decimal(raw, f"{name}.{key}")
+    return parsed
+
+
+def instance_hourly_rate(
+    instance_type: str,
+    hourly_rates: dict[str, Decimal],
+    unknown_hourly_rate: Decimal,
+) -> Decimal:
+    family = instance_type.split(".", 1)[0]
+    return hourly_rates.get(
+        instance_type,
+        hourly_rates.get(family, unknown_hourly_rate),
+    )
+
+
+def require_utc_datetime(value: Any, label: str) -> datetime:
+    if isinstance(value, str):
+        value = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    if not isinstance(value, datetime) or value.tzinfo is None:
+        raise ValueError(f"{label} must be a timezone-aware datetime")
+    return value.astimezone(timezone.utc)
+
+
+def today_utc(now: datetime) -> tuple[str, int]:
+    current = now.astimezone(timezone.utc)
+    midnight = datetime(
+        current.year,
+        current.month,
+        current.day,
+        tzinfo=timezone.utc,
+    )
+    return midnight.date().isoformat(), int(midnight.timestamp())
+
+
+def describe_guarded_instances(
+    ec2: Any,
+    *,
+    tag_key: str,
+    tag_value: str,
+) -> list[dict[str, Any]]:
+    instances: list[dict[str, Any]] = []
+    token: str | None = None
+    while True:
+        request: dict[str, Any] = {
+            "Filters": [
+                {"Name": f"tag:{tag_key}", "Values": [tag_value]},
+                {"Name": "instance-state-name", "Values": list(ACTIVE_EC2_STATES)},
+            ],
+        }
+        if token:
+            request["NextToken"] = token
+        response = ec2.describe_instances(**request)
+        for reservation in response.get("Reservations", []):
+            instances.extend(reservation.get("Instances", []))
+        token = response.get("NextToken")
+        if not token:
+            return instances
+
+
+def decimal_or_zero(value: Any) -> Decimal:
+    if value in (None, ""):
+        return ZERO_USD
+    return Decimal(str(value))
+
+
+def int_or_zero(value: Any) -> int:
+    if value in (None, ""):
+        return 0
+    if isinstance(value, Decimal) and value >= 0 and value == value.to_integral_value():
+        return int(value)
+    if type(value) is not int or value < 0:
+        raise ValueError("stored Batch EC2 runtime seconds must be a non-negative integer")
+    return value
+
+
+def update_estimated_ec2_ledger(
+    ledger: dict[str, Any],
+    *,
+    instances: Iterable[dict[str, Any]],
+    now: datetime,
+    hourly_rates: dict[str, Decimal],
+    unknown_hourly_rate: Decimal,
+) -> dict[str, Any]:
+    current = now.astimezone(timezone.utc)
+    guard_day, day_start_epoch = today_utc(current)
+    now_epoch = int(current.timestamp())
+    observed = ledger.setdefault("instances", {})
+    if not isinstance(observed, dict):
+        raise ValueError("stored Batch EC2 ledger instances must be an object")
+
+    added_usd = ZERO_USD
+    active_instance_count = 0
+    for instance in instances:
+        instance_id = instance.get("InstanceId")
+        instance_type = instance.get("InstanceType")
+        if not isinstance(instance_id, str) or not instance_id:
+            raise ValueError("guarded Batch EC2 instance omitted InstanceId")
+        if not isinstance(instance_type, str) or not instance_type:
+            raise ValueError(f"guarded Batch EC2 instance {instance_id} omitted InstanceType")
+
+        launch_time = require_utc_datetime(
+            instance.get("LaunchTime"),
+            f"guarded Batch EC2 instance {instance_id} LaunchTime",
+        )
+        state = observed.get(instance_id, {})
+        if not isinstance(state, dict):
+            raise ValueError(f"stored Batch EC2 ledger state for {instance_id} must be an object")
+
+        previous_epoch = int_or_zero(state.get("last_seen_epoch"))
+        start_epoch = max(day_start_epoch, int(launch_time.timestamp()), previous_epoch)
+        elapsed_seconds = max(0, now_epoch - start_epoch)
+        rate = instance_hourly_rate(
+            instance_type,
+            hourly_rates,
+            unknown_hourly_rate,
+        )
+        instance_added_usd = (
+            rate * Decimal(elapsed_seconds) / Decimal(3600)
+        ).quantize(MICRO_USD)
+        total_seconds = int_or_zero(state.get("billable_seconds")) + elapsed_seconds
+        total_usd = decimal_or_zero(state.get("estimated_usd")) + instance_added_usd
+
+        observed[instance_id] = {
+            "billable_seconds": total_seconds,
+            "estimated_usd": total_usd.quantize(MICRO_USD),
+            "hourly_rate_usd": rate.quantize(MICRO_USD),
+            "instance_type": instance_type,
+            "last_seen_epoch": now_epoch,
+        }
+        added_usd += instance_added_usd
+        active_instance_count += 1
+
+    estimated_daily_ec2_usd = (
+        decimal_or_zero(ledger.get("estimated_daily_ec2_usd")) + added_usd
+    ).quantize(MICRO_USD)
+    ledger.update(
+        {
+            "active_instance_count": active_instance_count,
+            "estimated_daily_ec2_usd": estimated_daily_ec2_usd,
+            "guard_day": guard_day,
+            "last_seen_epoch": now_epoch,
+        }
+    )
+    return ledger
+
+
+def load_ledger(table: Any, guard_day: str) -> dict[str, Any]:
+    response = table.get_item(
+        Key={"guard_day": guard_day},
+        ConsistentRead=True,
+    )
+    return dict(
+        response.get(
+            "Item",
+            {
+                "guard_day": guard_day,
+                "estimated_daily_ec2_usd": ZERO_USD,
+                "instances": {},
+            },
+        )
+    )
+
+
+def save_ledger(table: Any, ledger: dict[str, Any]) -> None:
+    table.put_item(Item=ledger)
+
+
+def monitor_estimated_ec2_spend(
+    batch: Any,
+    ec2: Any,
+    table: Any,
+    *,
+    job_queues: Iterable[str],
+    compute_environments: Iterable[str],
+    reason: str,
+    tag_key: str,
+    tag_value: str,
+    daily_limit_usd: Decimal,
+    hourly_rates: dict[str, Decimal],
+    unknown_hourly_rate: Decimal,
+    now: datetime | None = None,
+) -> dict[str, Any]:
+    current = (now or datetime.now(timezone.utc)).astimezone(timezone.utc)
+    guard_day, _ = today_utc(current)
+    instances = describe_guarded_instances(
+        ec2,
+        tag_key=tag_key,
+        tag_value=tag_value,
+    )
+    ledger = update_estimated_ec2_ledger(
+        load_ledger(table, guard_day),
+        instances=instances,
+        now=current,
+        hourly_rates=hourly_rates,
+        unknown_hourly_rate=unknown_hourly_rate,
+    )
+    save_ledger(table, ledger)
+
+    estimated_daily_ec2_usd = ledger["estimated_daily_ec2_usd"]
+    result: dict[str, Any] = {
+        "active_instance_count": ledger["active_instance_count"],
+        "estimated_daily_ec2_usd": str(estimated_daily_ec2_usd),
+        "guard_day": guard_day,
+        "limit_usd": str(daily_limit_usd),
+        "status": "monitored",
+    }
+    if estimated_daily_ec2_usd < daily_limit_usd:
+        return result
+
+    stop_result = stop_batch(
+        batch,
+        job_queues=job_queues,
+        compute_environments=compute_environments,
+        reason=reason,
+    )
+    return {**result, **stop_result}
+
+
+def is_budget_sns_event(event: dict[str, Any]) -> bool:
+    records = event.get("Records")
+    return isinstance(records, list) and any(
+        isinstance(record, dict)
+        and record.get("EventSource", record.get("eventSource")) == "aws:sns"
+        for record in records
+    )
 
 
 def list_jobs(batch: Any, queue: str, status: str) -> list[dict[str, Any]]:
@@ -130,23 +387,47 @@ def stop_batch(
 
 
 def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
-    reason = os.environ.get(
-        "BATCH_STOP_REASON",
-        "Diana daily AWS Budget cost guard tripped",
-    )
     job_queues = env_string_list("BATCH_JOB_QUEUES")
     compute_environments = env_string_list("BATCH_COMPUTE_ENVIRONMENTS")
 
     import boto3
 
-    result = stop_batch(
+    if is_budget_sns_event(event):
+        reason = os.environ.get(
+            "BATCH_BUDGET_STOP_REASON",
+            "Diana daily AWS Budget cost guard tripped",
+        )
+        result = stop_batch(
+            boto3.client("batch"),
+            job_queues=job_queues,
+            compute_environments=compute_environments,
+            reason=reason,
+        )
+        LOGGER.warning(
+            "Diana daily cost guard stopped Batch after budget event: %s",
+            json.dumps(result, sort_keys=True),
+        )
+        return result
+
+    reason = os.environ.get(
+        "BATCH_ESTIMATED_STOP_REASON",
+        "Diana estimated daily Batch EC2 spend guard tripped",
+    )
+    result = monitor_estimated_ec2_spend(
         boto3.client("batch"),
+        boto3.client("ec2"),
+        boto3.resource("dynamodb").Table(os.environ["BATCH_COST_LEDGER_TABLE"]),
         job_queues=job_queues,
         compute_environments=compute_environments,
         reason=reason,
+        tag_key=os.environ["BATCH_COST_GUARD_TAG_KEY"],
+        tag_value=os.environ["BATCH_COST_GUARD_TAG_VALUE"],
+        daily_limit_usd=env_decimal("BATCH_DAILY_EC2_LIMIT_USD"),
+        hourly_rates=env_decimal_map("BATCH_INSTANCE_HOURLY_RATES_USD"),
+        unknown_hourly_rate=env_decimal("BATCH_UNKNOWN_INSTANCE_HOURLY_RATE_USD"),
     )
     LOGGER.warning(
-        "Diana daily cost guard stopped Batch after budget event: %s",
+        "Diana daily cost guard checked estimated Batch EC2 spend: %s",
         json.dumps(result, sort_keys=True),
     )
     return result

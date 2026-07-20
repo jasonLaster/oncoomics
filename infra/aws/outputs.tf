@@ -88,6 +88,11 @@ output "daily_cost_guard_topic_arn" {
   value       = aws_sns_topic.daily_cost_guard.arn
 }
 
+output "daily_cost_guard_ledger" {
+  description = "DynamoDB ledger used by the scheduled live Batch EC2 spend estimator."
+  value       = aws_dynamodb_table.daily_cost_guard.name
+}
+
 output "batch_job_role_arn" {
   description = "IAM role ARN used by Batch jobs."
   value       = aws_iam_role.batch_job.arn
