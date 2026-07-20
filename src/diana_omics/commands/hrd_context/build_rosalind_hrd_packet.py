@@ -1055,6 +1055,31 @@ PHASE3_FAST_EVIDENCE_CHECK_KEYS = {
     "checks",
     "input_sha256",
 }
+PHASE3_FAST_REVIEW_SUMMARY_KEYS = {
+    "overall",
+    "workflow",
+    "run",
+    "artifact_count",
+    "artifact_groups",
+    "blocked_routes",
+    "crosscheck_input_plans",
+}
+PHASE3_FAST_REVIEW_OVERALL_KEYS = {
+    "evidence_status",
+    "authorized_hrd_state",
+}
+PHASE3_FAST_ARTIFACT_GROUPS = {
+    "small_variants",
+    "bam_qc",
+    "cnv_evidence",
+    "sv_evidence",
+}
+PHASE3_FAST_BLOCKED_ROUTES = {
+    "SBS3": "no_call_requires_validated_signature_assignment_policy",
+    "scarHRD": "no_call_requires_allele_specific_cnv_loh_segments",
+    "CHORD": "no_call_requires_validated_production_sv_caller_vcf",
+    "HRDetect": "no_call_requires_validated_structural_variant_features",
+}
 DETERMINISTIC_EVIDENCE_CHECK_KEYS = {
     "status",
     "report_status",
@@ -1543,27 +1568,51 @@ def diana_wgs_phase3_fast_deterministic_binding(
     deterministic_manifest_sha256: str,
 ) -> dict[str, Any]:
     review_summary = manifest.get("review_summary")
-    if not isinstance(review_summary, dict):
-        raise ValueError("Phase 3 fast deterministic report lacks a review summary")
-    overall = review_summary.get("overall")
     if (
-        not isinstance(overall, dict)
-        or overall.get("evidence_status") != "partial_evidence"
-        or overall.get("authorized_hrd_state") != "no_call"
+        not isinstance(review_summary, Mapping)
+        or set(review_summary) != PHASE3_FAST_REVIEW_SUMMARY_KEYS
+    ):
+        raise ValueError("Phase 3 fast deterministic review summary is not exact")
+    overall = review_summary["overall"]
+    if (
+        not isinstance(overall, Mapping)
+        or set(overall) != PHASE3_FAST_REVIEW_OVERALL_KEYS
+        or require_exact_nonempty_string(
+            overall["evidence_status"],
+            "Phase 3 fast evidence_status",
+        )
+        != "partial_evidence"
+        or require_exact_nonempty_string(
+            overall["authorized_hrd_state"],
+            "Phase 3 fast authorized_hrd_state",
+        )
+        != "no_call"
     ):
         raise ValueError("Phase 3 fast deterministic report does not preserve a no-call partial-evidence boundary")
 
-    artifact_groups = review_summary.get("artifact_groups")
+    artifact_groups = review_summary["artifact_groups"]
     if (
-        not isinstance(artifact_groups, dict)
-        or set(artifact_groups) != {"small_variants", "bam_qc", "cnv_evidence", "sv_evidence"}
+        not isinstance(artifact_groups, Mapping)
+        or set(artifact_groups) != PHASE3_FAST_ARTIFACT_GROUPS
     ):
         raise ValueError("Phase 3 fast deterministic report artifact groups are not exact")
+    if review_summary["blocked_routes"] != PHASE3_FAST_BLOCKED_ROUTES:
+        raise ValueError("Phase 3 fast blocked routes are not exact")
+    phase3_fast_crosscheck_route_summary(review_summary["crosscheck_input_plans"])
 
     artifact_count = require_json_nonnegative_int(
-        review_summary.get("artifact_count"),
+        review_summary["artifact_count"],
         "Phase 3 fast artifact_count",
     )
+    artifact_group_counts = {
+        str(group): require_json_nonnegative_int(
+            count,
+            f"Phase 3 fast artifact group {group}",
+        )
+        for group, count in sorted(artifact_groups.items())
+    }
+    if sum(artifact_group_counts.values()) != artifact_count:
+        raise ValueError("Phase 3 fast artifact groups do not sum to artifact_count")
     final_artifact_rows = [row for row in input_rows if row.get("input_id") != "final_evidence_manifest"]
     if artifact_count != len(final_artifact_rows):
         raise ValueError("Phase 3 fast deterministic artifact_count differs from input_sha256.csv")
@@ -1676,10 +1725,7 @@ def diana_wgs_phase3_fast_deterministic_binding(
         "artifact_count": artifact_count,
         "artifact_index": artifact_index_rows,
         "phase3_fast": {
-            "artifact_groups": {
-                str(group): require_json_nonnegative_int(count, f"Phase 3 fast artifact group {group}")
-                for group, count in sorted(artifact_groups.items())
-            },
+            "artifact_groups": artifact_group_counts,
             "run": phase3_fast_run_summary(
                 review_summary.get("run"),
             ),

@@ -2601,6 +2601,112 @@ class RosalindHrdPacketTest(unittest.TestCase):
                     ).exists()
                 )
 
+    def test_diana_wgs_phase3_fast_packet_rejects_loose_review_summary(self):
+        cases = (
+            (
+                "extra_review_summary_field",
+                lambda manifest: manifest["review_summary"].__setitem__(
+                    "extra",
+                    "stale",
+                ),
+                "Phase 3 fast deterministic review summary is not exact",
+            ),
+            (
+                "extra_overall_field",
+                lambda manifest: manifest["review_summary"]["overall"].__setitem__(
+                    "extra",
+                    "stale",
+                ),
+                "Phase 3 fast deterministic report does not preserve a no-call partial-evidence boundary",
+            ),
+            (
+                "padded_overall_status",
+                lambda manifest: manifest["review_summary"]["overall"].__setitem__(
+                    "evidence_status",
+                    " partial_evidence",
+                ),
+                "Phase 3 fast evidence_status must be a non-empty unpadded single-line string",
+            ),
+            (
+                "extra_blocked_route",
+                lambda manifest: manifest["review_summary"]["blocked_routes"].__setitem__(
+                    "FACETS",
+                    "no_call_requires_allele_specific_cnv_loh_segments",
+                ),
+                "Phase 3 fast blocked routes are not exact",
+            ),
+            (
+                "promoted_blocked_route",
+                lambda manifest: manifest["review_summary"]["blocked_routes"].__setitem__(
+                    "scarHRD",
+                    "ready",
+                ),
+                "Phase 3 fast blocked routes are not exact",
+            ),
+            (
+                "stale_crosscheck_state",
+                lambda manifest: manifest["review_summary"][
+                    "crosscheck_input_plans"
+                ].__setitem__("sequenza_scarhrd", "inputs_materialized"),
+                "Phase 3 fast cross-check route summary is not exact",
+            ),
+            (
+                "extra_artifact_group",
+                lambda manifest: manifest["review_summary"][
+                    "artifact_groups"
+                ].__setitem__("purity_ploidy", 1),
+                "Phase 3 fast deterministic report artifact groups are not exact",
+            ),
+            (
+                "stale_artifact_group_count",
+                lambda manifest: manifest["review_summary"][
+                    "artifact_groups"
+                ].__setitem__("small_variants", 0),
+                "Phase 3 fast artifact groups do not sum to artifact_count",
+            ),
+        )
+
+        for label, mutation, error in cases:
+            with self.subTest(label=label), tempfile.TemporaryDirectory() as tmp:
+                output_root = Path(tmp)
+                deterministic_root, final_root = write_phase3_fast_deterministic_report(
+                    output_root / "phase3_fast"
+                )
+                mutate_phase3_fast_report_manifest(deterministic_root, mutation)
+
+                with (
+                    patch.object(
+                        packet,
+                        "path_from_root",
+                        lambda relative: output_root / relative,
+                    ),
+                    patch.dict(
+                        "os.environ",
+                        {
+                            "ROSALIND_HRD_ARTIFACT_ROOT": str(final_root),
+                            "ROSALIND_HRD_DETERMINISTIC_REPORT_DIR": str(
+                                deterministic_root
+                            ),
+                            "ROSALIND_HRD_FORBIDDEN_TOKENS_JSON": (
+                                PHASE3_FAST_FORBIDDEN_TOKENS_JSON
+                            ),
+                        },
+                    ),
+                    self.assertRaisesRegex(ValueError, error),
+                ):
+                    packet.write_packet(
+                        packet.PACKET_SPECS["diana_wgs"],
+                        "phase3-fast",
+                    )
+
+                self.assertFalse(
+                    (
+                        output_root
+                        / "results/rosalind_hrd/diana_wgs/phase3-fast/"
+                        "report_manifest.json"
+                    ).exists()
+                )
+
     def test_diana_wgs_phase3_fast_packet_rejects_non_exact_run_provenance(self):
         cases = (
             (
