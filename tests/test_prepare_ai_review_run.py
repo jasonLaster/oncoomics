@@ -1403,22 +1403,58 @@ class PrepareAiReviewRunTests(unittest.TestCase):
             root = Path(temporary)
             input_path = root / "model-catalog-receipt.json"
             input_path.write_text('{"status":"ready"}\n', encoding="utf-8")
-            real_read_bytes = Path.read_bytes
+            real_read_once = PREPARE.read_real_hash_input_once
             calls = 0
 
-            def mutating_read_bytes(path: Path) -> bytes:
+            def mutating_read_once(path: Path, label: str) -> bytes:
                 nonlocal calls
-                data = real_read_bytes(path)
+                data = real_read_once(path, label)
                 calls += 1
                 if calls == 1:
                     input_path.write_text('{"status":"mutated"}\n', encoding="utf-8")
                 return data
 
             with (
-                mock.patch.object(Path, "read_bytes", mutating_read_bytes),
+                mock.patch.object(
+                    PREPARE,
+                    "read_real_hash_input_once",
+                    side_effect=mutating_read_once,
+                ),
                 self.assertRaisesRegex(ValueError, "changed during read"),
             ):
                 PREPARE.sha256(input_path)
+
+    def test_sha256_rejects_symlink_swap_after_preflight(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            input_path = root / "model-catalog-receipt.json"
+            relocated = root / "relocated-model-catalog-receipt.json"
+            input_path.write_text('{"status":"ready"}\n', encoding="utf-8")
+            real_os_open = PREPARE.os.open
+            swapped = False
+
+            def swap_before_open(
+                path: Path,
+                flags: int,
+                mode: int = 0o777,
+                *,
+                dir_fd: int | None = None,
+            ) -> int:
+                nonlocal swapped
+                if path == input_path and not swapped:
+                    swapped = True
+                    input_path.unlink()
+                    relocated.write_text('{"status":"ready"}\n', encoding="utf-8")
+                    input_path.symlink_to(relocated)
+                return real_os_open(path, flags, mode, dir_fd=dir_fd)
+
+            with (
+                mock.patch.object(PREPARE.os, "open", side_effect=swap_before_open),
+                self.assertRaisesRegex(ValueError, "changed during read"),
+            ):
+                PREPARE.sha256(input_path)
+
+            self.assertTrue(swapped)
 
     def test_cleans_current_attempt_after_install_failure(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
