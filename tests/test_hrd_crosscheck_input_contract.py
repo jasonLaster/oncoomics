@@ -1019,6 +1019,42 @@ class CustodyHandoffTests(unittest.TestCase):
 
             self.assertTrue(moved)
 
+    def test_finalizer_rejects_same_byte_receipt_replacement(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            receipt = root / "final-freeze-receipt.json"
+            replacement = root / "replacement-final-freeze-receipt.json"
+            write_json(receipt, CustodyFixture().freeze)
+            write_json(replacement, CustodyFixture().freeze)
+            real_read_once = finalizer.read_real_hash_input_once
+            swapped = False
+
+            def replace_after_first_read(
+                path: Path,
+                label: str,
+            ) -> tuple[bytes, tuple[int, int, int, int, int, int]]:
+                nonlocal swapped
+                payload = real_read_once(path, label)
+                if path == receipt and not swapped:
+                    swapped = True
+                    replacement.replace(receipt)
+                return payload
+
+            with (
+                patch.object(
+                    finalizer,
+                    "read_real_hash_input_once",
+                    replace_after_first_read,
+                ),
+                self.assertRaisesRegex(
+                    ValueError,
+                    "final freeze receipt changed during read",
+                ),
+            ):
+                finalizer.load_object_with_sha256(receipt, "final freeze receipt")
+
+            self.assertTrue(swapped)
+
     def test_contract_check_requires_exact_finalized_custody_checks(self):
         cases = {
             "unexpected": lambda checks: checks.__setitem__("future_check", True),
