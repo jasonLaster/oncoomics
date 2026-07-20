@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+from datetime import datetime
 from typing import Any
 
 MODEL_CATALOG_RECEIPT = "model-catalog-receipt.20260717T115311Z.json"
@@ -30,8 +31,48 @@ MODEL_CATALOG_MODEL_KEYS = frozenset(
 )
 
 
+def has_ascii_control(value: str) -> bool:
+    return any(ord(character) < 32 or ord(character) == 127 for character in value)
+
+
+def require_exact_catalog_string(value: Any, label: str) -> str:
+    if (
+        not isinstance(value, str)
+        or not value
+        or value != value.strip()
+        or has_ascii_control(value)
+    ):
+        raise ValueError(f"model catalog {label} is not exact")
+    return value
+
+
+def require_catalog_timestamp(value: Any) -> str:
+    timestamp = require_exact_catalog_string(value, "verification timestamp")
+    try:
+        parsed = datetime.fromisoformat(timestamp.replace("Z", "+00:00"))
+    except ValueError as error:
+        raise ValueError("model catalog verification timestamp is invalid") from error
+    if parsed.tzinfo is None:
+        raise ValueError("model catalog verification timestamp must include timezone")
+    return timestamp
+
+
+def require_reviewer_model(value: Any, reviewer: str) -> tuple[str, str]:
+    if not isinstance(value, tuple) or len(value) != 2:
+        raise ValueError(
+            f"model catalog reviewer {reviewer} must be an exact provider/model tuple"
+        )
+    return (
+        require_exact_catalog_string(value[0], f"reviewer {reviewer} provider"),
+        require_exact_catalog_string(value[1], f"reviewer {reviewer} model ID"),
+    )
+
+
 def reviewer_models() -> tuple[tuple[str, str], tuple[str, str]]:
-    models = (REVIEWER_A, REVIEWER_B)
+    models = (
+        require_reviewer_model(REVIEWER_A, "A"),
+        require_reviewer_model(REVIEWER_B, "B"),
+    )
     if len(set(models)) != len(models):
         raise ValueError(
             "model catalog receipt requires distinct reviewer model identities"
@@ -42,9 +83,15 @@ def reviewer_models() -> tuple[tuple[str, str], tuple[str, str]]:
 def model_catalog_receipt() -> dict[str, Any]:
     return {
         "schema_version": 1,
-        "provider_catalog": PROVIDER_CATALOG,
-        "catalog_source": MODEL_CATALOG_SOURCE,
-        "catalog_verified_at": MODEL_CATALOG_VERIFIED_AT,
+        "provider_catalog": require_exact_catalog_string(
+            PROVIDER_CATALOG,
+            "provider catalog",
+        ),
+        "catalog_source": require_exact_catalog_string(
+            MODEL_CATALOG_SOURCE,
+            "source",
+        ),
+        "catalog_verified_at": require_catalog_timestamp(MODEL_CATALOG_VERIFIED_AT),
         "models": [
             {
                 "provider": provider,

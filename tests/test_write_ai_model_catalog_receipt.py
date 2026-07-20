@@ -327,6 +327,80 @@ class WriteAiModelCatalogReceiptTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "distinct reviewer model"):
                 CATALOG.model_catalog_receipt()
 
+    def test_model_catalog_rejects_non_exact_reviewer_model_rows(self) -> None:
+        cases = (
+            (
+                "padded provider",
+                (" openai-codex", "gpt-5.6-sol"),
+                "reviewer A provider",
+            ),
+            (
+                "empty model ID",
+                ("openai-codex", ""),
+                "reviewer A model ID",
+            ),
+            (
+                "control-character model ID",
+                ("openai-codex", "gpt-5.6-sol\n"),
+                "reviewer A model ID",
+            ),
+        )
+        for label, reviewer, message in cases:
+            with self.subTest(label):
+                with (
+                    mock.patch.object(CATALOG, "REVIEWER_A", reviewer),
+                    self.assertRaisesRegex(ValueError, message),
+                ):
+                    CATALOG.model_catalog_receipt()
+
+    def test_model_catalog_rejects_wrong_reviewer_tuple_shape(self) -> None:
+        cases = (
+            ("overlong tuple", ("openai-codex", "gpt-5.6-sol", "extra")),
+            ("list tuple", ["openai-codex", "gpt-5.6-sol"]),
+            ("non-string provider", (True, "gpt-5.6-sol")),
+        )
+        for label, reviewer in cases:
+            with self.subTest(label):
+                with (
+                    mock.patch.object(CATALOG, "REVIEWER_A", reviewer),
+                    self.assertRaisesRegex(ValueError, "reviewer A"),
+                ):
+                    CATALOG.model_catalog_receipt()
+
+    def test_model_catalog_rejects_non_exact_catalog_provenance(self) -> None:
+        cases = (
+            ("padded provider catalog", "PROVIDER_CATALOG", " test", "provider catalog"),
+            ("empty catalog source", "MODEL_CATALOG_SOURCE", "", "source"),
+        )
+        for label, field, value, message in cases:
+            with self.subTest(label):
+                with (
+                    mock.patch.object(CATALOG, field, value),
+                    self.assertRaisesRegex(ValueError, message),
+                ):
+                    CATALOG.model_catalog_receipt()
+
+    def test_model_catalog_rejects_malformed_or_naive_timestamp(self) -> None:
+        cases = (
+            ("malformed timestamp", "not-a-timestamp", "timestamp is invalid"),
+            (
+                "timezone-free timestamp",
+                "2026-07-17T11:53:11",
+                "timestamp must include timezone",
+            ),
+        )
+        for label, timestamp, message in cases:
+            with self.subTest(label):
+                with (
+                    mock.patch.object(
+                        CATALOG,
+                        "MODEL_CATALOG_VERIFIED_AT",
+                        timestamp,
+                    ),
+                    self.assertRaisesRegex(ValueError, message),
+                ):
+                    CATALOG.model_catalog_receipt()
+
 
 if __name__ == "__main__":
     unittest.main()
