@@ -575,6 +575,23 @@ class MaterializeFrozenArtifactsTests(unittest.TestCase):
             self.assertEqual(expected_sha, payload["freeze_receipt_sha256"])
             self.assertEqual("passed", payload["status"])
 
+    def test_require_exact_final_freeze_rejects_coerced_object_row_relative_key(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            kms = "arn:aws:kms:us-east-1:172630973301:key/test"
+            freeze_path = self.freeze_fixture(root, kms)
+            freeze = json.loads(freeze_path.read_text(encoding="utf-8"))
+            freeze["objects"][0]["relative_key"] = True
+            freeze["destination_inventory"][0]["relative_key"] = "True"
+
+            with self.assertRaisesRegex(
+                ValueError,
+                "private freeze receipt object row is not exact",
+            ):
+                MODULE.require_exact_final_freeze(freeze, kms)
+
     def test_hashes_validated_prior_materialization_receipt_bytes(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
