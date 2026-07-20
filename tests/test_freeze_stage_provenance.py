@@ -987,25 +987,54 @@ class FreezeStageProvenanceTests(unittest.TestCase):
             receipt = root / "stage-receipt.json"
             receipt.write_text('{"stable": true}\n', encoding="utf-8")
 
-            original_read_bytes = Path.read_bytes
+            original_sha256_once = MODULE.sha256_once
             mutated = False
 
-            def mutate_after_first_read(path: Path) -> bytes:
+            def mutate_after_first_hash(path: Path) -> str:
                 nonlocal mutated
-                data = original_read_bytes(path)
+                digest = original_sha256_once(path)
                 if path == receipt and not mutated:
                     mutated = True
                     path.write_text('{"stable": false}\n', encoding="utf-8")
-                return data
+                return digest
 
             with (
-                patch.object(Path, "read_bytes", mutate_after_first_read),
+                patch.object(MODULE, "sha256_once", mutate_after_first_hash),
                 self.assertRaisesRegex(
                     ValueError,
                     "stage-receipt.json SHA-256 input changed during read",
                 ),
             ):
                 MODULE.sha256(receipt)
+
+    def test_sha256_rejects_symlink_swap_after_preflight(self) -> None:
+        with tempfile.TemporaryDirectory() as value:
+            root = Path(value)
+            receipt = root / "stage-receipt.json"
+            target = root / "redirected-stage-receipt.json"
+            receipt.write_text('{"stable": true}\n', encoding="utf-8")
+            target.write_text('{"stable": false}\n', encoding="utf-8")
+            real_open = MODULE.os.open
+            swapped = False
+
+            def swap_before_open(path: Path, flags: int, *args: int) -> int:
+                nonlocal swapped
+                if path == receipt and not swapped:
+                    receipt.unlink()
+                    receipt.symlink_to(target)
+                    swapped = True
+                return real_open(path, flags, *args)
+
+            with (
+                patch.object(MODULE.os, "open", side_effect=swap_before_open),
+                self.assertRaisesRegex(
+                    ValueError,
+                    "stage-receipt.json SHA-256 input changed during read",
+                ),
+            ):
+                MODULE.sha256(receipt)
+
+            self.assertTrue(swapped)
 
     def test_atomic_writer_rejects_output_below_symlinked_parent(self) -> None:
         with tempfile.TemporaryDirectory() as value:
