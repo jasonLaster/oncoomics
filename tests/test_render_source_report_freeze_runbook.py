@@ -1090,19 +1090,23 @@ class RenderSourceReportFreezeRunbookTests(unittest.TestCase):
             hash_input = root / "report_manifest.json"
             hash_input.write_text('{"stable": true}\n', encoding="utf-8")
 
-            original_read_bytes = Path.read_bytes
+            original_read_once = RUNBOOK_IO.read_real_input_file_once
             mutated = False
 
-            def mutate_after_first_read(path: Path) -> bytes:
+            def mutate_after_first_read(path: Path, label: str) -> bytes:
                 nonlocal mutated
-                data = original_read_bytes(path)
+                data = original_read_once(path, label)
                 if path == hash_input and not mutated:
                     mutated = True
                     path.write_text('{"stable": false}\n', encoding="utf-8")
                 return data
 
             with (
-                patch.object(Path, "read_bytes", mutate_after_first_read),
+                patch.object(
+                    RUNBOOK_IO,
+                    "read_real_input_file_once",
+                    side_effect=mutate_after_first_read,
+                ),
                 self.assertRaisesRegex(
                     ValueError,
                     "report_manifest.json SHA-256 input changed during read",
