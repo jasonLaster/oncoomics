@@ -35,8 +35,10 @@ locals {
   ]
   batch_service_role_arn = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/aws-service-role/batch.amazonaws.com/AWSServiceRoleForBatch"
 
-  daily_cost_guard_budget_name = "${local.name_prefix}-daily-cost-guard"
-  daily_cost_guard_budget_arn  = "arn:aws:budgets::${data.aws_caller_identity.current.account_id}:budget/${local.daily_cost_guard_budget_name}"
+  daily_cost_guard_budget_name   = "${local.name_prefix}-daily-cost-guard"
+  daily_cost_guard_budget_arn    = "arn:aws:budgets::${data.aws_caller_identity.current.account_id}:budget/${local.daily_cost_guard_budget_name}"
+  daily_cost_guard_ec2_tag_key   = "DianaBatchCostGuard"
+  daily_cost_guard_ec2_tag_value = local.name_prefix
 
   # Public access is opt-in per reviewed validation or alias-only analysis run.
   # Never grant bucket listing, version listing, historical-version reads, or a
@@ -86,11 +88,13 @@ data "aws_iam_policy_document" "bootstrap_local_cli" {
     actions = [
       "batch:*",
       "budgets:*",
+      "dynamodb:*",
       "ecr:*",
       "ec2:DescribeInstances",
       "ecs:DescribeClusters",
       "ecs:DescribeContainerInstances",
       "ecs:DescribeTasks",
+      "events:*",
       "ecs:ListContainerInstances",
       "ecs:ListTasks",
       "kms:*",
@@ -958,9 +962,24 @@ resource "aws_launch_template" "batch" {
 
   tag_specifications {
     resource_type = "instance"
-    tags = {
-      Name = "${local.name_prefix}-batch"
-    }
+    tags = merge(
+      local.tags,
+      {
+        Name                                 = "${local.name_prefix}-batch"
+        (local.daily_cost_guard_ec2_tag_key) = local.daily_cost_guard_ec2_tag_value
+      }
+    )
+  }
+
+  tag_specifications {
+    resource_type = "volume"
+    tags = merge(
+      local.tags,
+      {
+        Name                                 = "${local.name_prefix}-batch"
+        (local.daily_cost_guard_ec2_tag_key) = local.daily_cost_guard_ec2_tag_value
+      }
+    )
   }
 }
 
@@ -1257,6 +1276,21 @@ resource "aws_budgets_budget" "daily_cost_guard" {
   depends_on = [aws_sns_topic_policy.daily_cost_guard]
 }
 
+resource "aws_dynamodb_table" "daily_cost_guard" {
+  name         = "${local.name_prefix}-daily-cost-guard-ledger"
+  billing_mode = "PAY_PER_REQUEST"
+  hash_key     = "guard_day"
+
+  attribute {
+    name = "guard_day"
+    type = "S"
+  }
+
+  server_side_encryption {
+    enabled = true
+  }
+}
+
 data "archive_file" "batch_cost_guard" {
   type        = "zip"
   source_file = "${path.module}/batch_cost_guard.py"
@@ -1331,6 +1365,23 @@ data "aws_iam_policy_document" "batch_cost_guard" {
     ]
     resources = ["arn:aws:batch:${var.region}:${data.aws_caller_identity.current.account_id}:job/*"]
   }
+
+  statement {
+    sid       = "ReadDianaBatchEc2Instances"
+    effect    = "Allow"
+    actions   = ["ec2:DescribeInstances"]
+    resources = ["*"]
+  }
+
+  statement {
+    sid    = "PersistDailyCostGuardLedger"
+    effect = "Allow"
+    actions = [
+      "dynamodb:GetItem",
+      "dynamodb:PutItem"
+    ]
+    resources = [aws_dynamodb_table.daily_cost_guard.arn]
+  }
 }
 
 resource "aws_iam_role_policy" "batch_cost_guard" {
@@ -1351,19 +1402,26 @@ resource "aws_lambda_function" "batch_cost_guard" {
 
   environment {
     variables = {
+      BATCH_BUDGET_STOP_REASON   = "Diana daily AWS Budget cost guard tripped"
+      BATCH_COST_GUARD_TAG_KEY   = local.daily_cost_guard_ec2_tag_key
+      BATCH_COST_GUARD_TAG_VALUE = local.daily_cost_guard_ec2_tag_value
+      BATCH_COST_LEDGER_TABLE    = aws_dynamodb_table.daily_cost_guard.name
       BATCH_COMPUTE_ENVIRONMENTS = jsonencode([
         aws_batch_compute_environment.spot.name,
         aws_batch_compute_environment.ondemand.name,
         aws_batch_compute_environment.hrd_x86_ondemand.name,
         aws_batch_compute_environment.gpu_p5en_ondemand.name
       ])
+      BATCH_DAILY_EC2_LIMIT_USD       = tostring(var.daily_cost_guard_limit_usd)
+      BATCH_ESTIMATED_STOP_REASON     = "Diana estimated daily Batch EC2 spend guard tripped"
+      BATCH_INSTANCE_HOURLY_RATES_USD = jsonencode(var.daily_cost_guard_instance_hourly_rates_usd)
       BATCH_JOB_QUEUES = jsonencode([
         aws_batch_job_queue.spot.name,
         aws_batch_job_queue.ondemand.name,
         aws_batch_job_queue.hrd_x86.name,
         aws_batch_job_queue.gpu_p5en.name
       ])
-      BATCH_STOP_REASON = "Diana daily AWS Budget cost guard tripped"
+      BATCH_UNKNOWN_INSTANCE_HOURLY_RATE_USD = tostring(var.daily_cost_guard_unknown_instance_hourly_rate_usd)
     }
   }
 
@@ -1384,6 +1442,26 @@ resource "aws_sns_topic_subscription" "daily_cost_guard_lambda" {
   endpoint  = aws_lambda_function.batch_cost_guard.arn
 
   depends_on = [aws_lambda_permission.allow_daily_cost_guard_sns]
+}
+
+resource "aws_cloudwatch_event_rule" "daily_cost_guard_poll" {
+  name                = "${local.name_prefix}-daily-cost-guard-poll"
+  description         = "Poll live Diana Batch EC2 runtime before delayed AWS Budgets data arrives"
+  schedule_expression = var.daily_cost_guard_schedule_expression
+}
+
+resource "aws_lambda_permission" "allow_daily_cost_guard_eventbridge" {
+  statement_id  = "AllowExecutionFromDailyCostGuardEventBridge"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.batch_cost_guard.function_name
+  principal     = "events.amazonaws.com"
+  source_arn    = aws_cloudwatch_event_rule.daily_cost_guard_poll.arn
+}
+
+resource "aws_cloudwatch_event_target" "daily_cost_guard_lambda" {
+  rule      = aws_cloudwatch_event_rule.daily_cost_guard_poll.name
+  target_id = "BatchCostGuard"
+  arn       = aws_lambda_function.batch_cost_guard.arn
 }
 
 resource "local_file" "nextflow_params" {

@@ -489,13 +489,22 @@ data. NAT Gateway, EBS root volumes, Batch EC2 instances, S3 storage, and data
 transfer can create charges. Work-bucket objects expire by lifecycle policy,
 but Batch compute and failed runs should still be checked after testing.
 
-Each Terraform workspace also installs an account-wide daily AWS Budget guard
-with a default `daily_cost_guard_limit_usd = 200`. When actual same-day spend
-crosses `daily_cost_guard_stop_threshold_percent = 80`, the Budget publishes to
-SNS and invokes `${project}-${environment}-batch-cost-guard`, which disables
-this workspace's Batch job queues and compute environments before cancelling
-queued jobs and terminating visible running jobs. The same SNS path fires again
-at 100% for an idempotent stop. Billing telemetry is delayed, so this is a
-conservative Batch kill switch rather than an instantaneous account spend cap;
-leave GPU smoke and execute runs bounded and re-check Batch state after every
-high-cost test.
+Each Terraform workspace also installs a two-layer daily Batch cost guard with
+a default `daily_cost_guard_limit_usd = 200`:
+
+- a live EventBridge rule invokes `${project}-${environment}-batch-cost-guard`
+  every minute, estimates the current UTC day's Diana Batch EC2 spend from
+  tagged Batch instances, persists the observed runtime in a DynamoDB ledger,
+  and disables this workspace's Batch job queues and compute environments
+  before cancelling queued jobs and terminating visible running jobs once the
+  estimate reaches the daily limit;
+- an account-wide AWS Budget publishes to the same Lambda through SNS when
+  actual same-day spend crosses `daily_cost_guard_stop_threshold_percent = 80`,
+  and again at 100%, as a delayed whole-account backstop for non-Batch costs.
+
+The live estimator deliberately overprices P5-family 48xlarge hosts in
+`daily_cost_guard_instance_hourly_rates_usd` so a GPU run stops early rather
+than late. AWS billing telemetry is still delayed, and non-EC2 charges such as
+NAT Gateway, S3, ECR, DynamoDB, Lambda, logs, and EventBridge are only covered
+by the delayed Budget layer, so leave GPU smoke and execute runs bounded and
+re-check Batch state after every high-cost test.

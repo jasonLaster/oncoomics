@@ -82,6 +82,35 @@ variable "daily_cost_guard_email" {
   default     = ""
 }
 
+variable "daily_cost_guard_schedule_expression" {
+  description = "EventBridge schedule for the live Diana Batch EC2 spend estimator."
+  type        = string
+  default     = "rate(1 minute)"
+}
+
+variable "daily_cost_guard_instance_hourly_rates_usd" {
+  description = "Conservative hourly USD rates used by the near-real-time Diana Batch EC2 spend estimator."
+  type        = map(number)
+  default = {
+    c7g             = 10
+    c7gn            = 10
+    c7i             = 12
+    m7g             = 10
+    m7i             = 12
+    "p5.48xlarge"   = 140
+    "p5e.48xlarge"  = 140
+    "p5en.48xlarge" = 140
+    r7g             = 10
+    r7i             = 12
+  }
+}
+
+variable "daily_cost_guard_unknown_instance_hourly_rate_usd" {
+  description = "Fallback hourly USD rate for any tagged Diana Batch EC2 type not listed in daily_cost_guard_instance_hourly_rates_usd."
+  type        = number
+  default     = 20
+}
+
 variable "batch_arm_instance_families" {
   description = "ARM64 EC2 instance families for Batch. The local OrbStack image build is arm64."
   type        = list(string)
