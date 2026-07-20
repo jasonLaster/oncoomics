@@ -392,6 +392,16 @@ def first_json_row(payload: Mapping[str, Any]) -> dict[str, Any]:
     return {}
 
 
+def require_nonempty_json_rows(value: Any, label: str) -> list[dict[str, Any]]:
+    if (
+        not isinstance(value, list)
+        or not value
+        or any(not isinstance(row, dict) for row in value)
+    ):
+        raise ValueError(f"{label} must be a non-empty list of JSON objects")
+    return value
+
+
 def optional_nonnegative_int(value: Any, label: str) -> int:
     if value in (None, ""):
         return 0
@@ -607,7 +617,10 @@ def hcc1395_wgs_evidence() -> tuple[list[dict[str, str]], list[dict[str, str]], 
     sv_readiness = read_json_or_empty("results/clinicalization/sv_caller_readiness_summary.json")
     cnv_readiness = read_json_or_empty("results/clinicalization/cnv_loh_readiness_summary.json")
     hrd_readiness = read_json_or_empty("results/clinicalization/hrd_interpretation_readiness_summary.json")
-    sv_rows = sv_summary.get("rows", []) if isinstance(sv_summary.get("rows"), list) else []
+    sv_rows = require_nonempty_json_rows(
+        sv_summary.get("rows"),
+        "HCC1395 WGS SV evidence rows",
+    )
     discordant_pairs = sum(
         optional_nonnegative_int(
             row.get("discordant_mapped_pairs"),
