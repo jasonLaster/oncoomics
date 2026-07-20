@@ -462,6 +462,24 @@ class FinalizeAiReviewTests(unittest.TestCase):
                 self.assertIn("review validation counts are not exact", finalized.stderr)
                 self.assertFalse((review / "report_manifest.json").exists())
 
+    def test_rejects_malformed_forbidden_token_count(self) -> None:
+        for value in (True, 0, 1.0, "1"):
+            with self.subTest(value=value), tempfile.TemporaryDirectory() as temporary:
+                fixture, review = self.validated_review(temporary)
+                validation_path = review / "validation.json"
+                validation = load_json(validation_path)
+                validation["forbidden_token_count"] = value
+                write_json(validation_path, validation)
+
+                finalized = self.execute(fixture, review)
+
+                self.assertNotEqual(finalized.returncode, 0)
+                self.assertIn(
+                    "review validation forbidden-token count is not exact",
+                    finalized.stderr,
+                )
+                self.assertFalse((review / "report_manifest.json").exists())
+
     def test_rejects_stale_validation_claim_summary(self) -> None:
         cases = (
             (

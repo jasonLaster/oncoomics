@@ -2674,6 +2674,28 @@ class GenerateSynthesisTests(unittest.TestCase):
                 self.assertNotEqual(result.returncode, 0)
                 self.assertIn(message, result.stdout + result.stderr)
 
+    def test_malformed_forbidden_token_count_fails_closed(self) -> None:
+        for value in (True, 0, 1.0, "1"):
+            with self.subTest(value=value), tempfile.TemporaryDirectory(
+                prefix="hrd-synthesis-forbidden-count-"
+            ) as temporary:
+                fixture = SynthesisFixture(Path(temporary))
+                validation_path = fixture.review_a / "validation.json"
+                validation = json.loads(
+                    validation_path.read_text(encoding="utf-8")
+                )
+                validation["forbidden_token_count"] = value
+                write_json(validation_path, validation)
+
+                result = fixture.run()
+
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn(
+                    "reviewer A forbidden-token count is not exact",
+                    result.stdout + result.stderr,
+                )
+                self.assertFalse((fixture.output_dir / "report_manifest.json").exists())
+
     def test_rejects_non_integer_ai_bundle_schemas(self) -> None:
         cases = (
             "review_bundle.json",

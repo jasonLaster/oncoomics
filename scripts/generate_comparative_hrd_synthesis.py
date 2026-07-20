@@ -933,6 +933,10 @@ def verify_review(
         raise ValueError("reviewer " + reviewer + " disagreement count changed")
     if validation.get("covered_evidence_ids") != sorted(evidence_by_id):
         raise ValueError("reviewer " + reviewer + " validation omits source evidence")
+    if not is_positive_exact_int(validation.get("forbidden_token_count")):
+        raise ValueError(
+            "reviewer " + reviewer + " forbidden-token count is not exact"
+        )
     narrative = report_text + "\n" + claims_text
     if bundle["authorized_hrd_state"] == "no_call" and has_unauthorized_hrd_classification(narrative):
         raise ValueError("reviewer " + reviewer + " contains an unauthorized categorical conclusion")

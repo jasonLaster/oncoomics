@@ -586,12 +586,15 @@ def build_manifest(
         raise ValueError("independence attestation is missing or altered")
     claim_count = validation.get("claim_count")
     disagreement_claim_count = validation.get("disagreement_claim_count")
+    forbidden_token_count = validation.get("forbidden_token_count")
     if (
         not is_positive_exact_int(claim_count)
         or not is_nonnegative_exact_int(disagreement_claim_count)
         or disagreement_claim_count > claim_count
     ):
         raise ValueError("review validation counts are not exact")
+    if not is_positive_exact_int(forbidden_token_count):
+        raise ValueError("review validation forbidden-token count is not exact")
     evidence_sources = bundle.get("evidence_sources")
     if not isinstance(evidence_sources, list) or not evidence_sources:
         raise ValueError("review bundle has no evidence sources")
