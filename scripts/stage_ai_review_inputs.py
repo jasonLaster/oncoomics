@@ -59,11 +59,11 @@ def require_real_hash_input(path: Path) -> None:
 
 def sha256(path: Path) -> str:
     require_real_hash_input(path)
-    digest = hashlib.sha256()
-    with path.open("rb") as handle:
-        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
-            digest.update(chunk)
-    return digest.hexdigest()
+    data = path.read_bytes()
+    digest = hashlib.sha256(data).hexdigest()
+    if not data or hashlib.sha256(path.read_bytes()).hexdigest() != digest:
+        raise ValueError(f"{path.name} SHA-256 input changed during read: {path}")
+    return digest
 
 
 def load_object_with_sha256(path: Path, label: str) -> tuple[dict[str, Any], str]:
