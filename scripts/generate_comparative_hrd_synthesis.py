@@ -347,6 +347,19 @@ def checked_hash(value: Any, label: str) -> str:
     return value
 
 
+def has_ascii_control(value: str) -> bool:
+    return any(ord(character) < 32 or ord(character) == 127 for character in value)
+
+
+def is_exact_string(value: Any, *, allow_empty: bool = False) -> bool:
+    return (
+        isinstance(value, str)
+        and (bool(value) or allow_empty)
+        and value == value.strip()
+        and not has_ascii_control(value)
+    )
+
+
 def checked_source_artifact_id(value: Any, method: str) -> str:
     if (
         not isinstance(value, str)
@@ -374,21 +387,16 @@ def require_exact_csv_row(
         raise ValueError(label + " contains a malformed row")
     for field in fields:
         value = row[field]
-        if (
-            value != value.strip()
-            or "\n" in value
-            or "\r" in value
-            or "\0" in value
-        ):
+        if not is_exact_string(value, allow_empty=True):
             raise ValueError(label + " contains a non-exact field: " + field)
     return {field: row[field] for field in fields}
 
 
 def split_semicolon(value: str, label: str = "semicolon list") -> Tuple[str, ...]:
-    if not isinstance(value, str) or not value or value != value.strip():
+    if not is_exact_string(value):
         raise ValueError(label + " is not exact")
     parts = tuple(value.split(";"))
-    if any(not item or item != item.strip() for item in parts):
+    if any(not is_exact_string(item) for item in parts):
         raise ValueError(label + " is not exact")
     return parts
 
@@ -1040,7 +1048,7 @@ def collect_limitations(evidence_rows: Sequence[Dict[str, Any]], reviews: Sequen
         limitations = evidence["review_summary"].get("limitations", [])
         if isinstance(limitations, list):
             for value in limitations:
-                if not isinstance(value, str) or not value or value != value.strip():
+                if not is_exact_string(value):
                     raise ValueError(
                         "comparative synthesis source limitations are not exact"
                     )
@@ -1400,7 +1408,7 @@ def review_evidence_payload(
 
 def require_string_list(value: Any, label: str) -> List[str]:
     if not isinstance(value, list) or any(
-        not isinstance(item, str) or not item or item != item.strip()
+        not is_exact_string(item)
         for item in value
     ):
         raise ValueError("comparative synthesis review summary has malformed " + label)
@@ -1408,7 +1416,7 @@ def require_string_list(value: Any, label: str) -> List[str]:
 
 
 def require_exact_summary_string(value: Any) -> str:
-    if not isinstance(value, str) or not value or value != value.strip():
+    if not is_exact_string(value):
         return ""
     return value
 

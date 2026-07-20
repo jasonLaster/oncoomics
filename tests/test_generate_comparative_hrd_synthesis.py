@@ -1778,30 +1778,60 @@ class GenerateSynthesisTests(unittest.TestCase):
                 GENERATE.require_synthesis_report_manifest(fixture.output_dir)
 
     def test_synthesis_manifest_rejects_padded_review_evidence_limitations(self) -> None:
+        cases = (
+            " synthetic limitation",
+            "synthetic limitation\twith hidden tab",
+            "synthetic limitation\x00with hidden nul",
+            "synthetic limitation\x7fwith hidden delete",
+        )
+        for limitation in cases:
+            with self.subTest(limitation=repr(limitation)), tempfile.TemporaryDirectory(
+                prefix="hrd-synthesis-"
+            ) as temporary:
+                fixture = SynthesisFixture(Path(temporary))
+                result = fixture.run()
+                self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+
+                evidence_path = fixture.output_dir / "review_evidence.json"
+                evidence = json.loads(evidence_path.read_text(encoding="utf-8"))
+                evidence["methods"][0]["review_summary"]["limitations"][0] = (
+                    limitation
+                )
+                write_json(evidence_path, evidence)
+
+                manifest_path = fixture.output_dir / "report_manifest.json"
+                manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+                manifest["support_sha256"]["review_evidence.json"] = sha256(evidence_path)
+                bind_review_evidence_hashes(
+                    manifest["source_sha256"],
+                    evidence,
+                )
+                write_json(manifest_path, manifest)
+
+                with self.assertRaisesRegex(
+                    ValueError,
+                    "comparative synthesis source limitations are not exact",
+                ):
+                    GENERATE.require_synthesis_report_manifest(fixture.output_dir)
+
+    def test_synthesis_manifest_rejects_control_character_reviewer_summary(
+        self,
+    ) -> None:
         with tempfile.TemporaryDirectory(prefix="hrd-synthesis-") as temporary:
             fixture = SynthesisFixture(Path(temporary))
             result = fixture.run()
             self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
 
-            evidence_path = fixture.output_dir / "review_evidence.json"
-            evidence = json.loads(evidence_path.read_text(encoding="utf-8"))
-            evidence["methods"][0]["review_summary"]["limitations"][0] = (
-                " " + evidence["methods"][0]["review_summary"]["limitations"][0]
-            )
-            write_json(evidence_path, evidence)
-
             manifest_path = fixture.output_dir / "report_manifest.json"
             manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
-            manifest["support_sha256"]["review_evidence.json"] = sha256(evidence_path)
-            bind_review_evidence_hashes(
-                manifest["source_sha256"],
-                evidence,
+            manifest["review_summary"]["reviewers"][0]["model"]["model_id"] = (
+                "latest-model-a\t"
             )
             write_json(manifest_path, manifest)
 
             with self.assertRaisesRegex(
                 ValueError,
-                "comparative synthesis source limitations are not exact",
+                "comparative synthesis reviewer A model summary is not exact",
             ):
                 GENERATE.require_synthesis_report_manifest(fixture.output_dir)
 
