@@ -1064,6 +1064,68 @@ class FinalizeAiReviewTests(unittest.TestCase):
 
                 self.assertFalse((review / "report_manifest.json").exists())
 
+    def test_final_manifest_rejects_inexact_review_summary_lists(self) -> None:
+        cases = (
+            (
+                "tabbed covered evidence",
+                lambda summary: summary["covered_evidence_ids"].__setitem__(
+                    0,
+                    "E001\t",
+                ),
+            ),
+            (
+                "unsorted covered evidence",
+                lambda summary: summary["covered_evidence_ids"].reverse(),
+            ),
+            (
+                "hidden-NUL limitation",
+                lambda summary: summary["limitations"].append(
+                    "Hidden\x00control character.",
+                ),
+            ),
+        )
+
+        for label, mutate in cases:
+            with self.subTest(label=label), tempfile.TemporaryDirectory() as temporary:
+                fixture, review = self.validated_review(temporary)
+                real_build_manifest = FINALIZE.build_manifest
+
+                def build_manifest_with_inexact_summary_list(
+                    bundle_dir: Path,
+                    review_dir: Path,
+                    reviewer: str,
+                    model_catalog_receipt: Path,
+                ) -> dict:
+                    manifest = real_build_manifest(
+                        bundle_dir,
+                        review_dir,
+                        reviewer,
+                        model_catalog_receipt,
+                    )
+                    mutate(manifest["review_summary"])
+                    return manifest
+
+                with (
+                    mock.patch.object(
+                        FINALIZE,
+                        "build_manifest",
+                        side_effect=build_manifest_with_inexact_summary_list,
+                    ),
+                    self.assertRaisesRegex(
+                        ValueError,
+                        "AI review summary counts are not exact",
+                    ),
+                ):
+                    FINALIZE.finalize(
+                        fixture.bundle_dir,
+                        review,
+                        "A",
+                        fixture.catalog_receipt,
+                        review / "report_manifest.json",
+                    )
+
+                self.assertFalse((review / "report_manifest.json").exists())
+
     def test_rejects_validation_bound_to_stale_bundle_manifest(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             fixture, review = self.validated_review(temporary)
