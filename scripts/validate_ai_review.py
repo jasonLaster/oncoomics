@@ -1202,6 +1202,20 @@ def require_installed_validation(path: Path, expected_sha256: str) -> None:
         raise ValueError("validation.json changed during write")
 
 
+def require_installed_review_artifacts(
+    report_path: Path,
+    claims_path: Path,
+    review_manifest_path: Path,
+    validation: dict[str, Any],
+) -> None:
+    if (
+        sha256(report_path) != validation.get("report_sha256")
+        or sha256(claims_path) != validation.get("claims_sha256")
+        or sha256(review_manifest_path) != validation.get("review_manifest_sha256")
+    ):
+        raise ValueError("validated review artifacts changed during write")
+
+
 def fsync_directory(path: Path) -> None:
     descriptor = os.open(path, os.O_RDONLY)
     try:
@@ -1396,6 +1410,12 @@ def main(argv: Sequence[str] | None = None) -> int:
         validation_sha256 = write_validation_create_only(validation_path, validation)
         try:
             require_exact_validated_review_dir(review_dir)
+            require_installed_review_artifacts(
+                report_path,
+                claims_path,
+                review_manifest_path,
+                validation,
+            )
             require_installed_validation(validation_path, validation_sha256)
         except ValueError:
             validation_path.unlink(missing_ok=True)
