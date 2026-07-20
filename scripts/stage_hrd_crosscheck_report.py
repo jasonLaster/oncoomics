@@ -151,9 +151,10 @@ def read_stable_file_with_sha256(path: Path, label: str) -> tuple[bytes, str]:
     require_no_symlinked_ancestors(path, label)
     if path.is_symlink() or not path.is_file():
         raise ValueError(f"{label} is missing or a symlink")
-    payload = read_real_file_once(path, label)
+    payload, identity = read_real_file_once(path, label)
     payload_sha256 = sha256_bytes(payload)
-    if sha256_bytes(read_real_file_once(path, label)) != payload_sha256:
+    stable_payload, stable_identity = read_real_file_once(path, label)
+    if stable_identity != identity or sha256_bytes(stable_payload) != payload_sha256:
         raise ValueError(f"{label} changed during read")
     return payload, payload_sha256
 
@@ -169,7 +170,10 @@ def stat_identity(value: os.stat_result) -> tuple[int, int, int, int, int, int]:
     )
 
 
-def read_real_file_once(path: Path, label: str) -> bytes:
+def read_real_file_once(
+    path: Path,
+    label: str,
+) -> tuple[bytes, tuple[int, int, int, int, int, int]]:
     flags = (
         os.O_RDONLY
         | getattr(os, "O_CLOEXEC", 0)
@@ -198,7 +202,7 @@ def read_real_file_once(path: Path, label: str) -> bytes:
         or stat_identity(after_read) != stat_identity(current)
     ):
         raise ValueError(f"{label} changed during read")
-    return payload
+    return payload, stat_identity(opened)
 
 
 def require_sha(value: Any, label: str) -> str:
