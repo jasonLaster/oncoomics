@@ -1039,6 +1039,44 @@ class StageHrdCrosscheckReportTests(unittest.TestCase):
 
             self.assertFalse((root / "staged").exists())
 
+    def test_stage_rejects_non_exact_source_route_manifest_status(self) -> None:
+        cases = (
+            (
+                "coerced route",
+                lambda manifest: (
+                    manifest.__setitem__("method_id", True),
+                    manifest.__setitem__("route", True),
+                ),
+                "approved no-call",
+            ),
+            (
+                "coerced evidence status",
+                lambda manifest: manifest.__setitem__("evidence_status", True),
+                "route report evidence_status is unsupported",
+            ),
+        )
+
+        for label, mutate, message in cases:
+            with self.subTest(label=label), tempfile.TemporaryDirectory() as temporary:
+                root = Path(temporary)
+                source = root / "exact"
+                verification = write_route_report(source)
+                manifest_path = source / "report_manifest.json"
+                manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+                mutate(manifest)
+                write_json(manifest_path, manifest)
+                refresh_download_verification(source, verification)
+
+                with self.assertRaisesRegex(ValueError, message):
+                    STAGE.stage(
+                        source,
+                        verification,
+                        root / "staged",
+                        "sigprofiler_sbs3",
+                    )
+
+                self.assertFalse((root / "staged").exists())
+
     def test_stage_rejects_coerced_download_verification_hashes(self) -> None:
         digest = "1" * 64
         cases = (
@@ -1572,6 +1610,36 @@ class StageHrdCrosscheckReportTests(unittest.TestCase):
                 "method_spec.json",
                 lambda payload: payload.__setitem__("source_object_count", 0),
                 "source_object_count is not an exact positive integer",
+            ),
+            (
+                "report manifest route bool",
+                "report_manifest.json",
+                lambda payload: (
+                    payload.__setitem__("method_id", True),
+                    payload.__setitem__("route", True),
+                ),
+                "report manifest is not approved",
+            ),
+            (
+                "report manifest evidence status bool",
+                "report_manifest.json",
+                lambda payload: payload.__setitem__("evidence_status", True),
+                "report manifest is not approved",
+            ),
+            (
+                "method spec route bool",
+                "method_spec.json",
+                lambda payload: (
+                    payload.__setitem__("method_id", True),
+                    payload.__setitem__("route", True),
+                ),
+                "method spec differs from the manifest",
+            ),
+            (
+                "method spec evidence status bool",
+                "method_spec.json",
+                lambda payload: payload.__setitem__("evidence_status", True),
+                "method spec differs from the manifest",
             ),
         )
 
