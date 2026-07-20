@@ -437,6 +437,68 @@ class DownloadMaterializerStagedValidationTests(unittest.TestCase):
             ):
                 MODULE.sha256_path(linked_input)
 
+    def test_sha256_path_rejects_changing_hash_inputs(self) -> None:
+        with tempfile.TemporaryDirectory() as value:
+            root = Path(value)
+            hash_input = root / "staged_input_validation.json"
+            hash_input.write_text('{"status":"first"}\n', encoding="utf-8")
+            original_sha256_path_once = MODULE.sha256_path_once
+            hashes = 0
+
+            def mutate_after_first_hash(path: Path) -> str:
+                nonlocal hashes
+                digest = original_sha256_path_once(path)
+                if path == hash_input and hashes == 0:
+                    hash_input.write_text(
+                        '{"status":"second"}\n',
+                        encoding="utf-8",
+                    )
+                hashes += 1
+                return digest
+
+            with (
+                patch.object(
+                    MODULE,
+                    "sha256_path_once",
+                    side_effect=mutate_after_first_hash,
+                ),
+                self.assertRaisesRegex(
+                    ValueError,
+                    "staged_input_validation.json SHA-256 input changed during read",
+                ),
+            ):
+                MODULE.sha256_path(hash_input)
+
+    def test_load_json_rejects_changing_json_inputs(self) -> None:
+        with tempfile.TemporaryDirectory() as value:
+            root = Path(value)
+            receipt = root / "materializer-receipt.json"
+            receipt.write_text('{"status":"first"}\n', encoding="utf-8")
+            real_read_bytes = Path.read_bytes
+            reads = 0
+
+            def mutate_after_first_read(path: Path) -> bytes:
+                nonlocal reads
+                payload = real_read_bytes(path)
+                if path.name == receipt.name and reads == 0:
+                    receipt.write_text('{"status":"second"}\n', encoding="utf-8")
+                reads += 1
+                return payload
+
+            with (
+                patch.object(
+                    Path,
+                    "read_bytes",
+                    autospec=True,
+                    side_effect=mutate_after_first_read,
+                ),
+                self.assertRaisesRegex(
+                    ValueError,
+                    "materializer receipt changed during read",
+                ),
+            ):
+                MODULE.load_json_with_sha256(receipt, "materializer receipt")
+
     def test_reserve_json_rehashes_after_parent_fsync(self) -> None:
         with tempfile.TemporaryDirectory() as value:
             output = Path(value) / "verification.json"

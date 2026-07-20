@@ -61,6 +61,13 @@ def sha256_bytes(value: bytes) -> str:
 
 
 def sha256_path(path: Path) -> str:
+    digest = sha256_path_once(path)
+    if sha256_path_once(path) != digest:
+        raise ValueError(f"{path.name} SHA-256 input changed during read")
+    return digest
+
+
+def sha256_path_once(path: Path) -> str:
     label = f"{path.name} SHA-256 input"
     require_no_symlinked_ancestors(path, label)
     if path.is_symlink() or not path.is_file():
@@ -78,7 +85,7 @@ def checksum_sha256(digest: str) -> str:
 
 def load_json_with_sha256(path: Path, label: str) -> tuple[dict[str, Any], str]:
     path = resolve_real_file(path, label)
-    payload = path.read_bytes()
+    payload = read_stable_file(path, label)
     try:
         value = json.loads(
             payload,
@@ -89,6 +96,17 @@ def load_json_with_sha256(path: Path, label: str) -> tuple[dict[str, Any], str]:
     if not isinstance(value, dict):
         raise ValueError(f"{label} is not a JSON object")
     return value, sha256_bytes(payload)
+
+
+def read_stable_file(path: Path, label: str) -> bytes:
+    require_no_symlinked_ancestors(path, label)
+    if path.is_symlink() or not path.is_file():
+        raise ValueError(f"{label} must be a real file: {path}")
+    payload = path.read_bytes()
+    digest = sha256_bytes(payload)
+    if sha256_path(path) != digest:
+        raise ValueError(f"{label} changed during read: {path}")
+    return payload
 
 
 def load_json(path: Path, label: str) -> dict[str, Any]:
