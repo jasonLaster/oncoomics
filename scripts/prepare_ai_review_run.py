@@ -69,7 +69,9 @@ EXPECTED_PREPARE_POSTCONDITION_CHECKS = {
     "source_report_hashes_match": True,
     "bundle_manifest_bound": True,
     "reviewer_a_two_file_inventory": True,
+    "reviewer_a_files_bound": True,
     "reviewer_b_two_file_inventory": True,
+    "reviewer_b_files_bound": True,
     "no_cross_prompt": True,
     "stage_receipt_exact": True,
     "no_model_invoked": True,
@@ -493,14 +495,27 @@ def validate_postconditions(
         bundle_manifest_sha256,
     )
     expected_prompt_hashes = bundle_manifest["prompt_sha256"]
+    review_bundle_sha256 = bundle_manifest.get("review_bundle_sha256")
     checks = {
         "pinned_seven_method_inventory": bundle_manifest.get("required_method_ids") == list(methods),
         "source_report_hashes_match": bundle_manifest.get("input_manifest_sha256") == expected_inputs,
-        "bundle_manifest_bound": bundle_manifest.get("review_bundle_sha256") == sha256(bundle_dir / "review_bundle.json"),
+        "bundle_manifest_bound": review_bundle_sha256 == sha256(bundle_dir / "review_bundle.json"),
         "reviewer_a_two_file_inventory": sorted(path.name for path in (reviewer_root / "reviewer-a-input").iterdir())
         == ["review_bundle.json", "reviewer-a.prompt.md"],
+        "reviewer_a_files_bound": reviewer_input_files_bound(
+            reviewer_root,
+            "A",
+            review_bundle_sha256=review_bundle_sha256,
+            prompt_sha256=expected_prompt_hashes.get("A"),
+        ),
         "reviewer_b_two_file_inventory": sorted(path.name for path in (reviewer_root / "reviewer-b-input").iterdir())
         == ["review_bundle.json", "reviewer-b.prompt.md"],
+        "reviewer_b_files_bound": reviewer_input_files_bound(
+            reviewer_root,
+            "B",
+            review_bundle_sha256=review_bundle_sha256,
+            prompt_sha256=expected_prompt_hashes.get("B"),
+        ),
         "no_cross_prompt": not (reviewer_root / "reviewer-a-input" / "reviewer-b.prompt.md").exists()
         and not (reviewer_root / "reviewer-b-input" / "reviewer-a.prompt.md").exists(),
         "stage_receipt_exact": True,
@@ -598,6 +613,65 @@ def require_rebased_stage_receipt(
     return expected_reviewers
 
 
+def reviewer_input_files_bound(
+    reviewer_root: Path,
+    role: str,
+    *,
+    review_bundle_sha256: str,
+    prompt_sha256: str,
+) -> bool:
+    directory, prompt_name = REVIEWER_INPUTS[role]
+    directory_path = reviewer_root / directory
+    expected_files = {
+        "review_bundle.json": review_bundle_sha256,
+        prompt_name: prompt_sha256,
+    }
+    try:
+        require_no_symlinked_ancestors(
+            directory_path,
+            f"reviewer {role} input directory",
+        )
+        if (
+            directory_path.is_symlink()
+            or not directory_path.is_dir()
+            or (directory_path.stat().st_mode & 0o777) != 0o700
+            or sorted(path.name for path in directory_path.iterdir())
+            != sorted(expected_files)
+        ):
+            return False
+        for filename, expected_sha256 in expected_files.items():
+            path = directory_path / filename
+            require_real_file(path, f"reviewer {role} {filename}")
+            if (path.stat().st_mode & 0o777) != 0o600:
+                return False
+            if sha256(path) != expected_sha256:
+                return False
+    except OSError:
+        return False
+    return True
+
+
+def require_reviewer_input_files_bound(
+    reviewer_root: Path,
+    *,
+    review_bundle_sha256: str,
+    prompt_sha256: dict[str, Any],
+) -> None:
+    if not isinstance(prompt_sha256, dict) or set(prompt_sha256) != set(REVIEWER_INPUTS):
+        raise ValueError("prepared AI review run prompt hashes are stale")
+    for role in REVIEWER_INPUTS:
+        if not reviewer_input_files_bound(
+            reviewer_root,
+            role,
+            review_bundle_sha256=review_bundle_sha256,
+            prompt_sha256=require_sha256(
+                prompt_sha256.get(role),
+                f"reviewer {role} prompt SHA-256",
+            ),
+        ):
+            raise ValueError("prepared AI review run reviewer inputs are stale")
+
+
 def move_staged_entry(source: Path, destination: Path) -> None:
     source.rename(destination)
 
@@ -682,8 +756,15 @@ def require_prepared_run_support(path: Path) -> None:
             raise ValueError(f"prepared AI review run {key} is stale")
 
     prompt_sha256 = receipt.get("prompt_sha256")
-    if not isinstance(prompt_sha256, dict):
-        raise ValueError("prepared AI review run prompt hashes are stale")
+    review_bundle_sha256 = require_sha256(
+        receipt.get("review_bundle_sha256"),
+        "prepared AI review run review_bundle_sha256",
+    )
+    require_reviewer_input_files_bound(
+        path / "reviewer-inputs",
+        review_bundle_sha256=review_bundle_sha256,
+        prompt_sha256=prompt_sha256,
+    )
     for role, (_, prompt_name) in REVIEWER_INPUTS.items():
         if prompt_sha256.get(role) != sha256(bundle_dir / prompt_name):
             raise ValueError("prepared AI review run prompt hashes are stale")

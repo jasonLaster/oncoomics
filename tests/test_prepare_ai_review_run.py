@@ -31,9 +31,11 @@ def write_staged_run(staging: Path) -> None:
     staging.mkdir()
     for name in PREPARE.STAGED_RUN_ENTRIES:
         path = staging / name
-        if name in {"bundle", "reviewer-inputs"}:
+        if name == "bundle":
             path.mkdir()
             (path / "payload.json").write_text("{}\n", encoding="utf-8")
+        elif name == "reviewer-inputs":
+            path.mkdir()
         else:
             path.write_text("{}\n", encoding="utf-8")
 
@@ -46,6 +48,14 @@ def write_staged_run(staging: Path) -> None:
     reviewer_a_prompt.write_text("reviewer A prompt\n", encoding="utf-8")
     reviewer_b_prompt.write_text("reviewer B prompt\n", encoding="utf-8")
     review_bundle.write_text("{}\n", encoding="utf-8")
+    for directory_name, prompt_name in PREPARE.REVIEWER_INPUTS.values():
+        directory = staging / "reviewer-inputs" / directory_name
+        directory.mkdir(mode=0o700)
+        directory.chmod(0o700)
+        for source_name in ("review_bundle.json", prompt_name):
+            target = directory / source_name
+            target.write_bytes((bundle_dir / source_name).read_bytes())
+            target.chmod(0o600)
     write_json(
         bundle_manifest,
         {
@@ -772,6 +782,58 @@ class PrepareAiReviewRunTests(unittest.TestCase):
 
             self.assertFalse(output.exists())
             self.assertFalse(any(root.glob(".ai-review.*")))
+
+    def test_rejects_staged_reviewer_input_changed_after_staging(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            fixture = AiReviewBundleFixture(root)
+            output = root / "ai-review"
+            real_stage_inputs = PREPARE.stage_inputs
+
+            def stage_then_mutate_reviewer_prompt(
+                bundle_dir: Path,
+                output_root: Path,
+                receipt: Path,
+            ) -> None:
+                real_stage_inputs(bundle_dir, output_root, receipt)
+                (output_root / "reviewer-a-input" / "reviewer-a.prompt.md").write_text(
+                    "stale prompt copy\n",
+                    encoding="utf-8",
+                )
+
+            with (
+                mock.patch.object(
+                    PREPARE,
+                    "stage_inputs",
+                    side_effect=stage_then_mutate_reviewer_prompt,
+                ),
+                self.assertRaisesRegex(
+                    ValueError,
+                    "failed reviewer_a_files_bound",
+                ),
+            ):
+                PREPARE.prepare(namespace(fixture, output))
+
+            self.assertFalse(output.exists())
+            self.assertFalse(any(root.glob(".ai-review.*")))
+
+    def test_prepared_run_support_rejects_stale_reviewer_input_copy(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            fixture = AiReviewBundleFixture(root)
+            output = root / "ai-review"
+
+            PREPARE.prepare(namespace(fixture, output))
+            (output / "reviewer-inputs" / "reviewer-b-input" / "reviewer-b.prompt.md").write_text(
+                "stale installed prompt copy\n",
+                encoding="utf-8",
+            )
+
+            with self.assertRaisesRegex(
+                ValueError,
+                "prepared AI review run reviewer inputs are stale",
+            ):
+                PREPARE.require_prepared_run_support(output)
 
     def test_rejects_stage_receipt_with_failed_child_check(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
