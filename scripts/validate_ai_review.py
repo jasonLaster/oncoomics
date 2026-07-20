@@ -312,7 +312,12 @@ def parse_time(value: Any, label: str) -> datetime:
 
 
 def exact_invocation_string(value: Any) -> bool:
-    return isinstance(value, str) and bool(value) and value == value.strip()
+    return (
+        isinstance(value, str)
+        and bool(value)
+        and value == value.strip()
+        and not any(ord(character) < 32 or ord(character) == 127 for character in value)
+    )
 
 
 def require_exact_review_invocation(invocation: Any) -> dict[str, str]:
