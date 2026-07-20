@@ -2926,6 +2926,104 @@ class GenerateSynthesisTests(unittest.TestCase):
                     bundle_manifest,
                 )
 
+    def test_source_manifest_rejects_legacy_fallbacks_without_exact_support(
+        self,
+    ) -> None:
+        cases = (
+            (
+                "legacy route method",
+                list(REQUIRED_METHOD_IDS),
+                lambda source, fixture: (
+                    source.pop("method_id"),
+                    source.__setitem__("route", fixture.methods[0]),
+                ),
+                lambda bundle: None,
+                "invalid or missing method identifier",
+            ),
+            (
+                "coerced numeric method",
+                ["12", *REQUIRED_METHOD_IDS[1:]],
+                lambda source, _fixture: source.__setitem__("method_id", 12),
+                lambda bundle: None,
+                "invalid or missing method identifier",
+            ),
+            (
+                "legacy interpretation status",
+                list(REQUIRED_METHOD_IDS),
+                lambda source, _fixture: (
+                    source.pop("authorized_hrd_state"),
+                    source.__setitem__("interpretation_status", "no_call"),
+                ),
+                lambda bundle: None,
+                "invalid authorized HRD state",
+            ),
+            (
+                "defaulted classification QC",
+                list(REQUIRED_METHOD_IDS),
+                lambda source, _fixture: source.pop("classification_qc_status"),
+                lambda bundle: None,
+                "invalid classification QC state",
+            ),
+            (
+                "defaulted report kind",
+                list(REQUIRED_METHOD_IDS),
+                lambda source, _fixture: source.pop("report_kind"),
+                lambda bundle: bundle["evidence_sources"][0].__setitem__(
+                    "report_kind",
+                    "method",
+                ),
+                "invalid report kind",
+            ),
+            (
+                "coerced report kind",
+                list(REQUIRED_METHOD_IDS),
+                lambda source, _fixture: source.__setitem__("report_kind", 12),
+                lambda bundle: bundle["evidence_sources"][0].__setitem__(
+                    "report_kind",
+                    "12",
+                ),
+                "invalid report kind",
+            ),
+        )
+
+        for name, methods, mutate_source, mutate_bundle, message in cases:
+            with self.subTest(name=name), tempfile.TemporaryDirectory(
+                prefix="hrd-synthesis-source-fallback-"
+            ) as temporary:
+                fixture = SynthesisFixture(Path(temporary), methods=methods)
+                source_path = fixture.source_manifests[0]
+                source = json.loads(source_path.read_text(encoding="utf-8"))
+                mutate_source(source, fixture)
+                write_json(source_path, source)
+                fixture.refresh_input_manifest_hash("E001", source_path)
+
+                bundle = json.loads(
+                    (fixture.bundle_dir / "review_bundle.json").read_text(
+                        encoding="utf-8"
+                    )
+                )
+                mutate_bundle(bundle)
+                bundle_manifest = json.loads(
+                    (fixture.bundle_dir / "bundle_manifest.json").read_text(
+                        encoding="utf-8"
+                    )
+                )
+
+                with (
+                    mock.patch.object(
+                        GENERATE,
+                        "validate_report_manifest_support",
+                        return_value=None,
+                    ),
+                    self.assertRaisesRegex(ValueError, message),
+                ):
+                    GENERATE.verify_sources(
+                        fixture.source_manifests,
+                        fixture.methods,
+                        bundle,
+                        bundle_manifest,
+                    )
+
     def test_no_call_classification_authorization_fails_closed(self) -> None:
         with tempfile.TemporaryDirectory(
             prefix="hrd-synthesis-authorization-"

@@ -25,6 +25,7 @@ from build_ai_review_bundle import (
     BUNDLE_MANIFEST_KEYS,
     BUNDLE_REVIEW_BUNDLE_KEYS,
     is_exact_int,
+    require_method_id,
     validate_report_manifest_support,
 )
 from forbidden_text import has_unauthorized_hrd_classification
@@ -436,6 +437,12 @@ def require_allowed_string(value: Any, allowed: set[str], label: str) -> str:
     return value
 
 
+def require_report_kind(value: Any, method: str) -> str:
+    if not isinstance(value, str) or not value:
+        raise ValueError("invalid report kind for " + method)
+    return value
+
+
 def derive_authorized_state(rows: Sequence[Dict[str, Any]]) -> str:
     classified = set()
     for row in rows:
@@ -603,8 +610,8 @@ def verify_sources(
         )
         if not is_exact_int(source.get("schema_version"), 1):
             raise ValueError("unsupported source report schema for " + evidence_id)
-        method = str(source.get("method_id") or source.get("route") or "")
-        if method != required_method or not METHOD_ID.fullmatch(method):
+        method = require_method_id(source)
+        if method != required_method:
             raise ValueError("source method does not match ordered required inventory at " + evidence_id)
         if source_manifest_hash != checked_hash(input_hashes[evidence_id], evidence_id + " source manifest"):
             raise ValueError("source manifest changed after AI bundle construction at " + evidence_id)
@@ -624,19 +631,16 @@ def verify_sources(
             "evidence status for " + method,
         )
         authorized_state = require_allowed_string(
-            (
-                source["authorized_hrd_state"]
-                if "authorized_hrd_state" in source
-                else source.get("interpretation_status")
-            ),
+            source.get("authorized_hrd_state"),
             ALLOWED_HRD_STATES,
             "authorized HRD state for " + method,
         )
         qc_status = require_allowed_string(
-            source.get("classification_qc_status", "not_applicable"),
+            source.get("classification_qc_status"),
             ALLOWED_QC_STATES,
             "classification QC state for " + method,
         )
+        report_kind = require_report_kind(source.get("report_kind"), method)
         source_hashes = source.get("source_sha256")
         if not isinstance(source_hashes, dict) or not source_hashes:
             raise ValueError("source-artifact hash inventory is missing for " + method)
@@ -655,7 +659,7 @@ def verify_sources(
         bindings = {
             "evidence_id": evidence_id,
             "method_id": method,
-            "report_kind": str(source.get("report_kind", "method")),
+            "report_kind": report_kind,
             "evidence_status": evidence_status,
             "authorized_hrd_state": authorized_state,
             "classification_authorized": source.get("classification_authorized") is True,
