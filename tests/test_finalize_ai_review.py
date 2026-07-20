@@ -746,6 +746,45 @@ class FinalizeAiReviewTests(unittest.TestCase):
             expected_validation_hash,
         )
 
+    def test_final_manifest_rechecks_bundle_envelopes_after_manifest_preflight(
+        self,
+    ) -> None:
+        for filename, message in (
+            ("review_bundle.json", "AI review bundle envelope is not exact"),
+            (
+                "bundle_manifest.json",
+                "AI review bundle manifest envelope is not exact",
+            ),
+        ):
+            with self.subTest(filename=filename), tempfile.TemporaryDirectory() as temporary:
+                fixture, review = self.validated_review(temporary)
+                real_require_bundle_manifest = FINALIZE.require_bundle_manifest
+
+                def mutate_after_manifest_preflight(bundle_dir: Path) -> None:
+                    real_require_bundle_manifest(bundle_dir)
+                    path = bundle_dir / filename
+                    payload = load_json(path)
+                    payload["legacy_note"] = "accepted after preflight"
+                    write_json(path, payload)
+
+                with (
+                    mock.patch.object(
+                        FINALIZE,
+                        "require_bundle_manifest",
+                        side_effect=mutate_after_manifest_preflight,
+                    ),
+                    self.assertRaisesRegex(ValueError, message),
+                ):
+                    FINALIZE.finalize(
+                        fixture.bundle_dir,
+                        review,
+                        "A",
+                        fixture.catalog_receipt,
+                        review / "report_manifest.json",
+                    )
+
+                self.assertFalse((review / "report_manifest.json").exists())
+
     def test_final_manifest_parses_claims_from_stable_bytes(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             fixture, review = self.validated_review(temporary)
