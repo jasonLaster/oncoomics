@@ -1774,6 +1774,7 @@ def diana_wgs_phase3_fast_deterministic_binding(
         artifact_hashes[input_id] = digest
         artifact_index_rows.append(
             {
+                "input_id": input_id,
                 "path": relative,
                 "resolved_path": f"deterministic-input/{relative}",
                 "exists": exists,
@@ -3078,6 +3079,49 @@ def expected_generic_source_sha256(packet_dir: Path) -> dict[str, str]:
     return expected
 
 
+def expected_diana_wgs_source_sha256(packet_dir: Path) -> dict[str, str]:
+    payload = read_json_file(
+        require_real_nonempty_file(
+            packet_dir / "input_evidence_index.json",
+            "Diana WGS input evidence index",
+        ),
+        "Diana WGS input evidence index",
+    )
+    artifacts = payload.get("artifacts") if isinstance(payload, Mapping) else None
+    if not isinstance(artifacts, list):
+        raise ValueError("Diana WGS input evidence index artifacts are not exact")
+
+    expected: dict[str, str] = {}
+    for row in artifacts:
+        if not isinstance(row, Mapping) or set(row) != {
+            "input_id",
+            "path",
+            "resolved_path",
+            "exists",
+            "bytes",
+            "sha256",
+        }:
+            raise ValueError("Diana WGS input evidence index artifacts are not exact")
+
+        input_id = require_exact_nonempty_string(
+            row.get("input_id"),
+            "Diana WGS input evidence index input_id",
+        )
+        if input_id in expected:
+            raise ValueError("Diana WGS input evidence index repeats an input_id")
+        if row.get("exists") != "yes":
+            raise ValueError("Diana WGS input evidence index artifact is missing")
+        require_json_nonnegative_int(
+            row.get("bytes"),
+            f"Diana WGS {input_id} bytes",
+        )
+        expected[input_id] = require_sha256(
+            row.get("sha256"),
+            f"Diana WGS {input_id}",
+        )
+    return expected
+
+
 def require_rosalind_report_manifest(packet_dir: Path) -> None:
     manifest = read_json_file(
         require_real_nonempty_file(
@@ -3101,7 +3145,10 @@ def require_rosalind_report_manifest(packet_dir: Path) -> None:
             raise ValueError("Rosalind report manifest support files changed")
         require_bound_packet_file(packet_dir, name, digest)
 
-    if manifest.get("method_id") != "rosalind_diana_wgs":
+    if manifest.get("method_id") == "rosalind_diana_wgs":
+        if manifest.get("source_sha256") != expected_diana_wgs_source_sha256(packet_dir):
+            raise ValueError("Rosalind report manifest source_sha256 is not exact")
+    else:
         if manifest.get("source_sha256") != expected_generic_source_sha256(packet_dir):
             raise ValueError("Rosalind report manifest source_sha256 is not exact")
 
@@ -3358,6 +3405,14 @@ def write_packet_to_dir(
         artifacts = artifact_index(
             spec.artifacts, logical_paths_only=spec.sample_set == "diana_wgs"
         )
+        if spec.sample_set == "diana_wgs":
+            artifacts = [
+                {
+                    "input_id": DIANA_WGS_DETERMINISTIC_INPUTS[row["path"]],
+                    **row,
+                }
+                for row in artifacts
+            ]
     if (
         spec.sample_set == "diana_wgs"
         and deterministic_binding is not None
