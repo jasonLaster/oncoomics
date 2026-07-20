@@ -766,6 +766,39 @@ class PrepareAiReviewRunTests(unittest.TestCase):
             self.assertFalse(output.exists())
             self.assertFalse(any(root.glob(".ai-review.*")))
 
+    def test_rejects_stage_receipt_with_truthy_integer_child_check(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            fixture = AiReviewBundleFixture(root)
+            output = root / "ai-review"
+            real_stage_inputs = PREPARE.stage_inputs
+
+            def stage_then_truthy_integer_check(
+                bundle_dir: Path,
+                output_root: Path,
+                receipt: Path,
+            ) -> None:
+                real_stage_inputs(bundle_dir, output_root, receipt)
+                payload = json.loads(receipt.read_text(encoding="utf-8"))
+                payload["checks"]["bundle_manifest_bound"] = 1
+                write_json(receipt, payload)
+
+            with (
+                mock.patch.object(
+                    PREPARE,
+                    "stage_inputs",
+                    side_effect=stage_then_truthy_integer_check,
+                ),
+                self.assertRaisesRegex(
+                    ValueError,
+                    "stage AI review input receipt is not exact",
+                ),
+            ):
+                PREPARE.prepare(namespace(fixture, output))
+
+            self.assertFalse(output.exists())
+            self.assertFalse(any(root.glob(".ai-review.*")))
+
     def test_rejects_thin_or_legacy_stage_receipt_envelope(self) -> None:
         cases = {
             "missing_generated_at": lambda payload: payload.pop("generated_at"),

@@ -210,6 +210,17 @@ def exact_int(value: Any, expected: int) -> bool:
     return type(value) is int and type(expected) is int and value == expected
 
 
+def exact_check_map(value: Any, expected: dict[str, bool]) -> bool:
+    return (
+        isinstance(value, dict)
+        and set(value) == set(expected)
+        and all(
+            value.get(name) is expected_value
+            for name, expected_value in expected.items()
+        )
+    )
+
+
 def require_positive_exact_int(value: Any, label: str) -> int:
     if type(value) is not int or value <= 0:
         raise ValueError(f"{label} must be an exact positive integer")
@@ -630,7 +641,7 @@ def validate_host_binding(
             and worker_source.get("ec2_instance_id") == mapped_ec2_instance_id
         ),
     }
-    if checks != EXPECTED_TASK_HOST_BINDING_CHECKS:
+    if not exact_check_map(checks, EXPECTED_TASK_HOST_BINDING_CHECKS):
         raise ValueError(f"Batch task host binding failed: {checks}")
     return {
         "ecs_cluster": cluster,
@@ -647,12 +658,15 @@ def exact_executed_worker_check_maps(
     worker_receipt_upload_checks: Any,
 ) -> dict[str, bool]:
     return {
-        "freeze_receipt": (
-            worker_receipt_checks == EXPECTED_EXECUTED_WORKER_FREEZE_CHECKS
+        "freeze_receipt": exact_check_map(
+            worker_receipt_checks,
+            EXPECTED_EXECUTED_WORKER_FREEZE_CHECKS,
         ),
         "freeze_receipt_upload": (
-            worker_receipt_upload_checks
-            == EXPECTED_EXECUTED_WORKER_FREEZE_UPLOAD_CHECKS
+            exact_check_map(
+                worker_receipt_upload_checks,
+                EXPECTED_EXECUTED_WORKER_FREEZE_UPLOAD_CHECKS,
+            )
         ),
     }
 
@@ -711,14 +725,17 @@ def exact_batch_worker_nested_check_maps(
     freeze_command_checks: Any,
 ) -> dict[str, bool]:
     return {
-        "task_host_mapping": (
-            host_binding_checks == EXPECTED_TASK_HOST_BINDING_CHECKS
+        "task_host_mapping": exact_check_map(
+            host_binding_checks,
+            EXPECTED_TASK_HOST_BINDING_CHECKS,
         ),
-        "hash_command_definition": (
-            hash_command_checks == EXPECTED_SSM_COMMAND_BINDING_CHECKS
+        "hash_command_definition": exact_check_map(
+            hash_command_checks,
+            EXPECTED_SSM_COMMAND_BINDING_CHECKS,
         ),
-        "freeze_command_definition": (
-            freeze_command_checks == EXPECTED_SSM_COMMAND_BINDING_CHECKS
+        "freeze_command_definition": exact_check_map(
+            freeze_command_checks,
+            EXPECTED_SSM_COMMAND_BINDING_CHECKS,
         ),
     }
 
@@ -759,7 +776,7 @@ def validate_ssm_command(
         "invocation_status": invocation.get("Status") == "Success",
         "invocation_response_code": exact_int(invocation.get("ResponseCode"), 0),
     }
-    if checks != EXPECTED_SSM_COMMAND_BINDING_CHECKS:
+    if not exact_check_map(checks, EXPECTED_SSM_COMMAND_BINDING_CHECKS):
         raise ValueError(f"{label} SSM command binding failed: {checks}")
     stdout = str(invocation.get("StandardOutputContent", ""))
     stderr = str(invocation.get("StandardErrorContent", ""))
@@ -1255,7 +1272,7 @@ def main() -> None:
             == worker_freeze.get("kms_key_id")
         ),
     }
-    if worker_checks != EXPECTED_BATCH_WORKER_CHECKS:
+    if not exact_check_map(worker_checks, EXPECTED_BATCH_WORKER_CHECKS):
         raise SystemExit(f"Fail-closed: executed worker verification failed: {worker_checks}")
 
     resource_requirements = container.get("resourceRequirements")
@@ -1360,7 +1377,10 @@ def main() -> None:
     if (
         result["worker"]["bytes"] <= 0
         or len(result["worker"]["sha256"]) != 64
-        or result["worker"]["checks"] != EXPECTED_BATCH_WORKER_CHECKS
+        or not exact_check_map(
+            result["worker"]["checks"],
+            EXPECTED_BATCH_WORKER_CHECKS,
+        )
     ):
         raise SystemExit("Fail-closed: incomplete worker provenance")
     write_json_atomic(args.output, result)

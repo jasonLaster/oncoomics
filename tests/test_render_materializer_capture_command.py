@@ -365,6 +365,15 @@ class RenderMaterializerCaptureCommandTests(unittest.TestCase):
                 "response receipt checks are not exact",
             ),
             (
+                "response_check_truthy_integer",
+                lambda: self.response["checks"].__setitem__(
+                    "job_id_and_arn",
+                    1,
+                ),
+                False,
+                "response receipt checks are not exact",
+            ),
+            (
                 "batch_response",
                 lambda: self.response["response"].__setitem__(
                     "ResponseMetadata",
