@@ -16,6 +16,7 @@ from pathlib import Path
 from typing import Any, Iterator, Mapping, Sequence
 
 from forbidden_text import merge_forbidden_tokens
+from build_ai_review_bundle import validate_report_manifest_support
 from hrd_report_inventory import (
     HCC1395_WGS_KNOWN_ANSWER_INVENTORY_ID,
     HCC1395_WGS_KNOWN_ANSWER_METHOD_IDS,
@@ -115,13 +116,43 @@ if tuple(spec["method_id"] for spec in METHOD_SPECS) != HCC1395_WGS_KNOWN_ANSWER
     raise ValueError("HCC1395 method specifications drifted from the report inventory")
 
 
-def sha256(path: Path) -> str:
+STACK_MANIFEST_KEYS = {
+    "schema_version",
+    "status",
+    "run_id",
+    "generated_at",
+    "inventory",
+    "inventory_sha256",
+    "authorized_hrd_state",
+    "source_reports",
+    "ai_review_bundle_manifest",
+    "ai_review_prepare_receipt",
+    "ai_review_stage_receipt",
+    "model_catalog_receipt_sha256",
+    "models_invoked",
+}
+STACK_AI_REVIEW_OUTPUTS = {
+    "ai_review_bundle_manifest": "ai-review/bundle/bundle_manifest.json",
+    "ai_review_prepare_receipt": "ai-review/prepare_ai_review_run_receipt.json",
+    "ai_review_stage_receipt": "ai-review/stage_ai_review_inputs_receipt.json",
+}
+
+
+def sha256_bytes(value: bytes) -> str:
+    return hashlib.sha256(value).hexdigest()
+
+
+def read_stable_file(path: Path, label: str) -> bytes:
     require_real_hash_input(path)
-    digest = hashlib.sha256()
-    with path.open("rb") as handle:
-        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
-            digest.update(chunk)
-    return digest.hexdigest()
+    data = path.read_bytes()
+    digest = sha256_bytes(data)
+    if not data or sha256_bytes(path.read_bytes()) != digest:
+        raise ValueError(f"{label} changed during read: {path}")
+    return data
+
+
+def sha256(path: Path) -> str:
+    return sha256_bytes(read_stable_file(path, f"{path.name} SHA-256 input"))
 
 
 def json_bytes(value: Any) -> bytes:
@@ -130,13 +161,20 @@ def json_bytes(value: Any) -> bytes:
 
 def write_bytes(path: Path, payload: bytes) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
+    expected_sha256 = sha256_bytes(payload)
     descriptor = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o644)
     try:
-        with os.fdopen(descriptor, "wb") as handle:
-            descriptor = -1
-            handle.write(payload)
-            handle.flush()
-            os.fsync(handle.fileno())
+        try:
+            with os.fdopen(descriptor, "wb") as handle:
+                descriptor = -1
+                handle.write(payload)
+                handle.flush()
+                os.fsync(handle.fileno())
+            fsync_directory(path.parent)
+            require_installed_file(path, expected_sha256)
+        except Exception:
+            path.unlink(missing_ok=True)
+            raise
     finally:
         if descriptor >= 0:
             os.close(descriptor)
@@ -168,11 +206,13 @@ def read_object(path: Path, label: str) -> dict[str, Any]:
         raise ValueError(f"{label} must be a real non-empty file: {path}")
     try:
         value = json.loads(
-            path.read_text(encoding="utf-8"),
+            read_stable_file(path, label).decode("utf-8"),
             object_pairs_hook=reject_duplicate_json_object_names,
         )
     except DuplicateJsonObjectName as error:
         raise ValueError(f"duplicate JSON object name in {label}: {error}") from error
+    except (UnicodeError, json.JSONDecodeError) as error:
+        raise ValueError(f"invalid JSON in {label}: {path}") from error
     if not isinstance(value, dict):
         raise ValueError(f"{label} must be a JSON object")
     return value
@@ -197,6 +237,22 @@ def require_real_hash_input(path: Path) -> None:
         raise ValueError(f"{label} must be a real file: {path}")
 
 
+def require_installed_file(path: Path, expected_sha256: str) -> None:
+    if path.is_symlink() or not path.is_file():
+        raise ValueError(f"output changed during write: {path}")
+    require_no_symlinked_ancestors(path, "output")
+    if sha256(path) != expected_sha256:
+        raise ValueError(f"output changed during write: {path}")
+
+
+def fsync_directory(path: Path) -> None:
+    descriptor = os.open(path, os.O_RDONLY)
+    try:
+        os.fsync(descriptor)
+    finally:
+        os.close(descriptor)
+
+
 def require_safe_new_output(path: Path) -> Path:
     path = path.expanduser().absolute()
     require_no_symlinked_ancestors(path, "output")
@@ -204,6 +260,106 @@ def require_safe_new_output(path: Path) -> Path:
         raise FileExistsError(f"output already exists: {path}")
     path.parent.mkdir(parents=True, exist_ok=True)
     return path
+
+
+def require_sha256(value: Any, label: str) -> str:
+    if (
+        not isinstance(value, str)
+        or len(value) != 64
+        or set(value) - set("0123456789abcdef")
+    ):
+        raise ValueError(f"{label} is not an exact SHA-256")
+    return value
+
+
+def require_relative_file(root: Path, relative: Any, label: str) -> Path:
+    if not isinstance(relative, str) or not relative:
+        raise ValueError(f"{label} path is not exact")
+    path = Path(relative)
+    if path.is_absolute() or any(part in {"", ".", ".."} for part in path.parts):
+        raise ValueError(f"{label} path is not a local relative file")
+    return root / path
+
+
+def require_bound_file(root: Path, details: Any, expected: str, label: str) -> Path:
+    if not isinstance(details, dict) or set(details) != {"path", "sha256"}:
+        raise ValueError(f"HCC1395 stack manifest {label} binding is not exact")
+    path = require_relative_file(root, details.get("path"), label)
+    digest = require_sha256(details.get("sha256"), f"{label} SHA-256")
+    if str(path.relative_to(root)) != expected:
+        raise ValueError(f"HCC1395 stack manifest {label} path is stale")
+    if sha256(path) != digest:
+        raise ValueError(f"HCC1395 stack manifest is stale for {label}")
+    return path
+
+
+def require_source_report(
+    root: Path,
+    method_id: str,
+    details: Any,
+) -> Path:
+    if not isinstance(details, dict) or set(details) != {"manifest", "manifest_sha256"}:
+        raise ValueError(f"HCC1395 {method_id} source report binding is not exact")
+    path = require_relative_file(
+        root,
+        details.get("manifest"),
+        f"HCC1395 {method_id} report manifest",
+    )
+    if path.name != "report_manifest.json":
+        raise ValueError(f"HCC1395 {method_id} source report path is not a manifest")
+    digest = require_sha256(
+        details.get("manifest_sha256"),
+        f"HCC1395 {method_id} report manifest SHA-256",
+    )
+    if sha256(path) != digest:
+        raise ValueError(f"HCC1395 stack manifest is stale for {method_id}")
+    manifest = read_object(path, f"HCC1395 {method_id} report manifest")
+    validate_report_manifest_support(path.parent, manifest, method_id)
+    report_sha256 = require_sha256(
+        manifest.get("report_sha256"),
+        f"HCC1395 {method_id} report SHA-256",
+    )
+    if sha256(path.parent / "report.md") != report_sha256:
+        raise ValueError(f"HCC1395 {method_id} report manifest is stale for report.md")
+    return path
+
+
+def require_stack_manifest(root: Path, catalog: Path) -> dict[str, Any]:
+    manifest = read_object(root / "stack_manifest.json", "HCC1395 stack manifest")
+    if (
+        set(manifest) != STACK_MANIFEST_KEYS
+        or manifest.get("schema_version") != 1
+        or manifest.get("status") != "passed"
+        or manifest.get("authorized_hrd_state") != "no_call"
+        or manifest.get("models_invoked") is not False
+        or manifest.get("inventory")
+        != inventory_payload(HCC1395_WGS_KNOWN_ANSWER_INVENTORY_ID)
+        or manifest.get("inventory_sha256")
+        != inventory_sha256(HCC1395_WGS_KNOWN_ANSWER_INVENTORY_ID)
+    ):
+        raise ValueError("HCC1395 stack manifest envelope is not exact")
+
+    source_reports = manifest.get("source_reports")
+    if (
+        not isinstance(source_reports, dict)
+        or set(source_reports) != set(HCC1395_WGS_KNOWN_ANSWER_METHOD_IDS)
+    ):
+        raise ValueError("HCC1395 stack source reports are not exact")
+
+    for method_id in HCC1395_WGS_KNOWN_ANSWER_METHOD_IDS:
+        require_source_report(root, method_id, source_reports[method_id])
+
+    for label, expected in STACK_AI_REVIEW_OUTPUTS.items():
+        require_bound_file(root, manifest.get(label), expected, label)
+
+    expected_catalog_sha256 = require_sha256(
+        manifest.get("model_catalog_receipt_sha256"),
+        "HCC1395 model catalog receipt SHA-256",
+    )
+    if sha256(catalog) != expected_catalog_sha256:
+        raise ValueError("HCC1395 stack model catalog receipt SHA-256 is stale")
+
+    return manifest
 
 
 @contextmanager
@@ -571,9 +727,17 @@ def build(args: argparse.Namespace) -> dict[str, Any]:
             "models_invoked": False,
         }
         write_json(staging / "stack_manifest.json", stack_manifest)
+        require_stack_manifest(staging, catalog)
         if output.exists() or output.is_symlink():
             raise FileExistsError(f"output appeared during build: {output}")
-        staging.rename(output)
+        try:
+            staging.rename(output)
+            fsync_directory(output.parent)
+            require_stack_manifest(output, catalog)
+        except Exception:
+            if output.is_dir() and not output.is_symlink():
+                shutil.rmtree(output)
+            raise
         installed = True
         return stack_manifest
     finally:

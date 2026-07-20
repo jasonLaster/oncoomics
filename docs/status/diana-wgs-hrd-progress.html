@@ -373,8 +373,9 @@
           local materialization, input-contract publication, the selected
           fast-rerun handoff chain, and the Diana WGS Rosalind packet builder
           now carry verified bytes forward, bind the top-level run index and
-          cloud handoff to the run manifest, and re-check per-packet manifests
-          before their digests are handed to the next report.
+          cloud handoff to the run manifest, re-check per-packet manifests, and
+          re-check the known-answer stack manifest before public HCC1395
+          rehearsal packets can feed AI-review inputs.
           The selected GPU rerun is still quota-blocked, the legacy CPU run
           remains stopped, and Diana HRD remains <code>partial_evidence</code> /
           <code>no_call</code> until terminal artifacts and reviewed cross-check
@@ -382,7 +383,8 @@
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-19</li>
-          <li class="pill">Latest milestone = Rosalind run supports bound</li>
+          <li class="pill">Latest milestone = HCC1395 stack manifest rechecked</li>
+          <li class="pill">HCC1395 known-answer stack = self-checked</li>
           <li class="pill">Rosalind run supports = bound</li>
           <li class="pill">Rosalind run manifests = rechecked</li>
           <li class="pill">Rosalind final install = rechecked</li>
@@ -819,8 +821,8 @@
             </li>
             <li class="track" style="--tone: var(--queued)">
               <strong>Diana AI / freeform review</strong>
-              <span>65% · validation inventory exact</span>
-              <div class="bar" aria-hidden="true" style="--pct: 65%"><span></span></div>
+              <span>67% · public rehearsal stack rechecked</span>
+              <div class="bar" aria-hidden="true" style="--pct: 67%"><span></span></div>
             </li>
             <li class="track" style="--tone: var(--queued)">
               <strong>Diana reviewed-public publication</strong>
@@ -922,6 +924,10 @@
 
           <h3>Priority 1 · selected GPU NGS rerun prep</h3>
           <ol class="todo">
+            <li class="item" style="--tone: var(--done)">
+              <strong>Done · self-check HCC1395 known-answer stacks</strong>
+              <span>The public HCC1395 rehearsal now reopens <code>stack_manifest.json</code>, rechecks all seven source reports and AI-review support receipts, and repeats that validation after the final stack directory is installed.</span>
+            </li>
             <li class="item" style="--tone: var(--done)">
               <strong>Done · bind Rosalind run support files</strong>
               <span>The top-level Rosalind run manifest now records checksums for its packet index and cloud handoff before validating them, so downstream run handoff files cannot drift away from the manifest.</span>
@@ -2544,6 +2550,16 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-19T19:49:45-07:00">Jul 19 · local</time>
+              <span>
+                <strong>Local patch · Self-check HCC1395 known-answer stacks:</strong>
+                the public known-answer stack now validates
+                <code>stack_manifest.json</code> against every source report,
+                AI-review bundle receipt, and staging receipt before and after
+                installing the final rehearsal directory.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-19T19:43:35-07:00">Jul 19 · local</time>
               <span>

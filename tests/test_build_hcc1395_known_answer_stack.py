@@ -7,6 +7,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -279,6 +280,72 @@ class BuildHcc1395KnownAnswerStackTests(unittest.TestCase):
                 "report_manifest\\.json SHA-256 input parent may not be a symlink",
             ):
                 STACK.sha256(linked_parent / "report_manifest.json")
+
+    def test_stack_manifest_rechecks_source_reports_before_install(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            output = root / "stack"
+            real_write_json = STACK.write_json
+
+            def tamper_after_stack_manifest(path: Path, value: object) -> None:
+                real_write_json(path, value)
+                if path.name == "stack_manifest.json":
+                    manifest = (
+                        path.parent
+                        / "source-reports/deterministic_full_wgs/report_manifest.json"
+                    )
+                    payload = json.loads(manifest.read_text(encoding="utf-8"))
+                    payload["tampered_after_stack_manifest"] = True
+                    manifest.write_text(
+                        json.dumps(payload, indent=2, sort_keys=True) + "\n",
+                        encoding="utf-8",
+                    )
+
+            with (
+                mock.patch.object(
+                    STACK,
+                    "write_json",
+                    side_effect=tamper_after_stack_manifest,
+                ),
+                self.assertRaisesRegex(
+                    ValueError,
+                    "HCC1395 stack manifest is stale for deterministic_full_wgs",
+                ),
+            ):
+                STACK.build(args_for(root, output))
+
+            self.assertFalse(output.exists())
+            self.assertFalse(any(root.glob(".stack.*")))
+
+    def test_stack_manifest_rechecks_ai_receipts_after_install(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            output = root / "stack"
+            real_fsync_directory = STACK.fsync_directory
+
+            def tamper_after_install_fsync(path: Path) -> None:
+                real_fsync_directory(path)
+                if path == output.parent and output.exists():
+                    receipt = (
+                        output
+                        / "ai-review/stage_ai_review_inputs_receipt.json"
+                    )
+                    receipt.write_text("{}\n", encoding="utf-8")
+
+            with (
+                mock.patch.object(
+                    STACK,
+                    "fsync_directory",
+                    side_effect=tamper_after_install_fsync,
+                ),
+                self.assertRaisesRegex(
+                    ValueError,
+                    "HCC1395 stack manifest is stale for ai_review_stage_receipt",
+                ),
+            ):
+                STACK.build(args_for(root, output))
+
+            self.assertFalse(output.exists())
 
 
 if __name__ == "__main__":
