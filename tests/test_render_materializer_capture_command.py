@@ -213,6 +213,23 @@ class RenderMaterializerCaptureCommandTests(unittest.TestCase):
             self.response["submit_job_request_sha256"],
         )
 
+    def test_submit_request_one_shot_retry_requires_exact_integer(self) -> None:
+        cases = (
+            {"attempts": True},
+            {"attempts": 1.0},
+            {"attempts": 1, "evaluateOnExit": []},
+        )
+
+        for retry_strategy in cases:
+            with self.subTest(retry_strategy=retry_strategy):
+                self.request["submit_job_request"]["retryStrategy"] = retry_strategy
+                self.response = self.bound_response(self.request)
+
+                with self.assertRaisesRegex(ValueError, "must be one-shot"):
+                    MODULE.render_from_files(self.args())
+
+                self.assertFalse(self.output.exists())
+
     def test_refuses_to_render_from_tampered_request(self) -> None:
         self.response = self.bound_response(self.request)
         self.request["submit_job_request"]["parameters"]["source_vcf_sha256"] = "d" * 64

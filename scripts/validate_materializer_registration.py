@@ -119,6 +119,10 @@ def is_positive_exact_int(value: Any) -> bool:
     return type(value) is int and value > 0
 
 
+def exact_int(value: Any, expected: int) -> bool:
+    return type(value) is int and type(expected) is int and value == expected
+
+
 def is_platform_root_alias(path: Path) -> bool:
     return path.is_absolute() and path.parent == path.parent.parent
 
@@ -331,11 +335,21 @@ def validate(
             if name.endswith("_sha256")
         ),
     }
+    retry_strategy = definition.get("retryStrategy")
+    timeout = definition.get("timeout")
     checks = {
         "exact_active_revision": True,
         "live_definition_matches_local": True,
-        "one_attempt": definition.get("retryStrategy") == {"attempts": 1},
-        "timeout_21600": definition.get("timeout") == {"attemptDurationSeconds": 21600},
+        "one_attempt": (
+            isinstance(retry_strategy, dict)
+            and set(retry_strategy) == {"attempts"}
+            and exact_int(retry_strategy.get("attempts"), 1)
+        ),
+        "timeout_21600": (
+            isinstance(timeout, dict)
+            and set(timeout) == {"attemptDurationSeconds"}
+            and exact_int(timeout.get("attemptDurationSeconds"), 21600)
+        ),
         "exact_script_version_and_sha": all(
             command_checks[name]
             for name in (

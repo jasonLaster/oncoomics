@@ -318,6 +318,14 @@ def is_positive_exact_int(value: Any) -> bool:
     return type(value) is int and value > 0
 
 
+def one_shot_retry_strategy(value: Any) -> bool:
+    return (
+        isinstance(value, dict)
+        and set(value) == {"attempts"}
+        and exact_int(value.get("attempts"), 1)
+    )
+
+
 def parse_s3(uri: Any) -> tuple[str, str]:
     match = S3_URI.fullmatch(str(uri))
     if not match:
@@ -1519,7 +1527,7 @@ def main() -> int:
                 "request_receipt_mode_0600": (args.request_output.stat().st_mode & 0o777) == 0o600,
                 "exact_job_name": response.get("jobName") == request_receipt["submit_job_request"]["jobName"],
                 "job_id_and_arn": True,
-                "one_shot_no_retry": request_receipt["submit_job_request"].get("retryStrategy") == {"attempts": 1},
+                "one_shot_no_retry": one_shot_retry_strategy(request_receipt["submit_job_request"].get("retryStrategy")),
             },
             "classification_authorization": "none",
             "authorized_hrd_state": "no_call",
