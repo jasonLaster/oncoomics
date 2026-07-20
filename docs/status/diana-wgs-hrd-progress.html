@@ -2118,6 +2118,10 @@
               <span><code>generate_comparative_hrd_synthesis.py</code> now rejects padded, multiline, NUL-containing, or semicolon-list-padded reviewer <code>claims.csv</code> and generated <code>agreement_disagreement.csv</code> fields before independent AI claims or comparative agreement rows can feed synthesis manifests.</span>
             </li>
             <li class="item" style="--tone: var(--done)">
+              <strong>Done · require exact terminal evidence checks</strong>
+              <span>The Diana WGS terminal-worker binder now rejects extra receipt fields, malformed mirrored input rows, loose statuses, malformed check rows, and failed checks in <code>evidence_checks.json</code> before deterministic worker evidence can feed Rosalind packets.</span>
+            </li>
+            <li class="item" style="--tone: var(--done)">
               <strong>Done · require exact Phase 3 cross-check routes</strong>
               <span>The Phase 3 fast deterministic binder now rejects extra cross-check plan fields, unexpected routes, and malformed route envelopes before SigProfiler/SBS3 or Sequenza/scarHRD route states can feed Diana WGS Rosalind packets.</span>
             </li>
@@ -2735,6 +2739,15 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-19T23:02:26-07:00">Jul 19 · local</time>
+              <span>
+                <strong>Local patch · Reject loose terminal evidence checks:</strong>
+                the Diana WGS terminal-worker binder now exact-validates
+                <code>evidence_checks.json</code> receipt rows before
+                deterministic evidence reaches Rosalind packets.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-19T23:00:20-07:00">Jul 19 · local</time>
               <span>
