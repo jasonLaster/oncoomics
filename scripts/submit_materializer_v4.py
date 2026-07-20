@@ -426,9 +426,12 @@ def validate_final_sources(
         "batch_status": freeze.get("batch_status") == "SUCCEEDED",
         "destination_prefix": freeze.get("destination_prefix") == expected_prefix,
         "versioning": freeze.get("destination_bucket_versioning") == "Enabled",
-        "empty_initial_history": freeze.get("destination_initial_version_history_count") == 0,
+        "empty_initial_history": exact_int(
+            freeze.get("destination_initial_version_history_count"),
+            0,
+        ),
         "anchor_strategy": freeze.get("receipt_anchor_strategy") == "sha256_content_addressed_create_only",
-        "passed_count": freeze.get("passed_count") == expected_count,
+        "passed_count": exact_int(freeze.get("passed_count"), expected_count),
         "receipt_checks": passed_checks(freeze.get("checks"), exact=EXPECTED_FINAL_FREEZE_CHECKS),
         "required_sources": set(SOURCE_RELATIVES.values()).issubset(freeze_rows),
         "complete_inventories": set(initial_inventory) == set(final_inventory) == set(destination_inventory) == set(freeze_rows),
@@ -509,8 +512,8 @@ def validate_final_sources(
         "batch_job_id": materialized.get("batch_job_id") == job_id,
         "freeze_hash": materialized.get("freeze_receipt_sha256") == freeze_sha256,
         "kms": materialized.get("expected_kms_key_arn") == kms,
-        "object_count": materialized_count == expected_count,
-        "passed_count": materialized.get("passed_count") == expected_count,
+        "object_count": exact_int(materialized_count, expected_count),
+        "passed_count": exact_int(materialized.get("passed_count"), expected_count),
         "complete_inventory": set(materialized_rows) == set(freeze_rows),
     }
     if not all(materialized_checks.values()):

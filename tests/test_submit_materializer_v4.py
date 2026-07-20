@@ -799,6 +799,54 @@ class SubmitMaterializerV4Tests(unittest.TestCase):
 
         aws.assert_not_called()
 
+    def test_final_source_top_level_counts_must_be_exact_before_aws(self) -> None:
+        cases = (
+            (
+                "final freeze empty initial history",
+                self.final_freeze,
+                ("destination_initial_version_history_count",),
+                False,
+                "final freeze receipt is incomplete",
+            ),
+            (
+                "final freeze passed count",
+                self.final_freeze,
+                ("passed_count",),
+                float(len(MODULE.SOURCE_RELATIVES)),
+                "final freeze receipt is incomplete",
+            ),
+            (
+                "exact materialization object count",
+                self.exact_materialization,
+                ("object_count",),
+                float(len(MODULE.SOURCE_RELATIVES)),
+                "exact local materialization is incomplete",
+            ),
+            (
+                "exact materialization passed count",
+                self.exact_materialization,
+                ("passed_count",),
+                float(len(MODULE.SOURCE_RELATIVES)),
+                "exact local materialization is incomplete",
+            ),
+        )
+
+        for label, path, json_path, replacement, error in cases:
+            with self.subTest(label=label):
+                self._write_final_receipts()
+                value = json.loads(path.read_text(encoding="utf-8"))
+                cursor = value
+                for key in json_path[:-1]:
+                    cursor = cursor[key]
+                cursor[json_path[-1]] = replacement
+                self._write(path, value)
+
+                with mock.patch.object(MODULE, "aws_json") as aws:
+                    with self.assertRaisesRegex(ValueError, error):
+                        MODULE.preflight(self.args())
+
+                aws.assert_not_called()
+
     def test_final_source_version_ids_must_be_strings_before_aws(self) -> None:
         final_freeze = json.loads(self.final_freeze.read_text(encoding="utf-8"))
         final_freeze["objects"][0]["destination"]["version_id"] = True
