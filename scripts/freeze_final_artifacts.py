@@ -137,6 +137,28 @@ def exact_batch_int(value: Any, label: str) -> int:
     return value
 
 
+def exact_attempt_field(value: Any, expected: Any) -> bool:
+    if type(expected) is int:
+        return exact_int(value, expected)
+    return value == expected
+
+
+def exact_batch_attempts(value: Any, expected: list[dict[str, Any]]) -> bool:
+    if not isinstance(value, list) or len(value) != len(expected):
+        return False
+    for observed, expected_attempt in zip(value, expected):
+        if (
+            not isinstance(observed, dict)
+            or set(observed) != set(expected_attempt)
+            or any(
+                not exact_attempt_field(observed.get(name), expected_value)
+                for name, expected_value in expected_attempt.items()
+            )
+        ):
+            return False
+    return True
+
+
 def canonical_json_bytes(value: dict[str, Any]) -> bytes:
     return (json.dumps(value, indent=2, sort_keys=True) + "\n").encode("utf-8")
 
@@ -876,9 +898,9 @@ def validate_execution_binding(
         or batch.get("retry_strategy") != job.get("retryStrategy")
         or batch.get("timeout") != job.get("timeout")
         or not exact_int(batch.get("attempt_count"), len(normalized_attempts))
-        or captured_attempts != normalized_attempts
+        or not exact_batch_attempts(captured_attempts, normalized_attempts)
         or len(normalized_attempts) != 1
-        or normalized_attempts[0].get("exit_code") != 0
+        or not exact_int(normalized_attempts[0].get("exit_code"), 0)
         or captured_container.get("task_arn") != live_container.get("taskArn")
         or batch.get("log_stream") != live_container.get("logStreamName")
         or worker_checks != EXPECTED_BATCH_WORKER_CHECKS

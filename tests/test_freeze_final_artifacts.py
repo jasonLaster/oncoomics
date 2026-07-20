@@ -2047,6 +2047,18 @@ class FreezeFinalArtifactsTests(unittest.TestCase):
                         },
                         **kwargs,
                     )
+        for label, field, value in (
+            ("started-bool", "started_at_epoch_ms", True),
+            ("stopped-float", "stopped_at_epoch_ms", 2.0),
+            ("exit-bool", "exit_code", False),
+            ("exit-float", "exit_code", 0.0),
+        ):
+            with self.subTest(label=label):
+                candidate = deepcopy(receipt)
+                candidate["batch"]["attempts"][0][field] = value
+
+                with self.assertRaisesRegex(ValueError, "exact successful Batch job"):
+                    MODULE.validate_execution_binding(candidate, **kwargs)
         for label, mutate in (
             ("legacy", lambda checks: checks.clear() or checks.update(LEGACY_BATCH_WORKER_CHECKS)),
             ("missing", lambda checks: checks.pop("receipt_envelope")),
