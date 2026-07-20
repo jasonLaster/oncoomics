@@ -2815,6 +2815,15 @@ class GenerateSynthesisTests(unittest.TestCase):
                 ),
                 "reviewer A invocation metadata is incomplete",
             ),
+            (
+                "hidden-NUL invocation ID",
+                "review_manifest.json",
+                lambda payload: payload["invocation"].__setitem__(
+                    "invocation_id",
+                    f"{payload['invocation']['invocation_id']}\x00",
+                ),
+                "reviewer A invocation metadata is incomplete",
+            ),
         )
         for label, filename, mutate, message in cases:
             with self.subTest(label=label), tempfile.TemporaryDirectory(

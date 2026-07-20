@@ -741,6 +741,7 @@ def require_exact_review_invocation(invocation: Any, reviewer: str) -> Dict[str,
             not isinstance(invocation.get(key), str)
             or not invocation[key]
             or invocation[key] != invocation[key].strip()
+            or has_ascii_control(invocation[key])
             for key in REVIEW_INVOCATION_KEYS
         )
     ):
