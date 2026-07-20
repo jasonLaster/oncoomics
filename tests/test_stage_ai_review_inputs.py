@@ -658,6 +658,50 @@ class StageAiReviewInputsTests(unittest.TestCase):
         self.assertFalse((self.output_root / "reviewer-b-input").exists())
         self.assertFalse(self.receipt.exists())
 
+    def test_stage_removes_published_inputs_after_receipt_write_failure(
+        self,
+    ) -> None:
+        with (
+            mock.patch.object(
+                STAGE,
+                "write_json_once",
+                side_effect=OSError("synthetic receipt write failure"),
+            ),
+            self.assertRaisesRegex(OSError, "synthetic receipt write failure"),
+        ):
+            STAGE.stage(self.bundle, self.output_root, self.receipt)
+
+        self.assertFalse((self.output_root / "reviewer-a-input").exists())
+        self.assertFalse((self.output_root / "reviewer-b-input").exists())
+        self.assertFalse(self.receipt.exists())
+
+    def test_stage_rechecks_published_inputs_after_receipt_write(
+        self,
+    ) -> None:
+        real_write_json_once = STAGE.write_json_once
+
+        def write_receipt_then_tamper(path: Path, value: dict[str, object]) -> None:
+            real_write_json_once(path, value)
+            (
+                self.output_root
+                / "reviewer-b-input"
+                / "reviewer-b.prompt.md"
+            ).write_text("tampered after receipt\n", encoding="utf-8")
+
+        with (
+            mock.patch.object(
+                STAGE,
+                "write_json_once",
+                side_effect=write_receipt_then_tamper,
+            ),
+            self.assertRaisesRegex(ValueError, "reviewer B .* SHA-256 mismatch"),
+        ):
+            STAGE.stage(self.bundle, self.output_root, self.receipt)
+
+        self.assertFalse((self.output_root / "reviewer-a-input").exists())
+        self.assertFalse((self.output_root / "reviewer-b-input").exists())
+        self.assertFalse(self.receipt.exists())
+
     def test_rejects_staged_bytes_that_differ_from_bundle_manifest(self) -> None:
         real_write_once = STAGE.write_once
 
