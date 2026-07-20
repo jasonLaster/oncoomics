@@ -973,18 +973,6 @@ def diana_wgs_deterministic_report_dir() -> Path:
     return report_root
 
 
-def diana_wgs_deterministic_report_kind() -> str:
-    raw = os.environ.get("ROSALIND_HRD_DETERMINISTIC_REPORT_DIR", "").strip()
-    if not raw:
-        return ""
-    manifest_path = Path(raw).expanduser() / "report_manifest.json"
-    if not manifest_path.is_file() or manifest_path.is_symlink():
-        return ""
-    require_no_symlinked_ancestors(manifest_path, "deterministic report manifest")
-    manifest = read_json_file(manifest_path, "deterministic report manifest")
-    return str(manifest.get("report_kind", "")) if isinstance(manifest, dict) else ""
-
-
 def require_no_symlinked_ancestors(path: Path, label: str) -> Path:
     for parent in path.parents:
         if parent.is_symlink() and not is_platform_root_alias(parent):
@@ -1824,45 +1812,30 @@ def bounded_phase3_fast_state(surface: str, state: str, blockers: list[str]) -> 
     return state
 
 
-def diana_wgs_phase3_fast_evidence() -> tuple[list[dict[str, str]], list[dict[str, str]], list[str]]:
+def diana_wgs_phase3_fast_evidence(
+    deterministic_binding: Mapping[str, Any],
+) -> tuple[list[dict[str, str]], list[dict[str, str]], list[str]]:
+    phase3_fast = deterministic_binding.get("phase3_fast")
+    if (
+        deterministic_binding.get("binding_kind") != "phase3_fast_final"
+        or not isinstance(phase3_fast, Mapping)
+    ):
+        raise ValueError("Diana WGS Phase 3 fast evidence requires an exact deterministic binding")
+
     report_root = diana_wgs_deterministic_report_dir()
     paths = {
         name: require_real_nonempty_file(report_root / name, f"deterministic {name}")
-        for name in {"crosscheck_input_plans.json", "readiness.csv", "report_manifest.json"}
+        for name in {"readiness.csv"}
     }
-    manifest = read_json_file(paths["report_manifest.json"], "Phase 3 fast report manifest")
-    if not isinstance(manifest, dict) or manifest.get("report_kind") != PHASE3_FAST_REPORT_KIND:
-        raise ValueError("Diana WGS Phase 3 fast packet requires a phase3_fast_deterministic_evidence report")
-    review_summary = manifest.get("review_summary")
-    if not isinstance(review_summary, dict):
-        raise ValueError("Diana WGS Phase 3 fast packet requires a deterministic review summary")
-    groups = review_summary.get("artifact_groups")
+    groups = phase3_fast.get("artifact_groups")
     if not isinstance(groups, dict):
         groups = {}
-    crosscheck_input_plans = read_json_file(
-        paths["crosscheck_input_plans.json"],
-        "Phase 3 fast cross-check input plan",
+    crosscheck_route_states = phase3_fast_crosscheck_route_summary(
+        phase3_fast.get("crosscheck_input_plans")
     )
-    crosscheck_routes = (
-        crosscheck_input_plans.get("routes", {})
-        if isinstance(crosscheck_input_plans, dict)
-        else {}
+    sequenza_alias_contract = phase3_fast_sequenza_ai_summary(
+        phase3_fast.get("sequenza_scarhrd_alias_input_contract")
     )
-    sigprofiler_route = (
-        crosscheck_routes.get("sigprofiler_sbs3", {})
-        if isinstance(crosscheck_routes, dict)
-        else {}
-    )
-    if not isinstance(sigprofiler_route, dict):
-        sigprofiler_route = {}
-    sequenza_route = (
-        crosscheck_routes.get("sequenza_scarhrd", {})
-        if isinstance(crosscheck_routes, dict)
-        else {}
-    )
-    if not isinstance(sequenza_route, dict):
-        sequenza_route = {}
-    sequenza_alias_contract = compact_sequenza_alias_contract(sequenza_route)
     sequenza_attestations = sequenza_alias_contract["attestations"]
     sequenza_aliases = sequenza_alias_contract["planned_aliases"]
     readiness_rows = parse_csv(read_text(paths["readiness.csv"]))
@@ -1896,7 +1869,7 @@ def diana_wgs_phase3_fast_evidence() -> tuple[list[dict[str, str]], list[dict[st
             "no_call",
             (
                 f"Phase 3 fast final evidence is partial_evidence across "
-                f"{review_summary.get('artifact_count', 'unknown')} bound artifacts."
+                f"{deterministic_binding.get('artifact_count', 'unknown')} bound artifacts."
             ),
             "report_manifest.json",
             "The deterministic report authorizes sample-evidence review only; scalar HRD remains no_call.",
@@ -1940,8 +1913,8 @@ def diana_wgs_phase3_fast_evidence() -> tuple[list[dict[str, str]], list[dict[st
             "partial_evidence",
             (
                 "Alias-only SigProfiler/SBS3 materialization is "
-                f"{sigprofiler_route.get('status', 'missing')}; "
-                f"execution is {sigprofiler_route.get('execution_status', 'missing')}."
+                f"{crosscheck_route_states['sigprofiler_sbs3']}; "
+                "execution is not_run."
             ),
             "crosscheck_input_plans.json",
             "This is an executable input plan only; SBS3 assignment and threshold policy remain no_call.",
@@ -1951,8 +1924,8 @@ def diana_wgs_phase3_fast_evidence() -> tuple[list[dict[str, str]], list[dict[st
             "blocked",
             (
                 "Alias-only Sequenza/scarHRD materialization is "
-                f"{sequenza_route.get('status', 'missing')}; "
-                f"execution is {sequenza_route.get('execution_status', 'missing')}; "
+                f"{crosscheck_route_states['sequenza_scarhrd']}; "
+                "execution is not_run; "
                 "planned aliases are "
                 f"{sequenza_aliases['tumor']}/{sequenza_aliases['normal']}; "
                 "sequenza.female is "
@@ -2044,9 +2017,14 @@ def diana_wgs_phase3_fast_evidence() -> tuple[list[dict[str, str]], list[dict[st
     return evidence, adapters, blockers
 
 
-def diana_wgs_evidence() -> tuple[list[dict[str, str]], list[dict[str, str]], list[str]]:
-    if diana_wgs_deterministic_report_kind() == PHASE3_FAST_REPORT_KIND:
-        return diana_wgs_phase3_fast_evidence()
+def diana_wgs_evidence(
+    deterministic_binding: Mapping[str, Any] | None = None,
+) -> tuple[list[dict[str, str]], list[dict[str, str]], list[str]]:
+    if (
+        deterministic_binding
+        and deterministic_binding.get("binding_kind") == "phase3_fast_final"
+    ):
+        return diana_wgs_phase3_fast_evidence(deterministic_binding)
 
     summary = read_json_or_empty("diana_hrd_summary.json")
     alignment = read_json_or_empty("alignment/bam_validation_summary.json")
@@ -2617,11 +2595,14 @@ def write_packet_to_dir(
     final_output_path: Path | None,
     forbidden_tokens: Sequence[str],
 ) -> dict[str, Any]:
-    evidence_rows, adapter_rows, blockers = EVIDENCE_BUILDERS[spec.sample_set]()
-    interpretation_gaps = adapter_interpretation_gaps(adapter_rows)
     deterministic_binding = (
         diana_wgs_deterministic_binding() if spec.sample_set == "diana_wgs" else None
     )
+    if spec.sample_set == "diana_wgs":
+        evidence_rows, adapter_rows, blockers = diana_wgs_evidence(deterministic_binding)
+    else:
+        evidence_rows, adapter_rows, blockers = EVIDENCE_BUILDERS[spec.sample_set]()
+    interpretation_gaps = adapter_interpretation_gaps(adapter_rows)
     if (
         spec.sample_set == "diana_wgs"
         and deterministic_binding is not None

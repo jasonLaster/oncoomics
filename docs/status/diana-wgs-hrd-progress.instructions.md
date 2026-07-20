@@ -30,6 +30,9 @@ buckets and avoids partial same-day estimates.
 - Use the Cost Explorer API response as the source of truth for the displayed
   values; do not estimate the past-day total from service dashboards or
   CloudWatch metrics.
+- Re-run Cost Explorer immediately before each dashboard refresh so the
+  yesterday card never carries a stale spend snapshot alongside fresh progress
+  text.
 - Display the covered UTC date, total unblended cost, and the top service / usage-type rows.
 - Keep the breakdown row-level: every visible non-`Other` row should come from
   one exact Cost Explorer `SERVICE` / `USAGE_TYPE` pair, except rows that

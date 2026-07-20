@@ -1161,7 +1161,7 @@ class RosalindHrdPacketTest(unittest.TestCase):
                 data = real_stable_read(path, label)
                 if label == "deterministic report manifest":
                     read_count += 1
-                if label == "deterministic report manifest" and read_count == 2:
+                if label == "deterministic report manifest" and read_count == 1:
                     manifest = utils.read_json(path)
                     manifest["classification_qc_status"] = "passed"
                     utils.write_json(path, manifest)
@@ -1446,7 +1446,7 @@ class RosalindHrdPacketTest(unittest.TestCase):
                 data = real_stable_read(path, label)
                 if label == "deterministic report manifest":
                     read_count += 1
-                if label == "deterministic report manifest" and read_count == 2:
+                if label == "deterministic report manifest" and read_count == 1:
                     mutate_phase3_fast_report_manifest(
                         deterministic_root,
                         lambda manifest: manifest.__setitem__(
@@ -1486,6 +1486,90 @@ class RosalindHrdPacketTest(unittest.TestCase):
                 expected_manifest_sha256,
                 packet.sha256_file(deterministic_root / "report_manifest.json"),
             )
+
+    def test_diana_wgs_phase3_fast_packet_reuses_deterministic_binding_for_evidence(
+        self,
+    ):
+        with tempfile.TemporaryDirectory() as tmp:
+            output_root = Path(tmp)
+            deterministic_root, final_root = write_phase3_fast_deterministic_report(
+                output_root / "phase3_fast"
+            )
+            expected_manifest_sha256 = packet.sha256_file(
+                deterministic_root / "report_manifest.json"
+            )
+            mutated_manifest = False
+            mutated_plan = False
+            real_stable_read = packet.read_stable_json_file_bytes
+
+            def tamper_after_bound_input_reads(path: Path, label: str):
+                nonlocal mutated_manifest, mutated_plan
+                data = real_stable_read(path, label)
+                if label == "deterministic report manifest" and not mutated_manifest:
+                    mutate_phase3_fast_report_manifest(
+                        deterministic_root,
+                        lambda manifest: manifest.__setitem__(
+                            "classification_qc_status",
+                            "passed",
+                        ),
+                    )
+                    mutated_manifest = True
+                if label == "Phase 3 fast cross-check input plan" and not mutated_plan:
+                    mutate_phase3_fast_crosscheck_plans(
+                        deterministic_root,
+                        lambda plans: plans["routes"]["sequenza_scarhrd"].__setitem__(
+                            "status",
+                            "inputs_materialized",
+                        ),
+                    )
+                    mutated_plan = True
+                return data
+
+            with (
+                patch.object(packet, "path_from_root", lambda relative: output_root / relative),
+                patch.dict(
+                    "os.environ",
+                    {
+                        "ROSALIND_HRD_ARTIFACT_ROOT": str(final_root),
+                        "ROSALIND_HRD_DETERMINISTIC_REPORT_DIR": str(deterministic_root),
+                        "ROSALIND_HRD_FORBIDDEN_TOKENS_JSON": PHASE3_FAST_FORBIDDEN_TOKENS_JSON,
+                    },
+                ),
+                patch.object(
+                    packet,
+                    "read_stable_json_file_bytes",
+                    side_effect=tamper_after_bound_input_reads,
+                ),
+            ):
+                packet.write_packet(packet.PACKET_SPECS["diana_wgs"], "phase3-fast")
+
+            output_dir = (
+                output_root / "results/rosalind_hrd/diana_wgs/phase3-fast"
+            )
+            manifest = utils.read_json(output_dir / "report_manifest.json")
+            sample_rows = utils.parse_csv(
+                utils.read_text(output_dir / "sample_validation_summary.csv")
+            )
+            sequenza_row = next(
+                row
+                for row in sample_rows
+                if row["evidence_id"] == "sequenza_scarhrd_input_plan"
+            )
+            self.assertEqual(
+                manifest["review_summary"]["provenance"]["deterministic_manifest_sha256"],
+                expected_manifest_sha256,
+            )
+            self.assertEqual(
+                "blocked",
+                manifest["review_summary"]["provenance"]["phase3_fast"][
+                    "crosscheck_input_plans"
+                ]["sequenza_scarhrd"],
+            )
+            self.assertIn(
+                "Alias-only Sequenza/scarHRD materialization is blocked; execution is not_run",
+                sequenza_row["detail"],
+            )
+            self.assertNotIn("inputs_materialized", sequenza_row["detail"])
 
     def test_diana_wgs_packet_rejects_deterministic_report_below_symlinked_parent(self):
         self.assertFalse(packet.is_platform_root_alias(Path("linked-phase3-fast")))
@@ -2051,7 +2135,7 @@ class RosalindHrdPacketTest(unittest.TestCase):
                         "artifact_groups"
                     ].__setitem__("small_variants", 1.0),
                 ),
-                "Phase 3 fast small_variants artifact count must be a non-negative integer",
+                "Phase 3 fast artifact group small_variants must be a non-negative integer",
             ),
             (
                 "sequenza_alias_bytes",
