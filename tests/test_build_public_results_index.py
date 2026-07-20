@@ -714,17 +714,35 @@ class PublicIndexTests(unittest.TestCase):
                     MODULE.validate_reviewed_public_receipts(receipts)
 
     def test_reviewed_public_receipts_reject_extra_final_apply_check(self) -> None:
-        with tempfile.TemporaryDirectory() as temporary:
-            receipts = write_public_receipts(Path(temporary))
-            receipt = json.loads(receipts[0].read_text(encoding="utf-8"))
-            receipt["checks"]["unexpected_late_check"] = True
-            receipts[0].write_text(
-                json.dumps(receipt, indent=2, sort_keys=True) + "\n",
-                encoding="utf-8",
+        cases = (
+            (
+                "unexpected-late-check",
+                lambda receipt: receipt["checks"].__setitem__(
+                    "unexpected_late_check",
+                    True,
+                ),
+            ),
+            (
+                "truthy-integer-check",
+                lambda receipt: receipt["checks"].__setitem__(
+                    "destination_sse_s3",
+                    1,
+                ),
             )
+        )
 
-            with self.assertRaisesRegex(RuntimeError, "failed required checks"):
-                MODULE.validate_reviewed_public_receipts(receipts)
+        for name, mutate in cases:
+            with self.subTest(name=name), tempfile.TemporaryDirectory() as temporary:
+                receipts = write_public_receipts(Path(temporary))
+                receipt = json.loads(receipts[0].read_text(encoding="utf-8"))
+                mutate(receipt)
+                receipts[0].write_text(
+                    json.dumps(receipt, indent=2, sort_keys=True) + "\n",
+                    encoding="utf-8",
+                )
+
+                with self.assertRaisesRegex(RuntimeError, "failed required checks"):
+                    MODULE.validate_reviewed_public_receipts(receipts)
 
     def test_reviewed_public_receipts_require_exact_apply_envelope(self) -> None:
         cases = (
@@ -931,6 +949,10 @@ class PublicIndexTests(unittest.TestCase):
                 "not exact",
             ),
             (
+                lambda row: row["checks"].update({"version_exact": 1}),
+                "not exact",
+            ),
+            (
                 lambda row: row["checks"].update({"unexpected_late_check": True}),
                 "not exact",
             ),
@@ -989,6 +1011,12 @@ class PublicIndexTests(unittest.TestCase):
             (
                 lambda receipt: receipt["source_objects"][0].update(
                     {"checks": {"exact_version_head": False}}
+                ),
+                "source object is not exact",
+            ),
+            (
+                lambda receipt: receipt["source_objects"][0]["checks"].update(
+                    {"exact_version_head": 1.0}
                 ),
                 "source object is not exact",
             ),
