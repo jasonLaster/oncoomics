@@ -740,6 +740,29 @@ class PublishReviewedPublicReportTests(unittest.TestCase):
 
             self.assertFalse(fixture.output_path.exists())
 
+    def test_apply_rejects_dry_run_receipt_with_numeric_check_before_s3(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            fixture = Fixture(Path(temporary))
+            dry_receipt = fixture.write_dry_run_receipt()
+            payload = json.loads(dry_receipt.read_text(encoding="utf-8"))
+            payload["checks"]["source_exact_versions"] = 1
+            dry_receipt.write_text(
+                json.dumps(payload, indent=2, sort_keys=True) + "\n",
+                encoding="utf-8",
+            )
+
+            with (
+                mock.patch.object(
+                    MODULE, "aws_json", side_effect=AssertionError("AWS called")
+                ),
+                self.assertRaisesRegex(ValueError, "did not pass preflight checks"),
+            ):
+                MODULE.run(fixture.args(apply=True, dry_run_receipt=dry_receipt))
+
+            self.assertFalse(fixture.output_path.exists())
+
     def test_apply_rejects_dry_run_receipt_with_stale_extra_metadata_before_s3(
         self,
     ) -> None:
@@ -1266,6 +1289,7 @@ class PublishReviewedPublicReportTests(unittest.TestCase):
         cases = (
             {"version_id": True},
             {**MODULE.PRIVATE_RECEIPT_OBJECT_CHECKS, "unexpected_late_check": True},
+            {**MODULE.PRIVATE_RECEIPT_OBJECT_CHECKS, "version_id": 1},
         )
 
         for checks in cases:
@@ -1303,6 +1327,13 @@ class PublishReviewedPublicReportTests(unittest.TestCase):
                 lambda receipt: receipt["checks"].__setitem__(
                     "unexpected_late_check",
                     True,
+                ),
+            ),
+            (
+                "numeric dry-run binding",
+                lambda receipt: receipt["checks"].__setitem__(
+                    "dry_run_receipt",
+                    1,
                 ),
             ),
         )
@@ -1486,6 +1517,7 @@ class PublishReviewedPublicReportTests(unittest.TestCase):
         cases = (
             {"version_id": True},
             {**MODULE.SOURCE_VERSION_CHECKS, "unexpected_late_check": True},
+            {**MODULE.SOURCE_VERSION_CHECKS, "version_id": 1},
         )
 
         for checks in cases:
@@ -1501,6 +1533,7 @@ class PublishReviewedPublicReportTests(unittest.TestCase):
         cases = (
             {"bytes": True},
             {**MODULE.SOURCE_LOCAL_CHECKS, "unexpected_late_check": True},
+            {**MODULE.SOURCE_LOCAL_CHECKS, "bytes": 1.0},
         )
 
         for checks in cases:
@@ -1713,6 +1746,7 @@ class PublishReviewedPublicReportTests(unittest.TestCase):
                 **MODULE.PUBLIC_DESTINATION_OBJECT_CHECKS,
                 "unexpected_late_check": True,
             },
+            {**MODULE.PUBLIC_DESTINATION_OBJECT_CHECKS, "version_exact": 1.0},
         )
 
         for checks in cases:

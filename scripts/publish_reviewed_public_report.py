@@ -681,7 +681,7 @@ def validate_private_receipt_payload(
         )
         or not isinstance(rows, list)
         or len(rows) != len(expected)
-        or checks != PRIVATE_RECEIPT_APPLY_CHECKS
+        or not exact_check_map(checks, PRIVATE_RECEIPT_APPLY_CHECKS)
     ):
         raise ValueError("private publication receipt contract is not exact and passed")
 
@@ -715,7 +715,7 @@ def validate_private_receipt_payload(
             or raw.get("kms_key_id") != PRIVATE_KMS_KEY_ARN
             or raw.get("checksum_type") != "FULL_OBJECT"
             or raw.get("checksum_sha256") != checksum_sha256(digest)
-            or checks != PRIVATE_RECEIPT_OBJECT_CHECKS
+            or not exact_check_map(checks, PRIVATE_RECEIPT_OBJECT_CHECKS)
         ):
             raise ValueError(f"private publication receipt object is not exact: {relative}")
         total_bytes += size
@@ -778,12 +778,21 @@ def exact_local_source_checks(path: Path, row: dict[str, Any]) -> dict[str, bool
     }
 
 
+def exact_check_map(value: Any, expected: dict[str, bool]) -> bool:
+    if not isinstance(value, dict) or set(value) != set(expected):
+        return False
+    return all(
+        value.get(name) is expected_value
+        for name, expected_value in expected.items()
+    )
+
+
 def require_source_version_checks_exact(
     checks: dict[str, bool],
     relative_path: str,
     phase: str,
 ) -> None:
-    if checks != SOURCE_VERSION_CHECKS:
+    if not exact_check_map(checks, SOURCE_VERSION_CHECKS):
         raise ValueError(
             f"private exact-version {phase} failed for {relative_path}: {checks}"
         )
@@ -793,7 +802,7 @@ def require_source_local_checks_exact(
     checks: dict[str, bool],
     relative_path: str,
 ) -> None:
-    if checks != SOURCE_LOCAL_CHECKS:
+    if not exact_check_map(checks, SOURCE_LOCAL_CHECKS):
         raise ValueError(
             f"private exact-version GET failed for {relative_path}: local={checks}"
         )
@@ -803,7 +812,7 @@ def require_public_destination_checks_exact(
     checks: dict[str, bool],
     relative_path: str,
 ) -> None:
-    if checks != PUBLIC_DESTINATION_OBJECT_CHECKS:
+    if not exact_check_map(checks, PUBLIC_DESTINATION_OBJECT_CHECKS):
         raise ValueError(
             f"public destination verification failed for {relative_path}: {checks}"
         )
@@ -1075,7 +1084,10 @@ def validate_dry_run_receipt(
             "reviewed-public report dry-run private receipt does not match this apply"
         )
 
-    if checks != dict.fromkeys(REVIEWED_PUBLIC_PREFLIGHT_CHECKS, True):
+    if not exact_check_map(
+        checks,
+        dict.fromkeys(REVIEWED_PUBLIC_PREFLIGHT_CHECKS, True),
+    ):
         raise ValueError(
             "reviewed-public report dry-run receipt did not pass preflight checks"
         )
