@@ -205,7 +205,14 @@ def require_source_file(root: Path, relative: str) -> Path:
 def require_exact_check_map(
     value: Any, expected: dict[str, bool], label: str
 ) -> None:
-    if value != expected:
+    if (
+        not isinstance(value, dict)
+        or set(value) != set(expected)
+        or any(
+            value.get(name) is not expected_value
+            for name, expected_value in expected.items()
+        )
+    ):
         raise ValueError(f"{label} check map is not exact")
 
 
