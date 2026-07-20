@@ -749,6 +749,55 @@ class CaptureMaterializerTerminalTests(unittest.TestCase):
                         aws=self.aws_side_effect(job=job),
                     )
 
+    def test_batch_identity_requires_exact_job_name_and_log_stream_text(self) -> None:
+        cases = (
+            (
+                "job_name",
+                lambda job, compute: job.__setitem__("jobName", 123),
+                "failed job_name_text",
+            ),
+            (
+                "job_log_stream",
+                lambda job, compute: job["container"].__setitem__(
+                    "logStreamName",
+                    123,
+                ),
+                "failed log_stream_exact",
+            ),
+            (
+                "attempt_log_stream",
+                lambda job, compute: job["attempts"][0]["container"].__setitem__(
+                    "logStreamName",
+                    123,
+                ),
+                "failed log_stream_exact",
+            ),
+            (
+                "arm_instance_type",
+                lambda job, compute: compute["computeResources"].__setitem__(
+                    "instanceTypes",
+                    ["c7g", "c7gn", "m7g", 7],
+                ),
+                "failed arm_compute_environment_exact",
+            ),
+        )
+
+        for label, mutate, error in cases:
+            with self.subTest(label=label):
+                job = copy.deepcopy(self.job)
+                compute = copy.deepcopy(self.compute)
+                mutate(job, compute)
+
+                with self.assertRaisesRegex(ValueError, error):
+                    MODULE.validate_job(
+                        job,
+                        self.definition,
+                        self.queue,
+                        compute,
+                        "job-1",
+                        self.parameters,
+                    )
+
     def test_rejects_queue_that_is_not_live_exact_graviton_route(self) -> None:
         queue = copy.deepcopy(self.queue)
         queue["computeEnvironmentOrder"][0]["computeEnvironment"] += "-x86"
@@ -1568,6 +1617,27 @@ class CaptureMaterializerTerminalTests(unittest.TestCase):
         ]
 
         self.assertEqual(raw_checksum_coercions, [])
+
+    def test_batch_identity_checks_avoid_raw_string_coercion(self) -> None:
+        module = ast.parse(
+            (SCRIPT_DIR / "capture_materializer_terminal.py").read_text(
+                encoding="utf-8"
+            )
+        )
+        raw_batch_coercions = [
+            ast.unparse(node)
+            for node in ast.walk(module)
+            if isinstance(node, ast.Call)
+            and isinstance(node.func, ast.Name)
+            and node.func.id == "str"
+            and node.args
+            and any(
+                field in ast.unparse(node.args[0])
+                for field in ("logStreamName", "jobName", "instanceTypes")
+            )
+        ]
+
+        self.assertEqual(raw_batch_coercions, [])
 
     def test_rejects_symlinked_exact_receipt_download_before_capture(self) -> None:
         def get(region, bucket, key, version_id, destination):
