@@ -202,18 +202,40 @@ def reject_duplicate_json_object_names(pairs: list[tuple[str, Any]]) -> dict[str
     return result
 
 
-def read_json_file(path: Path, label: str) -> Any:
+def _sha256_bytes(data: bytes) -> str:
+    return hashlib.sha256(data).hexdigest()
+
+
+def read_stable_json_file_bytes(path: Path, label: str) -> bytes:
     path = require_real_nonempty_file(path, label)
+    data = path.read_bytes()
+    digest = _sha256_bytes(data)
+    if _sha256_bytes(path.read_bytes()) != digest:
+        raise ValueError(f"{label} changed during read: {path}")
+    return data
+
+
+def read_json_file(path: Path, label: str) -> Any:
+    value, _digest = read_json_file_with_sha256(path, label)
+    return value
+
+
+def read_json_file_with_sha256(path: Path, label: str) -> tuple[Any, str]:
+    data = read_stable_json_file_bytes(path, label)
     try:
-        return json.loads(
-            path.read_text(encoding="utf-8"),
-            object_pairs_hook=reject_duplicate_json_object_names,
+        return (
+            json.loads(
+                data.decode("utf-8"),
+                object_pairs_hook=reject_duplicate_json_object_names,
+            ),
+            _sha256_bytes(data),
         )
+    except UnicodeError as error:
+        raise ValueError(f"{label} is not valid JSON: {path}") from error
     except DuplicateJsonObjectName as error:
         raise ValueError(f"duplicate JSON object name in {label}: {error}") from error
-    except (OSError, UnicodeError, json.JSONDecodeError) as error:
+    except json.JSONDecodeError as error:
         raise ValueError(f"{label} is not valid JSON: {path}") from error
-
 
 def read_json_or_empty(relative_path: str) -> dict[str, Any]:
     path = artifact_path_from_root(relative_path)
@@ -1130,7 +1152,10 @@ def diana_wgs_deterministic_binding() -> dict[str, Any]:
             "report.md", "report_manifest.json", *DETERMINISTIC_SUPPORT_FILES
         }
     }
-    manifest = read_json_file(paths["report_manifest.json"], "deterministic report manifest")
+    manifest, deterministic_manifest_sha256 = read_json_file_with_sha256(
+        paths["report_manifest.json"],
+        "deterministic report manifest",
+    )
     if not isinstance(manifest, dict):
         raise ValueError("deterministic report manifest must be an object")
     expected_contract = {
@@ -1171,7 +1196,6 @@ def diana_wgs_deterministic_binding() -> dict[str, Any]:
     if len(input_by_id) != len(input_rows):
         raise ValueError("deterministic input SHA-256 CSV has duplicate input IDs")
     if manifest.get("report_kind") == PHASE3_FAST_REPORT_KIND:
-        deterministic_manifest_sha256 = sha256_file(paths["report_manifest.json"])
         return diana_wgs_phase3_fast_deterministic_binding(
             paths=paths,
             manifest=manifest,
@@ -1244,7 +1268,6 @@ def diana_wgs_deterministic_binding() -> dict[str, Any]:
     }
     if not custody_hashes:
         raise ValueError("deterministic custody lacks hash-bound receipts")
-    deterministic_manifest_sha256 = sha256_file(paths["report_manifest.json"])
     tools = read_json_file(artifact_path_from_root("tool_versions.json"), "Diana WGS tool versions")
     if not isinstance(tools, dict) or set(tools) != {"bwa", "samtools", "bcftools", "gatk"}:
         raise ValueError("Diana WGS tool version inventory is missing or malformed")

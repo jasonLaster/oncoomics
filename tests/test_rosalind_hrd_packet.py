@@ -1141,6 +1141,61 @@ class RosalindHrdPacketTest(unittest.TestCase):
                 packet.sha256_file(deterministic_root / "report_manifest.json"),
             )
 
+    def test_diana_wgs_packet_carries_parsed_terminal_manifest_hash(self):
+        with tempfile.TemporaryDirectory() as tmp, tempfile.TemporaryDirectory() as artifacts:
+            output_root = Path(tmp)
+            artifact_root = Path(artifacts)
+            write_diana_wgs_worker_artifacts(artifact_root)
+            deterministic_root = write_deterministic_report(
+                output_root / "deterministic",
+                artifact_root,
+            )
+            expected_manifest_sha256 = packet.sha256_file(
+                deterministic_root / "report_manifest.json"
+            )
+            read_count = 0
+            real_stable_read = packet.read_stable_json_file_bytes
+
+            def tamper_after_deterministic_manifest_read(path: Path, label: str):
+                nonlocal read_count
+                data = real_stable_read(path, label)
+                if label == "deterministic report manifest":
+                    read_count += 1
+                if label == "deterministic report manifest" and read_count == 2:
+                    manifest = utils.read_json(path)
+                    manifest["classification_qc_status"] = "passed"
+                    utils.write_json(path, manifest)
+                return data
+
+            with (
+                patch.object(packet, "path_from_root", lambda relative: output_root / relative),
+                patch.dict(
+                    "os.environ",
+                    {
+                        "ROSALIND_HRD_ARTIFACT_ROOT": str(artifact_root),
+                        "ROSALIND_HRD_DETERMINISTIC_REPORT_DIR": str(deterministic_root),
+                    },
+                ),
+                patch.object(
+                    packet,
+                    "read_stable_json_file_bytes",
+                    side_effect=tamper_after_deterministic_manifest_read,
+                ),
+            ):
+                packet.write_packet(packet.PACKET_SPECS["diana_wgs"], "unit")
+
+            manifest = utils.read_json(
+                output_root / "results/rosalind_hrd/diana_wgs/unit/report_manifest.json"
+            )
+            self.assertEqual(
+                manifest["review_summary"]["provenance"]["deterministic_manifest_sha256"],
+                expected_manifest_sha256,
+            )
+            self.assertNotEqual(
+                expected_manifest_sha256,
+                packet.sha256_file(deterministic_root / "report_manifest.json"),
+            )
+
     def test_diana_wgs_packet_consumes_phase3_fast_deterministic_evidence(self):
         with tempfile.TemporaryDirectory() as tmp:
             output_root = Path(tmp)
@@ -1369,6 +1424,66 @@ class RosalindHrdPacketTest(unittest.TestCase):
             )
             self.assertNotEqual(
                 provenance["deterministic_manifest_sha256"],
+                packet.sha256_file(deterministic_root / "report_manifest.json"),
+            )
+
+    def test_diana_wgs_packet_carries_parsed_phase3_fast_manifest_hash(
+        self,
+    ):
+        with tempfile.TemporaryDirectory() as tmp:
+            output_root = Path(tmp)
+            deterministic_root, final_root = write_phase3_fast_deterministic_report(
+                output_root / "phase3_fast"
+            )
+            expected_manifest_sha256 = packet.sha256_file(
+                deterministic_root / "report_manifest.json"
+            )
+            read_count = 0
+            real_stable_read = packet.read_stable_json_file_bytes
+
+            def tamper_after_deterministic_manifest_read(path: Path, label: str):
+                nonlocal read_count
+                data = real_stable_read(path, label)
+                if label == "deterministic report manifest":
+                    read_count += 1
+                if label == "deterministic report manifest" and read_count == 2:
+                    mutate_phase3_fast_report_manifest(
+                        deterministic_root,
+                        lambda manifest: manifest.__setitem__(
+                            "classification_qc_status",
+                            "passed",
+                        ),
+                    )
+                return data
+
+            with (
+                patch.object(packet, "path_from_root", lambda relative: output_root / relative),
+                patch.dict(
+                    "os.environ",
+                    {
+                        "ROSALIND_HRD_ARTIFACT_ROOT": str(final_root),
+                        "ROSALIND_HRD_DETERMINISTIC_REPORT_DIR": str(deterministic_root),
+                        "ROSALIND_HRD_FORBIDDEN_TOKENS_JSON": PHASE3_FAST_FORBIDDEN_TOKENS_JSON,
+                    },
+                ),
+                patch.object(
+                    packet,
+                    "read_stable_json_file_bytes",
+                    side_effect=tamper_after_deterministic_manifest_read,
+                ),
+            ):
+                packet.write_packet(packet.PACKET_SPECS["diana_wgs"], "phase3-fast")
+
+            manifest = utils.read_json(
+                output_root
+                / "results/rosalind_hrd/diana_wgs/phase3-fast/report_manifest.json"
+            )
+            self.assertEqual(
+                manifest["review_summary"]["provenance"]["deterministic_manifest_sha256"],
+                expected_manifest_sha256,
+            )
+            self.assertNotEqual(
+                expected_manifest_sha256,
                 packet.sha256_file(deterministic_root / "report_manifest.json"),
             )
 
