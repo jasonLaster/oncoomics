@@ -1,6 +1,7 @@
 import ast
 import hashlib
 import json
+import re
 import tempfile
 import unittest
 from pathlib import Path
@@ -4870,6 +4871,88 @@ class RosalindHrdPacketTest(unittest.TestCase):
                 "cloud_materialization_plan.md",
             ):
                 self.assertFalse((root / "results/rosalind_hrd/unit" / name).exists())
+
+    def test_run_manifest_rechecks_support_file_content(self):
+        for support_name in ("packet_index.md", "cloud_materialization_plan.md"):
+            with self.subTest(support=support_name), tempfile.TemporaryDirectory() as tmp:
+                root = Path(tmp)
+                write_diana_raw_intake_artifacts(root)
+                real_write_text = packet.write_text_create_only
+
+                def replace_support_text(path: Path, value: str) -> None:
+                    if path.name == support_name:
+                        real_write_text(path, f"tampered {support_name}")
+                    else:
+                        real_write_text(path, value)
+
+                with (
+                    patch.object(packet, "path_from_root", lambda relative: root / relative),
+                    patch.dict(
+                        "os.environ",
+                        {
+                            "ROSALIND_HRD_ARTIFACT_ROOT": "",
+                            "ROSALIND_HRD_OUTPUT_ROOT": "",
+                            "ROSALIND_HRD_RUN_ID": "unit",
+                            "ROSALIND_HRD_SAMPLE_SET": "diana_raw_intake",
+                        },
+                    ),
+                    patch.object(
+                        packet,
+                        "write_text_create_only",
+                        side_effect=replace_support_text,
+                    ),
+                    self.assertRaisesRegex(
+                        ValueError,
+                        f"Rosalind run {re.escape(support_name)} content is not exact",
+                    ),
+                ):
+                    packet.main()
+
+                for name in (
+                    "run_manifest.json",
+                    "packet_index.md",
+                    "cloud_materialization_plan.md",
+                ):
+                    self.assertFalse((root / "results/rosalind_hrd/unit" / name).exists())
+
+    def test_run_manifest_rechecks_sample_sets_from_packet_summaries(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            write_diana_raw_intake_artifacts(root)
+            real_write_json = packet.write_json_create_only
+
+            def alter_sample_sets(path: Path, value: object) -> None:
+                if path.name == "run_manifest.json":
+                    value = dict(value)
+                    value["sampleSets"] = ["hcc1395_wgs"]
+                real_write_json(path, value)
+
+            with (
+                patch.object(packet, "path_from_root", lambda relative: root / relative),
+                patch.dict(
+                    "os.environ",
+                    {
+                        "ROSALIND_HRD_ARTIFACT_ROOT": "",
+                        "ROSALIND_HRD_OUTPUT_ROOT": "",
+                        "ROSALIND_HRD_RUN_ID": "unit",
+                        "ROSALIND_HRD_SAMPLE_SET": "diana_raw_intake",
+                    },
+                ),
+                patch.object(
+                    packet,
+                    "write_json_create_only",
+                    side_effect=alter_sample_sets,
+                ),
+                self.assertRaisesRegex(
+                    ValueError,
+                    "Rosalind run manifest sampleSets differ from packets",
+                ),
+            ):
+                packet.main()
+
+            self.assertFalse(
+                (root / "results/rosalind_hrd/unit/run_manifest.json").exists()
+            )
 
     def test_diana_raw_intake_packet_marks_waiting_input_path(self):
         with tempfile.TemporaryDirectory() as tmp:
