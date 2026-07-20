@@ -160,6 +160,10 @@ REPORT_KIND_EXTRA_KEYS = {
     "public_known_answer_method_no_call": frozenset({"execution_status"}),
     "rosalind_hrd_reviewer_packet": frozenset(),
 }
+NO_CALL_ONLY_REPORT_KINDS = {
+    "public_known_answer_method_no_call",
+    "rosalind_hrd_reviewer_packet",
+}
 
 
 def is_platform_root_alias(path: Path) -> bool:
@@ -636,6 +640,16 @@ def validate_report_manifest_support(
     if not isinstance(manifest.get("classification_authorized"), bool):
         raise ValueError(
             f"report manifest classification authorization is not exact for {method}"
+        )
+    if report_kind in NO_CALL_ONLY_REPORT_KINDS and (
+        manifest.get("evidence_status") == "ready"
+        or manifest.get("authorized_hrd_state") != "no_call"
+        or manifest.get("classification_authorized") is not False
+        or manifest.get("classification_qc_status") != "not_applicable"
+    ):
+        raise ValueError(
+            f"{report_kind} report manifest cannot authorize HRD classification "
+            f"for {method}"
         )
 
     support_hashes = manifest.get("support_sha256")
