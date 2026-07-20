@@ -4,6 +4,7 @@ import ast
 import base64
 import hashlib
 import json
+import os
 import shutil
 import stat
 import sys
@@ -352,12 +353,15 @@ class ExactReportDownloadTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
             receipt, _anchor, _data, _row = self.fixture(root)
-            real_read_bytes = Path.read_bytes
+            real_read_once = MODULE.read_real_hash_input_once
             calls = 0
 
-            def mutating_read_bytes(path: Path) -> bytes:
+            def mutating_read_once(
+                path: Path,
+                label: str,
+            ) -> tuple[bytes, tuple[int, int, int, int, int, int]]:
                 nonlocal calls
-                data = real_read_bytes(path)
+                result = real_read_once(path, label)
                 if path == receipt:
                     calls += 1
                     if calls == 1:
@@ -365,13 +369,86 @@ class ExactReportDownloadTests(unittest.TestCase):
                             '{"changed_after_first_read": true}\n',
                             encoding="utf-8",
                         )
-                return data
+                return result
 
             with (
-                patch.object(Path, "read_bytes", mutating_read_bytes),
+                patch.object(
+                    MODULE,
+                    "read_real_hash_input_once",
+                    side_effect=mutating_read_once,
+                ),
                 self.assertRaisesRegex(
                     ValueError,
                     "publication receipt changed during read",
+                ),
+            ):
+                MODULE.load_object_with_sha256(receipt, "publication receipt")
+
+    def test_load_object_with_sha256_rejects_same_byte_leaf_replacement(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            receipt, _anchor, _data, _row = self.fixture(root)
+            target = root / "target.json"
+            target.write_bytes(receipt.read_bytes())
+            real_fstat = MODULE.os.fstat
+            swapped = False
+
+            def replace_leaf_after_open(
+                descriptor: int,
+            ) -> os.stat_result:
+                nonlocal swapped
+                result = real_fstat(descriptor)
+                if not swapped:
+                    swapped = True
+                    target.replace(receipt)
+                return result
+
+            with (
+                patch.object(
+                    MODULE.os,
+                    "fstat",
+                    side_effect=replace_leaf_after_open,
+                ),
+                self.assertRaisesRegex(
+                    ValueError,
+                    "publication receipt changed during read",
+                ),
+            ):
+                MODULE.load_object_with_sha256(receipt, "publication receipt")
+
+    def test_load_object_with_sha256_rejects_leaf_replaced_after_preflight(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            receipt, _anchor, _data, _row = self.fixture(root)
+            target = root / "target.json"
+            target.write_text(
+                json.dumps({"status": "redirected"}) + "\n",
+                encoding="utf-8",
+            )
+            real_require = MODULE.require_no_symlinked_ancestors
+            swapped = False
+
+            def swap_leaf_after_preflight(path: Path, label: str) -> None:
+                nonlocal swapped
+                real_require(path, label)
+                if path == receipt and not swapped:
+                    swapped = True
+                    receipt.unlink()
+                    receipt.symlink_to(target)
+
+            with (
+                patch.object(
+                    MODULE,
+                    "require_no_symlinked_ancestors",
+                    side_effect=swap_leaf_after_preflight,
+                ),
+                self.assertRaisesRegex(
+                    ValueError,
+                    "publication receipt is missing or a symlink",
                 ),
             ):
                 MODULE.load_object_with_sha256(receipt, "publication receipt")
@@ -1524,12 +1601,15 @@ class ExactReportDownloadTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
             receipt, _anchor, _data, _row = self.fixture(root)
-            real_read_bytes = Path.read_bytes
+            real_read_once = MODULE.read_real_hash_input_once
             calls = 0
 
-            def mutating_read_bytes(path: Path) -> bytes:
+            def mutating_read_once(
+                path: Path,
+                label: str,
+            ) -> tuple[bytes, tuple[int, int, int, int, int, int]]:
                 nonlocal calls
-                data = real_read_bytes(path)
+                result = real_read_once(path, label)
                 if path == receipt:
                     calls += 1
                     if calls == 1:
@@ -1537,10 +1617,14 @@ class ExactReportDownloadTests(unittest.TestCase):
                             '{"changed_after_first_read": true}\n',
                             encoding="utf-8",
                         )
-                return data
+                return result
 
             with (
-                patch.object(Path, "read_bytes", mutating_read_bytes),
+                patch.object(
+                    MODULE,
+                    "read_real_hash_input_once",
+                    side_effect=mutating_read_once,
+                ),
                 self.assertRaisesRegex(
                     ValueError,
                     "publication\\.json SHA-256 input changed during read",
