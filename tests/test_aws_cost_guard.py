@@ -82,14 +82,6 @@ class FailingEc2:
         raise RuntimeError("live EC2 inventory unavailable")
 
 
-class FakeS3:
-    def __init__(self) -> None:
-        self.calls: list[dict] = []
-
-    def put_public_access_block(self, **kwargs: object) -> None:
-        self.calls.append(kwargs)
-
-
 class FakeTable:
     def __init__(self, item: dict | None = None) -> None:
         self.item = item
@@ -543,17 +535,14 @@ class AwsCostGuardTests(unittest.TestCase):
             batch.calls,
         )
 
-    def test_budget_event_stops_batch_and_blocks_public_s3(self) -> None:
+    def test_budget_event_stops_only_batch(self) -> None:
         batch = FakeBatch()
-        s3 = FakeS3()
 
         class FakeBoto3:
             @staticmethod
             def client(service: str, **kwargs: object) -> object:
                 if service == "batch":
                     return batch
-                if service == "s3":
-                    return s3
                 raise AssertionError(f"unexpected client: {service}")
 
         with mock.patch.dict(
@@ -564,27 +553,12 @@ class AwsCostGuardTests(unittest.TestCase):
             {
                 "BATCH_COMPUTE_ENVIRONMENTS": json.dumps(["gpu-ce"]),
                 "BATCH_JOB_QUEUES": json.dumps(["gpu"]),
-                "BATCH_PUBLIC_S3_BUCKETS": json.dumps(["raw", "results", "raw"]),
             },
             clear=True,
         ):
             result = GUARD.handler({"Records": [{"EventSource": "aws:sns"}]}, None)
 
         self.assertEqual("stopped", result["status"])
-        self.assertEqual(2, result["public_s3_buckets_blocked"])
-        self.assertEqual(
-            [
-                {
-                    "Bucket": "raw",
-                    "PublicAccessBlockConfiguration": GUARD.BLOCK_PUBLIC_ACCESS,
-                },
-                {
-                    "Bucket": "results",
-                    "PublicAccessBlockConfiguration": GUARD.BLOCK_PUBLIC_ACCESS,
-                },
-            ],
-            s3.calls,
-        )
         self.assertIn(
             (
                 "update_job_queue",
@@ -686,8 +660,8 @@ class AwsCostGuardTests(unittest.TestCase):
         self.assertIn('"batch:UpdateJobQueue"', main)
         self.assertIn('"batch:UpdateComputeEnvironment"', main)
         self.assertIn('"ec2:DescribeInstances"', main)
-        self.assertIn("BATCH_PUBLIC_S3_BUCKETS", main)
-        self.assertIn('"s3:PutBucketPublicAccessBlock"', main)
+        self.assertNotIn("BATCH_PUBLIC_S3_BUCKETS", main)
+        self.assertNotIn('"s3:PutBucketPublicAccessBlock"', main)
         self.assertIn('"dynamodb:GetItem"', main)
         self.assertIn('"dynamodb:PutItem"', main)
         self.assertIn('sid       = "ListDianaBatchJobs"', main)
@@ -712,9 +686,6 @@ class AwsCostGuardTests(unittest.TestCase):
         self.assertIn('output "daily_cost_guard_budget"', outputs)
         self.assertIn('output "daily_cost_guard_topic_arn"', outputs)
         self.assertIn('output "daily_cost_guard_ledger"', outputs)
-        self.assertIn("ignore_changes = [", terraform_block(main, 'resource "aws_s3_bucket_public_access_block" "this"'))
-        self.assertIn("block_public_policy", terraform_block(main, 'resource "aws_s3_bucket_public_access_block" "this"'))
-        self.assertIn("restrict_public_buckets", terraform_block(main, 'resource "aws_s3_bucket_public_access_block" "this"'))
 
     def test_terraform_preserves_tripped_batch_kill_switch_state(self) -> None:
         main = MAIN_TF.read_text(encoding="utf-8")

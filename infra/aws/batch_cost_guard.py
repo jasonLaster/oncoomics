@@ -20,12 +20,6 @@ MICRO_USD = Decimal("0.000001")
 ZERO_USD = Decimal("0")
 TERMINAL_RACE_ERROR_CODES = {"ClientException"}
 COST_GUARD_REGION_FIELD = "_diana_batch_cost_guard_region"
-BLOCK_PUBLIC_ACCESS = {
-    "BlockPublicAcls": True,
-    "IgnorePublicAcls": True,
-    "BlockPublicPolicy": True,
-    "RestrictPublicBuckets": True,
-}
 
 
 def unique(values: Iterable[str]) -> list[str]:
@@ -435,16 +429,6 @@ def stop_batch(
     }
 
 
-def block_public_s3_buckets(s3: Any, buckets: Iterable[str]) -> dict[str, Any]:
-    bucket_names = unique(buckets)
-    for bucket in bucket_names:
-        s3.put_public_access_block(
-            Bucket=bucket,
-            PublicAccessBlockConfiguration=BLOCK_PUBLIC_ACCESS,
-        )
-    return {"public_s3_buckets_blocked": len(bucket_names)}
-
-
 def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
     job_queues = env_string_list("BATCH_JOB_QUEUES")
     compute_environments = env_string_list("BATCH_COMPUTE_ENVIRONMENTS")
@@ -456,20 +440,14 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
             "BATCH_BUDGET_STOP_REASON",
             "Diana daily AWS Budget cost guard tripped",
         )
-        result = {
-            **stop_batch(
-                boto3.client("batch"),
-                job_queues=job_queues,
-                compute_environments=compute_environments,
-                reason=reason,
-            ),
-            **block_public_s3_buckets(
-                boto3.client("s3"),
-                env_string_list("BATCH_PUBLIC_S3_BUCKETS"),
-            ),
-        }
+        result = stop_batch(
+            boto3.client("batch"),
+            job_queues=job_queues,
+            compute_environments=compute_environments,
+            reason=reason,
+        )
         LOGGER.warning(
-            "Diana daily cost guard stopped Batch and blocked public S3 after budget event: %s",
+            "Diana daily cost guard stopped Batch after budget event: %s",
             json.dumps(result, sort_keys=True),
         )
         return result

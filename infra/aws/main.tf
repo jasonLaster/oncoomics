@@ -291,16 +291,6 @@ resource "aws_s3_bucket_public_access_block" "this" {
   block_public_policy     = contains(["raw", "results"], each.key) ? false : true
   ignore_public_acls      = true
   restrict_public_buckets = contains(["raw", "results"], each.key) ? false : true
-
-  lifecycle {
-    # Preserve the daily cost guard's emergency public-read closure across
-    # unrelated Terraform applies. Public raw/results access must be reopened
-    # explicitly after a daily budget trip.
-    ignore_changes = [
-      block_public_policy,
-      restrict_public_buckets,
-    ]
-  }
 }
 
 resource "aws_s3_bucket_ownership_controls" "this" {
@@ -1432,16 +1422,6 @@ data "aws_iam_policy_document" "batch_cost_guard" {
   }
 
   statement {
-    sid     = "ClosePublicDianaBuckets"
-    effect  = "Allow"
-    actions = ["s3:PutBucketPublicAccessBlock"]
-    resources = [
-      aws_s3_bucket.this["raw"].arn,
-      aws_s3_bucket.this["results"].arn
-    ]
-  }
-
-  statement {
     sid    = "PersistDailyCostGuardLedger"
     effect = "Allow"
     actions = [
@@ -1486,10 +1466,6 @@ resource "aws_lambda_function" "batch_cost_guard" {
       BATCH_DAILY_EC2_LIMIT_USD       = tostring(var.daily_cost_guard_limit_usd * var.daily_cost_guard_live_stop_threshold_percent / 100)
       BATCH_ESTIMATED_STOP_REASON     = "Diana estimated daily Batch EC2 spend guard tripped"
       BATCH_INSTANCE_HOURLY_RATES_USD = jsonencode(var.daily_cost_guard_instance_hourly_rates_usd)
-      BATCH_PUBLIC_S3_BUCKETS = jsonencode([
-        aws_s3_bucket.this["raw"].bucket,
-        aws_s3_bucket.this["results"].bucket
-      ])
       BATCH_JOB_QUEUES = jsonencode(concat(
         [
           aws_batch_job_queue.spot.name,
