@@ -162,6 +162,27 @@ class RenderMaterializerJobDefinitionTests(unittest.TestCase):
 
             self.assertFalse(output.exists())
 
+    def test_output_rechecks_mode_after_parent_fsync(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            output = Path(tmp) / "materializer-job-definition.json"
+            real_fsync_directory = module.fsync_directory
+
+            def chmod_after_parent_fsync(path: Path) -> None:
+                real_fsync_directory(path)
+                output.chmod(0o644)
+
+            with (
+                mock.patch.object(
+                    module,
+                    "fsync_directory",
+                    side_effect=chmod_after_parent_fsync,
+                ),
+                self.assertRaisesRegex(ValueError, "output mode changed during write"),
+            ):
+                module.write_json_create_only(output, {"status": "passed"})
+
+            self.assertFalse(output.exists())
+
     def test_output_rejects_symlink_swap_before_final_digest(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -176,6 +197,7 @@ class RenderMaterializerJobDefinitionTests(unittest.TestCase):
                 if path == output and result and not swapped:
                     output.unlink()
                     relocated.write_text('{"status":"relocated"}\n', encoding="utf-8")
+                    relocated.chmod(0o600)
                     output.symlink_to(relocated)
                     swapped = True
                 return result
