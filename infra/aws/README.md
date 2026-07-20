@@ -529,3 +529,11 @@ v4 cross-check materializer submitter, and bounded cloud Rosalind packet helper
 fail closed once the ledger reaches the live stop, so setting an explicit
 `--submit` flag or `HRD_CROSSCHECK_ALLOW_EXPENSIVE_RUN=YES` cannot jump around
 the daily guard.
+
+All `diana_omics` task aliases that run Nextflow against an `awsbatch_*`
+profile also get an automatic first-party preflight step:
+`infra/aws/check-daily-cost-guard.sh <generated-nextflow-params>`. That wrapper
+loads `aws_region`, `daily_cost_guard_ledger`, and
+`daily_cost_guard_live_stop_usd` from the generated Terraform params and fails
+closed before `nextflow` can submit Batch work when the shared live Batch EC2
+ledger has already reached the $160 default stop.

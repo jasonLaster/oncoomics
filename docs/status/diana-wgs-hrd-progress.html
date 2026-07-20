@@ -374,7 +374,9 @@
           and full P5 execute preflights now read that day's live spend ledger
           before any queue or ECR checks, P5 smoke/execute preflights now require
           generated cost-guard bindings for that GPU queue and the guarded
-          region set, staged AI reviewer packets now have to carry the exact
+          region set, every AWS Nextflow launch alias now runs the same live
+          cost-guard check immediately before <code>nextflow</code> can submit
+          Batch work, staged AI reviewer packets now have to carry the exact
           bundle-manifest fingerprint that
           authorized them and still match it after their receipt is written,
           validated and synthesized Reviewer A/B outputs now
@@ -480,6 +482,7 @@
           <li class="pill">Blocked nested summaries = exact</li>
           <li class="pill">P5 spend = preflighted</li>
           <li class="pill">P5 cost ledger = bound</li>
+          <li class="pill">AWS Nextflow spend = preflighted</li>
           <li class="pill">AI reviewer modes = exact</li>
           <li class="pill">Deterministic stager checks = exact</li>
           <li class="pill">Batch worker check maps = exact</li>
@@ -1124,6 +1127,10 @@
             <li class="item" style="--tone: var(--done)">
               <strong>Done · guard direct Batch submitters</strong>
               <span>The static route submitter, v4 materializer submitter, and bounded Rosalind cloud-packet helper now all reread the live daily spend ledger immediately before their direct Batch submission and fail before <code>SubmitJob</code> if the UTC-day Batch EC2 estimate has already reached the $160 live stop.</span>
+            </li>
+            <li class="item" style="--tone: var(--done)">
+              <strong>Done · guard AWS Nextflow aliases</strong>
+              <span>Every Batch-backed <code>diana_omics</code> Nextflow alias now inserts <code>infra/aws/check-daily-cost-guard.sh</code> immediately before its <code>nextflow</code> step, and the manual legacy full-run launcher uses the same fail-closed check after its explicit override gate, so cheap smoke/dev jobs, known-answer cloud jobs, legacy full jobs, and P5 jobs all refuse to launch once the shared live Batch EC2 ledger reaches $160.</span>
             </li>
             <li class="item" style="--tone: var(--queued)">
               <strong>Pending · hold the us-west-2 P-family quota hedge</strong>
@@ -3151,6 +3158,21 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-20">Jul 20 · local</time>
+              <span>
+                <strong>Local patch · Guard every AWS Nextflow launch:</strong>
+                all Batch-backed Nextflow task aliases now run the shared
+                live-spend ledger preflight immediately before
+                <code>nextflow</code>, the manual legacy full-run launcher
+                also fails closed on that check even after its explicit
+                override, and the bounded Rosalind cloud-packet helper now
+                reuses the same wrapper before direct <code>SubmitJob</code>.
+                No S3, Batch, route, GPU, quota, rerun, or apply-mode AWS work
+                was launched; Cost Explorer was refreshed read-only for
+                2026-07-19 UTC and remained at $5.24.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-20">Jul 20 · local</time>
               <span>

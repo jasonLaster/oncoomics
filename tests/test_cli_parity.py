@@ -184,6 +184,19 @@ class CliParityTest(unittest.TestCase):
                 if step.argv and step.argv[0] == "nextflow":
                     self.assertEqual(("nextflow", "-log", "logs/nextflow.log", "run", "main.nf"), step.argv[:5], name)
 
+    def test_aws_nextflow_tasks_are_preceded_by_daily_cost_guard(self):
+        for name, task in TASKS.items():
+            for index, step in enumerate(task.steps):
+                if step.argv and step.argv[0] == "nextflow" and any(arg.startswith("awsbatch") for arg in step.argv):
+                    self.assertGreater(index, 0, name)
+                    self.assertIn("-params-file", step.argv, name)
+                    params_file = step.argv[step.argv.index("-params-file") + 1]
+                    self.assertEqual(
+                        ("bash", "infra/aws/check-daily-cost-guard.sh", params_file),
+                        task.steps[index - 1].argv,
+                        name,
+                    )
+
     def test_test_task_accepts_pytest_arguments(self):
         self.assertTrue(TASKS["py:test"].accepts_args)
         self.assertTrue(TASKS["py:test"].steps[0].append_args)
@@ -193,7 +206,11 @@ class CliParityTest(unittest.TestCase):
         self.assertTrue(TASKS["aws:hrd-packet:cloud-submit"].steps[0].append_args)
 
     def test_phase3_aws_failfast_task_is_conservative(self):
-        argv = TASKS["nf:aws:phase3-wgs:full:ondemand-failfast"].steps[0].argv
+        argv = next(
+            step.argv
+            for step in TASKS["nf:aws:phase3-wgs:full:ondemand-failfast"].steps
+            if step.argv[0] == "nextflow"
+        )
         self.assertIn("awsbatch_ondemand", argv)
         self.assertEqual("public_bam", argv[argv.index("--phase3_source_mode") + 1])
         self.assertEqual("flagstat_only", argv[argv.index("--phase3_bam_validation_mode") + 1])
@@ -234,10 +251,15 @@ class CliParityTest(unittest.TestCase):
         task = TASKS["nf:aws:phase3-wgs-fast:execute"]
 
         self.assertTrue(task.accepts_args)
-        self.assertEqual(2, len(task.steps))
+        self.assertEqual(3, len(task.steps))
         self.assertEqual("verify:phase3-fast-aws-execute", task.steps[0].argv[-1])
         self.assertFalse(task.steps[0].append_args)
-        self.assertTrue(task.steps[1].append_args)
+        self.assertEqual(
+            ("bash", "infra/aws/check-daily-cost-guard.sh", "infra/aws/nextflow.aws.use2.json"),
+            task.steps[1].argv,
+        )
+        self.assertFalse(task.steps[1].append_args)
+        self.assertTrue(task.steps[2].append_args)
         self.assertEqual(PHASE3_FAST_AWS_EXECUTE_ENV, task.required_env)
         self.assertEqual(PHASE3_FAST_AWS_EXECUTE_ALLOWED_EXTRA_ARGS, task.allowed_extra_args)
         self.assertIn("--phase3_fast_private_freeze_receipt", task.allowed_extra_args)
@@ -249,7 +271,7 @@ class CliParityTest(unittest.TestCase):
         self.assertNotIn("--aws_gpu_queue", task.allowed_extra_args)
         self.assertNotIn("--aws_max_retries", task.allowed_extra_args)
 
-        argv = task.steps[1].argv
+        argv = task.steps[2].argv
         self.assertIn("awsbatch_gpu", argv)
         self.assertIn("infra/aws/nextflow.aws.use2.json", argv)
         self.assertEqual("phase3_wgs_fast", argv[argv.index("--workflow") + 1])
@@ -275,9 +297,13 @@ class CliParityTest(unittest.TestCase):
         with patch.dict("os.environ", {"ALLOW_LEGACY_PHASE3_AWS_FULL": "YES"}, clear=True):
             run_task("nf:aws:phase3-wgs:full")
 
-        run.assert_called_once()
-        argv = run.call_args.args[0]
-        env = run.call_args.kwargs["env"]
+        self.assertEqual(2, run.call_count)
+        self.assertEqual(
+            ("bash", "infra/aws/check-daily-cost-guard.sh", "infra/aws/nextflow.aws.json"),
+            run.call_args_list[0].args[0],
+        )
+        argv = run.call_args_list[1].args[0]
+        env = run.call_args_list[1].kwargs["env"]
         self.assertEqual("nextflow", argv[0])
         self.assertEqual("phase3_wgs", argv[argv.index("--workflow") + 1])
         self.assertEqual("full", argv[argv.index("--phase3_reads") + 1])
@@ -305,10 +331,14 @@ class CliParityTest(unittest.TestCase):
         with patch.dict("os.environ", {"ALLOW_PHASE3_FAST_AWS_EXECUTE": "YES"}, clear=True):
             run_task("nf:aws:phase3-wgs-fast:execute", extra_args)
 
-        self.assertEqual(2, run.call_count)
+        self.assertEqual(3, run.call_count)
         self.assertEqual("verify:phase3-fast-aws-execute", run.call_args_list[0].args[0][-1])
-        argv = run.call_args_list[1].args[0]
-        env = run.call_args_list[1].kwargs["env"]
+        self.assertEqual(
+            ("bash", "infra/aws/check-daily-cost-guard.sh", "infra/aws/nextflow.aws.use2.json"),
+            run.call_args_list[1].args[0],
+        )
+        argv = run.call_args_list[2].args[0]
+        env = run.call_args_list[2].kwargs["env"]
         self.assertEqual("phase3_wgs_fast", argv[argv.index("--workflow") + 1])
         self.assertEqual("execute", argv[argv.index("--phase3_fast_small_variant_mode") + 1])
         self.assertEqual("8", argv[argv.index("--phase3_fast_parabricks_num_gpus") + 1])
@@ -364,7 +394,11 @@ class CliParityTest(unittest.TestCase):
 
         self.assertEqual("verify:phase3-fast-gpu-smoke", task.steps[0].argv[-1])
 
-        argv = task.steps[1].argv
+        self.assertEqual(
+            ("bash", "infra/aws/check-daily-cost-guard.sh", "infra/aws/nextflow.aws.use2.json"),
+            task.steps[1].argv,
+        )
+        argv = task.steps[2].argv
         self.assertIn("awsbatch_gpu", argv)
         self.assertIn("infra/aws/nextflow.aws.use2.json", argv)
         self.assertEqual("phase3_wgs_fast_gpu_smoke", argv[argv.index("--workflow") + 1])
