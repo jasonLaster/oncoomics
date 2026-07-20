@@ -961,22 +961,22 @@ class CustodyHandoffTests(unittest.TestCase):
             root = Path(temporary)
             receipt = root / "final-freeze-receipt.json"
             write_json(receipt, CustodyFixture().freeze)
-            original_sha256 = finalizer.sha256
+            original_sha256_bytes = finalizer.sha256_bytes
             mutated = False
 
-            def mutate_before_stability_hash(path: Path) -> str:
+            def mutate_before_stability_hash(payload: bytes) -> str:
                 nonlocal mutated
-                if path == receipt and not mutated:
+                if not mutated:
                     mutated = True
-                    payload = json.loads(path.read_text(encoding="utf-8"))
-                    payload["status"] = "raced"
-                    write_json(path, payload)
-                return original_sha256(path)
+                    value = json.loads(receipt.read_text(encoding="utf-8"))
+                    value["status"] = "raced"
+                    write_json(receipt, value)
+                return original_sha256_bytes(payload)
 
             with (
                 patch.object(
                     finalizer,
-                    "sha256",
+                    "sha256_bytes",
                     side_effect=mutate_before_stability_hash,
                 ),
                 self.assertRaisesRegex(
@@ -985,6 +985,39 @@ class CustodyHandoffTests(unittest.TestCase):
                 ),
             ):
                 finalizer.load_object_with_sha256(receipt, "final freeze receipt")
+
+    def test_finalizer_rejects_loaded_receipt_swapped_to_symlink_during_read(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            receipt = root / "final-freeze-receipt.json"
+            write_json(receipt, CustodyFixture().freeze)
+            real_read_bytes = Path.read_bytes
+            moved = False
+
+            def swap_to_symlink_after_first_read(path: Path) -> bytes:
+                nonlocal moved
+                payload = real_read_bytes(path)
+                if path == receipt and not moved:
+                    moved = True
+                    real_receipt = root / "final-freeze-receipt.real.json"
+                    receipt.rename(real_receipt)
+                    receipt.symlink_to(real_receipt)
+                return payload
+
+            with (
+                patch.object(
+                    Path,
+                    "read_bytes",
+                    swap_to_symlink_after_first_read,
+                ),
+                self.assertRaisesRegex(
+                    ValueError,
+                    "final freeze receipt must be a real JSON file",
+                ),
+            ):
+                finalizer.load_object_with_sha256(receipt, "final freeze receipt")
+
+            self.assertTrue(moved)
 
     def test_contract_check_requires_exact_finalized_custody_checks(self):
         cases = {
@@ -2060,21 +2093,21 @@ class CustodyHandoffTests(unittest.TestCase):
             root = Path(temporary)
             receipt = root / "final-contract.json"
             receipt.write_text('{"stable": true}\n', encoding="utf-8")
-            original_sha256_file_once = finalizer.sha256_file_once
+            original_sha256_bytes = finalizer.sha256_bytes
             mutated = False
 
-            def mutate_after_first_hash(path: Path) -> str:
+            def mutate_after_first_hash(payload: bytes) -> str:
                 nonlocal mutated
-                digest = original_sha256_file_once(path)
-                if path == receipt and not mutated:
+                digest = original_sha256_bytes(payload)
+                if not mutated:
                     mutated = True
-                    path.write_text('{"stable": false}\n', encoding="utf-8")
+                    receipt.write_text('{"stable": false}\n', encoding="utf-8")
                 return digest
 
             with (
                 patch.object(
                     finalizer,
-                    "sha256_file_once",
+                    "sha256_bytes",
                     side_effect=mutate_after_first_hash,
                 ),
                 self.assertRaisesRegex(
@@ -2083,6 +2116,41 @@ class CustodyHandoffTests(unittest.TestCase):
                 ),
             ):
                 finalizer.sha256(receipt)
+
+    def test_finalizer_sha256_rejects_hash_input_swapped_to_symlink_during_read(
+        self,
+    ):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            receipt = root / "final-contract.json"
+            receipt.write_text('{"stable": true}\n', encoding="utf-8")
+            real_read_bytes = Path.read_bytes
+            moved = False
+
+            def swap_to_symlink_after_first_read(path: Path) -> bytes:
+                nonlocal moved
+                payload = real_read_bytes(path)
+                if path == receipt and not moved:
+                    moved = True
+                    real_receipt = root / "final-contract.real.json"
+                    receipt.rename(real_receipt)
+                    receipt.symlink_to(real_receipt)
+                return payload
+
+            with (
+                patch.object(
+                    Path,
+                    "read_bytes",
+                    swap_to_symlink_after_first_read,
+                ),
+                self.assertRaisesRegex(
+                    ValueError,
+                    "final-contract.json SHA-256 input must be a real file",
+                ),
+            ):
+                finalizer.sha256(receipt)
+
+            self.assertTrue(moved)
 
     def test_finalizer_rejects_duplicate_input_json_object_names(self):
         for label, payload, key, stale in (
@@ -2940,22 +3008,22 @@ class CustodyHandoffTests(unittest.TestCase):
             root = Path(temporary)
             contract = root / "contract.json"
             write_json(contract, CustodyFixture().finalize())
-            original_sha256 = publisher.sha256
+            original_sha256_bytes = publisher.sha256_bytes
             mutated = False
 
-            def mutate_before_stability_hash(path: Path) -> str:
+            def mutate_before_stability_hash(payload: bytes) -> str:
                 nonlocal mutated
-                if path == contract and not mutated:
+                if not mutated:
                     mutated = True
-                    payload = json.loads(path.read_text(encoding="utf-8"))
-                    payload["run_alias"] = "subject99"
-                    write_json(path, payload)
-                return original_sha256(path)
+                    value = json.loads(contract.read_text(encoding="utf-8"))
+                    value["run_alias"] = "subject99"
+                    write_json(contract, value)
+                return original_sha256_bytes(payload)
 
             with (
                 patch.object(
                     publisher,
-                    "sha256",
+                    "sha256_bytes",
                     side_effect=mutate_before_stability_hash,
                 ),
                 self.assertRaisesRegex(
@@ -2964,6 +3032,39 @@ class CustodyHandoffTests(unittest.TestCase):
                 ),
             ):
                 publisher.load_contract_with_sha256(contract)
+
+    def test_contract_publication_rejects_loaded_contract_swapped_to_symlink(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            contract = root / "contract.json"
+            write_json(contract, CustodyFixture().finalize())
+            real_read_bytes = Path.read_bytes
+            moved = False
+
+            def swap_to_symlink_after_first_read(path: Path) -> bytes:
+                nonlocal moved
+                payload = real_read_bytes(path)
+                if path == contract and not moved:
+                    moved = True
+                    real_contract = root / "contract.real.json"
+                    contract.rename(real_contract)
+                    contract.symlink_to(real_contract)
+                return payload
+
+            with (
+                patch.object(
+                    Path,
+                    "read_bytes",
+                    swap_to_symlink_after_first_read,
+                ),
+                self.assertRaisesRegex(
+                    ValueError,
+                    "contract must be a real JSON file",
+                ),
+            ):
+                publisher.load_contract_with_sha256(contract)
+
+            self.assertTrue(moved)
 
     def test_contract_publication_uploads_stable_parsed_contract_bytes(self):
         with tempfile.TemporaryDirectory() as temporary:
@@ -3468,21 +3569,21 @@ class CustodyHandoffTests(unittest.TestCase):
             root = Path(temporary)
             anchor = root / "anchor.json"
             anchor.write_text('{"stable": true}\n', encoding="utf-8")
-            original_sha256_file_once = publisher.sha256_file_once
+            original_sha256_bytes = publisher.sha256_bytes
             mutated = False
 
-            def mutate_after_first_hash(path: Path) -> str:
+            def mutate_after_first_hash(payload: bytes) -> str:
                 nonlocal mutated
-                digest = original_sha256_file_once(path)
-                if path == anchor and not mutated:
+                digest = original_sha256_bytes(payload)
+                if not mutated:
                     mutated = True
-                    path.write_text('{"stable": false}\n', encoding="utf-8")
+                    anchor.write_text('{"stable": false}\n', encoding="utf-8")
                 return digest
 
             with (
                 patch.object(
                     publisher,
-                    "sha256_file_once",
+                    "sha256_bytes",
                     side_effect=mutate_after_first_hash,
                 ),
                 self.assertRaisesRegex(
@@ -3491,6 +3592,41 @@ class CustodyHandoffTests(unittest.TestCase):
                 ),
             ):
                 publisher.sha256(anchor)
+
+    def test_contract_publication_sha256_rejects_hash_input_swapped_to_symlink(
+        self,
+    ):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            anchor = root / "anchor.json"
+            anchor.write_text('{"stable": true}\n', encoding="utf-8")
+            real_read_bytes = Path.read_bytes
+            moved = False
+
+            def swap_to_symlink_after_first_read(path: Path) -> bytes:
+                nonlocal moved
+                payload = real_read_bytes(path)
+                if path == anchor and not moved:
+                    moved = True
+                    real_anchor = root / "anchor.real.json"
+                    anchor.rename(real_anchor)
+                    anchor.symlink_to(real_anchor)
+                return payload
+
+            with (
+                patch.object(
+                    Path,
+                    "read_bytes",
+                    swap_to_symlink_after_first_read,
+                ),
+                self.assertRaisesRegex(
+                    ValueError,
+                    "anchor.json SHA-256 input must be a real file",
+                ),
+            ):
+                publisher.sha256(anchor)
+
+            self.assertTrue(moved)
 
     def test_contract_publication_rejects_symlinked_anchor_parent_without_writing_target(self):
         with tempfile.TemporaryDirectory() as temporary:
