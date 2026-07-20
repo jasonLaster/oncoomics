@@ -14,6 +14,7 @@ from typing import Any, Mapping
 
 from forbidden_text import DEFAULT_FORBIDDEN_TOKENS, normalize_forbidden_tokens_json
 from generate_blocked_hrd_crosscheck_reports import (
+    BLOCKED_REVIEW_SUMMARY_KEYS,
     PRE_ROUTE_SOURCE_REPORT_BINDING_SCOPE,
     PRE_ROUTE_SOURCE_REPORT_METHOD_IDS,
 )
@@ -438,6 +439,7 @@ def validate_pre_route_blocked_packet(
         or manifest.get("source_report_binding_scope")
         != PRE_ROUTE_SOURCE_REPORT_BINDING_SCOPE
         or not isinstance(review_summary, dict)
+        or set(review_summary) != BLOCKED_REVIEW_SUMMARY_KEYS
         or review_summary.get("source_report_binding_scope")
         != PRE_ROUTE_SOURCE_REPORT_BINDING_SCOPE
         or not isinstance(method_spec_manifests, dict)

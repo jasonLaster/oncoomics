@@ -384,6 +384,8 @@
           reviewers now have to prove they reviewed the same evidence packet,
           comparative synthesis manifests now exact-check the top-level review
           summary they are about to preserve,
+          pre-route blocked cross-check packets now exact-check the top-level
+          review summary they are about to hand to AI/freeform review,
           prepared AI runs now reject model-catalog
           drift before writing a receipt, independent reviewer validation now
           rechecks reviewer-authored outputs after its receipt is installed,
@@ -409,7 +411,7 @@
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-20</li>
-          <li class="pill">Latest milestone = P5 spend preflight</li>
+          <li class="pill">Latest milestone = Blocked summaries exact</li>
           <li class="pill">AI synthesis summary = exact</li>
           <li class="pill">AI reviewer inputs = rehashed</li>
           <li class="pill">AI reviewer pair = same packet</li>
@@ -420,6 +422,7 @@
           <li class="pill">AI stage manifest = hash-bound</li>
           <li class="pill">Daily Batch spend = cross-region</li>
           <li class="pill">Packet file rows = unique</li>
+          <li class="pill">Blocked summaries = exact</li>
           <li class="pill">P5 spend = preflighted</li>
           <li class="pill">P5 cost ledger = bound</li>
           <li class="pill">AI reviewer modes = exact</li>
@@ -1745,6 +1748,10 @@
           <h3>Priority 3 · Rosalind packet and route reports</h3>
           <ol class="todo">
             <li class="item" style="--tone: var(--done)">
+              <strong>Done · bind blocked review summaries exactly</strong>
+              <span>Pre-route blocked FACETS/scarHRD, CHORD, and HRDetect packets now reject extra top-level review-summary fields before a no-call packet can enter source-freeze or AI/freeform handoff, while still preserving the explicit blocked/no-call state.</span>
+            </li>
+            <li class="item" style="--tone: var(--done)">
               <strong>Done · require exact materializer response checks</strong>
               <span>Materializer capture-command rendering now rejects integer stand-ins inside the one-shot Batch submit-response check map before an alias-only materializer job can be captured into cross-check custody for Rosalind, scarHRD, CHORD, HRDetect, or SBS3 handoffs.</span>
             </li>
@@ -2994,6 +3001,19 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-20">Jul 20 · local</time>
+              <span>
+                <strong>Local patch · Bind blocked review summaries exactly:</strong>
+                pre-route FACETS/scarHRD, CHORD, and HRDetect blocked packets
+                now reject extra top-level <code>review_summary</code> fields
+                before their no-call source bindings can feed source-freeze or
+                AI/freeform handoff. No S3, Batch, route, GPU, quota,
+                replacement compute, or apply-mode AWS work was launched; Cost
+                Explorer was refreshed read-only for 2026-07-19 UTC and
+                remained at $5.24.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-20">Jul 20 · local</time>
               <span>
