@@ -558,6 +558,25 @@ class ValidateMaterializerRegistrationTests(unittest.TestCase):
 
         self.assertFalse(self.output.exists())
 
+    def test_output_rechecks_mode_after_parent_fsync(self) -> None:
+        real_fsync_directory = module.fsync_directory
+
+        def chmod_after_parent_fsync(path: Path) -> None:
+            real_fsync_directory(path)
+            self.output.chmod(0o644)
+
+        with (
+            mock.patch.object(
+                module,
+                "fsync_directory",
+                side_effect=chmod_after_parent_fsync,
+            ),
+            self.assertRaisesRegex(ValueError, "output mode changed during write"),
+        ):
+            module.write_json_create_only(self.output, {"status": "passed"})
+
+        self.assertFalse(self.output.exists())
+
     def test_schema_version_checks_use_exact_integer_helper(self) -> None:
         cases = (
             (1, 1, True),
