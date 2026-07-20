@@ -6,6 +6,7 @@ import io
 import json
 import os
 import re
+import stat
 import tempfile
 from dataclasses import dataclass
 from pathlib import Path
@@ -207,12 +208,19 @@ def _sha256_bytes(data: bytes) -> str:
 
 
 def read_stable_file_bytes(path: Path, label: str) -> bytes:
-    path = require_real_nonempty_file(path, label)
-    data = path.read_bytes()
+    data = read_real_nonempty_file_once(path, label)
     digest = _sha256_bytes(data)
-    if _sha256_bytes(path.read_bytes()) != digest:
+    if _sha256_bytes(read_real_nonempty_file_once(path, label)) != digest:
         raise ValueError(f"{label} changed during read: {path}")
     return data
+
+
+def read_real_nonempty_file_once(path: Path, label: str) -> bytes:
+    return read_real_file_once(
+        require_real_nonempty_file(path, label),
+        label,
+        require_nonempty=True,
+    )
 
 
 def read_stable_json_file_bytes(path: Path, label: str) -> bytes:
@@ -365,11 +373,61 @@ def sha256_file(path: Path) -> str:
 
 
 def sha256_file_once(path: Path) -> str:
-    digest = hashlib.sha256()
-    with path.open("rb") as handle:
-        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
-            digest.update(chunk)
-    return digest.hexdigest()
+    return _sha256_bytes(read_real_hash_input_once(path))
+
+
+def read_real_hash_input_once(path: Path) -> bytes:
+    return read_real_file_once(
+        require_real_hash_input(path),
+        f"{path.name} SHA-256 input",
+        require_nonempty=False,
+    )
+
+
+def read_real_file_once(path: Path, label: str, *, require_nonempty: bool) -> bytes:
+    flags = (
+        os.O_RDONLY
+        | getattr(os, "O_CLOEXEC", 0)
+        | getattr(os, "O_NOFOLLOW", 0)
+        | getattr(os, "O_NONBLOCK", 0)
+    )
+    descriptor = -1
+    try:
+        descriptor = os.open(path, flags)
+        opened = os.fstat(descriptor)
+        if not stat.S_ISREG(opened.st_mode) or (
+            require_nonempty and opened.st_size <= 0
+        ):
+            raise ValueError(f"{label} must be a non-empty regular non-symlink file")
+        with os.fdopen(descriptor, "rb") as handle:
+            descriptor = -1
+            data = handle.read()
+            after_read = os.fstat(handle.fileno())
+        current = os.stat(path, follow_symlinks=False)
+    except OSError as error:
+        raise ValueError(f"{label} changed during read: {path}") from error
+    finally:
+        if descriptor >= 0:
+            os.close(descriptor)
+
+    if (
+        (require_nonempty and not data)
+        or stat_identity(opened) != stat_identity(after_read)
+        or stat_identity(after_read) != stat_identity(current)
+    ):
+        raise ValueError(f"{label} changed during read: {path}")
+    return data
+
+
+def stat_identity(value: os.stat_result) -> tuple[int, int, int, int, int, int]:
+    return (
+        value.st_dev,
+        value.st_ino,
+        value.st_mode,
+        value.st_size,
+        value.st_mtime_ns,
+        value.st_ctime_ns,
+    )
 
 
 def packet_evidence_status(evidence_rows: Sequence[Mapping[str, str]]) -> str:

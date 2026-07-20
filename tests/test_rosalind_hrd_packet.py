@@ -740,6 +740,42 @@ class RosalindHrdPacketTest(unittest.TestCase):
             ):
                 packet.sha256_file(path)
 
+    def test_sha256_file_rejects_symlink_swap_after_preflight(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            path = root / "report_manifest.json"
+            path.write_text('{"status":"stable"}\n', encoding="utf-8")
+            original_require_real_hash_input = packet.require_real_hash_input
+            calls = 0
+            moved = False
+
+            def swap_to_symlink_after_preflight(input_path: Path) -> Path:
+                nonlocal calls
+                nonlocal moved
+                result = original_require_real_hash_input(input_path)
+                calls += 1
+                if input_path == path and calls == 2 and not moved:
+                    moved = True
+                    relocated = root / "report_manifest.real.json"
+                    path.rename(relocated)
+                    path.symlink_to(relocated)
+                return result
+
+            with (
+                patch.object(
+                    packet,
+                    "require_real_hash_input",
+                    side_effect=swap_to_symlink_after_preflight,
+                ),
+                self.assertRaisesRegex(
+                    ValueError,
+                    "report_manifest.json SHA-256 input changed during read",
+                ),
+            ):
+                packet.sha256_file(path)
+
+            self.assertTrue(moved)
+
     def test_artifact_index_rejects_symlinked_present_artifact(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
