@@ -370,14 +370,18 @@ def exact_schema_version(payload: dict[str, Any], expected: int = 1) -> bool:
 
 
 def read_stable_file_with_sha256(path: Path, label: str) -> tuple[bytes, str]:
-    payload = read_real_input_file_once(path, label)
+    payload, identity = read_real_input_file_once(path, label)
     digest = sha256_bytes(payload)
-    if sha256_bytes(read_real_input_file_once(path, label)) != digest:
+    stable_payload, stable_identity = read_real_input_file_once(path, label)
+    if stable_identity != identity or sha256_bytes(stable_payload) != digest:
         raise ValueError(f"{label} changed during read")
     return payload, digest
 
 
-def read_real_input_file_once(path: Path, label: str) -> bytes:
+def read_real_input_file_once(
+    path: Path,
+    label: str,
+) -> tuple[bytes, tuple[int, int, int, int, int, int]]:
     require_real_input_file(path, label)
     flags = os.O_RDONLY
     flags |= getattr(os, "O_CLOEXEC", 0)
@@ -401,12 +405,23 @@ def read_real_input_file_once(path: Path, label: str) -> bytes:
             os.close(descriptor)
 
     require_real_input_file(path, label)
-    if not os.path.samestat(opened, after_read) or not os.path.samestat(
-        after_read,
-        current,
+    if (
+        stat_identity(opened) != stat_identity(after_read)
+        or stat_identity(after_read) != stat_identity(current)
     ):
         raise ValueError(f"{label} changed during read")
-    return payload
+    return payload, stat_identity(opened)
+
+
+def stat_identity(value: os.stat_result) -> tuple[int, int, int, int, int, int]:
+    return (
+        value.st_dev,
+        value.st_ino,
+        value.st_mode,
+        value.st_size,
+        value.st_mtime_ns,
+        value.st_ctime_ns,
+    )
 
 
 def read_stable_text(path: Path, label: str) -> str:

@@ -488,7 +488,7 @@ class PublishReviewedPublicReportTests(unittest.TestCase):
             real_read_once = MODULE.read_real_input_file_once
             calls = 0
 
-            def mutating_read_once(path: Path, label: str) -> bytes:
+            def mutating_read_once(path: Path, label: str):
                 nonlocal calls
                 data = real_read_once(path, label)
                 calls += 1
@@ -514,7 +514,7 @@ class PublishReviewedPublicReportTests(unittest.TestCase):
             real_read_once = MODULE.read_real_input_file_once
             calls = 0
 
-            def mutating_read_once(path: Path, label: str) -> bytes:
+            def mutating_read_once(path: Path, label: str):
                 nonlocal calls
                 data = real_read_once(path, label)
                 calls += 1
@@ -563,6 +563,36 @@ class PublishReviewedPublicReportTests(unittest.TestCase):
             ):
                 MODULE.sha256(receipt)
 
+    def test_sha256_rejects_same_byte_leaf_replacement(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            receipt = root / "private-publication.json"
+            replacement = root / "replacement-private-publication.json"
+            receipt.write_text('{"status":"passed"}\n', encoding="utf-8")
+            replacement.write_text('{"status":"passed"}\n', encoding="utf-8")
+            real_read_once = MODULE.read_real_input_file_once
+            swapped = False
+
+            def replace_after_initial_read(path: Path, label: str):
+                nonlocal swapped
+                data = real_read_once(path, label)
+                if path == receipt and not swapped:
+                    swapped = True
+                    replacement.replace(receipt)
+                return data
+
+            with (
+                mock.patch.object(
+                    MODULE,
+                    "read_real_input_file_once",
+                    side_effect=replace_after_initial_read,
+                ),
+                self.assertRaisesRegex(ValueError, "changed during read"),
+            ):
+                MODULE.sha256(receipt)
+
+            self.assertTrue(swapped)
+
     def test_second_scan_rejects_hash_input_that_changes_during_read(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
@@ -571,7 +601,7 @@ class PublishReviewedPublicReportTests(unittest.TestCase):
             real_read_once = MODULE.read_real_input_file_once
             calls = 0
 
-            def mutating_read_once(path: Path, label: str) -> bytes:
+            def mutating_read_once(path: Path, label: str):
                 nonlocal calls
                 data = real_read_once(path, label)
                 calls += 1
