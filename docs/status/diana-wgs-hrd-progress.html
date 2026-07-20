@@ -375,15 +375,16 @@
           counters before terminal artifact freezing, exact-version
           materialization, private report replays, final alias-only input
           contracts, alias-only cross-check materialization, alias-only
-          materializer submission, terminal materializer and route capture,
-          cross-check report replay, or WGS stage-provenance handoff can
-          continue.
+          materializer submission, materializer retry capture, terminal
+          materializer and route capture, cross-check report replay, or WGS
+          stage-provenance handoff can continue.
           Diana HRD remains <code>partial_evidence</code> / <code>no_call</code> until terminal
           artifacts and reviewed cross-check reports exist.
         </p>
         <ul class="pills" aria-label="Current state">
-          <li class="pill">Updated 2026-07-19</li>
-          <li class="pill">Latest milestone = terminal route exits</li>
+          <li class="pill">Updated 2026-07-20</li>
+          <li class="pill">Latest milestone = materializer retry gates</li>
+          <li class="pill">Materializer retry gates = exact</li>
           <li class="pill">Terminal route exits = exact</li>
           <li class="pill">Cross-check empty history = exact</li>
           <li class="pill">Terminal materializer counts = exact</li>
@@ -871,8 +872,8 @@
             </li>
             <li class="track" style="--tone: var(--queued)">
               <strong>Diana Rosalind packet</strong>
-              <span>66% · run support files bound</span>
-              <div class="bar" aria-hidden="true" style="--pct: 66%"><span></span></div>
+              <span>67% · materializer retries exact</span>
+              <div class="bar" aria-hidden="true" style="--pct: 67%"><span></span></div>
             </li>
             <li class="track" style="--tone: var(--queued)">
               <strong>Diana AI / freeform review</strong>
@@ -1655,6 +1656,10 @@
 
           <h3>Priority 3 · Rosalind packet and route reports</h3>
           <ol class="todo">
+            <li class="item" style="--tone: var(--done)">
+              <strong>Done · require exact materializer retry gates</strong>
+              <span>The alias-only materializer registration, capture-rendering, and submit-response paths now reject boolean, float, or extra-key retry strategies before a one-shot Batch materializer receipt can feed downstream Rosalind and cross-check inputs.</span>
+            </li>
             <li class="item" style="--tone: var(--done)">
               <strong>Done · require exact cross-check replay counts</strong>
               <span>Executable cross-check report staging now rejects boolean, string, and float route-download object counts before replayed scarHRD, CHORD, or HRDetect report trees can become staged no-call packets for source-freeze or AI/freeform review.</span>
@@ -2821,6 +2826,20 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-20T00:04:00-07:00">Jul 20 · local</time>
+              <span>
+                <strong>Local patch · Reject loose materializer retry gates:</strong>
+                alias-only materializer registration, capture rendering, and
+                submit-response receipts now exact-check the one-shot Batch
+                retry policy, so booleans, floats, or extra retry keys cannot
+                masquerade as the expected single-attempt materializer request
+                before downstream Rosalind and executable cross-check inputs
+                are materialized. No S3, Batch, route, GPU, quota, replacement
+                compute, or apply-mode AWS work was launched; Cost Explorer was
+                refreshed read-only.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-19T23:59:00-07:00">Jul 19 · local</time>
               <span>
