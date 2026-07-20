@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import subprocess
@@ -12,6 +13,7 @@ from .render_phase3_fast_input_manifest import HEX64, ManifestError, normalize_m
 from .render_phase3_fast_parabricks_mutect_plan import REQUIRED_NUM_GPUS
 from .safe_json_output import (
     read_real_json_with_sha256,
+    read_stable_real_file_bytes,
     require_no_symlinked_ancestors,
     require_safe_output_path,
     sha256_real_file,
@@ -184,22 +186,26 @@ def _require_safe_output_path(path: Path, key: str) -> None:
     )
 
 
+def _hash_materialized(path: Path, key: str) -> dict[str, Any]:
+    _require_safe_output_path(path, key)
+    if not path.is_file():
+        raise ManifestError(f"{key} must exist after Parabricks Mutect execution: {path}")
+    payload = read_stable_real_file_bytes(path, f"{key} materialized output", ManifestError)
+    if not payload:
+        raise ManifestError(f"{key} must be non-empty after Parabricks Mutect execution: {path}")
+    return {
+        "local_path": str(path),
+        "bytes": len(payload),
+        "sha256": hashlib.sha256(payload).hexdigest(),
+    }
+
+
 def _materialized_outputs(plan: Mapping[str, Any]) -> dict[str, dict[str, Any]]:
     outputs = _require_mapping(plan.get("outputs"), "outputs")
     materialized: dict[str, dict[str, Any]] = {}
     for key in MATERIALIZED_OUTPUTS:
         path = _require_absolute_path(outputs.get(key), key)
-        _require_safe_output_path(path, key)
-        if not path.is_file():
-            raise ManifestError(f"{key} must exist after Parabricks Mutect execution: {path}")
-        bytes_ = path.stat().st_size
-        if bytes_ <= 0:
-            raise ManifestError(f"{key} must be non-empty after Parabricks Mutect execution: {path}")
-        materialized[key] = {
-            "local_path": str(path),
-            "bytes": bytes_,
-            "sha256": _sha256_path(path),
-        }
+        materialized[key] = _hash_materialized(path, key)
     return materialized
 
 

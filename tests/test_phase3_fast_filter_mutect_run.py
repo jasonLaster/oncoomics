@@ -317,6 +317,22 @@ class Phase3FastFilterMutectRunTests(unittest.TestCase):
                 with self.subTest(hash_input=hash_input), self.assertRaisesRegex(run_filter.ManifestError, message):
                     run_filter._sha256_path(hash_input)
 
+    def test_hash_materialized_binds_size_and_sha_to_one_stable_payload(self) -> None:
+        with TemporaryDirectory() as tmp:
+            output = Path(tmp) / "filtered.vcf.gz"
+            output.write_text("changed after snapshot\n", encoding="utf-8")
+            payload = b"stable filtered vcf\n"
+
+            with patch.object(run_filter, "read_stable_real_file_bytes", return_value=payload):
+                materialized = run_filter._hash_materialized(
+                    output,
+                    "filtered_vcf",
+                    producer="FilterMutect",
+                )
+
+        self.assertEqual(len(payload), materialized["bytes"])
+        self.assertEqual(hashlib.sha256(payload).hexdigest(), materialized["sha256"])
+
     def test_rejects_mismatched_parabricks_plan_sha(self) -> None:
         with TemporaryDirectory() as tmp:
             plan, parabricks_receipt = filter_plan_and_parabricks_receipt(Path(tmp))
