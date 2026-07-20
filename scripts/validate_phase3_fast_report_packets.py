@@ -582,6 +582,8 @@ def require_installed_output(path: Path, expected_sha256: str) -> None:
     require_safe_output_path(path, "packet validation output", ValueError)
     if path.is_symlink() or not path.is_file():
         raise ValueError("report packet validation output changed during write")
+    if (path.stat().st_mode & 0o777) != 0o600:
+        raise ValueError("report packet validation output mode changed during write")
     if sha256_file(path) != expected_sha256:
         raise ValueError("report packet validation output changed during write")
 
