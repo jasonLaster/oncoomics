@@ -548,6 +548,12 @@ def require_allowed_string(value: Any, allowed: set[str], label: str) -> str:
     return value
 
 
+def require_report_kind(value: Any, method: str) -> str:
+    if not isinstance(value, str) or not value:
+        raise ValueError(f"invalid report kind for {method}")
+    return value
+
+
 def require_method_id(manifest: dict[str, Any]) -> str:
     method = manifest.get("method_id")
     if not isinstance(method, str) or not METHOD_ID.fullmatch(method):
@@ -1065,7 +1071,10 @@ def main() -> None:
                 raise ValueError(f"missing non-empty review_summary for {method}")
             summary = sanitize(raw_summary, forbidden)
             scan_text(method, forbidden, "method identifier")
-            report_kind = str(manifest.get("report_kind", "method"))
+            report_kind = require_report_kind(
+                manifest.get("report_kind"),
+                method,
+            )
             scan_text(report_kind, forbidden, "report kind")
         except ValueError as error:
             raise SystemExit(f"Fail-closed: {error}") from error

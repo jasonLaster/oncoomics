@@ -1111,7 +1111,6 @@ class BuildAiReviewBundleTests(unittest.TestCase):
     def test_rejects_inexact_source_packet_report_manifest_envelope(self) -> None:
         cases = (
             ("extra_legacy_key", {"legacy_support": {}}, {}),
-            ("missing_report_kind", {}, {"report_kind"}),
             ("unknown_report_kind", {"report_kind": "unknown_packet"}, {}),
         )
 
@@ -1171,6 +1170,18 @@ class BuildAiReviewBundleTests(unittest.TestCase):
                 {"classification_qc_status": True},
                 set(),
                 "invalid classification QC state for deterministic_full_wgs",
+            ),
+            (
+                "missing report kind",
+                {},
+                {"report_kind"},
+                "invalid report kind for deterministic_full_wgs",
+            ),
+            (
+                "non-string report kind",
+                {"report_kind": 12},
+                set(),
+                "invalid report kind for deterministic_full_wgs",
             ),
         )
 
