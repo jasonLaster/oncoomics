@@ -335,7 +335,7 @@ class MaterializeCrosscheckInputsTests(unittest.TestCase):
         # for the next materializer revision.
         self.assertEqual(
             module.sha256(SCRIPT_DIR / "materialize_crosscheck_inputs.py"),
-            "65c1cbbc718be08d5ac5fa4dbbbbddf6025499d2cd5e72e1769abd27d5a73203",
+            "226ccda351f3b136331eaaabe82b1807af10eef99775514edcb13ddb67c28e33",
         )
 
     def test_sha256_rejects_symlinked_hash_inputs(self):
@@ -399,28 +399,67 @@ class MaterializeCrosscheckInputsTests(unittest.TestCase):
             root = Path(tmp)
             receipt = root / "materialization-receipt.json"
             receipt.write_text('{"stable": true}\n', encoding="utf-8")
-            real_read_bytes = Path.read_bytes
+            real_read_once = module.read_real_hash_input_with_identity
             moved = False
 
-            def swap_to_symlink_after_first_read(path: Path) -> bytes:
+            def swap_to_symlink_after_first_read(
+                path: Path,
+                label: str,
+            ) -> tuple[bytes, tuple[int, int, int, int, int, int]]:
                 nonlocal moved
-                data = real_read_bytes(path)
+                data, identity = real_read_once(path, label)
                 if path == receipt and not moved:
                     moved = True
                     real_receipt = root / "materialization-receipt.real.json"
                     receipt.rename(real_receipt)
                     receipt.symlink_to(real_receipt)
-                return data
+                return data, identity
 
             with (
                 patch.object(
-                    Path,
-                    "read_bytes",
+                    module,
+                    "read_real_hash_input_with_identity",
                     swap_to_symlink_after_first_read,
                 ),
                 self.assertRaisesRegex(
                     ValueError,
                     "materialization-receipt.json SHA-256 input may not be a symlink",
+                ),
+            ):
+                module.sha256(receipt)
+
+            self.assertTrue(moved)
+
+    def test_sha256_rejects_same_bytes_replacement_during_read(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            receipt = root / "materialization-receipt.json"
+            receipt.write_text('{"stable": true}\n', encoding="utf-8")
+            real_read_once = module.read_real_hash_input_with_identity
+            moved = False
+
+            def replace_after_first_read(
+                path: Path,
+                label: str,
+            ) -> tuple[bytes, tuple[int, int, int, int, int, int]]:
+                nonlocal moved
+                data, identity = real_read_once(path, label)
+                if path == receipt and not moved:
+                    moved = True
+                    old_receipt = root / "materialization-receipt.old.json"
+                    receipt.rename(old_receipt)
+                    receipt.write_bytes(data)
+                return data, identity
+
+            with (
+                patch.object(
+                    module,
+                    "read_real_hash_input_with_identity",
+                    replace_after_first_read,
+                ),
+                self.assertRaisesRegex(
+                    ValueError,
+                    "materialization-receipt.json SHA-256 input changed during read",
                 ),
             ):
                 module.sha256(receipt)
