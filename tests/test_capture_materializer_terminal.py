@@ -810,6 +810,19 @@ class CaptureMaterializerTerminalTests(unittest.TestCase):
                     aws=self.aws_side_effect(events=self.events(terminal)),
                 )
 
+    def test_logged_anchor_rejects_decorated_s3_receipt_uri(self) -> None:
+        for suffix in (";partNumber=1", "?versionId=latest", "#latest"):
+            with self.subTest(suffix=suffix):
+                terminal = copy.deepcopy(self.terminal)
+                terminal["receipt_anchor"]["receipt_uri"] = self.receipt_uri + suffix
+                terminal["receipt"]["uri"] = self.receipt_uri + suffix
+                with tempfile.TemporaryDirectory() as temporary:
+                    with self.assertRaisesRegex(ValueError, "anchor failed"):
+                        self.run_capture(
+                            self.args(Path(temporary)),
+                            aws=self.aws_side_effect(events=self.events(terminal)),
+                        )
+
     def test_rejects_logged_anchor_with_missing_unexpected_or_failed_anchor_check(self) -> None:
         cases = {}
         for label, mutate in (
