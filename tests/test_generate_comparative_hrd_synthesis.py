@@ -2428,7 +2428,7 @@ class GenerateSynthesisTests(unittest.TestCase):
             real_read_once = GENERATE.read_real_nonempty_file_once
             calls = 0
 
-            def mutating_read_once(path: Path, label: str) -> bytes:
+            def mutating_read_once(path: Path, label: str):
                 nonlocal calls
                 data = real_read_once(path, label)
                 calls += 1
@@ -2444,6 +2444,36 @@ class GenerateSynthesisTests(unittest.TestCase):
                 with self.assertRaisesRegex(ValueError, "changed during read"):
                     GENERATE.sha256(input_path)
 
+    def test_synthesis_sha256_rejects_same_byte_leaf_replacement(self) -> None:
+        with tempfile.TemporaryDirectory(
+            prefix="hrd-synthesis-stable-hash-"
+        ) as temporary:
+            root = Path(temporary)
+            input_path = root / "input.json"
+            replacement = root / "replacement-input.json"
+            input_path.write_text('{"status": "ready"}\n', encoding="utf-8")
+            replacement.write_text('{"status": "ready"}\n', encoding="utf-8")
+            real_read_once = GENERATE.read_real_nonempty_file_once
+            swapped = False
+
+            def replace_after_initial_read(path: Path, label: str):
+                nonlocal swapped
+                data = real_read_once(path, label)
+                if path == input_path and not swapped:
+                    swapped = True
+                    replacement.replace(input_path)
+                return data
+
+            with mock.patch.object(
+                GENERATE,
+                "read_real_nonempty_file_once",
+                replace_after_initial_read,
+            ):
+                with self.assertRaisesRegex(ValueError, "changed during read"):
+                    GENERATE.sha256(input_path)
+
+            self.assertTrue(swapped)
+
     def test_synthesis_sha256_rejects_symlink_swap_between_reads(self) -> None:
         with tempfile.TemporaryDirectory(
             prefix="hrd-synthesis-stable-hash-"
@@ -2455,7 +2485,7 @@ class GenerateSynthesisTests(unittest.TestCase):
             real_read_once = GENERATE.read_real_nonempty_file_once
             calls = 0
 
-            def swapping_read_once(path: Path, label: str) -> bytes:
+            def swapping_read_once(path: Path, label: str):
                 nonlocal calls
                 data = real_read_once(path, label)
                 if path == input_path and calls == 0:
@@ -2515,7 +2545,7 @@ class GenerateSynthesisTests(unittest.TestCase):
             real_read_once = GENERATE.read_real_nonempty_file_once
             calls = 0
 
-            def mutating_read_once(path: Path, label: str) -> bytes:
+            def mutating_read_once(path: Path, label: str):
                 nonlocal calls
                 data = real_read_once(path, label)
                 calls += 1
