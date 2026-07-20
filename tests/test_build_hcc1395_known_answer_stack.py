@@ -414,6 +414,45 @@ class BuildHcc1395KnownAnswerStackTests(unittest.TestCase):
 
             self.assertFalse(output.exists())
 
+    def test_stack_manifest_rechecks_reviewer_inputs_after_stack_manifest(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            output = root / "stack"
+            real_write_json = STACK.write_json
+
+            def tamper_after_stack_manifest(path: Path, value: object) -> None:
+                real_write_json(path, value)
+                if path.name == "stack_manifest.json":
+                    prompt = (
+                        path.parent
+                        / "ai-review"
+                        / "reviewer-inputs"
+                        / "reviewer-a-input"
+                        / "reviewer-a.prompt.md"
+                    )
+                    prompt.write_text(
+                        "tampered reviewer input\n",
+                        encoding="utf-8",
+                    )
+
+            with (
+                mock.patch.object(
+                    STACK,
+                    "write_json",
+                    side_effect=tamper_after_stack_manifest,
+                ),
+                self.assertRaisesRegex(
+                    ValueError,
+                    "reviewer A reviewer-a.prompt.md SHA-256 mismatch",
+                ),
+            ):
+                STACK.build(args_for(root, output))
+
+            self.assertFalse(output.exists())
+            self.assertFalse(any(root.glob(".stack.*")))
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -24,6 +24,7 @@ from hrd_report_inventory import (
     inventory_sha256,
 )
 from prepare_ai_review_run import MANIFEST_ARGUMENTS
+from stage_ai_review_inputs import reviewer_inventory, validate_bundle
 
 from diana_omics.commands.hrd_context import build_rosalind_hrd_packet as rosalind
 
@@ -136,6 +137,13 @@ STACK_AI_REVIEW_OUTPUTS = {
     "ai_review_prepare_receipt": "ai-review/prepare_ai_review_run_receipt.json",
     "ai_review_stage_receipt": "ai-review/stage_ai_review_inputs_receipt.json",
 }
+AI_REVIEW_ENTRIES = {
+    "bundle",
+    "prepare_ai_review_run_receipt.json",
+    "reviewer-inputs",
+    "stage_ai_review_inputs_receipt.json",
+}
+REVIEWER_INPUT_ENTRIES = {"reviewer-a-input", "reviewer-b-input"}
 STACK_ROOT_ENTRIES = {"ai-review", "source-reports", "stack_manifest.json"}
 SOURCE_REPORT_ROOT_ENTRIES = {
     "deterministic_full_wgs",
@@ -331,6 +339,26 @@ def require_exact_source_sha256(
         raise ValueError(f"{label} source hashes are stale")
 
 
+def require_ai_review_inputs(ai_review: Path) -> None:
+    require_directory_inventory(ai_review, AI_REVIEW_ENTRIES, "HCC1395 AI review")
+    require_directory_inventory(
+        ai_review / "reviewer-inputs",
+        REVIEWER_INPUT_ENTRIES,
+        "HCC1395 reviewer-input root",
+    )
+    hashes = validate_bundle(ai_review / "bundle")
+    reviewer_inventory(
+        ai_review / "reviewer-inputs" / "reviewer-a-input",
+        "A",
+        hashes,
+    )
+    reviewer_inventory(
+        ai_review / "reviewer-inputs" / "reviewer-b-input",
+        "B",
+        hashes,
+    )
+
+
 def require_source_report(
     root: Path,
     method_id: str,
@@ -427,6 +455,7 @@ def require_stack_manifest(
 
     for label, expected in STACK_AI_REVIEW_OUTPUTS.items():
         require_bound_file(root, manifest.get(label), expected, label)
+    require_ai_review_inputs(root / "ai-review")
 
     expected_catalog_sha256 = require_sha256(
         manifest.get("model_catalog_receipt_sha256"),
