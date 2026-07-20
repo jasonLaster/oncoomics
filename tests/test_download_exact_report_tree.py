@@ -570,6 +570,15 @@ class ExactReportDownloadTests(unittest.TestCase):
                     "incomplete",
                 ),
                 (
+                    "receipt",
+                    "truthy-integer",
+                    lambda payload: payload["checks"].__setitem__(
+                        "all_outputs_create_only",
+                        1,
+                    ),
+                    "incomplete",
+                ),
+                (
                     "anchor",
                     "missing",
                     lambda payload: payload["checks"].pop("sha256_exact"),
@@ -590,6 +599,15 @@ class ExactReportDownloadTests(unittest.TestCase):
                     lambda payload: payload["checks"].__setitem__(
                         "exact_kms",
                         False,
+                    ),
+                    "anchor",
+                ),
+                (
+                    "anchor",
+                    "truthy-integer",
+                    lambda payload: payload["checks"].__setitem__(
+                        "sha256_exact",
+                        1,
                     ),
                     "anchor",
                 ),
@@ -618,6 +636,50 @@ class ExactReportDownloadTests(unittest.TestCase):
                         False,
                     ),
                     "exact custody",
+                ),
+                (
+                    "object",
+                    "truthy-integer",
+                    lambda payload: payload["objects"][0]["checks"].__setitem__(
+                        "version_exact",
+                        1,
+                    ),
+                    "exact custody",
+                ),
+                (
+                    "history",
+                    "missing",
+                    lambda payload: payload["history_audit"][0]["checks"].pop(
+                        "version_exact"
+                    ),
+                    "history audit",
+                ),
+                (
+                    "history",
+                    "unexpected",
+                    lambda payload: payload["history_audit"][0]["checks"].__setitem__(
+                        "forged_extra",
+                        True,
+                    ),
+                    "history audit",
+                ),
+                (
+                    "history",
+                    "failed",
+                    lambda payload: payload["history_audit"][0]["checks"].__setitem__(
+                        "checksum_sha256_exact",
+                        False,
+                    ),
+                    "history audit",
+                ),
+                (
+                    "history",
+                    "truthy-integer",
+                    lambda payload: payload["history_audit"][0]["checks"].__setitem__(
+                        "version_exact",
+                        1,
+                    ),
+                    "history audit",
                 ),
             ):
                 with self.subTest(location=location, label=label):

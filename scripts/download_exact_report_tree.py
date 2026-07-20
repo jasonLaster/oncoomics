@@ -28,6 +28,7 @@ from build_ai_review_bundle import (
     DuplicateJsonKeyError,
     reject_duplicate_json_object_names,
 )
+from check_contract import exact_check_map
 
 SHA256_HEX = re.compile(r"^[0-9a-f]{64}$")
 VERSION_ID = re.compile(r"^\S+$")
@@ -455,10 +456,8 @@ def require_next_version_history_markers(page: dict[str, Any]) -> tuple[str, str
     return key_marker, version_marker
 
 
-def require_exact_checks(
-    checks: dict[str, Any], expected: dict[str, Any], error: str
-) -> None:
-    if checks != expected:
+def require_exact_checks(checks: Any, expected: dict[str, bool], error: str) -> None:
+    if not exact_check_map(checks, expected):
         raise ValueError(f"{error}: {checks}")
 
 
@@ -559,7 +558,10 @@ def validate_publication(
         or not rows
         or not isinstance(history_audit, list)
         or len(history_audit) != len(rows)
-        or receipt_checks != EXPECTED_PUBLICATION_RECEIPT_CHECKS
+        or not exact_check_map(
+            receipt_checks,
+            EXPECTED_PUBLICATION_RECEIPT_CHECKS,
+        )
     ):
         raise ValueError("publication receipt is incomplete or not passed")
 
@@ -575,7 +577,10 @@ def validate_publication(
             "s3://diana-omics-private-results-"
         )
         or not non_null_version_id(anchor.get("receipt_version_id"))
-        or anchor_checks != EXPECTED_PUBLICATION_ANCHOR_CHECKS
+        or not exact_check_map(
+            anchor_checks,
+            EXPECTED_PUBLICATION_ANCHOR_CHECKS,
+        )
     ):
         raise ValueError("publication anchor does not bind the exact receipt")
 
@@ -607,7 +612,10 @@ def validate_publication(
             or row.get("content_length") <= 0
             or row.get("server_side_encryption") != "aws:kms"
             or row.get("ssekms_key_id") != kms_key_arn
-            or row.get("checks") != EXPECTED_PUBLICATION_OBJECT_CHECKS
+            or not exact_check_map(
+                row.get("checks"),
+                EXPECTED_PUBLICATION_OBJECT_CHECKS,
+            )
         ):
             raise ValueError(f"report row lacks exact custody: {relative}")
         row_bindings.add((row["key"], version_id, row_sha256))
@@ -625,7 +633,10 @@ def validate_publication(
         if (
             not isinstance(key, str)
             or not non_null_version_id(version_id)
-            or row.get("checks") != EXPECTED_HISTORY_AUDIT_CHECKS
+            or not exact_check_map(
+                row.get("checks"),
+                EXPECTED_HISTORY_AUDIT_CHECKS,
+            )
         ):
             raise ValueError("publication receipt history audit is not exact")
         binding = (key, version_id, history_sha256)
