@@ -351,11 +351,7 @@ EXPECTED_STAGED_VALIDATION_DOWNLOAD_CHECKS: dict[str, bool] = {
 
 
 def load_json(path: Path) -> dict[str, Any]:
-    require_real_input_path(path, "JSON input")
-    data = path.read_bytes()
-    digest = sha256_bytes(data)
-    if sha256_file_once(path) != digest:
-        raise ValueError(f"JSON input changed during read: {path}")
+    data, _digest = read_stable_file_with_sha256(path, "JSON input")
     try:
         payload = json.loads(
             data.decode("utf-8"),
@@ -375,11 +371,7 @@ def load_csv(path: Path, delimiter: str = ",") -> list[dict[str, str]]:
 
 
 def sha256(path: Path) -> str:
-    require_real_input_path(path, f"{path.name} SHA-256 input")
-    digest = sha256_file_once(path)
-    if sha256_file_once(path) != digest:
-        raise ValueError(f"{path.name} SHA-256 input changed during read")
-    return digest
+    return read_stable_file_with_sha256(path, f"{path.name} SHA-256 input")[1]
 
 
 def sha256_file_once(path: Path) -> str:
@@ -388,6 +380,19 @@ def sha256_file_once(path: Path) -> str:
         for chunk in iter(lambda: handle.read(8 * 1024 * 1024), b""):
             digest.update(chunk)
     return digest.hexdigest()
+
+
+def read_stable_file_with_sha256(path: Path, label: str) -> tuple[bytes, str]:
+    require_real_input_path(path, label)
+    try:
+        data = path.read_bytes()
+        digest = sha256_bytes(data)
+        if sha256_bytes(path.read_bytes()) != digest:
+            raise ValueError(f"{label} changed during read: {path}")
+    except OSError as error:
+        raise ValueError(f"{label} changed during read: {path}") from error
+    require_real_input_path(path, label)
+    return data, digest
 
 
 def sha256_bytes(value: bytes) -> str:
