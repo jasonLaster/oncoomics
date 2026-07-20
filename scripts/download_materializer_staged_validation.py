@@ -23,6 +23,7 @@ from capture_materializer_terminal import (
     EXPECTED_MATERIALIZER_RECEIPT_KEYS,
     EXPECTED_OUTPUT_CUSTODY_KEYS,
 )
+from check_contract import exact_check_map
 
 OUTPUT_NAME = "staged_input_validation.json"
 CHECKSUM_FIELDS = (
@@ -346,7 +347,7 @@ def validate_receipt(receipt: dict[str, Any], expected_kms: str) -> dict[str, An
         or receipt.get("status") != "passed"
         or not isinstance(outputs, dict)
         or not outputs
-        or checks != EXPECTED_RECEIPT_CHECKS
+        or not exact_check_map(checks, EXPECTED_RECEIPT_CHECKS)
     ):
         raise ValueError("materializer receipt is incomplete or not passed")
     row = outputs.get(OUTPUT_NAME)
@@ -366,7 +367,7 @@ def validate_receipt(receipt: dict[str, Any], expected_kms: str) -> dict[str, An
         or not isinstance(version_id, str)
         or not version_id
         or version_id.lower() in {"none", "null"}
-        or row_checks != EXPECTED_OUTPUT_CHECKS
+        or not exact_check_map(row_checks, EXPECTED_OUTPUT_CHECKS)
         or row.get("kms_key_arn") != expected_kms
         or type(size) is not int
         or size <= 0
