@@ -955,6 +955,7 @@ PACKET_REPORT_SUPPORT_FILES = PACKET_REPORT_FILES - {
     "report.md",
     "report_manifest.json",
 }
+RUN_MANIFEST_SUPPORT_FILES = {"cloud_materialization_plan.md", "packet_index.md"}
 HEX64 = re.compile(r"^[0-9a-f]{64}$")
 EXPECTED_SBS96 = {
     (mutation, f"{left}[{mutation}]{right}")
@@ -2853,10 +2854,36 @@ def write_packet_to_dir(
     }
 
 
-def write_cloud_materialization_plan(root: str | Path, packet_run_id: str, packet_summaries: Sequence[Mapping[str, Any]]) -> None:
-    root_path = Path(root)
-    if not root_path.is_absolute():
-        root_path = path_from_root(str(root_path))
+def packet_index_text(
+    packet_run_id: str,
+    packet_summaries: Sequence[Mapping[str, Any]],
+) -> str:
+    return "\n".join(
+        [
+            "# Rosalind HRD Packet Index",
+            "",
+            f"Run ID: `{packet_run_id}`",
+            "",
+            markdown_table(
+                [
+                    {
+                        "sample_set": packet["sampleSet"],
+                        "output_dir": packet["outputDir"],
+                        "evidence_rows": packet["evidenceRows"],
+                        "adapter_rows": packet["adapterRows"],
+                        "blocker_count": len(packet["blockers"]),
+                    }
+                    for packet in packet_summaries
+                ]
+            ),
+        ]
+    )
+
+
+def cloud_materialization_plan_text(
+    packet_run_id: str,
+    packet_summaries: Sequence[Mapping[str, Any]],
+) -> str:
     sample_sets = ",".join(str(packet.get("sampleSet", "")) for packet in packet_summaries if packet.get("sampleSet"))
     includes_diana_wgs = any(packet.get("sampleSet") == "diana_wgs" for packet in packet_summaries)
     required_prefixes = sorted(
@@ -2867,55 +2894,153 @@ def write_cloud_materialization_plan(root: str | Path, packet_run_id: str, packe
             if Path(str(path)).parts
         }
     )
+    return "\n".join(
+        [
+            "# Cloud Materialization Plan",
+            "",
+            f"Run ID: `{packet_run_id}`",
+            "",
+            f"Artifact root mode: `{artifact_root_mode()}`",
+            "",
+            "Use this when the container image does not include repository `results/`, `manifests/`, or `docs/operations` artifacts.",
+            "",
+            "## Required Environment",
+            "",
+            "```sh",
+            "export ROSALIND_HRD_ARTIFACT_ROOT=/workspace/artifacts",
+            f"export ROSALIND_HRD_RUN_ID={packet_run_id}",
+            f"export ROSALIND_HRD_SAMPLE_SET={sample_sets}",
+            "PYTHONPATH=src /usr/bin/python3 -m diana_omics build:rosalind-hrd-packet",
+            "```",
+            "",
+            "Materialize the artifact root so paths like `results/phase3_wgs_smoke/phase3_wgs_summary.json` resolve under `$ROSALIND_HRD_ARTIFACT_ROOT`.",
+            "",
+            *(
+                [
+                    "For `diana_wgs`, point `ROSALIND_HRD_ARTIFACT_ROOT` at the worker artifact directory that directly contains `diana_hrd_summary.json`, `hrd_readiness.csv`, and the `alignment/`, `variants/`, `cnv/`, `signatures/`, and `sv/` directories.",
+                    "Do not point it at the parent run directory unless those artifacts have been materialized at that level.",
+                    "",
+                ]
+                if includes_diana_wgs
+                else []
+            ),
+            "## Typical Prefixes",
+            "",
+            "- `results/full_wes_benchmark/`",
+            "- `results/phase3_wgs_smoke/`",
+            "- `results/clinicalization/`",
+            "- `results/diana_raw_intake/`",
+            "- `manifests/`",
+            "- `docs/operations/`",
+            "",
+            "## Missing Prefixes In This Run",
+            *(f"- `{prefix}/`" for prefix in required_prefixes),
+            *(["- None."] if not required_prefixes else []),
+            "",
+            "The packet builder writes new output under `$ROSALIND_HRD_OUTPUT_ROOT` when set, and reads source evidence from `$ROSALIND_HRD_ARTIFACT_ROOT` when that variable is set.",
+        ]
+    )
+
+
+def write_cloud_materialization_plan(root: str | Path, packet_run_id: str, packet_summaries: Sequence[Mapping[str, Any]]) -> None:
+    root_path = Path(root)
+    if not root_path.is_absolute():
+        root_path = path_from_root(str(root_path))
     write_text_create_only(
         root_path / "cloud_materialization_plan.md",
-        "\n".join(
-            [
-                "# Cloud Materialization Plan",
-                "",
-                f"Run ID: `{packet_run_id}`",
-                "",
-                f"Artifact root mode: `{artifact_root_mode()}`",
-                "",
-                "Use this when the container image does not include repository `results/`, `manifests/`, or `docs/operations` artifacts.",
-                "",
-                "## Required Environment",
-                "",
-                "```sh",
-                "export ROSALIND_HRD_ARTIFACT_ROOT=/workspace/artifacts",
-                f"export ROSALIND_HRD_RUN_ID={packet_run_id}",
-                f"export ROSALIND_HRD_SAMPLE_SET={sample_sets}",
-                "PYTHONPATH=src /usr/bin/python3 -m diana_omics build:rosalind-hrd-packet",
-                "```",
-                "",
-                "Materialize the artifact root so paths like `results/phase3_wgs_smoke/phase3_wgs_summary.json` resolve under `$ROSALIND_HRD_ARTIFACT_ROOT`.",
-                "",
-                *(
-                    [
-                        "For `diana_wgs`, point `ROSALIND_HRD_ARTIFACT_ROOT` at the worker artifact directory that directly contains `diana_hrd_summary.json`, `hrd_readiness.csv`, and the `alignment/`, `variants/`, `cnv/`, `signatures/`, and `sv/` directories.",
-                        "Do not point it at the parent run directory unless those artifacts have been materialized at that level.",
-                        "",
-                    ]
-                    if includes_diana_wgs
-                    else []
-                ),
-                "## Typical Prefixes",
-                "",
-                "- `results/full_wes_benchmark/`",
-                "- `results/phase3_wgs_smoke/`",
-                "- `results/clinicalization/`",
-                "- `results/diana_raw_intake/`",
-                "- `manifests/`",
-                "- `docs/operations/`",
-                "",
-                "## Missing Prefixes In This Run",
-                *(f"- `{prefix}/`" for prefix in required_prefixes),
-                *(["- None."] if not required_prefixes else []),
-                "",
-                "The packet builder writes new output under `$ROSALIND_HRD_OUTPUT_ROOT` when set, and reads source evidence from `$ROSALIND_HRD_ARTIFACT_ROOT` when that variable is set.",
-            ]
-        ),
+        cloud_materialization_plan_text(packet_run_id, packet_summaries),
     )
+
+
+def require_bound_run_file(run_dir: Path, name: str, digest: Any) -> None:
+    if name != Path(name).name:
+        raise ValueError("Rosalind run manifest contains a non-local support path")
+
+    expected_sha256 = require_sha256(digest, f"Rosalind run {name} SHA-256")
+    path = require_real_nonempty_file(run_dir / name, f"Rosalind run {name}")
+    if sha256_file(path) != expected_sha256:
+        raise ValueError(f"Rosalind run manifest is stale for {name}")
+
+
+def require_rosalind_run_manifest(run_dir: Path) -> None:
+    manifest = read_json_file(
+        require_real_nonempty_file(
+            run_dir / "run_manifest.json",
+            "Rosalind run manifest",
+        ),
+        "Rosalind run manifest",
+    )
+    if not isinstance(manifest, Mapping):
+        raise ValueError("Rosalind run manifest must be a JSON object")
+
+    support_sha256 = manifest.get("support_sha256")
+    if not isinstance(support_sha256, Mapping):
+        raise ValueError("Rosalind run manifest support_sha256 must be an object")
+    if set(support_sha256) != RUN_MANIFEST_SUPPORT_FILES:
+        raise ValueError("Rosalind run manifest support files changed")
+    for name, digest in support_sha256.items():
+        if not isinstance(name, str):
+            raise ValueError("Rosalind run manifest support files changed")
+        require_bound_run_file(run_dir, name, digest)
+
+    packet_summaries = manifest.get("packets")
+    if not isinstance(packet_summaries, list):
+        raise ValueError("Rosalind run manifest packets must be an array")
+    rechecked = recheck_packet_summaries(
+        [summary for summary in packet_summaries if isinstance(summary, Mapping)]
+    )
+    if len(rechecked) != len(packet_summaries):
+        raise ValueError("Rosalind run manifest packets must be objects")
+
+
+def write_run_outputs(
+    root: Path,
+    packet_run_id: str,
+    sample_sets: Sequence[str],
+    packet_summaries: Sequence[Mapping[str, Any]],
+) -> None:
+    ensure_dir(root)
+    run_manifest_path = root / "run_manifest.json"
+    packet_index_path = root / "packet_index.md"
+    cloud_materialization_path = root / "cloud_materialization_plan.md"
+    written: list[Path] = []
+    try:
+        write_text_create_only(
+            packet_index_path,
+            packet_index_text(packet_run_id, packet_summaries),
+        )
+        written.append(packet_index_path)
+        write_text_create_only(
+            cloud_materialization_path,
+            cloud_materialization_plan_text(packet_run_id, packet_summaries),
+        )
+        written.append(cloud_materialization_path)
+        manifest = {
+            "generatedAt": iso_now(),
+            "runId": packet_run_id,
+            "sampleSets": list(sample_sets),
+            "packetRoot": packet_root_label(),
+            "artifactRoot": artifact_root_label(),
+            "artifactRootMode": artifact_root_mode(),
+            "packets": list(packet_summaries),
+            "support_sha256": {
+                "cloud_materialization_plan.md": sha256_file(
+                    cloud_materialization_path
+                ),
+                "packet_index.md": sha256_file(packet_index_path),
+            },
+            "sourcePattern": {
+                "ngs": "Derived from NGS Analysis router/runtime/DNA somatic patterns: inspect inputs, preflight, route, preserve provenance.",
+                "research": "Derived from Life Science Research router/variant/cancer/pathway patterns: normalize entities, query targeted sources, synthesize caveats.",
+            },
+        }
+        write_json_create_only(run_manifest_path, manifest)
+        written.append(run_manifest_path)
+        require_rosalind_run_manifest(root)
+    except Exception:
+        for path in reversed(written):
+            path.unlink(missing_ok=True)
+        raise
 
 
 def main() -> None:
@@ -2925,45 +3050,7 @@ def main() -> None:
         [write_packet(PACKET_SPECS[sample_set], packet_run_id) for sample_set in sample_sets]
     )
     root = packet_output_path(packet_run_id)
-    ensure_dir(root)
-    manifest = {
-        "generatedAt": iso_now(),
-        "runId": packet_run_id,
-        "sampleSets": list(sample_sets),
-        "packetRoot": packet_root_label(),
-        "artifactRoot": artifact_root_label(),
-        "artifactRootMode": artifact_root_mode(),
-        "packets": packet_summaries,
-        "sourcePattern": {
-            "ngs": "Derived from NGS Analysis router/runtime/DNA somatic patterns: inspect inputs, preflight, route, preserve provenance.",
-            "research": "Derived from Life Science Research router/variant/cancer/pathway patterns: normalize entities, query targeted sources, synthesize caveats.",
-        },
-    }
-    write_json_create_only(root / "run_manifest.json", manifest)
-    write_text_create_only(
-        root / "packet_index.md",
-        "\n".join(
-            [
-                "# Rosalind HRD Packet Index",
-                "",
-                f"Run ID: `{packet_run_id}`",
-                "",
-                markdown_table(
-                    [
-                        {
-                            "sample_set": packet["sampleSet"],
-                            "output_dir": packet["outputDir"],
-                            "evidence_rows": packet["evidenceRows"],
-                            "adapter_rows": packet["adapterRows"],
-                            "blocker_count": len(packet["blockers"]),
-                        }
-                        for packet in packet_summaries
-                    ]
-                ),
-            ]
-        ),
-    )
-    write_cloud_materialization_plan(root, packet_run_id, packet_summaries)
+    write_run_outputs(root, packet_run_id, sample_sets, packet_summaries)
     print(f"Rosalind HRD packets written: {root}")
 
 

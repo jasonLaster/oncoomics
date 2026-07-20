@@ -3421,6 +3421,54 @@ class RosalindHrdPacketTest(unittest.TestCase):
                 (root / "results/rosalind_hrd/unit/run_manifest.json").exists()
             )
 
+    def test_run_manifest_rechecks_support_files(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            write_diana_raw_intake_artifacts(root)
+            real_write_json = packet.write_json_create_only
+            tampered = False
+
+            def tamper_packet_index_after_run_manifest(
+                path: Path,
+                value: object,
+            ) -> None:
+                nonlocal tampered
+                real_write_json(path, value)
+                if path.name == "run_manifest.json":
+                    utils.write_text(path.parent / "packet_index.md", "tampered\n")
+                    tampered = True
+
+            with (
+                patch.object(packet, "path_from_root", lambda relative: root / relative),
+                patch.dict(
+                    "os.environ",
+                    {
+                        "ROSALIND_HRD_ARTIFACT_ROOT": "",
+                        "ROSALIND_HRD_OUTPUT_ROOT": "",
+                        "ROSALIND_HRD_RUN_ID": "unit",
+                        "ROSALIND_HRD_SAMPLE_SET": "diana_raw_intake",
+                    },
+                ),
+                patch.object(
+                    packet,
+                    "write_json_create_only",
+                    side_effect=tamper_packet_index_after_run_manifest,
+                ),
+                self.assertRaisesRegex(
+                    ValueError,
+                    "Rosalind run manifest is stale for packet_index.md",
+                ),
+            ):
+                packet.main()
+
+            self.assertTrue(tampered)
+            for name in (
+                "run_manifest.json",
+                "packet_index.md",
+                "cloud_materialization_plan.md",
+            ):
+                self.assertFalse((root / "results/rosalind_hrd/unit" / name).exists())
+
     def test_diana_raw_intake_packet_marks_waiting_input_path(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
