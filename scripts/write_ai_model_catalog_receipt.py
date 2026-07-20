@@ -68,13 +68,14 @@ def require_installed_output(path: Path, expected_sha256: str) -> None:
 
 def sha256_file(path: Path) -> str:
     require_real_file(path, f"{path.name} SHA-256 input")
-    digest = sha256_file_once(path)
-    if sha256_file_once(path) != digest:
+    digest, identity = sha256_file_once(path)
+    stable_digest, stable_identity = sha256_file_once(path)
+    if stable_identity != identity or stable_digest != digest:
         raise ValueError(f"{path.name} SHA-256 input changed during read")
     return digest
 
 
-def sha256_file_once(path: Path) -> str:
+def sha256_file_once(path: Path) -> tuple[str, tuple[int, int, int, int, int, int]]:
     require_real_file(path, f"{path.name} SHA-256 input")
     flags = (
         os.O_RDONLY
@@ -104,7 +105,7 @@ def sha256_file_once(path: Path) -> str:
         or stat_identity(after_read) != stat_identity(current)
     ):
         raise ValueError(f"{path.name} SHA-256 input changed during read")
-    return hashlib.sha256(data).hexdigest()
+    return hashlib.sha256(data).hexdigest(), stat_identity(opened)
 
 
 def stat_identity(value: os.stat_result) -> tuple[int, int, int, int, int, int]:

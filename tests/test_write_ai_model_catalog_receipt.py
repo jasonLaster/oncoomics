@@ -279,13 +279,15 @@ class WriteAiModelCatalogReceiptTests(unittest.TestCase):
             original_sha256_file_once = WRITER.sha256_file_once
             mutated = False
 
-            def mutate_after_first_read(path: Path) -> str:
+            def mutate_after_first_read(
+                path: Path,
+            ) -> tuple[str, tuple[int, int, int, int, int, int]]:
                 nonlocal mutated
-                digest = original_sha256_file_once(path)
+                result = original_sha256_file_once(path)
                 if path == source and not mutated:
                     mutated = True
                     path.write_text('{"stable": false}\n', encoding="utf-8")
-                return digest
+                return result
 
             with (
                 mock.patch.object(
@@ -299,6 +301,42 @@ class WriteAiModelCatalogReceiptTests(unittest.TestCase):
                 ),
             ):
                 WRITER.sha256_file(source)
+
+    def test_sha256_file_rejects_same_byte_leaf_replacement(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary).resolve()
+            source = root / "model-catalog-receipt.json"
+            replacement = root / "replacement-model-catalog-receipt.json"
+            source.write_text('{"stable": true}\n', encoding="utf-8")
+            replacement.write_text('{"stable": true}\n', encoding="utf-8")
+
+            original_sha256_file_once = WRITER.sha256_file_once
+            swapped = False
+
+            def replace_after_first_read(
+                path: Path,
+            ) -> tuple[str, tuple[int, int, int, int, int, int]]:
+                nonlocal swapped
+                result = original_sha256_file_once(path)
+                if path == source and not swapped:
+                    swapped = True
+                    replacement.replace(source)
+                return result
+
+            with (
+                mock.patch.object(
+                    WRITER,
+                    "sha256_file_once",
+                    side_effect=replace_after_first_read,
+                ),
+                self.assertRaisesRegex(
+                    ValueError,
+                    "model-catalog-receipt.json SHA-256 input changed during read",
+                ),
+            ):
+                WRITER.sha256_file(source)
+
+            self.assertTrue(swapped)
 
     def test_sha256_file_rejects_symlink_swap_after_preflight(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
