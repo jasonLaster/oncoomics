@@ -455,9 +455,10 @@ def require_exact_final_freeze(
             or destination.get("kms_key_id") != expected_kms_key_arn
         ):
             raise ValueError("private freeze receipt source/destination is not exact")
-        relative = str(row.get("relative_key", ""))
-        if not relative:
-            raise ValueError("private freeze receipt object row is not exact")
+        try:
+            relative = safe_relative(row.get("relative_key"))
+        except ValueError as error:
+            raise ValueError("private freeze receipt object row is not exact") from error
         if relative in destination_by_relative:
             raise ValueError("duplicate final artifact freeze relative key")
         exact_version_id(destination.get("version_id"))
