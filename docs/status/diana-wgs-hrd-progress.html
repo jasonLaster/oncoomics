@@ -385,7 +385,8 @@
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-20</li>
-          <li class="pill">Latest milestone = public-index receipt maps</li>
+          <li class="pill">Latest milestone = private report check maps</li>
+          <li class="pill">Private report checks = exact</li>
           <li class="pill">Public-index receipts = exact</li>
           <li class="pill">Public-index checks = exact</li>
           <li class="pill">Reviewed-public checks = exact</li>
@@ -2152,6 +2153,10 @@
           <h3>Priority 4 · AI / freeform review</h3>
           <ol class="todo">
             <li class="item" style="--tone: var(--done)">
+              <strong>Done · require exact private report check maps</strong>
+              <span>Private report apply-mode now rejects integer or float stand-ins inside private destination verification and dry-run packet check maps before deterministic, Rosalind, cross-check, AI-review, or synthesis packets can be frozen into the private reviewed-report tree.</span>
+            </li>
+            <li class="item" style="--tone: var(--done)">
               <strong>Done · require private packet-kind proof</strong>
               <span>Private report publishing, source-freeze handoffs, and AI-synthesis handoffs now all require dry-run receipts to prove a packet's <code>report_kind</code> matched the expected report family before any private freeze or AI private-apply can proceed.</span>
             </li>
@@ -2853,6 +2858,20 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-20T00:20:00-07:00">Jul 20 · local</time>
+              <span>
+                <strong>Local patch · Reject loose private report checks:</strong>
+                private report publication now exact-checks destination and
+                dry-run packet maps, so JSON <code>1</code> or
+                <code>1.0</code> cannot masquerade as a successful private
+                freeze proof before deterministic, Rosalind, cross-check,
+                AI-review, or synthesis packets can feed reviewed-public
+                publication. No S3, Batch, route, GPU, quota, replacement
+                compute, or apply-mode AWS work was launched; Cost Explorer was
+                refreshed read-only.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-20T00:18:00-07:00">Jul 20 · local</time>
               <span>
