@@ -1018,6 +1018,36 @@ class MaterializeFrozenArtifactsTests(unittest.TestCase):
                     with self.assertRaisesRegex(ValueError, message):
                         MODULE.sha256(path)
 
+    def test_sha256_rejects_hash_input_that_changes_during_read(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            receipt = root / "materialization.json"
+            receipt.write_text('{"stable": true}\n', encoding="utf-8")
+
+            original_sha256_file_once = MODULE.sha256_file_once
+            mutated = False
+
+            def mutate_after_first_read(path: Path) -> str:
+                nonlocal mutated
+                digest = original_sha256_file_once(path)
+                if path == receipt and not mutated:
+                    mutated = True
+                    path.write_text('{"stable": false}\n', encoding="utf-8")
+                return digest
+
+            with (
+                patch.object(
+                    MODULE,
+                    "sha256_file_once",
+                    side_effect=mutate_after_first_read,
+                ),
+                self.assertRaisesRegex(
+                    ValueError,
+                    "materialization.json SHA-256 input changed during read",
+                ),
+            ):
+                MODULE.sha256(receipt)
+
     def test_prepared_receipt_recovers_cutover_without_redownload(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
