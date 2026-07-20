@@ -680,6 +680,17 @@ def integer_equals(value: Any, expected: int) -> bool:
     return type(value) is int and type(expected) is int and value == expected
 
 
+def exact_check_map(value: Any, expected: dict[str, bool]) -> bool:
+    return (
+        isinstance(value, dict)
+        and set(value) == set(expected)
+        and all(
+            value.get(name) is expected_value
+            for name, expected_value in expected.items()
+        )
+    )
+
+
 def parse_nonnegative_int_text(value: Any) -> Optional[int]:
     if type(value) is not str or not value.isdecimal():
         return None
@@ -777,7 +788,7 @@ def validate_stage_provenance(
         local_sha = sha256(local_path)
         object_checks[name] = bool(
             row.get("status") == "passed"
-            and row_checks == EXPECTED_STAGE_PROVENANCE_OBJECT_CHECKS
+            and exact_check_map(row_checks, EXPECTED_STAGE_PROVENANCE_OBJECT_CHECKS)
             and source.get("bucket") == source_bucket
             and source.get("key") == source_key_prefix + name
             and source.get("version_id") == "null"
@@ -842,7 +853,10 @@ def validate_stage_provenance(
             and valid_version_id(anchor.get("receipt_version_id"))
         ),
         "anchor_checks": bool(anchor_checks)
-        and anchor_checks == EXPECTED_STAGE_PROVENANCE_ANCHOR_CHECKS,
+        and exact_check_map(
+            anchor_checks,
+            EXPECTED_STAGE_PROVENANCE_ANCHOR_CHECKS,
+        ),
     }
     return {
         "status": "passed" if all(checks.values()) else "failed",
@@ -941,13 +955,13 @@ def validate_crosscheck_terminal_capture(
             == "private read-only terminal materializer custody capture"
         ),
         "capture_checks_passed": bool(capture_checks)
-        and capture_checks == EXPECTED_CROSSCHECK_CAPTURE_CHECKS,
+        and exact_check_map(capture_checks, EXPECTED_CROSSCHECK_CAPTURE_CHECKS),
         "batch_terminal_identity": (
             batch.get("status") == "SUCCEEDED"
             and batch.get("log_group") == "/aws/batch/job"
             and integer_equals(batch.get("attempt_count"), 1)
             and integer_equals(batch.get("exit_code"), 0)
-            and batch_checks == EXPECTED_CROSSCHECK_BATCH_CHECKS
+            and exact_check_map(batch_checks, EXPECTED_CROSSCHECK_BATCH_CHECKS)
         ),
         "cloudwatch_anchor_matches_local_anchor": (
             cloudwatch.get("receipt_anchor") == anchor
@@ -963,7 +977,7 @@ def validate_crosscheck_terminal_capture(
         ),
         "anchor_schema_checks": (
             exact_schema_status(anchor)
-            and anchor_checks == EXPECTED_CROSSCHECK_ANCHOR_CHECKS
+            and exact_check_map(anchor_checks, EXPECTED_CROSSCHECK_ANCHOR_CHECKS)
         ),
         "anchor_binds_receipt": (
             anchor.get("receipt_sha256") == receipt_sha
@@ -985,7 +999,10 @@ def validate_crosscheck_terminal_capture(
             and integer_equals(
                 receipt_summary.get("local_bytes"), receipt_path.stat().st_size
             )
-            and receipt_checks == EXPECTED_CROSSCHECK_RECEIPT_DOWNLOAD_CHECKS
+            and exact_check_map(
+                receipt_checks,
+                EXPECTED_CROSSCHECK_RECEIPT_DOWNLOAD_CHECKS,
+            )
             and receipt_summary.get("kms_key_arn") == expected_kms_key_arn
             and single_receipt_version
         ),
@@ -993,7 +1010,10 @@ def validate_crosscheck_terminal_capture(
             exact_schema_status(download)
             and download.get("expected_kms_key_arn") == expected_kms_key_arn
             and download.get("materializer_receipt_sha256") == receipt_sha
-            and download_checks == EXPECTED_STAGED_VALIDATION_DOWNLOAD_CHECKS
+            and exact_check_map(
+                download_checks,
+                EXPECTED_STAGED_VALIDATION_DOWNLOAD_CHECKS,
+            )
         ),
         "download_binds_staged_validation": (
             download_object.get("uri") == staged_output.get("uri")
@@ -1116,7 +1136,7 @@ def validate_final_freeze_provenance(
         inventory = inventory_by_relative.get(relative, {})
         if not (
             row.get("status") == "passed"
-            and row_checks == EXPECTED_FINAL_FREEZE_ROW_CHECKS
+            and exact_check_map(row_checks, EXPECTED_FINAL_FREEZE_ROW_CHECKS)
             and source.get("bucket") == source_bucket
             and source.get("key") == source_key_prefix + relative
             and valid_version_id(source.get("version_id"))
@@ -1174,7 +1194,10 @@ def validate_final_freeze_provenance(
         and integer_equals(receipt.get("passed_count"), len(rows))
         and set(by_relative) == set(inventory_by_relative),
         "source_inventory_unchanged": initial_identity == final_identity,
-        "receipt_checks": receipt_checks == EXPECTED_FINAL_FREEZE_CHECKS,
+        "receipt_checks": exact_check_map(
+            receipt_checks,
+            EXPECTED_FINAL_FREEZE_CHECKS,
+        ),
         "object_custody": object_custody,
         "anchor_schema_status": exact_schema_status(anchor)
         and anchor.get("run_id") == run_id
@@ -1183,7 +1206,10 @@ def validate_final_freeze_provenance(
         and integer_equals(anchor.get("receipt_bytes"), receipt_path.stat().st_size)
         and anchor.get("receipt_uri") == expected_anchor_uri
         and valid_version_id(anchor.get("receipt_version_id")),
-        "anchor_checks": anchor_checks == EXPECTED_FINAL_FREEZE_ANCHOR_CHECKS,
+        "anchor_checks": exact_check_map(
+            anchor_checks,
+            EXPECTED_FINAL_FREEZE_ANCHOR_CHECKS,
+        ),
     }
     return {
         "status": "passed" if all(checks.values()) else "failed",
@@ -2169,10 +2195,15 @@ def main() -> None:
         and execution_worker.get("checksum_type") == "FULL_OBJECT"
         and isinstance(execution_worker.get("checksums"), dict)
         and bool(execution_worker.get("checksums"))
-        and worker_checks == EXPECTED_BATCH_WORKER_CHECKS
-        and worker_freeze_checks == EXPECTED_EXECUTED_WORKER_FREEZE_CHECKS
-        and worker_freeze_upload_checks
-        == EXPECTED_EXECUTED_WORKER_FREEZE_UPLOAD_CHECKS,
+        and exact_check_map(worker_checks, EXPECTED_BATCH_WORKER_CHECKS)
+        and exact_check_map(
+            worker_freeze_checks,
+            EXPECTED_EXECUTED_WORKER_FREEZE_CHECKS,
+        )
+        and exact_check_map(
+            worker_freeze_upload_checks,
+            EXPECTED_EXECUTED_WORKER_FREEZE_UPLOAD_CHECKS,
+        ),
         "The exact worker bytes read from the active ECS container were SHA-256 hashed, frozen under a non-null private S3 VersionId, and independently rebound to the Batch task, runtime ID, full-object checksum, and exact KMS key.",
     )
 
@@ -2222,7 +2253,7 @@ def main() -> None:
             and destination.get("kms_key_id") == args.expected_kms_key_arn
             and isinstance(destination.get("checksums"), dict)
             and bool(destination.get("checksums"))
-            and row_checks == EXPECTED_FINAL_FREEZE_ROW_CHECKS
+            and exact_check_map(row_checks, EXPECTED_FINAL_FREEZE_ROW_CHECKS)
         ):
             freeze_all_valid = False
     freeze_consumed_valid = freeze_all_valid
@@ -2287,7 +2318,10 @@ def main() -> None:
             and row.get("kms_key_id") == args.expected_kms_key_arn
             and isinstance(row.get("checksums"), dict)
             and bool(row.get("checksums"))
-            and row_checks == INPUT_CONTRACT.EXPECTED_MATERIALIZATION_CHECKS
+            and exact_check_map(
+                row_checks,
+                INPUT_CONTRACT.EXPECTED_MATERIALIZATION_CHECKS,
+            )
         ):
             exact_materialization_valid = False
     add_check(
@@ -2473,7 +2507,10 @@ def main() -> None:
         )
         and crosscheck_materialization.get("receipt_anchor_strategy")
         == "sha256_content_addressed_create_only"
-        and crosscheck_receipt_checks == EXPECTED_CROSSCHECK_RECEIPT_CHECKS
+        and exact_check_map(
+            crosscheck_receipt_checks,
+            EXPECTED_CROSSCHECK_RECEIPT_CHECKS,
+        )
         and not duplicate_or_malformed_inventory
         and set(inventory_by_name) == expected_crosscheck_output_names
     )
@@ -2499,7 +2536,7 @@ def main() -> None:
                 output_row.get("checksums"),
                 output_row.get("sha256"),
             )
-            and output_checks == EXPECTED_CROSSCHECK_OUTPUT_CHECKS
+            and exact_check_map(output_checks, EXPECTED_CROSSCHECK_OUTPUT_CHECKS)
             and inventory.get("key") == s3_key(output_row.get("uri"))
             and inventory.get("version_id") == output_row.get("version_id")
             and inventory.get("bytes") == output_row.get("bytes")

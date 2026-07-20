@@ -375,6 +375,7 @@
           counters before terminal artifact freezing, exact-version
           materialization, private report replays, final alias-only input
           contracts, final-freeze and materialized-final receipt checks,
+          deterministic WGS staging check maps,
           input-contract publication receipts, alias-only
           cross-check materialization, alias-only
           materializer submission, materializer submit responses,
@@ -389,7 +390,8 @@
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-20</li>
-          <li class="pill">Latest milestone = Batch / AI checks exact</li>
+          <li class="pill">Latest milestone = deterministic checks exact</li>
+          <li class="pill">Deterministic stager checks = exact</li>
           <li class="pill">Batch worker check maps = exact</li>
           <li class="pill">Materializer response checks = exact</li>
           <li class="pill">AI staging receipt checks = exact</li>
@@ -1250,6 +1252,10 @@
 
           <h3>Priority 2 · terminal deterministic artifacts</h3>
           <ol class="todo">
+            <li class="item" style="--tone: var(--done)">
+              <strong>Done · require exact deterministic report check maps</strong>
+              <span>Deterministic WGS report staging now rejects numeric stand-ins inside stage-provenance, final-freeze, exact-materialization, cross-check materialization, terminal-capture, staged-validation-download, and Batch-worker check maps before <code>evidence_checks.json</code>, <code>report_manifest.json</code>, Rosalind packets, or AI/freeform handoffs can trust terminal custody.</span>
+            </li>
             <li class="item" style="--tone: var(--done)">
               <strong>Done · require exact Batch worker check maps</strong>
               <span>Terminal Batch provenance now rejects numeric stand-ins inside executed-worker, upload, task-host, and SSM-command check maps before a worker receipt can freeze deterministic WGS handoff files or feed the first deterministic report for Rosalind and AI/freeform review.</span>
@@ -2904,6 +2910,21 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-20T00:56:00-07:00">Jul 20 · local</time>
+              <span>
+                <strong>Local patch · Reject loose deterministic report checks:</strong>
+                deterministic WGS report staging now exact-checks
+                stage-provenance, final-freeze, exact-materialization,
+                cross-check materialization, terminal-capture,
+                staged-validation-download, and Batch-worker check maps, so
+                JSON <code>1</code> cannot stand in for reviewed
+                <code>true</code> before the first deterministic report feeds
+                Rosalind packets or AI/freeform review. No S3, Batch, route,
+                GPU, quota, replacement compute, or apply-mode AWS work was
+                launched; Cost Explorer was refreshed read-only.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-20T00:48:00-07:00">Jul 20 · local</time>
               <span>

@@ -3071,6 +3071,161 @@ class StageDeterministicWgsReportTests(unittest.TestCase):
                 if check_id == "anchor_content_address":
                     self.assertEqual(evidence["receipt_version_id"], "")
 
+    def test_custody_check_maps_reject_truthy_integers(self) -> None:
+        mutations = (
+            (
+                "stage object",
+                "stage-provenance.json",
+                lambda payload: payload["objects"][0]["checks"].__setitem__(
+                    "semantic_binding",
+                    1,
+                ),
+                "stage_provenance_custody",
+            ),
+            (
+                "stage anchor",
+                "stage-provenance-anchor.json",
+                lambda payload: payload["checks"].__setitem__("exact_kms", 1),
+                "stage_provenance_custody",
+            ),
+            (
+                "final freeze row",
+                "final-freeze.json",
+                lambda payload: payload["objects"][0]["checks"].__setitem__(
+                    "copy_response_version_matches",
+                    1,
+                ),
+                "final_artifact_freeze",
+            ),
+            (
+                "final freeze receipt",
+                "final-freeze.json",
+                lambda payload: payload["checks"].__setitem__(
+                    "execution_receipt_bound",
+                    1,
+                ),
+                "final_artifact_freeze",
+            ),
+            (
+                "final freeze anchor",
+                "final-freeze-anchor.json",
+                lambda payload: payload["checks"].__setitem__(
+                    "single_create_only_version",
+                    1,
+                ),
+                "final_artifact_freeze",
+            ),
+            (
+                "exact materialization",
+                "exact-materialization.json",
+                lambda payload: payload["objects"][0]["checks"].__setitem__(
+                    "version_id",
+                    1,
+                ),
+                "exact_version_materialization",
+            ),
+            (
+                "crosscheck materialization receipt",
+                "crosscheck-materialization.json",
+                lambda payload: payload["checks"].__setitem__(
+                    "all_outputs_create_only",
+                    1,
+                ),
+                "crosscheck_materialization_custody",
+            ),
+            (
+                "crosscheck materialization output",
+                "crosscheck-materialization.json",
+                lambda payload: payload["outputs"]["sbs96.csv"][
+                    "checks"
+                ].__setitem__("version_exact", 1),
+                "crosscheck_materialization_custody",
+            ),
+            (
+                "crosscheck capture receipt",
+                "crosscheck-materialization-capture.json",
+                lambda payload: payload["checks"].__setitem__(
+                    "single_terminal_anchor",
+                    1,
+                ),
+                "crosscheck_terminal_custody",
+            ),
+            (
+                "crosscheck capture batch",
+                "crosscheck-materialization-capture.json",
+                lambda payload: payload["batch"]["checks"].__setitem__(
+                    "definition_log_exact",
+                    1,
+                ),
+                "crosscheck_terminal_custody",
+            ),
+            (
+                "crosscheck receipt download",
+                "crosscheck-materialization-capture.json",
+                lambda payload: payload["receipt"]["checks"].__setitem__(
+                    "get_version_exact",
+                    1,
+                ),
+                "crosscheck_terminal_custody",
+            ),
+            (
+                "staged validation download",
+                "staged-input-validation-download.json",
+                lambda payload: payload["checks"].__setitem__(
+                    "version_exact",
+                    1,
+                ),
+                "crosscheck_terminal_custody",
+            ),
+            (
+                "executed worker freeze",
+                "executed-worker-freeze.json",
+                lambda payload: payload["checks"].__setitem__(
+                    "s3_exact_version_present",
+                    1,
+                ),
+                "batch_worker_custody",
+            ),
+            (
+                "executed worker upload",
+                "executed-worker-freeze-upload.json",
+                lambda payload: payload["checks"].__setitem__(
+                    "exact_version",
+                    1,
+                ),
+                "batch_worker_custody",
+            ),
+            (
+                "batch worker",
+                "execution.json",
+                lambda payload: payload["worker"]["checks"].__setitem__(
+                    "live_freeze_command",
+                    1,
+                ),
+                "batch_worker_custody",
+            ),
+        )
+
+        for label, filename, mutate, expected_check in mutations:
+            with self.subTest(label=label), tempfile.TemporaryDirectory(
+                prefix="synthetic-hrd-report-"
+            ) as temporary:
+                fixture = SyntheticFixture(Path(temporary))
+                receipt_path = fixture.aux / filename
+                receipt = json.loads(receipt_path.read_text(encoding="utf-8"))
+                mutate(receipt)
+                write_json(receipt_path, receipt)
+
+                result = subprocess.run(
+                    fixture.command(),
+                    text=True,
+                    capture_output=True,
+                )
+
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn(expected_check, result.stdout + result.stderr)
+                self.assertFalse((fixture.output / "report.md").exists())
+
     def test_exact_materialization_rejects_coerced_script_sha256(self) -> None:
         with tempfile.TemporaryDirectory(prefix="synthetic-hrd-report-") as temporary:
             fixture = SyntheticFixture(Path(temporary))
