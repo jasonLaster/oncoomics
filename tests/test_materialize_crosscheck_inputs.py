@@ -335,7 +335,7 @@ class MaterializeCrosscheckInputsTests(unittest.TestCase):
         # for the next materializer revision.
         self.assertEqual(
             module.sha256(SCRIPT_DIR / "materialize_crosscheck_inputs.py"),
-            "f3ccd6b06f42690166496dc5401d7f9b9480023ff8500a3ccc40ba883e499d3a",
+            "1b4f74722b6d3fb8cfa918732566a8e62d5766ccb0e4ca28cc4d547c91fbb621",
         )
 
     def test_sha256_rejects_symlinked_hash_inputs(self):
@@ -363,6 +363,36 @@ class MaterializeCrosscheckInputsTests(unittest.TestCase):
                 "source.vcf.gz SHA-256 input parent may not be a symlink",
             ):
                 module.sha256(linked_parent / "source.vcf.gz")
+
+    def test_sha256_rejects_hash_input_that_changes_during_read(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            receipt = root / "materialization-receipt.json"
+            receipt.write_text('{"stable": true}\n', encoding="utf-8")
+
+            original_sha256_file_once = module.sha256_file_once
+            mutated = False
+
+            def mutate_after_first_read(path: Path) -> str:
+                nonlocal mutated
+                digest = original_sha256_file_once(path)
+                if path == receipt and not mutated:
+                    mutated = True
+                    path.write_text('{"stable": false}\n', encoding="utf-8")
+                return digest
+
+            with (
+                patch.object(
+                    module,
+                    "sha256_file_once",
+                    side_effect=mutate_after_first_read,
+                ),
+                self.assertRaisesRegex(
+                    ValueError,
+                    "materialization-receipt.json SHA-256 input changed during read",
+                ),
+            ):
+                module.sha256(receipt)
 
     def test_json_output_removes_partial_file_after_file_fsync_failure(self):
         with tempfile.TemporaryDirectory() as tmp:
