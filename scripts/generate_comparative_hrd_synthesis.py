@@ -1922,7 +1922,7 @@ def main() -> None:
     except ValueError as error:
         raise SystemExit("Fail-closed: " + str(error)) from error
     output = output.resolve()
-    required_methods = [str(value).strip() for value in args.require_method]
+    required_methods = args.require_method
     if (
         not required_methods
         or any(not METHOD_ID.fullmatch(value) for value in required_methods)

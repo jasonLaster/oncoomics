@@ -1236,6 +1236,18 @@ class BuildAiReviewBundleTests(unittest.TestCase):
             self.assertNotEqual(wrong_order.returncode, 0)
             self.assertIn("pinned seven-method inventory", wrong_order.stderr)
 
+            fixture = AiReviewBundleFixture(Path(temporary) / "whitespace")
+            padded = (
+                f" {INVENTORY.REQUIRED_METHOD_IDS[0]}",
+                *INVENTORY.REQUIRED_METHOD_IDS[1:],
+            )
+            padded_result = fixture.run(methods=padded)
+            self.assertNotEqual(padded_result.returncode, 0)
+            self.assertIn(
+                "required method inventory is empty, invalid, or duplicated",
+                padded_result.stderr,
+            )
+
     def test_rejects_raw_locations(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             fixture = AiReviewBundleFixture(Path(temporary))

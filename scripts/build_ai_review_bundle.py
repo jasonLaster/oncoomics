@@ -913,7 +913,7 @@ def main() -> None:
     if not args.attest_models_latest:
         raise SystemExit("Fail-closed: --attest-models-latest is required")
 
-    required_methods = [str(value).strip() for value in args.require_method]
+    required_methods = args.require_method
     if (
         not required_methods
         or any(not METHOD_ID.fullmatch(value) for value in required_methods)

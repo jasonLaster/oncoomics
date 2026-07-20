@@ -2226,6 +2226,20 @@ class GenerateSynthesisTests(unittest.TestCase):
 
         with tempfile.TemporaryDirectory(prefix="hrd-synthesis-inventory-") as temporary:
             fixture = SynthesisFixture(Path(temporary))
+            result = fixture.run(
+                methods=[
+                    f" {REQUIRED_METHOD_IDS[0]}",
+                    *REQUIRED_METHOD_IDS[1:],
+                ],
+            )
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn(
+                "required method inventory is empty, malformed, or duplicated",
+                result.stdout + result.stderr,
+            )
+
+        with tempfile.TemporaryDirectory(prefix="hrd-synthesis-inventory-") as temporary:
+            fixture = SynthesisFixture(Path(temporary))
             bundle_path = fixture.bundle_dir / "review_bundle.json"
             bundle = json.loads(bundle_path.read_text(encoding="utf-8"))
             bundle["method_inventory"]["ordered_method_ids"][0:2] = reversed(
