@@ -322,7 +322,10 @@ def require_download_verification(
             raise ValueError("download verification contains a malformed row")
         if set(row) != DOWNLOAD_VERIFICATION_OBJECT_KEYS:
             raise ValueError("download verification object row is not exact")
-        relative = str(row.get("relative_path", ""))
+        relative = require_exact_string(
+            row.get("relative_path"),
+            "download verification relative_path",
+        )
         require_safe_relative_path(relative, "download verification path")
         if relative in expected:
             raise ValueError(f"download verification repeats {relative}")

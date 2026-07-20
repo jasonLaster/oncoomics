@@ -897,6 +897,45 @@ class StageHrdCrosscheckReportTests(unittest.TestCase):
 
                 self.assertFalse((root / "staged").exists())
 
+    def test_stage_rejects_coerced_download_verification_relative_path(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            source = root / "exact"
+            verification = write_route_report(source)
+            support = source / "route_result.json"
+            coerced_support = source / "True"
+            support.replace(coerced_support)
+
+            manifest_path = source / "report_manifest.json"
+            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+            support_hash = STAGE.sha256(coerced_support)
+            manifest["source_sha256"] = {"True": support_hash}
+            manifest["support_sha256"] = {"True": support_hash}
+            write_json(manifest_path, manifest)
+            refresh_download_verification(source, verification)
+
+            payload = json.loads(verification.read_text(encoding="utf-8"))
+            for row in payload["objects"]:
+                if row["relative_path"] == "True":
+                    row["relative_path"] = True
+                    break
+            else:
+                self.fail("missing coerced support row")
+            write_json(verification, payload)
+
+            with self.assertRaisesRegex(
+                ValueError,
+                "relative_path is not exact",
+            ):
+                STAGE.stage(
+                    source,
+                    verification,
+                    root / "staged",
+                    "sigprofiler_sbs3",
+                )
+
+            self.assertFalse((root / "staged").exists())
+
     def test_stage_rejects_copy_that_differs_from_exact_replay(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
