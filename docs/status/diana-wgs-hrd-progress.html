@@ -372,15 +372,17 @@
           CHORD, and HRDetect packets cite the exact upstream deterministic and
           Rosalind manifests they already parsed and validated; source-freeze
           then rereads every local report, hash input, and forbidden-token list
-          before it trusts those bytes; the AI handoff now uses the same stable
-          read before accepting locally staged reports. The selected GPU rerun
-          remains quota-blocked, the legacy CPU run remains stopped, and Diana HRD remains
+          before it trusts those bytes; Phase 3 fast validation and the AI
+          handoff now use the same stable reads before accepting locally staged
+          reports. The selected GPU rerun remains quota-blocked, the legacy CPU
+          run remains stopped, and Diana HRD remains
           <code>partial_evidence</code> / <code>no_call</code> until terminal
           artifacts and reviewed cross-check reports exist.
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-19</li>
-          <li class="pill">Latest milestone = AI handoff report reads are rechecked</li>
+          <li class="pill">Latest milestone = Phase 3 fast manifest hashes are rechecked</li>
+          <li class="pill">Phase 3 fast manifest hashes = stable</li>
           <li class="pill">AI handoff report hashes = stable</li>
           <li class="pill">Source-freeze hash inputs = stable</li>
           <li class="pill">Blocked upstream manifests = parsed-exact</li>
@@ -2629,6 +2631,16 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-19T21:12:00-07:00">Jul 19 · local</time>
+              <span>
+                <strong>Local patch · Recheck Phase 3 fast hashes:</strong>
+                the fast packet validator now hashes deterministic and Rosalind
+                source manifests, blocked-packet generator code, and its own
+                validation receipt from stable reread bytes before source-freeze
+                can trust <code>report_packet_validation.json</code>.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-19T21:05:00-07:00">Jul 19 · local</time>
               <span>

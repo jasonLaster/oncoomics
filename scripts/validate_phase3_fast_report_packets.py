@@ -21,8 +21,9 @@ from hrd_report_inventory import BLOCKED_CROSSCHECK_METHOD_IDS
 from publish_private_report import canonical_packet_digest, validate_packet_dir
 from runbook_io import (
     load_json_object,
-    require_real_input_file,
+    read_stable_file,
     require_safe_output_path,
+    sha256_bytes,
 )
 
 FORBIDDEN_TOKENS = DEFAULT_FORBIDDEN_TOKENS
@@ -101,8 +102,7 @@ def checksum_sha256(digest: str) -> str:
 
 
 def sha256_file(path: Path) -> str:
-    require_real_input_file(path, f"{path.name} SHA-256 input")
-    return hashlib.sha256(path.read_bytes()).hexdigest()
+    return sha256_bytes(read_stable_file(path, f"{path.name} SHA-256 input"))
 
 
 def fsync_directory(path: Path) -> None:
@@ -271,10 +271,6 @@ def pre_route_source_report_manifests(
     manifests: dict[str, str] = {}
     for method_id in PRE_ROUTE_SOURCE_REPORT_METHOD_IDS:
         manifest_path = packet_dirs[method_id] / "report_manifest.json"
-        require_real_input_file(
-            manifest_path,
-            f"{method_id} source report manifest",
-        )
         manifests[method_id] = sha256_file(manifest_path)
     return manifests
 
