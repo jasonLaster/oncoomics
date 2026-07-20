@@ -288,6 +288,39 @@ class BuildHcc1395KnownAnswerStackTests(unittest.TestCase):
             ):
                 STACK.sha256(linked_parent / "report_manifest.json")
 
+    def test_sha256_rejects_same_byte_leaf_replacement(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            source = root / "report_manifest.json"
+            replacement = root / "replacement_report_manifest.json"
+            source.write_text("{}\n", encoding="utf-8")
+            replacement.write_text("{}\n", encoding="utf-8")
+            real_read_once = STACK.read_real_hash_input_once
+            swapped = False
+
+            def replace_after_initial_read(path: Path, label: str):
+                nonlocal swapped
+                data = real_read_once(path, label)
+                if path == source and not swapped:
+                    swapped = True
+                    replacement.replace(source)
+                return data
+
+            with (
+                mock.patch.object(
+                    STACK,
+                    "read_real_hash_input_once",
+                    side_effect=replace_after_initial_read,
+                ),
+                self.assertRaisesRegex(
+                    ValueError,
+                    "report_manifest\\.json SHA-256 input changed during read",
+                ),
+            ):
+                STACK.sha256(source)
+
+            self.assertTrue(swapped)
+
     def test_stack_manifest_rechecks_source_reports_before_install(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
