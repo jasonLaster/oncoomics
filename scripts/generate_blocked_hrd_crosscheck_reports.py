@@ -404,6 +404,18 @@ def sha256_file(path: Path) -> str:
     return digest
 
 
+def read_stable_text(path: Path, label: str) -> str:
+    require_real_nonempty_file(path, label)
+    data = path.read_bytes()
+    digest = hashlib.sha256(data).hexdigest()
+    if hashlib.sha256(path.read_bytes()).hexdigest() != digest:
+        raise ValueError(f"{label} changed during read")
+    try:
+        return data.decode("utf-8")
+    except UnicodeError as error:
+        raise ValueError(f"{label} is not UTF-8") from error
+
+
 def is_platform_root_alias(path: Path) -> bool:
     return path.is_absolute() and path.parent == path.parent.parent
 
@@ -680,6 +692,41 @@ def require_blocked_method_spec(
         raise ValueError("blocked cross-check method spec source reports are not exact")
 
 
+def require_blocked_report_text(
+    packet_dir: Path,
+    manifest: Mapping[str, Any],
+    source_report_manifests: Mapping[str, str],
+) -> None:
+    method_id = manifest.get("method_id")
+    method = METHODS_BY_ID.get(str(method_id))
+    generated_at = manifest.get("generated_at")
+    run_id = manifest.get("run_id")
+    binding_scope = manifest.get("source_report_binding_scope")
+    if (
+        method is None
+        or not isinstance(generated_at, str)
+        or not generated_at
+        or generated_at != generated_at.strip()
+        or not isinstance(run_id, str)
+        or binding_scope != source_report_binding_scope(source_report_manifests)
+    ):
+        raise ValueError("blocked cross-check report inputs are not exact")
+
+    report_text = read_stable_text(
+        packet_dir / "report.md",
+        "blocked cross-check report.md",
+    )
+    expected = render_report(
+        method,
+        generated_at,
+        run_id=run_id,
+        source_report_manifests=source_report_manifests,
+        source_report_binding_scope=binding_scope,
+    )
+    if report_text != expected:
+        raise ValueError("blocked cross-check report is stale")
+
+
 def require_blocked_report_manifest(packet_dir: Path) -> None:
     manifest_path = packet_dir / "report_manifest.json"
     manifest = load_json_object(manifest_path, "blocked cross-check packet")
@@ -724,6 +771,7 @@ def require_blocked_report_manifest(packet_dir: Path) -> None:
         support_hashes.get("method_spec.json"),
     )
     require_blocked_method_spec(packet_dir, manifest, source_report_manifests)
+    require_blocked_report_text(packet_dir, manifest, source_report_manifests)
 
 
 def fsync_directory(path: Path) -> None:

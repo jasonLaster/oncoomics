@@ -585,6 +585,10 @@ class GenerateBlockedHrdCrosscheckReportsTests(unittest.TestCase):
                 ),
                 "source scope is not exact",
             ),
+            "coerced_generated_at": (
+                lambda manifest: manifest.__setitem__("generated_at", True),
+                "report inputs are not exact",
+            ),
         }
 
         for label, (mutate, message) in mutations.items():
@@ -691,6 +695,33 @@ class GenerateBlockedHrdCrosscheckReportsTests(unittest.TestCase):
                 "blocked cross-check packet: schema_version",
             ):
                 GENERATOR.require_blocked_report_manifest(manifest_path.parent)
+
+    def test_packet_manifest_rejects_rebound_stale_report(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            output = Path(temporary) / "blocked"
+            GENERATOR.generate(output, "2026-07-17T00:00:00+00:00")
+            directory = output / GENERATOR.METHODS[0]["directory"]
+
+            report_path = directory / "report.md"
+            report_path.write_text(
+                "# Hand-edited blocked report\n\n"
+                "This copied report keeps the right hashes only because the "
+                "manifest was rebound.\n",
+                encoding="utf-8",
+            )
+            manifest_path = directory / "report_manifest.json"
+            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+            manifest["report_sha256"] = sha256(report_path)
+            manifest_path.write_text(
+                json.dumps(manifest, indent=2, sort_keys=True) + "\n",
+                encoding="utf-8",
+            )
+
+            with self.assertRaisesRegex(
+                ValueError,
+                "blocked cross-check report is stale",
+            ):
+                GENERATOR.require_blocked_report_manifest(directory)
 
     def test_packet_manifest_bound_hashes_must_be_exact_strings(self) -> None:
         numeric_digest = int("1" * 64)

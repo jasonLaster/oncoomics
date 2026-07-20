@@ -413,6 +413,7 @@
           lockstep with its manifest after the spec hash is rebound, while
           each blocked route report now has to re-render from the exact
           generator template before a rebound narrative hash can be trusted,
+          including during blocked-packet generation's own self-check,
           downloaded executable route manifests now have to keep the exact
           no-call cross-check envelope before route staging can compact them,
           prepared AI runs now reject model-catalog
@@ -443,6 +444,7 @@
           <li class="pill">Latest milestone = support/receipt exactness</li>
           <li class="pill">Route replay paths = exact</li>
           <li class="pill">Synthesis limitations = exact</li>
+          <li class="pill">Blocked generator report = exact</li>
           <li class="pill">Cross-check receipts = exact</li>
           <li class="pill">AI/freeform method IDs = exact</li>
           <li class="pill">Blocked reports = exact</li>
@@ -1125,6 +1127,10 @@
             <li class="item" style="--tone: var(--done)">
               <strong>Done · reject coerced route replay object paths</strong>
               <span>Exact route replay staging now rejects non-string downloaded-object <code>relative_path</code> values before they can be coerced into support filenames and rebound into compact no-call cross-check packets.</span>
+            </li>
+            <li class="item" style="--tone: var(--done)">
+              <strong>Done · re-render generated blocked packets</strong>
+              <span>The blocked cross-check generator now reopens each just-written Markdown report, renders the expected alias-only no-call text from the exact manifest inputs, and rejects hand-edited reports even when <code>report_sha256</code> has been rebound.</span>
             </li>
             <li class="item" style="--tone: var(--done)">
               <strong>Done · re-render blocked route reports</strong>
@@ -3120,6 +3126,19 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-20">Jul 20 · local</time>
+              <span>
+                <strong>Local patch · Re-render generated blocked packets:</strong>
+                blocked cross-check generation now reopens each blocked
+                <code>report.md</code>, renders the expected alias-only
+                no-call text from exact manifest inputs, and rejects stale
+                Markdown even after <code>report_sha256</code> is rebound. No
+                S3, Batch, route, GPU, quota, rerun, or apply-mode AWS work
+                was launched; Cost Explorer was refreshed read-only for
+                2026-07-19 UTC and remained at $5.24.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-20">Jul 20 · local</time>
               <span>
