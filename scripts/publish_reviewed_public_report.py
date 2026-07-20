@@ -15,6 +15,7 @@ import hashlib
 import json
 import os
 import re
+import stat
 import subprocess
 import tempfile
 from contextlib import suppress
@@ -369,16 +370,51 @@ def exact_schema_version(payload: dict[str, Any], expected: int = 1) -> bool:
 
 
 def read_stable_file_with_sha256(path: Path, label: str) -> tuple[bytes, str]:
+    payload = read_real_input_file_once(path, label)
+    digest = sha256_bytes(payload)
+    if sha256_bytes(read_real_input_file_once(path, label)) != digest:
+        raise ValueError(f"{label} changed during read")
+    return payload, digest
+
+
+def read_real_input_file_once(path: Path, label: str) -> bytes:
     require_real_input_file(path, label)
+    flags = os.O_RDONLY
+    flags |= getattr(os, "O_CLOEXEC", 0)
+    flags |= getattr(os, "O_NOFOLLOW", 0)
+    flags |= getattr(os, "O_NONBLOCK", 0)
+    descriptor = -1
     try:
-        payload = path.read_bytes()
-        digest = sha256_bytes(payload)
-        if sha256_bytes(path.read_bytes()) != digest:
-            raise ValueError(f"{label} changed during read")
+        descriptor = os.open(path, flags)
+        opened = os.fstat(descriptor)
+        if not stat.S_ISREG(opened.st_mode):
+            raise ValueError(f"{label} must be a real file")
+        with os.fdopen(descriptor, "rb") as handle:
+            descriptor = -1
+            payload = handle.read()
+            after_read = os.fstat(handle.fileno())
+        current = path.lstat()
     except OSError as error:
         raise ValueError(f"{label} changed during read") from error
+    finally:
+        if descriptor >= 0:
+            os.close(descriptor)
+
     require_real_input_file(path, label)
-    return payload, digest
+    if not os.path.samestat(opened, after_read) or not os.path.samestat(
+        after_read,
+        current,
+    ):
+        raise ValueError(f"{label} changed during read")
+    return payload
+
+
+def read_stable_text(path: Path, label: str) -> str:
+    payload, _digest = read_stable_file_with_sha256(path, label)
+    try:
+        return payload.decode("utf-8")
+    except UnicodeError as error:
+        raise ValueError(f"report packet contains a non-UTF-8 file: {path.name}") from error
 
 
 def load_json_with_sha256(path: Path, label: str) -> tuple[dict[str, Any], str]:
@@ -830,10 +866,7 @@ def require_public_destination_checks_exact(
 
 
 def scan_text(path: Path, tokens: tuple[str, ...]) -> None:
-    try:
-        text = path.read_text(encoding="utf-8")
-    except UnicodeDecodeError as error:
-        raise ValueError(f"report packet contains a non-UTF-8 file: {path.name}") from error
+    text = read_stable_text(path, f"{path.name} scan input")
     haystacks = [text]
     if path.suffix == ".json":
         try:
@@ -862,10 +895,7 @@ def scan_text(path: Path, tokens: tuple[str, ...]) -> None:
 
 
 def scan_no_call_language(path: Path) -> None:
-    try:
-        text = path.read_text(encoding="utf-8")
-    except UnicodeDecodeError as error:
-        raise ValueError(f"report packet contains a non-UTF-8 file: {path.name}") from error
+    text = read_stable_text(path, f"{path.name} no-call scan input")
 
     haystacks = [text]
     if path.suffix == ".json":
