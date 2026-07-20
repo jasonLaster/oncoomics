@@ -1458,6 +1458,34 @@ class StageDeterministicWgsReportInstallTests(unittest.TestCase):
 
             self.assertFalse(destination.exists())
 
+    def test_packet_file_install_uses_exact_stable_source_bytes(self) -> None:
+        with tempfile.TemporaryDirectory(
+            prefix="synthetic-hrd-report-install-"
+        ) as temporary:
+            root = Path(temporary)
+            source = root / "source.txt"
+            destination = root / "report.md"
+            source.write_bytes(b"one\n")
+            real_require_safe = REPORT_MODULE.require_safe_new_packet
+            mutated = False
+
+            def mutate_before_destination_open(path: Path) -> Path:
+                nonlocal mutated
+                if not mutated:
+                    mutated = True
+                    source.write_bytes(b"two\n")
+                return real_require_safe(path)
+
+            with patch.object(
+                REPORT_MODULE,
+                "require_safe_new_packet",
+                side_effect=mutate_before_destination_open,
+            ):
+                REPORT_MODULE.copy_create_only(source, destination)
+
+            self.assertEqual(source.read_bytes(), b"two\n")
+            self.assertEqual(destination.read_bytes(), b"one\n")
+
     def test_staged_report_write_rehashes_after_parent_fsync(self) -> None:
         with tempfile.TemporaryDirectory(
             prefix="synthetic-hrd-report-install-"
