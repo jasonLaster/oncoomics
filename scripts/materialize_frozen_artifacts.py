@@ -149,11 +149,17 @@ def require_installed_json(path: Path, expected_sha256: str) -> None:
 
 
 def safe_relative(value: Any) -> str:
-    text = str(value)
-    path = PurePosixPath(text)
-    if not text or path.is_absolute() or ".." in path.parts or path.as_posix() != text:
-        raise ValueError(f"unsafe frozen relative key: {text}")
-    return text
+    if not isinstance(value, str):
+        raise ValueError(f"unsafe frozen relative key: {value!r}")
+    path = PurePosixPath(value)
+    if (
+        not value
+        or path.is_absolute()
+        or ".." in path.parts
+        or path.as_posix() != value
+    ):
+        raise ValueError(f"unsafe frozen relative key: {value}")
+    return value
 
 
 def resolve_new_output(path: Path, label: str) -> Path:

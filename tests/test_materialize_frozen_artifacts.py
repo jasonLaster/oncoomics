@@ -171,7 +171,15 @@ class MaterializeFrozenArtifactsTests(unittest.TestCase):
             MODULE.safe_relative("variants/final.vcf.gz"),
             "variants/final.vcf.gz",
         )
-        for value in ("", "/absolute", "../escape", "variants/../../escape"):
+        for value in (
+            "",
+            "/absolute",
+            "../escape",
+            "variants/../../escape",
+            True,
+            1,
+            None,
+        ):
             with self.subTest(value=value), self.assertRaises(ValueError):
                 MODULE.safe_relative(value)
 
