@@ -424,6 +424,39 @@ class DownloadMaterializerStagedValidationTests(unittest.TestCase):
             self.assertTrue(source.exists())
             self.assertFalse(destination.exists())
 
+    def test_install_file_create_only_uses_exact_stable_source_bytes(self) -> None:
+        with tempfile.TemporaryDirectory() as value:
+            root = Path(value)
+            source = root / ".staging"
+            destination = root / "staged_input_validation.json"
+            source.write_text('{"schema_version":1}\n', encoding="utf-8")
+            real_open = MODULE.os.open
+            mutated = False
+
+            def mutate_before_destination_open(
+                path: Path,
+                flags: int,
+                mode: int = 0o777,
+            ) -> int:
+                nonlocal mutated
+                if Path(path) == destination and not mutated:
+                    mutated = True
+                    source.write_text('{"schema_version":2}\n', encoding="utf-8")
+                return real_open(path, flags, mode)
+
+            with patch.object(
+                MODULE.os,
+                "open",
+                side_effect=mutate_before_destination_open,
+            ):
+                MODULE.install_file_create_only(source, destination)
+
+            self.assertFalse(source.exists())
+            self.assertEqual(
+                destination.read_text(encoding="utf-8"),
+                '{"schema_version":1}\n',
+            )
+
     def test_sha256_path_rejects_symlinked_hash_inputs(self) -> None:
         with tempfile.TemporaryDirectory() as value:
             root = Path(value)

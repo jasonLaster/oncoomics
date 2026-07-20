@@ -229,7 +229,10 @@ def install_file_create_only(source: Path, destination: Path) -> None:
     source = resolve_real_file(source, "staged materializer output")
     destination = resolve_new_output(destination, "materializer output")
     destination.parent.mkdir(parents=True, exist_ok=True)
-    source_sha256 = sha256_path(source)
+    payload, source_sha256 = read_stable_file_with_sha256(
+        source,
+        "staged materializer output",
+    )
 
     try:
         file_descriptor = os.open(
@@ -243,21 +246,12 @@ def install_file_create_only(source: Path, destination: Path) -> None:
         ) from error
 
     try:
-        with source.open("rb") as source_handle, os.fdopen(
-            file_descriptor, "wb"
-        ) as destination_handle:
+        with os.fdopen(file_descriptor, "wb") as destination_handle:
             file_descriptor = -1
-            for chunk in iter(lambda: source_handle.read(1024 * 1024), b""):
-                destination_handle.write(chunk)
+            destination_handle.write(payload)
             destination_handle.flush()
             os.fsync(destination_handle.fileno())
         fsync_directory(destination.parent)
-        require_installed_file(
-            source,
-            "staged materializer output",
-            source_sha256,
-            require_mode_0600=False,
-        )
         require_installed_file(destination, "materializer output", source_sha256)
         source.unlink()
         fsync_directory(source.parent)
