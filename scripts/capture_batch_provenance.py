@@ -471,10 +471,18 @@ def checksums(head: dict[str, Any]) -> dict[str, str]:
 
 
 def load_object(path: Path, label: str) -> dict[str, Any]:
+    return load_object_with_sha256(path, label)[0]
+
+
+def load_object_with_sha256(path: Path, label: str) -> tuple[dict[str, Any], str, int]:
     require_no_symlinked_ancestors(path, label)
     if path.is_symlink() or not path.is_file():
         raise ValueError(f"{label} must be a real JSON file: {path}")
-    return parse_json_object(path.read_text(encoding="utf-8"), label)
+    data = path.read_bytes()
+    digest = sha256_bytes(data)
+    if sha256(path) != digest:
+        raise ValueError(f"{label} changed during read: {path}")
+    return parse_json_object(data, label), digest, len(data)
 
 
 def parse_json_object(value: str | bytes, label: str) -> dict[str, Any]:
@@ -930,8 +938,10 @@ def main() -> None:
         "jobDefinitions",
     )
 
-    worker_receipt = load_object(
-        args.executed_worker_freeze_receipt, "executed-worker freeze receipt"
+    worker_receipt, freeze_receipt_sha256, freeze_receipt_bytes = (
+        load_object_with_sha256(
+            args.executed_worker_freeze_receipt, "executed-worker freeze receipt"
+        )
     )
     worker_source = (
         worker_receipt.get("source")
@@ -944,7 +954,7 @@ def main() -> None:
         else {}
     )
     worker_receipt_checks = worker_receipt.get("checks")
-    worker_receipt_upload = load_object(
+    worker_receipt_upload, freeze_receipt_upload_sha256, _ = load_object_with_sha256(
         args.executed_worker_freeze_receipt_upload,
         "executed-worker freeze receipt upload",
     )
@@ -1152,7 +1162,6 @@ def main() -> None:
     )
     worker_receipt_upload_bytes = worker_receipt_upload_object.get("bytes")
     receipt_upload_size = receipt_upload_head.get("ContentLength")
-    freeze_receipt_bytes = args.executed_worker_freeze_receipt.stat().st_size
     worker_head_size = worker_head.get("ContentLength")
     worker_get_size = worker_get.get("ContentLength")
     worker_checks = {
@@ -1174,7 +1183,7 @@ def main() -> None:
             and worker_receipt_upload.get("status") == "passed"
             and executed_worker_check_maps["freeze_receipt_upload"]
             and worker_receipt_upload.get("local_receipt_sha256")
-            == sha256(args.executed_worker_freeze_receipt)
+            == freeze_receipt_sha256
             and receipt_upload_head.get("VersionId")
             == receipt_upload_version
             and exact_int(receipt_upload_size, freeze_receipt_bytes)
@@ -1182,7 +1191,7 @@ def main() -> None:
             and receipt_upload_head.get("ChecksumType") == "FULL_OBJECT"
             and receipt_upload_head_checksum_hex
             == receipt_upload_checksum_hex
-            == sha256(args.executed_worker_freeze_receipt)
+            == freeze_receipt_sha256
             and receipt_upload_head.get("ServerSideEncryption") == "aws:kms"
             and receipt_upload_head.get("SSEKMSKeyId")
             == worker_receipt_upload_object.get("kms_key_id")
@@ -1322,14 +1331,12 @@ def main() -> None:
             "executed_uri": f"s3://{worker_bucket}/{worker_key}",
             "executed_version_id": worker_version,
             "freeze_receipt_path": str(args.executed_worker_freeze_receipt.resolve()),
-            "freeze_receipt_sha256": sha256(args.executed_worker_freeze_receipt),
+            "freeze_receipt_sha256": freeze_receipt_sha256,
             "freeze_receipt_version_id": receipt_upload_version,
             "freeze_receipt_upload_path": str(
                 args.executed_worker_freeze_receipt_upload.resolve()
             ),
-            "freeze_receipt_upload_sha256": sha256(
-                args.executed_worker_freeze_receipt_upload
-            ),
+            "freeze_receipt_upload_sha256": freeze_receipt_upload_sha256,
             "bytes": worker_bytes,
             "sha256": worker_sha256,
             "etag": require_s3_etag(

@@ -306,6 +306,30 @@ class CaptureBatchProvenanceTests(unittest.TestCase):
             ):
                 MODULE.load_object(receipt, "executed-worker freeze receipt")
 
+    def test_load_object_rejects_receipts_that_change_during_read(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            receipt = Path(temporary) / "executed-worker-freeze-receipt.json"
+            receipt.write_text('{"status":"passed"}\n', encoding="utf-8")
+            real_sha256_bytes = MODULE.sha256_bytes
+
+            def tamper_after_initial_read(data: bytes) -> str:
+                digest = real_sha256_bytes(data)
+                receipt.write_text('{"status":"tampered"}\n', encoding="utf-8")
+                return digest
+
+            with (
+                patch.object(
+                    MODULE,
+                    "sha256_bytes",
+                    side_effect=tamper_after_initial_read,
+                ),
+                self.assertRaisesRegex(
+                    ValueError,
+                    "executed-worker freeze receipt changed during read",
+                ),
+            ):
+                MODULE.load_object(receipt, "executed-worker freeze receipt")
+
     def test_sha256_rejects_symlinked_hash_inputs(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)

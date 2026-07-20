@@ -336,7 +336,8 @@
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-19</li>
-          <li class="pill">Latest milestone = local exact materializer request binding</li>
+          <li class="pill">Latest milestone = first post-run receipt reads guarded</li>
+          <li class="pill">Batch worker receipts = rechecked</li>
           <li class="pill">Materializer request binding = guarded</li>
           <li class="pill">AI staging inputs = guarded</li>
           <li class="pill">Cross-check staging copies = guarded</li>
@@ -938,6 +939,10 @@
 
           <h3>Priority 2 · terminal deterministic artifacts</h3>
           <ol class="todo">
+            <li class="item" style="--tone: var(--done)">
+              <strong>Done · guard the first post-run receipt handoff</strong>
+              <span>Terminal Batch capture now rechecks the worker-freeze receipts after reading them, so the first post-success handoff records the exact JSON bytes it trusted and fails closed if either local receipt changes mid-read.</span>
+            </li>
             <li class="item" style="--tone: var(--done)">
               <strong>Done · require real materializer submit hash inputs</strong>
               <span><code>submit_materializer_v4.py</code> now passes final-freeze, exact-materialization, reference-freeze, script-anchor, registration, job-definition, dry-run request, and local submit/response receipt SHA-256 reads through no-symlink leaf, no-symlink parent, and real-file guards before alias-only materializer dry-run or submit receipts can bind those local inputs.</span>
