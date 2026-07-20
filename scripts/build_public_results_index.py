@@ -452,6 +452,12 @@ def validate_reviewed_public_receipts(
                 not isinstance(digest, str) or not SHA256_HEX.fullmatch(digest)
                 for digest in forbidden_token_sha256
             )
+            or not exact_int(
+                receipt.get("forbidden_token_count"),
+                len(forbidden_token_sha256),
+            )
+            or len(set(forbidden_token_sha256)) != len(forbidden_token_sha256)
+            or forbidden_token_sha256 != sorted(forbidden_token_sha256)
             or not exact_int(receipt.get("destination_initial_history_count"), 0)
             or not exact_int(
                 receipt.get("destination_final_history_count"),
