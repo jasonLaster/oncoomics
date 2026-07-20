@@ -161,6 +161,7 @@ REPORT_KIND_EXTRA_KEYS = {
     "rosalind_hrd_reviewer_packet": frozenset(),
 }
 NO_CALL_ONLY_REPORT_KINDS = {
+    "independent_ai_hrd_evidence_review",
     "public_known_answer_method_no_call",
     "rosalind_hrd_reviewer_packet",
 }

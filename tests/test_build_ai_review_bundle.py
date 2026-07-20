@@ -1822,6 +1822,29 @@ class BuildAiReviewBundleTests(unittest.TestCase):
             )
             self.assertFalse((fixture.bundle_dir / "review_bundle.json").exists())
 
+    def test_rejects_promoted_independent_ai_review_packet(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            fixture = AiReviewBundleFixture(Path(temporary))
+            fixture.update_manifest(
+                1,
+                {
+                    "report_kind": "independent_ai_hrd_evidence_review",
+                    "evidence_status": "ready",
+                    "authorized_hrd_state": "positive",
+                    "classification_authorized": True,
+                    "classification_qc_status": "passed",
+                },
+            )
+
+            built = fixture.run()
+
+            self.assertNotEqual(built.returncode, 0)
+            self.assertIn(
+                "independent_ai_hrd_evidence_review report manifest cannot authorize",
+                built.stderr,
+            )
+            self.assertFalse((fixture.bundle_dir / "review_bundle.json").exists())
+
     def test_rejects_no_call_manifest_with_applicable_classification_qc(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             fixture = AiReviewBundleFixture(Path(temporary))
