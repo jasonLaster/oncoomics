@@ -17,6 +17,10 @@ Use this checklist when updating `docs/status/diana-wgs-hrd-progress.html`.
   the total unblended cost, and a row-level service / usage-type breakdown from
   that same Cost Explorer response, or a visible read-only failure for that
   exact attempted Cost Explorer window.
+- Treat the past-day Cost Explorer query as a first-class refresh input:
+  refresh the dashboard from the AWS response, the current source milestone,
+  and any fresh quota status together so spend, blockers, and code progress are
+  all from the same working session.
 - Update the ignored preview copy after editing:
 
 ```sh

@@ -103,12 +103,19 @@ def sha256_bytes(value: bytes) -> str:
     return hashlib.sha256(value).hexdigest()
 
 
-def sha256_path(path: Path) -> str:
+def sha256_path_once(path: Path) -> str:
     label = f"{path.name} SHA-256 input"
     require_no_symlinked_ancestors(path, label)
     if path.is_symlink() or not path.is_file():
         raise ValueError(f"{label} must be a real file: {path}")
     return sha256_bytes(path.read_bytes())
+
+
+def sha256_path(path: Path) -> str:
+    digest = sha256_path_once(path)
+    if sha256_path_once(path) != digest:
+        raise ValueError(f"{path.name} SHA-256 input changed during read: {path}")
+    return digest
 
 
 def shell_join(values: Iterable[str | os.PathLike[str]]) -> str:

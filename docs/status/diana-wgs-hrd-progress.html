@@ -369,14 +369,15 @@
           files it used. The public HCC1395 rehearsal still tests only packaging
           mechanics; it does not stand in for Diana biology. The legacy CPU run
           is stopped, the selected GPU rerun is still waiting on quota, and the
-          latest source-only guardrail makes Rosalind packet assembly reread
-          local files before trusting their SHA-256 custody.
+          latest source-only guardrail makes the materializer job and capture
+          renderers reread local files before trusting their SHA-256 custody.
           Diana HRD remains <code>partial_evidence</code> / <code>no_call</code> until terminal
           artifacts and reviewed cross-check reports exist.
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-19</li>
-          <li class="pill">Latest milestone = Rosalind hash inputs stay stable</li>
+          <li class="pill">Latest milestone = materializer render hashes stay stable</li>
+          <li class="pill">Materializer render hashes = stable</li>
           <li class="pill">Rosalind hash inputs = stable</li>
           <li class="pill">Deterministic report reads = stable</li>
           <li class="pill">Blocked generator hashes = stable</li>
@@ -1171,6 +1172,10 @@
 
           <h3>Priority 2 · terminal deterministic artifacts</h3>
           <ol class="todo">
+            <li class="item" style="--tone: var(--done)">
+              <strong>Done · keep materializer renderer hashes stable</strong>
+              <span>The helpers that render the exact materializer Batch job and final capture command now reread local SHA-256 inputs before trusting request/response receipts or post-write output checks, so post-success cross-check scaffolding fails closed if a local file changes mid-read.</span>
+            </li>
             <li class="item" style="--tone: var(--done)">
               <strong>Done · keep deterministic report inputs stable</strong>
               <span>Deterministic report staging now rereads JSON and local SHA-256 inputs before trusting parsed receipts or support hashes, so report packets for Rosalind and AI review fail closed if a local input changes mid-read.</span>
@@ -2637,6 +2642,15 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-19T21:41:31-07:00">Jul 19 · local</time>
+              <span>
+                <strong>Local patch · Keep materializer renderer hashes stable:</strong>
+                materializer job-definition and terminal-capture rendering now
+                reread local SHA-256 inputs before trusting exact private
+                receipts or post-write output checks.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-19T21:37:00-07:00">Jul 19 · local</time>
               <span>

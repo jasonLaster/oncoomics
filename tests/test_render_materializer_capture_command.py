@@ -393,6 +393,34 @@ class RenderMaterializerCaptureCommandTests(unittest.TestCase):
         ):
             MODULE.sha256_path(linked_input)
 
+    def test_sha256_path_rejects_changing_hash_inputs(self) -> None:
+        input_path = self.root / "request.json"
+        input_path.write_text('{"status":"first"}\n', encoding="utf-8")
+        real_read_bytes = Path.read_bytes
+        reads = 0
+
+        def mutate_after_first_read(path: Path) -> bytes:
+            nonlocal reads
+            data = real_read_bytes(path)
+            if path == input_path and reads == 0:
+                input_path.write_text('{"status":"second"}\n', encoding="utf-8")
+            reads += 1
+            return data
+
+        with (
+            mock.patch.object(
+                Path,
+                "read_bytes",
+                autospec=True,
+                side_effect=mutate_after_first_read,
+            ),
+            self.assertRaisesRegex(
+                ValueError,
+                "request.json SHA-256 input changed during read",
+            ),
+        ):
+            MODULE.sha256_path(input_path)
+
     def test_rejects_duplicate_receipt_object_names(self) -> None:
         for label, select_path in (
             ("request receipt", lambda args: args.request_receipt),
