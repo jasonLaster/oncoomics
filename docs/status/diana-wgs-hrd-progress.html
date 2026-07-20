@@ -410,6 +410,9 @@
           static HRD route submits, alias-only materializer submits, and the
           bounded Rosalind packet cloud helper now reread the same daily Batch
           spend ledger immediately before any direct Batch submit,
+          AI-review bundle installation now rehashes the final installed
+          review bundle, prompts, and manifest before trusting the copied
+          manifest,
           reviewed-public publication now preserves the support file,
           pre-route blocked cross-check packets now exact-check the top-level
           and nested review summary they are about to hand to AI/freeform
@@ -2402,6 +2405,10 @@
               <span>AI-review preparation now rechecks the staged Reviewer A/B directories, file modes, <code>review_bundle.json</code> bytes, and prompt bytes before a two-reviewer run can be installed, so a stale copied prompt cannot slip past the stage receipt.</span>
             </li>
             <li class="item" style="--tone: var(--done)">
+              <strong>Done · rehash installed AI-review bundles</strong>
+              <span>AI-review bundle construction now records the staged review-bundle, prompt, and bundle-manifest SHA-256s before copying, then rehashes the installed files after final fsync and removes the bundle if a different but internally consistent manifest appears during install.</span>
+            </li>
+            <li class="item" style="--tone: var(--done)">
               <strong>Done · bind paired AI reviews to one evidence packet</strong>
               <span>Reviewer B now refuses to use Reviewer A unless Reviewer A's validation receipt is exact and points at the same evidence-packet fingerprint, so the second review cannot quietly rely on stale first-review approval.</span>
             </li>
@@ -3139,6 +3146,19 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-20">Jul 20 · local</time>
+              <span>
+                <strong>Local patch · Rehash installed AI-review bundles:</strong>
+                AI-review bundle installation now records exact staged file
+                hashes before copying, rehashes the installed review bundle,
+                prompts, and bundle manifest after final fsync, and removes the
+                install if a different but internally consistent bundle appears
+                before validation. No S3, Batch, route, GPU, quota, rerun, or
+                apply-mode AWS work was launched; Cost Explorer was refreshed
+                read-only for 2026-07-19 UTC and remained at $5.24.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-20">Jul 20 · local</time>
               <span>

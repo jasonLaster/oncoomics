@@ -850,9 +850,13 @@ def fsync_directory(path: Path) -> None:
 
 def install_bundle_create_only(staged_paths: Sequence[Path], output: Path) -> None:
     installed: list[Path] = []
+    expected_hashes: dict[Path, str] = {}
     try:
         for path in staged_paths:
             destination = output / path.name
+            expected_hashes[destination] = sha256(
+                require_real_input_file(path, "staged AI review bundle file")
+            )
             destination_preexisted = destination.exists() or destination.is_symlink()
             try:
                 copy_create_only(path, destination)
@@ -862,6 +866,17 @@ def install_bundle_create_only(staged_paths: Sequence[Path], output: Path) -> No
                 raise
             installed.append(destination)
         fsync_directory(output)
+        for destination, expected_sha256 in expected_hashes.items():
+            if sha256(
+                require_real_input_file(
+                    destination,
+                    "AI review bundle output",
+                )
+            ) != expected_sha256:
+                raise ValueError(
+                    "AI review bundle output changed during install: "
+                    + destination.name
+                )
         require_bundle_manifest(output)
     except Exception:
         for path in reversed(installed):
