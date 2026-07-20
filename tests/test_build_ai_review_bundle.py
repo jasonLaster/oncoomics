@@ -527,12 +527,12 @@ class BuildAiReviewBundleTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temporary:
             input_path = Path(temporary) / "input.json"
             input_path.write_text('{"status": "ready"}\n', encoding="utf-8")
-            real_read_bytes = Path.read_bytes
+            real_read_once = BUILD.read_real_hash_input_once
             calls = 0
 
-            def mutating_read_bytes(path: Path) -> bytes:
+            def mutating_read_once(path: Path, label: str) -> bytes:
                 nonlocal calls
-                data = real_read_bytes(path)
+                data = real_read_once(path, label)
                 calls += 1
                 if calls == 1:
                     input_path.write_text(
@@ -541,7 +541,11 @@ class BuildAiReviewBundleTests(unittest.TestCase):
                     )
                 return data
 
-            with mock.patch.object(Path, "read_bytes", mutating_read_bytes):
+            with mock.patch.object(
+                BUILD,
+                "read_real_hash_input_once",
+                side_effect=mutating_read_once,
+            ):
                 with self.assertRaisesRegex(ValueError, "changed during read"):
                     BUILD.sha256(input_path)
 
@@ -549,12 +553,12 @@ class BuildAiReviewBundleTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temporary:
             input_path = Path(temporary) / "input.json"
             input_path.write_text('{"status": "ready"}\n', encoding="utf-8")
-            real_read_bytes = Path.read_bytes
+            real_read_once = BUILD.read_real_hash_input_once
             calls = 0
 
-            def mutating_read_bytes(path: Path) -> bytes:
+            def mutating_read_once(path: Path, label: str) -> bytes:
                 nonlocal calls
-                data = real_read_bytes(path)
+                data = real_read_once(path, label)
                 calls += 1
                 if calls == 1:
                     input_path.write_text(
@@ -563,9 +567,39 @@ class BuildAiReviewBundleTests(unittest.TestCase):
                     )
                 return data
 
-            with mock.patch.object(Path, "read_bytes", mutating_read_bytes):
+            with mock.patch.object(
+                BUILD,
+                "read_real_hash_input_once",
+                side_effect=mutating_read_once,
+            ):
                 with self.assertRaisesRegex(ValueError, "changed during read"):
                     BUILD.load_object(input_path)
+
+    def test_hash_input_rejects_leaf_replaced_after_preflight(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            input_path = root / "input.json"
+            target_path = root / "target.json"
+            input_path.write_text('{"status": "ready"}\n', encoding="utf-8")
+            target_path.write_text('{"status": "redirected"}\n', encoding="utf-8")
+            real_require = BUILD.require_real_hash_input
+            swapped = False
+
+            def swap_leaf_after_preflight(path: Path) -> None:
+                nonlocal swapped
+                real_require(path)
+                if path == input_path and not swapped:
+                    swapped = True
+                    input_path.unlink()
+                    input_path.symlink_to(target_path)
+
+            with mock.patch.object(
+                BUILD,
+                "require_real_hash_input",
+                side_effect=swap_leaf_after_preflight,
+            ):
+                with self.assertRaisesRegex(ValueError, "changed during read"):
+                    BUILD.sha256(input_path)
 
     def test_bundle_file_install_revalidates_copied_bytes(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
@@ -593,6 +627,36 @@ class BuildAiReviewBundleTests(unittest.TestCase):
                 BUILD.copy_create_only(source, destination)
 
             self.assertFalse(destination.exists())
+
+    def test_bundle_file_install_copies_exact_stable_source_bytes(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            source = root / "source.txt"
+            destination = root / "review_bundle.json"
+            source.write_bytes(b"one\n")
+            real_read_stable = BUILD.read_stable_file_with_sha256
+            swapped = False
+
+            def mutate_source_after_stable_read(
+                path: Path,
+                label: str,
+            ) -> tuple[bytes, str]:
+                nonlocal swapped
+                data, digest = real_read_stable(path, label)
+                if path.name == source.name and not swapped:
+                    swapped = True
+                    source.write_bytes(b"two\n")
+                return data, digest
+
+            with mock.patch.object(
+                BUILD,
+                "read_stable_file_with_sha256",
+                side_effect=mutate_source_after_stable_read,
+            ):
+                BUILD.copy_create_only(source, destination)
+
+            self.assertEqual(source.read_bytes(), b"two\n")
+            self.assertEqual(destination.read_bytes(), b"one\n")
 
     def test_bundle_staged_file_write_rehashes_after_parent_fsync(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
