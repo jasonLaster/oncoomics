@@ -2558,6 +2558,41 @@ def write_packet(spec: PacketSpec, packet_run_id: str) -> dict[str, Any]:
     return write_packet_to_dir(spec, packet_run_id, output_dir, output_path, None, [])
 
 
+def packet_summary_report_manifest_path(summary: Mapping[str, Any]) -> Path:
+    raw = require_exact_nonempty_string(
+        summary.get("reportManifest"),
+        "Rosalind packet summary reportManifest",
+    )
+    path = Path(raw).expanduser()
+    if path.is_absolute():
+        return path
+    return path_from_root(raw)
+
+
+def recheck_packet_summaries(
+    packet_summaries: Sequence[Mapping[str, Any]],
+) -> list[dict[str, Any]]:
+    rechecked: list[dict[str, Any]] = []
+    for summary in packet_summaries:
+        manifest_path = packet_summary_report_manifest_path(summary)
+        expected_sha256 = require_sha256(
+            summary.get("reportManifestSha256"),
+            "Rosalind packet summary reportManifestSha256",
+        )
+        actual_sha256 = sha256_file(
+            require_real_nonempty_file(
+                manifest_path,
+                "Rosalind packet summary report manifest",
+            )
+        )
+        if actual_sha256 != expected_sha256:
+            raise ValueError(
+                "Rosalind packet summary report manifest changed before run manifest"
+            )
+        rechecked.append(dict(summary))
+    return rechecked
+
+
 def diana_wgs_deterministic_process_lines(deterministic_binding: Mapping[str, Any]) -> list[str]:
     if deterministic_binding.get("binding_kind") == "phase3_fast_final":
         phase3_fast = deterministic_binding.get("phase3_fast")
@@ -2886,7 +2921,9 @@ def write_cloud_materialization_plan(root: str | Path, packet_run_id: str, packe
 def main() -> None:
     packet_run_id = run_id()
     sample_sets = selected_sample_sets()
-    packet_summaries = [write_packet(PACKET_SPECS[sample_set], packet_run_id) for sample_set in sample_sets]
+    packet_summaries = recheck_packet_summaries(
+        [write_packet(PACKET_SPECS[sample_set], packet_run_id) for sample_set in sample_sets]
+    )
     root = packet_output_path(packet_run_id)
     ensure_dir(root)
     manifest = {

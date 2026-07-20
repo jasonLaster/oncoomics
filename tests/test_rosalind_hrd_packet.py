@@ -393,6 +393,60 @@ def rewrite_packet_report_with_text(root: Path, text: str) -> None:
     utils.write_json(root / "report_manifest.json", manifest)
 
 
+def write_diana_raw_intake_artifacts(root: Path) -> None:
+    utils.write_csv(
+        root / "manifests/diana_raw_inputs.template.csv",
+        [{"patient_id": "DIANA", "sample_id": "DIANA-TUMOR-DNA"}],
+    )
+    utils.write_text(root / "docs/operations/diana-raw-inputs.md", "# Diana Raw Inputs")
+    utils.write_json(
+        root / "results/diana_raw_intake/input_contract.json",
+        {
+            "requiredColumns": ["patient_id", "pair_id", "sample_id"],
+            "dnaAssays": ["WGS", "WES"],
+            "dataTypes": ["FASTQ", "BAM", "CRAM"],
+            "handoffPlanCommand": "PYTHONPATH=src /usr/bin/python3 -m diana_omics plan:diana-raw-handoff",
+            "validationCommand": "DIANA_RAW_SAMPLESHEET=manifests/diana_raw_inputs.csv DIANA_RAW_REQUIRE_DATA=1 PYTHONPATH=src /usr/bin/python3 -m diana_omics verify:diana-raw",
+            "recomputeCommand": "DIANA_RAW_SAMPLESHEET=manifests/diana_raw_inputs.csv DIANA_RAW_REQUIRE_DATA=1 PYTHONPATH=src /usr/bin/python3 -m diana_omics stage:diana-raw",
+        },
+    )
+    utils.write_json(
+        root / "results/diana_raw_intake/intake_readiness_summary.json",
+        {
+            "status": "template_ready",
+            "template": "manifests/diana_raw_inputs.template.csv",
+            "actualSamplesheet": "manifests/diana_raw_inputs.csv",
+            "readyForDianaRawData": True,
+        },
+    )
+    utils.write_json(
+        root / "results/diana_raw_intake/input_validation_summary.json",
+        {
+            "status": "waiting_for_diana_raw_data",
+            "summary": {
+                "rowCount": 0,
+                "dnaRowCount": 0,
+                "tumorDnaRows": 0,
+                "normalDnaRows": 0,
+                "matchedPairIds": [],
+            },
+        },
+    )
+    utils.write_json(
+        root / "results/diana_raw_intake/dinah_handoff_plan.json",
+        {
+            "status": "waiting_for_dinah_files",
+            "samplesheet": "manifests/diana_raw_inputs.csv",
+            "analysisId": "unit",
+            "currentState": {"status": "waiting_for_dinah_files"},
+            "handoffSteps": [
+                {"name": "strict_validate_diana_inputs"},
+                {"name": "stage_diana_raw_analysis_packet"},
+            ],
+        },
+    )
+
+
 class RosalindHrdPacketTest(unittest.TestCase):
     def test_schema_version_checks_use_exact_integer_helper(self):
         for value, expected, accepted in (
@@ -3314,51 +3368,63 @@ class RosalindHrdPacketTest(unittest.TestCase):
 
                 self.assertFalse((real_output / nested / "unit").exists())
 
+    def test_run_manifest_rechecks_packet_manifest_summaries(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            write_diana_raw_intake_artifacts(root)
+            real_write_packet = packet.write_packet
+            tampered = False
+
+            def tamper_after_packet_summary(
+                spec: packet.PacketSpec,
+                packet_run_id: str,
+            ) -> dict[str, object]:
+                nonlocal tampered
+                summary = real_write_packet(spec, packet_run_id)
+                manifest_path = (
+                    root
+                    / "results/rosalind_hrd/diana_raw_intake/unit/report_manifest.json"
+                )
+                manifest = utils.read_json(manifest_path)
+                manifest["review_summary"]["blockers"].append(
+                    "changed after packet summary"
+                )
+                utils.write_json(manifest_path, manifest)
+                tampered = True
+                return summary
+
+            with (
+                patch.object(packet, "path_from_root", lambda relative: root / relative),
+                patch.dict(
+                    "os.environ",
+                    {
+                        "ROSALIND_HRD_ARTIFACT_ROOT": "",
+                        "ROSALIND_HRD_OUTPUT_ROOT": "",
+                        "ROSALIND_HRD_RUN_ID": "unit",
+                        "ROSALIND_HRD_SAMPLE_SET": "diana_raw_intake",
+                    },
+                ),
+                patch.object(
+                    packet,
+                    "write_packet",
+                    side_effect=tamper_after_packet_summary,
+                ),
+                self.assertRaisesRegex(
+                    ValueError,
+                    "Rosalind packet summary report manifest changed",
+                ),
+            ):
+                packet.main()
+
+            self.assertTrue(tampered)
+            self.assertFalse(
+                (root / "results/rosalind_hrd/unit/run_manifest.json").exists()
+            )
+
     def test_diana_raw_intake_packet_marks_waiting_input_path(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
-            utils.write_csv(
-                root / "manifests/diana_raw_inputs.template.csv",
-                [{"patient_id": "DIANA", "sample_id": "DIANA-TUMOR-DNA"}],
-            )
-            utils.write_text(root / "docs/operations/diana-raw-inputs.md", "# Diana Raw Inputs")
-            utils.write_json(
-                root / "results/diana_raw_intake/input_contract.json",
-                {
-                    "requiredColumns": ["patient_id", "pair_id", "sample_id"],
-                    "dnaAssays": ["WGS", "WES"],
-                    "dataTypes": ["FASTQ", "BAM", "CRAM"],
-                    "handoffPlanCommand": "PYTHONPATH=src /usr/bin/python3 -m diana_omics plan:diana-raw-handoff",
-                    "validationCommand": "DIANA_RAW_SAMPLESHEET=manifests/diana_raw_inputs.csv DIANA_RAW_REQUIRE_DATA=1 PYTHONPATH=src /usr/bin/python3 -m diana_omics verify:diana-raw",
-                    "recomputeCommand": "DIANA_RAW_SAMPLESHEET=manifests/diana_raw_inputs.csv DIANA_RAW_REQUIRE_DATA=1 PYTHONPATH=src /usr/bin/python3 -m diana_omics stage:diana-raw",
-                },
-            )
-            utils.write_json(
-                root / "results/diana_raw_intake/intake_readiness_summary.json",
-                {
-                    "status": "template_ready",
-                    "template": "manifests/diana_raw_inputs.template.csv",
-                    "actualSamplesheet": "manifests/diana_raw_inputs.csv",
-                    "readyForDianaRawData": True,
-                },
-            )
-            utils.write_json(
-                root / "results/diana_raw_intake/input_validation_summary.json",
-                {
-                    "status": "waiting_for_diana_raw_data",
-                    "summary": {"rowCount": 0, "dnaRowCount": 0, "tumorDnaRows": 0, "normalDnaRows": 0, "matchedPairIds": []},
-                },
-            )
-            utils.write_json(
-                root / "results/diana_raw_intake/dinah_handoff_plan.json",
-                {
-                    "status": "waiting_for_dinah_files",
-                    "samplesheet": "manifests/diana_raw_inputs.csv",
-                    "analysisId": "unit",
-                    "currentState": {"status": "waiting_for_dinah_files"},
-                    "handoffSteps": [{"name": "strict_validate_diana_inputs"}, {"name": "stage_diana_raw_analysis_packet"}],
-                },
-            )
+            write_diana_raw_intake_artifacts(root)
 
             with patch.object(packet, "path_from_root", lambda relative: root / relative):
                 summary = packet.write_packet(packet.PACKET_SPECS["diana_raw_intake"], "unit")
