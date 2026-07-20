@@ -29,6 +29,8 @@ SPEC.loader.exec_module(MODULE)
 
 def write_packet_dirs(paths: dict[str, Path]) -> None:
     for method_id, path in paths.items():
+        if method_id in MODULE.BLOCKED_CROSSCHECK_METHOD_IDS:
+            continue
         path.mkdir(parents=True)
         for relative in MODULE.METHOD_CONTRACTS[method_id]["files"]:
             if relative == "report_manifest.json":
@@ -142,62 +144,22 @@ def source_report_manifests(paths: dict[str, Path]) -> dict[str, str]:
 
 
 def bind_blocked_reports(paths: dict[str, Path]) -> None:
+    if any(method_id not in paths for method_id in MODULE.BLOCKED_CROSSCHECK_METHOD_IDS):
+        return
+
     manifests = source_report_manifests(paths)
     if set(manifests) != set(MODULE.BLOCKED_SOURCE_METHOD_IDS):
         return
 
     for method_id in MODULE.BLOCKED_CROSSCHECK_METHOD_IDS:
-        if method_id not in paths:
-            continue
-        path = paths[method_id]
-        method_spec = json.loads((path / "method_spec.json").read_text(encoding="utf-8"))
-        method_spec["source_report_binding_scope"] = "terminal_source_reports"
-        method_spec["source_report_manifests"] = manifests
-        (path / "method_spec.json").write_text(
-            json.dumps(method_spec, indent=2, sort_keys=True) + "\n",
-            encoding="utf-8",
-        )
+        shutil.rmtree(paths[method_id], ignore_errors=True)
 
-        report = "\n".join(
-            [
-                f"# {method_id}",
-                "",
-                "No-call support packet.",
-                "",
-                "## Upstream report context",
-                "",
-                *(
-                    f"- {source_id} report_manifest_sha256: `{digest}`"
-                    for source_id, digest in manifests.items()
-                ),
-                "",
-            ]
-        )
-        (path / "report.md").write_text(report, encoding="utf-8")
-
-        manifest = json.loads(
-            (path / "report_manifest.json").read_text(encoding="utf-8")
-        )
-        manifest["source_report_binding_scope"] = "terminal_source_reports"
-        manifest["review_summary"][
-            "source_report_binding_scope"
-        ] = "terminal_source_reports"
-        manifest["review_summary"]["source_report_manifests"] = manifests
-        manifest["source_sha256"] = {
-            "generator": MODULE.sha256(SCRIPT_DIR / "generate_blocked_hrd_crosscheck_reports.py"),
-            **{
-                f"{source_id}_report_manifest": digest
-                for source_id, digest in manifests.items()
-            },
-        }
-        manifest["support_sha256"]["method_spec.json"] = MODULE.sha256(
-            path / "method_spec.json"
-        )
-        manifest["report_sha256"] = MODULE.sha256(path / "report.md")
-        (path / "report_manifest.json").write_text(
-            json.dumps(manifest, indent=2, sort_keys=True) + "\n",
-            encoding="utf-8",
-        )
+    BLOCKED_GENERATOR.generate(
+        paths["facets_scarhrd_blocked"].parent,
+        generated_at="2026-07-17T00:00:00+00:00",
+        run_id="unit",
+        source_report_manifests=manifests,
+    )
 
 
 def write_phase3_fast_validation_receipt(
@@ -770,6 +732,33 @@ class RenderSourceReportFreezeRunbookTests(unittest.TestCase):
                     phase3_fast_report_packet_validation=validation,
                     phase3_fast_forbidden_tokens_file=forbidden_tokens,
                 )
+
+    def test_validate_packet_dirs_rejects_stale_terminal_blocked_report_after_rehash(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            paths = MODULE.source_packet_dirs(root)
+            write_packet_dirs(paths)
+
+            report_path = paths["hrdetect_blocked"] / "report.md"
+            report_path.write_text(
+                report_path.read_text(encoding="utf-8")
+                + "\nA late no-call HRDetect packet edit.\n",
+                encoding="utf-8",
+            )
+            manifest_path = paths["hrdetect_blocked"] / "report_manifest.json"
+            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+            manifest["report_sha256"] = hashlib.sha256(
+                report_path.read_bytes()
+            ).hexdigest()
+            manifest_path.write_text(
+                json.dumps(manifest, indent=2, sort_keys=True) + "\n",
+                encoding="utf-8",
+            )
+
+            with self.assertRaisesRegex(ValueError, "blocked cross-check report is stale"):
+                MODULE.validate_packet_dirs(paths)
 
     def test_validate_packet_dirs_rejects_unbound_blocked_reports(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
