@@ -911,6 +911,35 @@ class StageDeterministicWgsReportInstallTests(unittest.TestCase):
             ):
                 REPORT_MODULE.load_json(path)
 
+    def test_load_json_rejects_input_that_changes_during_read(self) -> None:
+        with tempfile.TemporaryDirectory(
+            prefix="synthetic-hrd-report-input-"
+        ) as temporary:
+            path = Path(temporary) / "input.json"
+            path.write_text('{"status":"stable"}\n', encoding="utf-8")
+            original_sha256_file_once = REPORT_MODULE.sha256_file_once
+            mutated = False
+
+            def mutate_before_rehash(input_path: Path) -> str:
+                nonlocal mutated
+                if input_path == path and not mutated:
+                    mutated = True
+                    path.write_text('{"status":"rewritten"}\n', encoding="utf-8")
+                return original_sha256_file_once(input_path)
+
+            with (
+                patch.object(
+                    REPORT_MODULE,
+                    "sha256_file_once",
+                    side_effect=mutate_before_rehash,
+                ),
+                self.assertRaisesRegex(
+                    ValueError,
+                    "JSON input changed during read",
+                ),
+            ):
+                REPORT_MODULE.load_json(path)
+
     def test_sha256_rejects_symlinked_hash_inputs(self) -> None:
         with tempfile.TemporaryDirectory(
             prefix="synthetic-hrd-report-input-"
@@ -941,6 +970,36 @@ class StageDeterministicWgsReportInstallTests(unittest.TestCase):
                 "receipt.json SHA-256 input parent may not be a symlink",
             ):
                 REPORT_MODULE.sha256(linked_parent / "receipt.json")
+
+    def test_sha256_rejects_hash_input_that_changes_during_read(self) -> None:
+        with tempfile.TemporaryDirectory(
+            prefix="synthetic-hrd-report-input-"
+        ) as temporary:
+            path = Path(temporary) / "receipt.json"
+            path.write_text('{"status":"stable"}\n', encoding="utf-8")
+            original_sha256_file_once = REPORT_MODULE.sha256_file_once
+            mutated = False
+
+            def mutate_after_first_hash(input_path: Path) -> str:
+                nonlocal mutated
+                digest = original_sha256_file_once(input_path)
+                if input_path == path and not mutated:
+                    mutated = True
+                    path.write_text('{"status":"rewritten"}\n', encoding="utf-8")
+                return digest
+
+            with (
+                patch.object(
+                    REPORT_MODULE,
+                    "sha256_file_once",
+                    side_effect=mutate_after_first_hash,
+                ),
+                self.assertRaisesRegex(
+                    ValueError,
+                    "receipt.json SHA-256 input changed during read",
+                ),
+            ):
+                REPORT_MODULE.sha256(path)
 
     def test_load_csv_rejects_input_below_symlinked_parent(self) -> None:
         with tempfile.TemporaryDirectory(

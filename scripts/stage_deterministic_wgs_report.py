@@ -276,9 +276,13 @@ EXPECTED_STAGED_VALIDATION_DOWNLOAD_CHECKS: dict[str, bool] = {
 
 def load_json(path: Path) -> dict[str, Any]:
     require_real_input_path(path, "JSON input")
+    data = path.read_bytes()
+    digest = sha256_bytes(data)
+    if sha256_file_once(path) != digest:
+        raise ValueError(f"JSON input changed during read: {path}")
     try:
         payload = json.loads(
-            path.read_text(encoding="utf-8"),
+            data.decode("utf-8"),
             object_pairs_hook=reject_duplicate_json_object_names,
         )
     except DuplicateJsonKeyError as error:
@@ -296,6 +300,13 @@ def load_csv(path: Path, delimiter: str = ",") -> list[dict[str, str]]:
 
 def sha256(path: Path) -> str:
     require_real_input_path(path, f"{path.name} SHA-256 input")
+    digest = sha256_file_once(path)
+    if sha256_file_once(path) != digest:
+        raise ValueError(f"{path.name} SHA-256 input changed during read")
+    return digest
+
+
+def sha256_file_once(path: Path) -> str:
     digest = hashlib.sha256()
     with path.open("rb") as handle:
         for chunk in iter(lambda: handle.read(8 * 1024 * 1024), b""):
