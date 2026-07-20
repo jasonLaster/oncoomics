@@ -755,6 +755,32 @@ class StageHrdCrosscheckReportTests(unittest.TestCase):
                 ),
                 "download verification object row is not exact",
             ),
+            (
+                "padded publication receipt URI",
+                lambda payload: payload.__setitem__(
+                    "publication_receipt_uri",
+                    payload["publication_receipt_uri"] + " ",
+                ),
+                "publication_receipt_uri is not exact",
+            ),
+            (
+                "padded route output URI",
+                lambda payload: payload.__setitem__(
+                    "route_output_uri",
+                    payload["route_output_uri"] + " ",
+                ),
+                "route_output_uri is not exact",
+            ),
+            (
+                "boolean output directory",
+                lambda payload: payload.__setitem__("output_dir", True),
+                "output_dir is not exact",
+            ),
+            (
+                "padded prior error",
+                lambda payload: payload.__setitem__("prior_error", " stale "),
+                "prior_error is not exact",
+            ),
         )
         for label, mutate, message in cases:
             with self.subTest(label=label), tempfile.TemporaryDirectory() as temporary:
