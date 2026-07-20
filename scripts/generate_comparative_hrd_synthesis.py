@@ -1908,43 +1908,41 @@ def require_synthesis_report_manifest(
 
 def copy_create_only(source: Path, destination: Path) -> None:
     source = require_real_nonempty_file(source, "staged synthesis packet")
-    expected_sha256 = sha256(source)
+    payload, expected_sha256 = read_stable_file_with_sha256(
+        source,
+        "staged synthesis packet",
+    )
     destination = require_safe_new_packet(destination)
-    with source.open("rb") as source_handle:
-        try:
-            file_descriptor = os.open(
-                destination,
-                os.O_WRONLY | os.O_CREAT | os.O_EXCL,
-                0o644,
-            )
-        except FileExistsError as error:
-            raise ValueError(
-                "synthesis output packet already exists: " + destination.name
-            ) from error
+    try:
+        file_descriptor = os.open(
+            destination,
+            os.O_WRONLY | os.O_CREAT | os.O_EXCL,
+            0o644,
+        )
+    except FileExistsError as error:
+        raise ValueError(
+            "synthesis output packet already exists: " + destination.name
+        ) from error
 
-        try:
-            destination_handle = os.fdopen(file_descriptor, "wb")
-        except Exception:
-            os.close(file_descriptor)
-            destination.unlink(missing_ok=True)
-            raise
+    try:
+        destination_handle = os.fdopen(file_descriptor, "wb")
+    except Exception:
+        os.close(file_descriptor)
+        destination.unlink(missing_ok=True)
+        raise
 
-        try:
-            with destination_handle:
-                for chunk in iter(lambda: source_handle.read(1024 * 1024), b""):
-                    destination_handle.write(chunk)
-                destination_handle.flush()
-                os.fsync(destination_handle.fileno())
-            fsync_directory(destination.parent)
-            require_real_nonempty_file(destination, "synthesis output packet")
-            if (
-                sha256(source) != expected_sha256
-                or sha256(destination) != expected_sha256
-            ):
-                raise ValueError("staged synthesis packet changed during copy: " + source.name)
-        except Exception:
-            destination.unlink(missing_ok=True)
-            raise
+    try:
+        with destination_handle:
+            destination_handle.write(payload)
+            destination_handle.flush()
+            os.fsync(destination_handle.fileno())
+        fsync_directory(destination.parent)
+        require_real_nonempty_file(destination, "synthesis output packet")
+        if sha256(destination) != expected_sha256:
+            raise ValueError("staged synthesis packet changed during copy: " + source.name)
+    except Exception:
+        destination.unlink(missing_ok=True)
+        raise
 
 
 def fsync_directory(path: Path) -> None:
