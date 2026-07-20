@@ -761,6 +761,22 @@ class PublishReviewedPublicReportTests(unittest.TestCase):
                 lambda payload: payload.__setitem__("schema_version", 1.0),
                 "contract is malformed",
             ),
+            (
+                "boolean destination_initial_history_count",
+                lambda payload: payload.__setitem__(
+                    "destination_initial_history_count",
+                    False,
+                ),
+                "contract is malformed",
+            ),
+            (
+                "float destination_initial_history_count",
+                lambda payload: payload.__setitem__(
+                    "destination_initial_history_count",
+                    0.0,
+                ),
+                "contract is malformed",
+            ),
         )
 
         for label, mutate, message in cases:
