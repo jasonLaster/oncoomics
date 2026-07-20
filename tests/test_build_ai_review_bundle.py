@@ -523,6 +523,50 @@ class BuildAiReviewBundleTests(unittest.TestCase):
             ):
                 BUILD.sha256(linked_inputs / "report_manifest.json")
 
+    def test_sha256_rejects_hash_input_that_changes_during_read(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            input_path = Path(temporary) / "input.json"
+            input_path.write_text('{"status": "ready"}\n', encoding="utf-8")
+            real_read_bytes = Path.read_bytes
+            calls = 0
+
+            def mutating_read_bytes(path: Path) -> bytes:
+                nonlocal calls
+                data = real_read_bytes(path)
+                calls += 1
+                if calls == 1:
+                    input_path.write_text(
+                        '{"status": "mutated"}\n',
+                        encoding="utf-8",
+                    )
+                return data
+
+            with mock.patch.object(Path, "read_bytes", mutating_read_bytes):
+                with self.assertRaisesRegex(ValueError, "changed during read"):
+                    BUILD.sha256(input_path)
+
+    def test_load_object_rejects_json_input_that_changes_during_read(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            input_path = Path(temporary) / "input.json"
+            input_path.write_text('{"status": "ready"}\n', encoding="utf-8")
+            real_read_bytes = Path.read_bytes
+            calls = 0
+
+            def mutating_read_bytes(path: Path) -> bytes:
+                nonlocal calls
+                data = real_read_bytes(path)
+                calls += 1
+                if calls == 1:
+                    input_path.write_text(
+                        '{"status": "mutated"}\n',
+                        encoding="utf-8",
+                    )
+                return data
+
+            with mock.patch.object(Path, "read_bytes", mutating_read_bytes):
+                with self.assertRaisesRegex(ValueError, "changed during read"):
+                    BUILD.load_object(input_path)
+
     def test_bundle_file_install_revalidates_copied_bytes(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
@@ -1309,6 +1353,86 @@ class BuildAiReviewBundleTests(unittest.TestCase):
 
             self.assertTrue(swapped)
             self.assertFalse((fixture.bundle_dir / "review_bundle.json").exists())
+
+    def test_input_manifest_binds_parsed_source_manifest_bytes(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            fixture = AiReviewBundleFixture(Path(temporary))
+            manifest_path = fixture.manifests[0]
+            expected_manifest_hash = BUILD.sha256(manifest_path)
+            real_load_object_with_sha256 = BUILD.load_object_with_sha256
+
+            def mutate_manifest_after_read(path: Path) -> tuple[dict, str]:
+                value, digest = real_load_object_with_sha256(path)
+                if path == manifest_path:
+                    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+                    manifest["schema_version"] = 2
+                    write_json(manifest_path, manifest)
+                return value, digest
+
+            with (
+                mock.patch.object(
+                    BUILD,
+                    "load_object_with_sha256",
+                    side_effect=mutate_manifest_after_read,
+                ),
+                mock.patch.object(sys, "argv", fixture.argv()),
+            ):
+                BUILD.main()
+
+            bundle_manifest = json.loads(
+                (fixture.bundle_dir / "bundle_manifest.json").read_text(
+                    encoding="utf-8",
+                )
+            )
+            self.assertEqual(
+                bundle_manifest["input_manifest_sha256"]["E001"],
+                expected_manifest_hash,
+            )
+
+    def test_model_catalog_binding_uses_parsed_receipt_bytes(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            fixture = AiReviewBundleFixture(Path(temporary))
+            expected_receipt_hash = BUILD.sha256(fixture.catalog_receipt)
+            real_load_object_with_sha256 = BUILD.load_object_with_sha256
+
+            def mutate_catalog_after_read(path: Path) -> tuple[dict, str]:
+                value, digest = real_load_object_with_sha256(path)
+                if path == fixture.catalog_receipt:
+                    receipt = json.loads(
+                        fixture.catalog_receipt.read_text(encoding="utf-8")
+                    )
+                    receipt["schema_version"] = 2
+                    write_json(fixture.catalog_receipt, receipt)
+                return value, digest
+
+            with (
+                mock.patch.object(
+                    BUILD,
+                    "load_object_with_sha256",
+                    side_effect=mutate_catalog_after_read,
+                ),
+                mock.patch.object(sys, "argv", fixture.argv()),
+            ):
+                BUILD.main()
+
+            bundle_manifest = json.loads(
+                (fixture.bundle_dir / "bundle_manifest.json").read_text(
+                    encoding="utf-8",
+                )
+            )
+            review_bundle = json.loads(
+                (fixture.bundle_dir / "review_bundle.json").read_text(
+                    encoding="utf-8",
+                )
+            )
+            self.assertEqual(
+                bundle_manifest["model_catalog_receipt_sha256"],
+                expected_receipt_hash,
+            )
+            self.assertEqual(
+                review_bundle["model_catalog_receipt_sha256"],
+                expected_receipt_hash,
+            )
 
     def test_rejects_symlinked_model_catalog_receipt(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:

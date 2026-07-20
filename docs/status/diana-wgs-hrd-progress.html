@@ -376,7 +376,8 @@
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-19</li>
-          <li class="pill">Latest milestone = AI finalization reads rechecked</li>
+          <li class="pill">Latest milestone = AI bundle ingress reads rechecked</li>
+          <li class="pill">AI bundle ingress reads = stable</li>
           <li class="pill">AI finalization local reads = stable</li>
           <li class="pill">AI validation local reads = stable</li>
           <li class="pill">AI synthesis local reads = stable</li>
@@ -1849,6 +1850,10 @@
           <h3>Priority 4 · AI / freeform review</h3>
           <ol class="todo">
             <li class="item" style="--tone: var(--done)">
+              <strong>Done · recheck AI bundle ingress reads</strong>
+              <span>AI bundle construction now parses model-catalog receipts and each source <code>report_manifest.json</code> from stable local bytes, then binds those exact digests into <code>model_catalog_receipt_sha256</code> and <code>input_manifest_sha256</code> before staging model-review inputs.</span>
+            </li>
+            <li class="item" style="--tone: var(--done)">
               <strong>Done · recheck AI finalization reads</strong>
               <span>Finalized reviewer packets now parse validation receipts, review manifests, bundle manifests, model-catalog receipts, and claim tables from stable local bytes before wrapping validated reviewer output in a source-freezeable packet.</span>
             </li>
@@ -2426,6 +2431,15 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-19T18:24:48-07:00">Jul 19 · local</time>
+              <span>
+                <strong>Local patch · Recheck AI bundle ingress reads:</strong>
+                source report manifests and the model-catalog receipt now enter
+                <code>review_bundle.json</code> and
+                <code>bundle_manifest.json</code> through stable parsed bytes.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-19T18:21:32-07:00">Jul 19 · local</time>
               <span>

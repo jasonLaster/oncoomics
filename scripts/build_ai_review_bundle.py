@@ -169,12 +169,10 @@ def require_real_hash_input(path: Path) -> None:
 
 
 def sha256(path: Path) -> str:
-    require_real_hash_input(path)
-    digest = hashlib.sha256()
-    with path.open("rb") as handle:
-        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
-            digest.update(chunk)
-    return digest.hexdigest()
+    return read_stable_file_with_sha256(
+        path,
+        f"{path.name} SHA-256 input",
+    )[1]
 
 
 def json_bytes(value: Any) -> bytes:
@@ -205,10 +203,16 @@ def reject_duplicate_json_object_names(
 
 
 def load_object(path: Path) -> dict[str, Any]:
+    value, _ = load_object_with_sha256(path)
+    return value
+
+
+def load_object_with_sha256(path: Path) -> tuple[dict[str, Any], str]:
     path = require_real_input_file(path, f"manifest {path.name}")
+    data, digest = read_stable_file_with_sha256(path, f"manifest {path.name}")
     try:
         value = json.loads(
-            path.read_text(encoding="utf-8"),
+            data.decode("utf-8"),
             object_pairs_hook=reject_duplicate_json_object_names,
         )
     except DuplicateJsonKeyError as error:
@@ -219,7 +223,16 @@ def load_object(path: Path) -> dict[str, Any]:
         raise ValueError(f"invalid JSON in manifest {path.name}") from error
     if not isinstance(value, dict):
         raise ValueError(f"manifest must be a JSON object: {path.name}")
-    return value
+    return value, digest
+
+
+def read_stable_file_with_sha256(path: Path, label: str) -> tuple[bytes, str]:
+    require_real_hash_input(path)
+    data = path.read_bytes()
+    digest = sha256_bytes(data)
+    if not data or sha256_bytes(path.read_bytes()) != digest:
+        raise ValueError(f"{label} changed during read: {path}")
+    return data, digest
 
 
 def scan_text(text: str, forbidden_tokens: list[str], context: str) -> None:
@@ -363,7 +376,7 @@ def validate_catalog_receipt(
     model_contracts: dict[str, dict[str, Any]],
 ) -> str:
     resolved = require_real_input_file(path, "model catalog receipt")
-    receipt = load_object(resolved)
+    receipt, receipt_sha256 = load_object_with_sha256(resolved)
     if set(receipt) != MODEL_CATALOG_RECEIPT_KEYS:
         raise ValueError("model catalog receipt envelope is not exact")
     if not is_exact_int(receipt.get("schema_version"), 1):
@@ -426,7 +439,7 @@ def validate_catalog_receipt(
         raise ValueError(
             "model catalog receipt does not match the pinned reviewer models"
         )
-    return sha256(resolved)
+    return receipt_sha256
 
 
 def prompt(
@@ -956,7 +969,7 @@ def main() -> None:
                 f"{error}"
             ) from error
         try:
-            manifest = load_object(path)
+            manifest, manifest_hash = load_object_with_sha256(path)
         except ValueError as error:
             raise SystemExit(f"Fail-closed: {error}") from error
         if not is_exact_int(manifest.get("schema_version"), 1):
@@ -1050,7 +1063,7 @@ def main() -> None:
                 "review_summary": summary,
             }
         )
-        input_hashes[f"E{index:03d}"] = sha256(path)
+        input_hashes[f"E{index:03d}"] = manifest_hash
 
     if observed_methods != required_methods:
         raise SystemExit(
