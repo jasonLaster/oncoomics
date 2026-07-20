@@ -528,6 +528,11 @@ update the UTC-day ledger, the Lambda fails closed and disables the protected
 queues and compute environments instead of leaving P5 or CPU capacity running
 without a fresh same-day estimate.
 
+Terraform preserves a tripped kill switch: protected Batch queues and compute
+environments ignore subsequent `state` drift, so an unrelated `terraform apply`
+cannot re-enable same-day capacity after the Lambda disables it. Re-enable
+Batch capacity only after the spend event is reviewed.
+
 Mutating submitters that bypass Nextflow must also re-read the same UTC-day
 DynamoDB ledger immediately before `SubmitJob`. The static HRD route submitter,
 v4 cross-check materializer submitter, and bounded cloud Rosalind packet helper
