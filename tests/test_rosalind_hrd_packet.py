@@ -2532,6 +2532,80 @@ class RosalindHrdPacketTest(unittest.TestCase):
 
                 self.assertFalse((output_dir / "report_manifest.json").exists())
 
+    def test_diana_wgs_packet_rejects_loose_rendered_worker_fields(self):
+        def mutate_summary_reference(artifact_root: Path, value: object) -> str:
+            worker_summary_path = artifact_root / "diana_hrd_summary.json"
+            worker_summary = utils.read_json(worker_summary_path)
+            worker_summary["input"]["reference"] = value
+            utils.write_json(worker_summary_path, worker_summary)
+            return "Diana WGS summary input reference"
+
+        def mutate_signature_status(artifact_root: Path, field: str, value: object) -> str:
+            signature_path = artifact_root / "signatures/signature_assignment_summary.json"
+            signatures = utils.read_json(signature_path)
+            signatures[field] = value
+            utils.write_json(signature_path, signatures)
+            return (
+                "Diana WGS SigProfiler assignment status"
+                if field == "sigprofiler_assignment_status"
+                else "Diana WGS SBS3 status"
+            )
+
+        for label, mutate in (
+            (
+                "reference_bool",
+                lambda root: mutate_summary_reference(root, True),
+            ),
+            (
+                "reference_padded",
+                lambda root: mutate_summary_reference(root, " hg38 analysis reference"),
+            ),
+            (
+                "sigprofiler_status_list",
+                lambda root: mutate_signature_status(
+                    root,
+                    "sigprofiler_assignment_status",
+                    ["input_ready_threshold_met"],
+                ),
+            ),
+            (
+                "sbs3_status_multiline",
+                lambda root: mutate_signature_status(
+                    root,
+                    "sbs3_status",
+                    "no_call_signature_assignment_and_threshold_policy_not_locked\nready",
+                ),
+            ),
+        ):
+            with self.subTest(label=label), tempfile.TemporaryDirectory() as tmp, tempfile.TemporaryDirectory() as artifacts:
+                output_root = Path(tmp)
+                artifact_root = Path(artifacts)
+                write_diana_wgs_worker_artifacts(artifact_root)
+                expected_label = mutate(artifact_root)
+                deterministic_root = write_deterministic_report(
+                    output_root / "deterministic",
+                    artifact_root,
+                )
+                output_dir = output_root / "results/rosalind_hrd/diana_wgs/unit"
+
+                with (
+                    patch.object(packet, "path_from_root", lambda relative: output_root / relative),
+                    patch.dict(
+                        "os.environ",
+                        {
+                            "ROSALIND_HRD_ARTIFACT_ROOT": str(artifact_root),
+                            "ROSALIND_HRD_DETERMINISTIC_REPORT_DIR": str(deterministic_root),
+                        },
+                    ),
+                    self.assertRaisesRegex(
+                        ValueError,
+                        f"{expected_label} must be a non-empty unpadded single-line string",
+                    ),
+                ):
+                    packet.write_packet(packet.PACKET_SPECS["diana_wgs"], "unit")
+
+                self.assertFalse((output_dir / "report_manifest.json").exists())
+
     def test_diana_wgs_phase3_fast_packet_rejects_final_artifact_tampering(self):
         with tempfile.TemporaryDirectory() as tmp:
             output_root = Path(tmp)
