@@ -1434,6 +1434,18 @@ class CustodyHandoffTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "exact custody checks"):
             fixture.finalize()
 
+    def test_finalizer_rejects_non_exact_crosscheck_initial_history_count(self):
+        for label, value in (
+            ("boolean", False),
+            ("float", 0.0),
+        ):
+            with self.subTest(label=label):
+                fixture = CustodyFixture()
+                fixture.cross["destination_initial_version_history_count"] = value
+
+                with self.assertRaisesRegex(ValueError, "one-shot publication"):
+                    fixture.finalize()
+
     def test_finalizer_rejects_unexpected_crosscheck_output_checks(self):
         fixture = CustodyFixture()
         fixture.cross["outputs"]["somatic.pass.vcf.gz"]["checks"]["future"] = True
@@ -1455,6 +1467,18 @@ class CustodyHandoffTests(unittest.TestCase):
         fixture.freeze["destination_initial_version_history_count"] = 1
         with self.assertRaisesRegex(ValueError, "one-shot freeze"):
             fixture.finalize()
+
+    def test_finalizer_rejects_non_exact_freeze_initial_history_count(self):
+        for label, value in (
+            ("boolean", False),
+            ("float", 0.0),
+        ):
+            with self.subTest(label=label):
+                fixture = CustodyFixture()
+                fixture.freeze["destination_initial_version_history_count"] = value
+
+                with self.assertRaisesRegex(ValueError, "one-shot freeze"):
+                    fixture.finalize()
 
     def test_finalizer_rejects_boolean_final_freeze_object_count(self):
         fixture = CustodyFixture()

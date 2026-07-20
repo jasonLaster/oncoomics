@@ -503,7 +503,10 @@ def validate_freeze(
         or receipt.get("status") != "passed"
         or receipt.get("batch_status") != "SUCCEEDED"
         or receipt.get("destination_bucket_versioning") != "Enabled"
-        or receipt.get("destination_initial_version_history_count") != 0
+        or not exact_int(
+            receipt.get("destination_initial_version_history_count"),
+            0,
+        )
         or receipt.get("receipt_anchor_strategy")
         != "sha256_content_addressed_create_only"
         or not isinstance(rows, list)
@@ -670,7 +673,10 @@ def finalize(
         or crosscheck_receipt.get("status") != "passed"
         or crosscheck_receipt.get("run_alias") != pending.get("run_alias")
         or crosscheck_receipt.get("destination_bucket_versioning") != "Enabled"
-        or crosscheck_receipt.get("destination_initial_version_history_count") != 0
+        or not exact_int(
+            crosscheck_receipt.get("destination_initial_version_history_count"),
+            0,
+        )
         or crosscheck_receipt.get("receipt_anchor_strategy")
         != "sha256_content_addressed_create_only"
         or require_hex(
