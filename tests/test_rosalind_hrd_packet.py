@@ -2622,6 +2622,44 @@ class RosalindHrdPacketTest(unittest.TestCase):
 
                 self.assertFalse((output_dir / "report_manifest.json").exists())
 
+    def test_diana_wgs_packet_rejects_loose_embedded_readiness_fields(self):
+        for field, value in (
+            ("evidence_surface", True),
+            ("status", None),
+            ("detail", ["Coverage bins are partial."]),
+        ):
+            with self.subTest(field=field), tempfile.TemporaryDirectory() as tmp, tempfile.TemporaryDirectory() as artifacts:
+                output_root = Path(tmp)
+                artifact_root = Path(artifacts)
+                write_diana_wgs_worker_artifacts(artifact_root)
+                worker_summary_path = artifact_root / "diana_hrd_summary.json"
+                worker_summary = utils.read_json(worker_summary_path)
+                worker_summary["hrd_readiness"][0][field] = value
+                utils.write_json(worker_summary_path, worker_summary)
+                deterministic_root = write_deterministic_report(
+                    output_root / "deterministic",
+                    artifact_root,
+                )
+                output_dir = output_root / "results/rosalind_hrd/diana_wgs/unit"
+
+                with (
+                    patch.object(packet, "path_from_root", lambda relative: output_root / relative),
+                    patch.dict(
+                        "os.environ",
+                        {
+                            "ROSALIND_HRD_ARTIFACT_ROOT": str(artifact_root),
+                            "ROSALIND_HRD_DETERMINISTIC_REPORT_DIR": str(deterministic_root),
+                        },
+                    ),
+                    self.assertRaisesRegex(
+                        ValueError,
+                        "Diana WGS embedded readiness fields must be strings",
+                    ),
+                ):
+                    packet.write_packet(packet.PACKET_SPECS["diana_wgs"], "unit")
+
+                self.assertFalse((output_dir / "report_manifest.json").exists())
+
     def test_diana_wgs_packet_rejects_deterministic_or_worker_tampering(self):
         for tool, value in (
             ("bcftools", ""),
