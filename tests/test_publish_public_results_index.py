@@ -773,6 +773,14 @@ class PublishPublicResultsIndexTests(unittest.TestCase):
             {"version_exact": True},
             {
                 **MODULE.PUBLIC_INDEX_DESTINATION_CHECKS,
+                "version_exact": 1,
+            },
+            {
+                **MODULE.PUBLIC_INDEX_DESTINATION_CHECKS,
+                "checksum_sha256": 1.0,
+            },
+            {
+                **MODULE.PUBLIC_INDEX_DESTINATION_CHECKS,
                 "unexpected_late_check": True,
             },
         )
@@ -943,34 +951,57 @@ class PublishPublicResultsIndexTests(unittest.TestCase):
     def test_apply_rejects_dry_run_receipt_with_extra_failed_check_before_aws(
         self,
     ) -> None:
-        with tempfile.TemporaryDirectory() as temporary:
-            root = Path(temporary)
-            index, receipts = self.write_receipt_bound_index(root)
-            dry_run_receipt = self.write_dry_run_receipt(root, index, receipts)
-            payload = json.loads(dry_run_receipt.read_text(encoding="utf-8"))
-            payload["checks"]["unexpected_late_check"] = False
-            dry_run_receipt.write_text(
-                json.dumps(payload, indent=2, sort_keys=True) + "\n",
-                encoding="utf-8",
-            )
-
-            with (
-                self.assertRaisesRegex(ValueError, "did not pass preflight checks"),
-                mock.patch.object(
-                    MODULE, "aws_json", side_effect=AssertionError("AWS called")
+        cases = (
+            (
+                "unexpected-late-check",
+                lambda payload: payload["checks"].__setitem__(
+                    "unexpected_late_check",
+                    False,
                 ),
-            ):
-                MODULE.run(
-                    self.args(
-                        index,
-                        root / "apply.json",
-                        apply=True,
-                        dry_run_receipt=dry_run_receipt,
-                        reviewed_public_receipts=receipts,
-                    )
+            ),
+            (
+                "truthy-integer-check",
+                lambda payload: payload["checks"].__setitem__(
+                    "index_schema",
+                    1,
+                ),
+            )
+        )
+
+        for name, mutate in cases:
+            with self.subTest(name=name), tempfile.TemporaryDirectory() as temporary:
+                root = Path(temporary)
+                index, receipts = self.write_receipt_bound_index(root)
+                dry_run_receipt = self.write_dry_run_receipt(root, index, receipts)
+                payload = json.loads(dry_run_receipt.read_text(encoding="utf-8"))
+                mutate(payload)
+                dry_run_receipt.write_text(
+                    json.dumps(payload, indent=2, sort_keys=True) + "\n",
+                    encoding="utf-8",
                 )
 
-            self.assertFalse((root / "apply.json").exists())
+                with (
+                    self.assertRaisesRegex(
+                        ValueError,
+                        "did not pass preflight checks",
+                    ),
+                    mock.patch.object(
+                        MODULE,
+                        "aws_json",
+                        side_effect=AssertionError("AWS called"),
+                    ),
+                ):
+                    MODULE.run(
+                        self.args(
+                            index,
+                            root / "apply.json",
+                            apply=True,
+                            dry_run_receipt=dry_run_receipt,
+                            reviewed_public_receipts=receipts,
+                        )
+                    )
+
+                self.assertFalse((root / "apply.json").exists())
 
     def test_apply_rejects_dry_run_receipt_with_stale_extra_metadata_before_aws(
         self,
