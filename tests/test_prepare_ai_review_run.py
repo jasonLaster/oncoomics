@@ -60,6 +60,14 @@ def write_staged_run(staging: Path) -> None:
     write_json(
         bundle_manifest,
         {
+            "required_method_ids": list(INVENTORY.REQUIRED_METHOD_IDS),
+            "method_inventory": INVENTORY.inventory_payload(),
+            "method_inventory_sha256": INVENTORY.inventory_sha256(),
+            "input_manifest_sha256": {
+                f"E{index:03d}": "a" * 64
+                for index, _method in enumerate(INVENTORY.REQUIRED_METHOD_IDS, 1)
+            },
+            "model_catalog_receipt_sha256": "b" * 64,
             "review_bundle_sha256": PREPARE.sha256(review_bundle),
             "prompt_sha256": {
                 "A": PREPARE.sha256(reviewer_a_prompt),
@@ -897,6 +905,45 @@ class PrepareAiReviewRunTests(unittest.TestCase):
                 with self.assertRaisesRegex(
                     ValueError,
                     "prepared AI review run receipt is not exact",
+                ):
+                    PREPARE.require_prepared_run_support(output)
+
+    def test_prepared_run_support_rejects_stale_prepare_receipt_bundle_binding(
+        self,
+    ) -> None:
+        cases = {
+            "source_manifest_sha256": (
+                lambda receipt: receipt["source_manifests"][
+                    INVENTORY.REQUIRED_METHOD_IDS[0]
+                ].__setitem__("sha256", "0" * 64)
+            ),
+            "model_catalog_receipt_sha256": (
+                lambda receipt: receipt.__setitem__(
+                    "model_catalog_receipt_sha256",
+                    "0" * 64,
+                )
+            ),
+            "prompt_sha256": (
+                lambda receipt: receipt["prompt_sha256"].__setitem__(
+                    "A",
+                    "0" * 64,
+                )
+            ),
+        }
+        for name, mutate in cases.items():
+            with self.subTest(name=name), tempfile.TemporaryDirectory() as temporary:
+                root = Path(temporary)
+                fixture = AiReviewBundleFixture(root)
+                output = root / "ai-review"
+                PREPARE.prepare(namespace(fixture, output))
+                receipt_path = output / "prepare_ai_review_run_receipt.json"
+                receipt = json.loads(receipt_path.read_text(encoding="utf-8"))
+                mutate(receipt)
+                write_json(receipt_path, receipt)
+
+                with self.assertRaisesRegex(
+                    ValueError,
+                    "prepared AI review run bundle manifest binding is stale",
                 ):
                     PREPARE.require_prepared_run_support(output)
 

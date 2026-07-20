@@ -785,7 +785,10 @@ def exact_reviewer_input_receipts(value: Any, output: Path) -> bool:
     return True
 
 
-def require_prepare_receipt(receipt: dict[str, Any], output: Path) -> None:
+def require_prepare_receipt(
+    receipt: dict[str, Any],
+    output: Path,
+) -> tuple[str, ...]:
     try:
         inventory_id = require_inventory_binding(
             receipt.get("method_inventory"),
@@ -825,6 +828,32 @@ def require_prepare_receipt(receipt: dict[str, Any], output: Path) -> None:
         )
     ):
         raise ValueError("prepared AI review run receipt is not exact")
+    return methods
+
+
+def require_prepare_receipt_bundle_manifest_binding(
+    *,
+    bundle_manifest: dict[str, Any],
+    receipt: dict[str, Any],
+    methods: tuple[str, ...],
+) -> None:
+    expected_input_hashes = {
+        f"E{index:03d}": receipt["source_manifests"][method]["sha256"]
+        for index, method in enumerate(methods, 1)
+    }
+    if (
+        bundle_manifest.get("required_method_ids") != list(methods)
+        or bundle_manifest.get("method_inventory") != receipt.get("method_inventory")
+        or bundle_manifest.get("method_inventory_sha256")
+        != receipt.get("method_inventory_sha256")
+        or bundle_manifest.get("input_manifest_sha256") != expected_input_hashes
+        or bundle_manifest.get("model_catalog_receipt_sha256")
+        != receipt.get("model_catalog_receipt_sha256")
+        or bundle_manifest.get("review_bundle_sha256")
+        != receipt.get("review_bundle_sha256")
+        or bundle_manifest.get("prompt_sha256") != receipt.get("prompt_sha256")
+    ):
+        raise ValueError("prepared AI review run bundle manifest binding is stale")
 
 
 def move_staged_entry(source: Path, destination: Path) -> None:
@@ -906,9 +935,15 @@ def require_prepared_run_support(
         if receipt_output_root is not None
         else path
     )
-    receipt = load_object(path / "prepare_ai_review_run_receipt.json")
-    require_prepare_receipt(receipt, receipt_output_root)
     bundle_dir = path / "bundle"
+    receipt = load_object(path / "prepare_ai_review_run_receipt.json")
+    methods = require_prepare_receipt(receipt, receipt_output_root)
+    bundle_manifest = load_object(bundle_dir / "bundle_manifest.json")
+    require_prepare_receipt_bundle_manifest_binding(
+        bundle_manifest=bundle_manifest,
+        receipt=receipt,
+        methods=methods,
+    )
     current_hashes = {
         "bundle_manifest_sha256": sha256(bundle_dir / "bundle_manifest.json"),
         "review_bundle_sha256": sha256(bundle_dir / "review_bundle.json"),
