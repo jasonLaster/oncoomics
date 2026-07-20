@@ -371,15 +371,14 @@
           is stopped, the selected GPU lane is live on all three allowed P5
           Hopper shapes and still waiting on quota, the prod-use2 daily cost
           guard now has a one-minute live spend poller, and the latest
-          source-only guardrail rejects loose Phase 3 fast evidence-check input
-          rows before deterministic SHA-256 mirrors can enter the Rosalind and
-          AI review handoff.
+          source-only guardrail rejects malformed private receipt paths before
+          the final reviewed-public publish recipe can render.
           Diana HRD remains <code>partial_evidence</code> / <code>no_call</code> until terminal
           artifacts and reviewed cross-check reports exist.
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-19</li>
-          <li class="pill">Latest milestone = Phase 3 evidence-check inputs</li>
+          <li class="pill">Latest milestone = public receipt paths</li>
           <li class="pill">Live P5 placement = p5en / p5e / p5</li>
           <li class="pill">Daily $200 Batch guard = live</li>
           <li class="pill">Live spend poll = 1 minute</li>
@@ -399,6 +398,7 @@
           <li class="pill">Private/public packet envelopes = exact</li>
           <li class="pill">Private packet-kind checks = explicit</li>
           <li class="pill">Reviewed-public kind checks = explicit</li>
+          <li class="pill">Public receipt paths = exact</li>
           <li class="pill">Publication report kinds = exact</li>
           <li class="pill">Deterministic review summaries = exact</li>
           <li class="pill">Comparative reviewer rows = exact</li>
@@ -864,8 +864,8 @@
             </li>
             <li class="track" style="--tone: var(--queued)">
               <strong>Diana reviewed-public publication</strong>
-              <span>82% · final source IDs canonical</span>
-              <div class="bar" aria-hidden="true" style="--pct: 82%"><span></span></div>
+              <span>83% · receipt paths guarded</span>
+              <div class="bar" aria-hidden="true" style="--pct: 83%"><span></span></div>
             </li>
             <li class="track" style="--tone: var(--queued)">
               <strong>Public / private boundary posture</strong>
@@ -2087,6 +2087,10 @@
               <span>AI-synthesis and reviewed-public runbook renderers now parse each private publication receipt once, use the same object for canonical method gates, and carry the exact parsed digests into downstream report handoffs.</span>
             </li>
             <li class="item" style="--tone: var(--done)">
+              <strong>Done · reject malformed public receipt paths</strong>
+              <span>Reviewed-public runbook rendering now rejects empty, sentinel, whitespace-padded, newline-bearing, or NUL-bearing private receipt paths before a public-publish handoff can be rendered.</span>
+            </li>
+            <li class="item" style="--tone: var(--done)">
               <strong>Done · recheck AI prep child hashes</strong>
               <span>AI-review preparation now parses bundle manifests and staged-input receipts once with their SHA-256s, carries those exact digests into the prepare receipt, and rejects prepared runs whose final bundle, prompt, or staging hashes drift before install.</span>
             </li>
@@ -2756,6 +2760,17 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-19T23:30:00-07:00">Jul 19 · local</time>
+              <span>
+                <strong>Local patch · Reject malformed public receipt paths:</strong>
+                reviewed-public handoff rendering now rejects empty, sentinel,
+                whitespace-padded, newline-bearing, or NUL-bearing private
+                receipt paths before they can enter final public-publish shell
+                commands. No S3, Batch, route, GPU, quota, replacement compute,
+                or AWS-side verification was launched.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-19T23:28:05-07:00">Jul 19 · local</time>
               <span>
