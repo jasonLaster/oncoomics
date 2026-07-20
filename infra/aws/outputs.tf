@@ -70,12 +70,12 @@ output "hrd_x86_queue" {
 
 output "gpu_p5en_compute_environment" {
   description = "Zero-idle linux/amd64 AWS Batch compute environment for Parabricks P5en jobs."
-  value       = aws_batch_compute_environment.gpu_p5en_ondemand.name
+  value       = var.enable_gpu_p5en_batch ? aws_batch_compute_environment.gpu_p5en_ondemand[0].name : ""
 }
 
 output "gpu_p5en_queue" {
   description = "AWS Batch queue name for isolated Parabricks P5en jobs."
-  value       = aws_batch_job_queue.gpu_p5en.name
+  value       = var.enable_gpu_p5en_batch ? aws_batch_job_queue.gpu_p5en[0].name : ""
 }
 
 output "daily_cost_guard_budget" {

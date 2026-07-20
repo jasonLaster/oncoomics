@@ -644,7 +644,8 @@ Emit machine-readable JSON/CloudWatch embedded metrics as well as human logs. Pr
    `PYTHONPATH=src /usr/bin/python3 -m diana_omics infra:aws:plan:use2` and
    `infra:aws:apply:use2`. This writes `infra/aws/nextflow.aws.use2.json` and
    leaves the existing `sra-use1` / `infra/aws/nextflow.aws.json` CPU stack
-   pointed at `us-east-1`.
+   pointed at `us-east-1` without a P5 queue; the daily cost guard can still be
+   applied there for the CPU and x86 HRD Batch lanes.
 5. Build the Diana Parabricks runtime from a reviewed digest-pinned Parabricks
    base image and mirror it with `aws:ecr:mirror-parabricks:use2`, review the
    emitted `parabricks_mirror_receipt.json`, and apply the verified

@@ -91,6 +91,7 @@ class AwsGpuInfraTests(unittest.TestCase):
         text = MAIN_TF.read_text(encoding="utf-8")
         block = resource_block(text, "aws_batch_compute_environment", "gpu_p5en_ondemand")
 
+        self.assertIn("count = var.enable_gpu_p5en_batch ? 1 : 0", block)
         self.assertIn('name         = "${local.name_prefix}-gpu-p5en-ondemand"', block)
         self.assertIn('type                = "EC2"', block)
         self.assertIn("max_vcpus           = var.gpu_p5en_max_vcpus", block)
@@ -104,7 +105,8 @@ class AwsGpuInfraTests(unittest.TestCase):
         block = resource_block(text, "aws_batch_job_queue", "gpu_p5en")
 
         self.assertIn('name     = "${local.name_prefix}-gpu-p5en"', block)
-        self.assertIn("aws_batch_compute_environment.gpu_p5en_ondemand.arn", block)
+        self.assertIn("count = var.enable_gpu_p5en_batch ? 1 : 0", block)
+        self.assertIn("aws_batch_compute_environment.gpu_p5en_ondemand[0].arn", block)
         self.assertNotIn("aws_batch_compute_environment.ondemand.arn", block)
         self.assertNotIn("aws_batch_compute_environment.spot.arn", block)
 
@@ -134,9 +136,18 @@ class AwsGpuInfraTests(unittest.TestCase):
 
         self.assertIn('filename        = "${path.module}/${var.nextflow_params_filename}"', text)
         self.assertIn('variable "nextflow_params_filename"', variables)
-        self.assertRegex(text, r"aws_gpu_queue\s+=\s+aws_batch_job_queue\.gpu_p5en\.name")
-        self.assertRegex(text, r"batch_gpu_p5en_instance_types\s+=\s+var\.batch_gpu_p5en_instance_types")
-        self.assertRegex(text, r"gpu_p5en_max_vcpus\s+=\s+var\.gpu_p5en_max_vcpus")
+        self.assertRegex(
+            text,
+            r"aws_gpu_queue\s+=\s+var\.enable_gpu_p5en_batch \? aws_batch_job_queue\.gpu_p5en\[0\]\.name : null",
+        )
+        self.assertRegex(
+            text,
+            r"batch_gpu_p5en_instance_types\s+=\s+var\.enable_gpu_p5en_batch \? var\.batch_gpu_p5en_instance_types : \[\]",
+        )
+        self.assertRegex(
+            text,
+            r"gpu_p5en_max_vcpus\s+=\s+var\.enable_gpu_p5en_batch \? var\.gpu_p5en_max_vcpus : 0",
+        )
         self.assertRegex(text, r"parabricks_container\s+=\s+var\.parabricks_container")
         self.assertIn('parabricks_mirror_repository  = try(aws_ecr_repository.parabricks[0].repository_url, "")', text)
         self.assertIn('output "parabricks_mirror_repository_url"', outputs)
@@ -152,6 +163,8 @@ class AwsGpuInfraTests(unittest.TestCase):
 
         self.assertIn('variable "gpu_p5en_max_vcpus"', text)
         self.assertIn("default     = 384", text)
+        self.assertIn('variable "enable_gpu_p5en_batch"', text)
+        self.assertIn("default     = false", text)
         self.assertIn('default     = ["p5en.48xlarge", "p5e.48xlarge", "p5.48xlarge"]', text)
         self.assertIn('variable "parabricks_container"', text)
         self.assertIn('variable "enable_parabricks_mirror"', text)

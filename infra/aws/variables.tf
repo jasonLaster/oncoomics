@@ -64,6 +64,12 @@ variable "gpu_p5en_max_vcpus" {
   default     = 384
 }
 
+variable "enable_gpu_p5en_batch" {
+  description = "Create the isolated P5 Hopper Parabricks AWS Batch queue and compute environment in this workspace."
+  type        = bool
+  default     = false
+}
+
 variable "daily_cost_guard_limit_usd" {
   description = "Account-wide daily AWS Budgets limit in USD for the Diana Batch kill switch."
   type        = number
