@@ -390,7 +390,11 @@
           Reviewer A/B input copies they are about to install, paired AI
           reviewers now have to prove they reviewed the same evidence packet,
           comparative synthesis manifests now exact-check the top-level review
-          summary they are about to preserve,
+          summary they are about to preserve, the synthesis packet now carries
+          a de-identified <code>review_evidence.json</code> support file through
+          the manifest so reviewer-evidence edits cannot hide behind a rebound
+          support hash, reviewed-public publication now preserves that support
+          file,
           pre-route blocked cross-check packets now exact-check the top-level
           and nested review summary they are about to hand to AI/freeform
           review, and each blocked route now has to keep its method spec in
@@ -422,7 +426,7 @@
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-20</li>
-          <li class="pill">Latest milestone = blocked method specs exact</li>
+          <li class="pill">Latest milestone = synthesis review evidence bound</li>
           <li class="pill">Blocked method specs = exact</li>
           <li class="pill">Deterministic review summary = exact</li>
           <li class="pill">AI finalizer model = exact</li>
@@ -491,6 +495,7 @@
           <li class="pill">Publication report kinds = exact</li>
           <li class="pill">Deterministic review summaries = exact</li>
           <li class="pill">Comparative reviewer rows = exact</li>
+          <li class="pill">Synthesis review evidence = exact</li>
           <li class="pill">Input-contract finalizer = route-checked</li>
           <li class="pill">Phase 3 evidence-check inputs = exact</li>
           <li class="pill">Phase 3 fast readiness fields = exact</li>
@@ -2295,6 +2300,10 @@
           <h3>Priority 4 · AI / freeform review</h3>
           <ol class="todo">
             <li class="item" style="--tone: var(--done)">
+              <strong>Done · bind synthesis review evidence</strong>
+              <span>Comparative synthesis now installs <code>review_evidence.json</code>, binds it in <code>support_sha256</code>, reopens it after final fsync, and re-derives limitations and unresolved observations from exact de-identified method and reviewer rows before a synthesis packet can feed source-freeze, AI/freeform review, or reviewed-public publication.</span>
+            </li>
+            <li class="item" style="--tone: var(--done)">
               <strong>Done · exact-check finalized AI model summaries</strong>
               <span>Finalized Reviewer A/B packets now reject extra, malformed, padded, non-attested, or timezone-less pinned-model fields before a narrative AI review can be wrapped as a source-freezeable report manifest.</span>
             </li>
@@ -3056,6 +3065,22 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-20">Jul 20 · local</time>
+              <span>
+                <strong>Local patch · Bind synthesis review evidence support:</strong>
+                comparative synthesis now writes and verifies
+                <code>review_evidence.json</code> alongside
+                <code>agreement_disagreement.csv</code>, forces the manifest to
+                bind both support files, and re-derives stale limitation and
+                unresolved-observation checks from exact method and Reviewer A/B
+                claim rows before the private or reviewed-public handoff can
+                carry the synthesis packet. No S3, Batch, route, GPU, quota,
+                replacement compute, or apply-mode AWS work was launched; Cost
+                Explorer was refreshed read-only for 2026-07-19 UTC and
+                remained at $5.24.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-20">Jul 20 · local</time>
               <span>
