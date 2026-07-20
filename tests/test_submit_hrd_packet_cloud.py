@@ -35,6 +35,7 @@ class SubmitHrdPacketCloudTests(unittest.TestCase):
                         "aws_results_dir": "s3://diana-omics-results-172630973301-us-east-1/runs",
                         "container": "container:tag",
                         "daily_cost_guard_ledger": "diana-omics-prod-use1-daily-cost-guard-ledger",
+                        "daily_cost_guard_limit_usd": "200",
                         "daily_cost_guard_live_stop_usd": "160",
                     }
                 )

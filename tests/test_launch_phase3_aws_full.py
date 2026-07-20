@@ -46,6 +46,7 @@ def write_cost_guard_config(directory: Path) -> Path:
             {
                 "aws_region": "us-east-1",
                 "daily_cost_guard_ledger": "diana-omics-prod-use1-daily-cost-guard-ledger",
+                "daily_cost_guard_limit_usd": "200",
                 "daily_cost_guard_live_stop_usd": "160",
             }
         )
