@@ -1,8 +1,8 @@
 from __future__ import annotations
 
+import hashlib
 import json
 import os
-import shutil
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Mapping
@@ -84,6 +84,16 @@ def _require_safe_source_path(path: Path, label: str) -> None:
     if path.is_symlink():
         raise ManifestError(f"{label} source may not be a symlink: {path}")
     require_no_symlinked_ancestors(path, f"{label} source", ManifestError)
+
+
+def _read_verified_source_bytes(spec: CopySpec) -> bytes:
+    _require_safe_source_path(spec.source, spec.label)
+    if not spec.source.is_file():
+        raise ManifestError(f"{spec.label} source artifact is missing: {spec.source}")
+    payload = spec.source.read_bytes()
+    if len(payload) != spec.bytes or hashlib.sha256(payload).hexdigest() != spec.sha256:
+        raise ManifestError(f"{spec.label} source bytes and sha256 must match the evidence join")
+    return payload
 
 
 def _require_completed_join(manifest: Mapping[str, Any]) -> None:
@@ -250,11 +260,7 @@ def _prepare_output_root(output_root: Path, destinations: set[Path]) -> None:
 
 
 def _copy_verified(spec: CopySpec, output_root: Path) -> None:
-    _require_safe_source_path(spec.source, spec.label)
-    if not spec.source.is_file():
-        raise ManifestError(f"{spec.label} source artifact is missing: {spec.source}")
-    if spec.source.stat().st_size != spec.bytes or _sha256_path(spec.source) != spec.sha256:
-        raise ManifestError(f"{spec.label} source bytes and sha256 must match the evidence join")
+    payload = _read_verified_source_bytes(spec)
 
     destination = output_root / spec.relative_path
     _require_safe_destination_path(destination, "final artifact destination")
@@ -263,7 +269,7 @@ def _copy_verified(spec: CopySpec, output_root: Path) -> None:
     temporary.unlink(missing_ok=True)
     installed = False
     try:
-        shutil.copyfile(spec.source, temporary)
+        temporary.write_bytes(payload)
         _require_safe_destination_path(temporary, "temporary final artifact")
         if temporary.stat().st_size != spec.bytes or _sha256_path(temporary) != spec.sha256:
             raise ManifestError(f"{spec.label} copied bytes and sha256 must match the evidence join")
