@@ -6,6 +6,7 @@ import diana_omics.commands as command_package
 from diana_omics.cli import _format_command_families, _load_commands
 from diana_omics.commands.registry import COMMAND_FAMILIES, COMMAND_SPECS, FAMILY_PACKAGES, TASK_ONLY_MODULES
 from diana_omics.workflow_tasks import (
+    AWS_DAILY_COST_GUARD_RESERVATION_KEYS,
     AWS_USE2_ECR_PUSH_ENV,
     AWS_USE2_TERRAFORM_WORKSPACE,
     LEGACY_PHASE3_AWS_FULL_ENV,
@@ -191,8 +192,14 @@ class CliParityTest(unittest.TestCase):
                     self.assertGreater(index, 0, name)
                     self.assertIn("-params-file", step.argv, name)
                     params_file = step.argv[step.argv.index("-params-file") + 1]
+                    expected = ("bash", "infra/aws/check-daily-cost-guard.sh", params_file)
+                    if "--workflow" in step.argv:
+                        workflow = step.argv[step.argv.index("--workflow") + 1]
+                        reservation_key = AWS_DAILY_COST_GUARD_RESERVATION_KEYS.get(workflow)
+                        if reservation_key:
+                            expected = (*expected, reservation_key)
                     self.assertEqual(
-                        ("bash", "infra/aws/check-daily-cost-guard.sh", params_file),
+                        expected,
                         task.steps[index - 1].argv,
                         name,
                     )
@@ -255,7 +262,12 @@ class CliParityTest(unittest.TestCase):
         self.assertEqual("verify:phase3-fast-aws-execute", task.steps[0].argv[-1])
         self.assertFalse(task.steps[0].append_args)
         self.assertEqual(
-            ("bash", "infra/aws/check-daily-cost-guard.sh", "infra/aws/nextflow.aws.use2.json"),
+            (
+                "bash",
+                "infra/aws/check-daily-cost-guard.sh",
+                "infra/aws/nextflow.aws.use2.json",
+                "daily_cost_guard_phase3_fast_execute_reservation_usd",
+            ),
             task.steps[1].argv,
         )
         self.assertFalse(task.steps[1].append_args)
@@ -334,7 +346,12 @@ class CliParityTest(unittest.TestCase):
         self.assertEqual(3, run.call_count)
         self.assertEqual("verify:phase3-fast-aws-execute", run.call_args_list[0].args[0][-1])
         self.assertEqual(
-            ("bash", "infra/aws/check-daily-cost-guard.sh", "infra/aws/nextflow.aws.use2.json"),
+            (
+                "bash",
+                "infra/aws/check-daily-cost-guard.sh",
+                "infra/aws/nextflow.aws.use2.json",
+                "daily_cost_guard_phase3_fast_execute_reservation_usd",
+            ),
             run.call_args_list[1].args[0],
         )
         argv = run.call_args_list[2].args[0]
@@ -395,7 +412,12 @@ class CliParityTest(unittest.TestCase):
         self.assertEqual("verify:phase3-fast-gpu-smoke", task.steps[0].argv[-1])
 
         self.assertEqual(
-            ("bash", "infra/aws/check-daily-cost-guard.sh", "infra/aws/nextflow.aws.use2.json"),
+            (
+                "bash",
+                "infra/aws/check-daily-cost-guard.sh",
+                "infra/aws/nextflow.aws.use2.json",
+                "daily_cost_guard_phase3_fast_gpu_smoke_reservation_usd",
+            ),
             task.steps[1].argv,
         )
         argv = task.steps[2].argv

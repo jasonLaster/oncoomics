@@ -1547,11 +1547,13 @@ resource "local_file" "nextflow_params" {
       ],
       var.enable_gpu_p5en_batch ? [aws_batch_job_queue.gpu_p5en[0].name] : []
     )
-    daily_cost_guard_ledger                      = aws_dynamodb_table.daily_cost_guard.name
-    daily_cost_guard_limit_usd                   = tostring(var.daily_cost_guard_limit_usd)
-    daily_cost_guard_live_stop_threshold_percent = tostring(var.daily_cost_guard_live_stop_threshold_percent)
-    daily_cost_guard_live_stop_usd               = tostring(var.daily_cost_guard_limit_usd * var.daily_cost_guard_live_stop_threshold_percent / 100)
-    daily_cost_guard_regions                     = sort(distinct(concat([var.region], var.daily_cost_guard_regions)))
+    daily_cost_guard_ledger                                = aws_dynamodb_table.daily_cost_guard.name
+    daily_cost_guard_limit_usd                             = tostring(var.daily_cost_guard_limit_usd)
+    daily_cost_guard_live_stop_threshold_percent           = tostring(var.daily_cost_guard_live_stop_threshold_percent)
+    daily_cost_guard_live_stop_usd                         = tostring(var.daily_cost_guard_limit_usd * var.daily_cost_guard_live_stop_threshold_percent / 100)
+    daily_cost_guard_phase3_fast_execute_reservation_usd   = tostring(var.daily_cost_guard_phase3_fast_execute_reservation_usd)
+    daily_cost_guard_phase3_fast_gpu_smoke_reservation_usd = tostring(var.daily_cost_guard_phase3_fast_gpu_smoke_reservation_usd)
+    daily_cost_guard_regions                               = sort(distinct(concat([var.region], var.daily_cost_guard_regions)))
 
     diana_raw_inbox_uri           = "s3://${aws_s3_bucket.this["raw"].bucket}/${local.diana_raw_inbox_prefix}"
     aws_private_results_dir       = "s3://${aws_s3_bucket.this["private_results"].bucket}/runs"

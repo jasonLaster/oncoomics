@@ -173,6 +173,13 @@ container, and sets the Nextflow `accelerator` request to
 `phase3_fast_parabricks_num_gpus`, so Batch receives an explicit eight-GPU
 request for the P5 jobs.
 
+The generated params also reserve same-day Batch EC2 allowance before P5 work
+is submitted: `nf:aws:phase3-wgs-fast:gpu-smoke` reserves $20 and
+`nf:aws:phase3-wgs-fast:execute` reserves $150 against the $200 daily cap. The
+preflight blocks a full P5 execute if the UTC-day ledger already has more than
+$50 of estimated Diana Batch EC2 spend, even though the one-minute live
+estimator will not trip until $160.
+
 After the selected NVIDIA Parabricks `linux/amd64` image digest has been
 reviewed, build the Diana Parabricks runtime from that exact base digest and
 mirror it into the regional immutable ECR repository:
@@ -548,3 +555,9 @@ loads `aws_region`, `daily_cost_guard_ledger`, and
 `daily_cost_guard_live_stop_usd` from the generated Terraform params and fails
 closed before `nextflow` can submit Batch work when the shared live Batch EC2
 ledger has already reached the $160 default stop.
+
+The P5 aliases pass one additional generated-param key to that wrapper so they
+reserve expected spend before launch, not merely after the ledger is nearly
+spent: the GPU smoke reserves $20 and the full BAM-to-evidence execute reserves
+$150. This blocks a second high-cost P5 run on the same UTC day while leaving
+small CPU/dev jobs protected by the shared live stop.

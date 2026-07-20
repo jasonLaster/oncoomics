@@ -77,6 +77,10 @@ PHASE3_FAST_AWS_EXECUTE_ALLOWED_EXTRA_ARGS = frozenset(
         "--phase3_fast_source_commit",
     }
 )
+AWS_DAILY_COST_GUARD_RESERVATION_KEYS = {
+    "phase3_wgs_fast": "daily_cost_guard_phase3_fast_execute_reservation_usd",
+    "phase3_wgs_fast_gpu_smoke": "daily_cost_guard_phase3_fast_gpu_smoke_reservation_usd",
+}
 
 
 @dataclass(frozen=True)
@@ -139,23 +143,32 @@ def _nextflow(*args: str, append_args: bool = False) -> TaskStep:
     return _tool("nextflow", "-log", str(NEXTFLOW_LOG_PATH), "run", "main.nf", *args, append_args=append_args)
 
 
-def _aws_daily_cost_guard(params_file: str) -> TaskStep:
-    return _tool("bash", "infra/aws/check-daily-cost-guard.sh", params_file)
+def _aws_daily_cost_guard(params_file: str, reservation_config_key: str | None = None) -> TaskStep:
+    argv = ["bash", "infra/aws/check-daily-cost-guard.sh", params_file]
+    if reservation_config_key:
+        argv.append(reservation_config_key)
+    return _tool(*argv)
+
+
+def _nextflow_arg_value(step: TaskStep, flag: str) -> str | None:
+    try:
+        return step.argv[step.argv.index(flag) + 1]
+    except (ValueError, IndexError):
+        return None
 
 
 def _aws_nextflow_params_file(step: TaskStep) -> str | None:
     if not step.argv or step.argv[0] != "nextflow":
         return None
-    try:
-        profile = step.argv[step.argv.index("-profile") + 1]
-    except (ValueError, IndexError):
+    profile = _nextflow_arg_value(step, "-profile")
+    if profile is None:
         return None
     if not profile.startswith("awsbatch"):
         return None
-    try:
-        return step.argv[step.argv.index("-params-file") + 1]
-    except (ValueError, IndexError) as error:
-        raise ValueError("AWS Nextflow tasks must pass -params-file before the daily cost guard") from error
+    params_file = _nextflow_arg_value(step, "-params-file")
+    if params_file is None:
+        raise ValueError("AWS Nextflow tasks must pass -params-file before the daily cost guard")
+    return params_file
 
 
 def _with_aws_daily_cost_guards(steps: Sequence[TaskStep]) -> tuple[TaskStep, ...]:
@@ -163,7 +176,10 @@ def _with_aws_daily_cost_guards(steps: Sequence[TaskStep]) -> tuple[TaskStep, ..
     for step in steps:
         params_file = _aws_nextflow_params_file(step)
         if params_file is not None:
-            guarded.append(_aws_daily_cost_guard(params_file))
+            reservation_config_key = AWS_DAILY_COST_GUARD_RESERVATION_KEYS.get(
+                _nextflow_arg_value(step, "--workflow") or ""
+            )
+            guarded.append(_aws_daily_cost_guard(params_file, reservation_config_key))
         guarded.append(step)
     return tuple(guarded)
 

@@ -641,13 +641,19 @@ class AwsCostGuardTests(unittest.TestCase):
         self.assertIn("var.daily_cost_guard_schedule_expression", main)
         self.assertIn("BATCH_COST_LEDGER_TABLE", main)
         self.assertIn("daily_cost_guard_ledger", main)
+        self.assertIn('variable "daily_cost_guard_phase3_fast_gpu_smoke_reservation_usd"', variables)
+        self.assertIn("default     = 20", variables)
+        self.assertIn('variable "daily_cost_guard_phase3_fast_execute_reservation_usd"', variables)
+        self.assertIn("default     = 150", variables)
+        self.assertIn("daily_cost_guard_phase3_fast_gpu_smoke_reservation_usd", main)
+        self.assertIn("daily_cost_guard_phase3_fast_execute_reservation_usd", main)
         self.assertIn("BATCH_INSTANCE_HOURLY_RATES_USD", main)
         self.assertIn("BATCH_UNKNOWN_INSTANCE_HOURLY_RATE_USD", main)
         self.assertIn("daily_cost_guard_batch_compute_environments", main)
         self.assertIn("daily_cost_guard_batch_job_queues", main)
         self.assertIn(
             (
-                "daily_cost_guard_live_stop_usd               = "
+                "daily_cost_guard_live_stop_usd                         = "
                 "tostring(var.daily_cost_guard_limit_usd * "
                 "var.daily_cost_guard_live_stop_threshold_percent / 100)"
             ),
@@ -678,7 +684,7 @@ class AwsCostGuardTests(unittest.TestCase):
             main,
         )
         self.assertIn(
-            "daily_cost_guard_regions                     = sort(distinct(concat([var.region], var.daily_cost_guard_regions)))",
+            "daily_cost_guard_regions                               = sort(distinct(concat([var.region], var.daily_cost_guard_regions)))",
             main,
         )
         self.assertIn('variable "daily_cost_guard_instance_hourly_rates_usd"', variables)

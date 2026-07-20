@@ -58,9 +58,20 @@ class DailyCostGuardTests(unittest.TestCase):
         )
 
     def test_cost_guard_blocks_at_the_live_stop(self) -> None:
-        MODULE.validate_daily_cost_guard_estimated_spend(
+        result = MODULE.validate_daily_cost_guard_estimated_spend(
             Decimal("159.999999"),
             live_stop_usd="160",
+            daily_limit_usd="200",
+            reservation_usd="40",
+        )
+
+        self.assertEqual(
+            {
+                "daily_limit_usd": "200",
+                "reservation_usd": "40",
+                "reserved_daily_ec2_usd": "199.999999",
+            },
+            result,
         )
 
         for spend in (Decimal("160"), Decimal("200")):
@@ -73,6 +84,18 @@ class DailyCostGuardTests(unittest.TestCase):
                         spend,
                         live_stop_usd="160",
                     )
+
+    def test_cost_guard_reserves_the_next_submission_before_daily_limit(self) -> None:
+        with self.assertRaisesRegex(
+            MODULE.DailyCostGuardError,
+            "reservation would exceed the \\$200.000000 daily limit",
+        ):
+            MODULE.validate_daily_cost_guard_estimated_spend(
+                Decimal("51"),
+                live_stop_usd="160",
+                daily_limit_usd="200",
+                reservation_usd="150",
+            )
 
     @mock.patch.object(MODULE, "check_daily_cost_guard")
     def test_cli_fails_closed_when_guard_is_spent(self, check) -> None:
@@ -102,6 +125,7 @@ class DailyCostGuardTests(unittest.TestCase):
                     {
                         "aws_region": "us-east-2",
                         "daily_cost_guard_ledger": "diana-omics-prod-use2-daily-cost-guard-ledger",
+                        "daily_cost_guard_limit_usd": "200",
                         "daily_cost_guard_live_stop_usd": "160",
                     }
                 )
@@ -149,6 +173,59 @@ class DailyCostGuardTests(unittest.TestCase):
                 ],
                 argv.read_text(encoding="utf-8").splitlines(),
             )
+
+    def test_shell_guard_passes_task_reservation_from_nextflow_config(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            config = root / "nextflow.aws.use2.json"
+            config.write_text(
+                json.dumps(
+                    {
+                        "aws_region": "us-east-2",
+                        "daily_cost_guard_ledger": "diana-omics-prod-use2-daily-cost-guard-ledger",
+                        "daily_cost_guard_limit_usd": "200",
+                        "daily_cost_guard_live_stop_usd": "160",
+                        "daily_cost_guard_phase3_fast_execute_reservation_usd": "150",
+                    }
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+            fake_python = root / "python3"
+            fake_python.write_text(
+                "#!/usr/bin/env bash\n"
+                "set -euo pipefail\n"
+                "if [[ \"$1\" == *daily_cost_guard.py ]]; then\n"
+                "  printf '%s\\n' \"$@\" > \"$FAKE_PYTHON_ARGV\"\n"
+                "  exit 0\n"
+                "fi\n"
+                "exec /usr/bin/python3 \"$@\"\n",
+                encoding="utf-8",
+            )
+            fake_python.chmod(fake_python.stat().st_mode | stat.S_IXUSR)
+            argv = root / "python.argv"
+
+            result = subprocess.run(
+                [
+                    "bash",
+                    str(SHELL_GUARD),
+                    str(config),
+                    "daily_cost_guard_phase3_fast_execute_reservation_usd",
+                ],
+                env={
+                    **os.environ,
+                    "FAKE_PYTHON_ARGV": str(argv),
+                    "PATH": f"{root}{os.pathsep}{os.environ.get('PATH', '')}",
+                },
+                text=True,
+                capture_output=True,
+                check=False,
+            )
+
+            self.assertEqual("", result.stderr)
+            self.assertEqual(0, result.returncode)
+            self.assertIn("--limit-usd\n200\n", argv.read_text(encoding="utf-8"))
+            self.assertIn("--reservation-usd\n150\n", argv.read_text(encoding="utf-8"))
 
 
 if __name__ == "__main__":

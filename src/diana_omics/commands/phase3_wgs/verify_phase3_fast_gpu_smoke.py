@@ -24,6 +24,8 @@ ON_DEMAND_P_QUOTA_CODE = "L-417A185B"
 BATCH_GPU_COMPUTE_ENVIRONMENT_SUFFIX = "-ondemand"
 MAX_DAILY_COST_GUARD_LIMIT_USD = Decimal("200")
 MAX_DAILY_COST_GUARD_LIVE_STOP_PERCENT = Decimal("80")
+MIN_PHASE3_FAST_EXECUTE_RESERVATION_USD = Decimal("150")
+MIN_PHASE3_FAST_GPU_SMOKE_RESERVATION_USD = Decimal("20")
 COST_GUARD_TAG_KEY = "DianaBatchCostGuard"
 COST_GUARD_TAG_VALUE = "diana-omics"
 KMS_KEY_ARN = re.compile(r"^arn:aws:kms:([a-z]{2}-[a-z]+-\d):(\d{12}):key/[A-Za-z0-9-]+$")
@@ -110,6 +112,19 @@ def _require_decimal_at_most(
     return parsed
 
 
+def _require_decimal_between(
+    params: Mapping[str, Any],
+    key: str,
+    minimum: Decimal,
+    maximum: Decimal,
+    errors: list[str],
+) -> Decimal:
+    parsed = _require_decimal_at_most(params, key, maximum, errors)
+    if parsed < minimum:
+        errors.append(f"{key} must be at least {minimum}")
+    return parsed
+
+
 def _require_cost_guard_list(
     params: Mapping[str, Any],
     key: str,
@@ -176,6 +191,20 @@ def validate_gpu_smoke_params(params: Mapping[str, Any]) -> dict[str, Any]:
     )
     if live_stop_usd != cost_guard_limit * live_stop_threshold / Decimal(100):
         errors.append("daily_cost_guard_live_stop_usd must match the live stop threshold")
+    gpu_smoke_reservation = _require_decimal_between(
+        params,
+        "daily_cost_guard_phase3_fast_gpu_smoke_reservation_usd",
+        MIN_PHASE3_FAST_GPU_SMOKE_RESERVATION_USD,
+        MAX_DAILY_COST_GUARD_LIMIT_USD,
+        errors,
+    )
+    execute_reservation = _require_decimal_between(
+        params,
+        "daily_cost_guard_phase3_fast_execute_reservation_usd",
+        MIN_PHASE3_FAST_EXECUTE_RESERVATION_USD,
+        MAX_DAILY_COST_GUARD_LIMIT_USD,
+        errors,
+    )
     _require_daily_cost_guard_regions(params, errors)
     ledger = _require_daily_cost_guard_ledger(params, errors)
     if queue:
@@ -237,6 +266,8 @@ def validate_gpu_smoke_params(params: Mapping[str, Any]) -> dict[str, Any]:
         "daily_cost_guard_limit_usd": str(cost_guard_limit),
         "daily_cost_guard_live_stop_usd": str(live_stop_usd),
         "daily_cost_guard_live_stop_threshold_percent": str(live_stop_threshold),
+        "daily_cost_guard_phase3_fast_execute_reservation_usd": str(execute_reservation),
+        "daily_cost_guard_phase3_fast_gpu_smoke_reservation_usd": str(gpu_smoke_reservation),
         "daily_cost_guard_regions": list(REQUIRED_DAILY_COST_GUARD_REGIONS),
         "instance_types": list(REQUIRED_INSTANCE_TYPES),
         "status": "ready",

@@ -3,6 +3,7 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 CONFIG_PATH="${1:-${DIANA_AWS_CONFIG:-${ROOT_DIR}/infra/aws/nextflow.aws.json}}"
+RESERVATION_CONFIG_KEY="${2:-}"
 PYTHON_BIN="${PYTHON_BIN:-python3}"
 
 if [[ "$CONFIG_PATH" != /* ]]; then
@@ -47,9 +48,17 @@ PY
 
 REGION="${AWS_REGION:-$(config_value aws_region)}"
 DAILY_COST_GUARD_LEDGER="$(config_value daily_cost_guard_ledger)"
+DAILY_COST_GUARD_LIMIT_USD="$(config_value daily_cost_guard_limit_usd)"
 DAILY_COST_GUARD_LIVE_STOP_USD="$(config_value daily_cost_guard_live_stop_usd)"
+DAILY_COST_GUARD_RESERVATION_USD="0"
+
+if [[ -n "$RESERVATION_CONFIG_KEY" ]]; then
+  DAILY_COST_GUARD_RESERVATION_USD="$(config_value "$RESERVATION_CONFIG_KEY")"
+fi
 
 "$PYTHON_BIN" "${ROOT_DIR}/scripts/daily_cost_guard.py" \
   --ledger "$DAILY_COST_GUARD_LEDGER" \
   --region "$REGION" \
-  --live-stop-usd "$DAILY_COST_GUARD_LIVE_STOP_USD" >/dev/null
+  --live-stop-usd "$DAILY_COST_GUARD_LIVE_STOP_USD" \
+  --limit-usd "$DAILY_COST_GUARD_LIMIT_USD" \
+  --reservation-usd "$DAILY_COST_GUARD_RESERVATION_USD" >/dev/null
