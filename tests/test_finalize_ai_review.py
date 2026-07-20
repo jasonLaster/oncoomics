@@ -615,6 +615,38 @@ class FinalizeAiReviewTests(unittest.TestCase):
 
             self.assertFalse((review / "report_manifest.json").exists())
 
+    def test_rejects_unreadable_source_after_final_manifest_write(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            fixture, review = self.validated_review(temporary)
+            manifest_path = review / "report_manifest.json"
+            real_sha256 = FINALIZE.sha256
+
+            def fail_after_manifest_write(path: Path) -> str:
+                if path.name == "claims.csv" and manifest_path.exists():
+                    raise OSError("synthetic claims.csv read failure")
+                return real_sha256(path)
+
+            with (
+                mock.patch.object(
+                    FINALIZE,
+                    "sha256",
+                    side_effect=fail_after_manifest_write,
+                ),
+                self.assertRaisesRegex(
+                    ValueError,
+                    "AI review final manifest support changed during write",
+                ),
+            ):
+                FINALIZE.finalize(
+                    fixture.bundle_dir,
+                    review,
+                    "A",
+                    fixture.catalog_receipt,
+                    manifest_path,
+                )
+
+            self.assertFalse(manifest_path.exists())
+
     def test_rejects_report_manifest_directory(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             fixture, review = self.validated_review(temporary)

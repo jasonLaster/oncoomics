@@ -722,6 +722,9 @@ def finalize(
     except ValueError:
         output.unlink(missing_ok=True)
         raise
+    except OSError as error:
+        output.unlink(missing_ok=True)
+        raise ValueError("AI review final manifest support changed during write") from error
     return output
 
 
