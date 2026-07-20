@@ -374,15 +374,16 @@
           source-only guardrails now reject not-really-zero and not-quite-exact
           counters before terminal artifact freezing, exact-version
           materialization, private report replays, final alias-only input
-          contracts, alias-only materializer submission, terminal materializer
-          capture, cross-check report replay, or WGS stage-provenance handoff
-          can continue.
+          contracts, alias-only cross-check materialization, alias-only
+          materializer submission, terminal materializer capture, cross-check
+          report replay, or WGS stage-provenance handoff can continue.
           Diana HRD remains <code>partial_evidence</code> / <code>no_call</code> until terminal
           artifacts and reviewed cross-check reports exist.
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-19</li>
-          <li class="pill">Latest milestone = terminal materializer counts</li>
+          <li class="pill">Latest milestone = cross-check history counts</li>
+          <li class="pill">Cross-check empty history = exact</li>
           <li class="pill">Terminal materializer counts = exact</li>
           <li class="pill">Stage WGS lanes = exact</li>
           <li class="pill">Terminal freeze attempts = exact</li>
@@ -1224,6 +1225,10 @@
 
           <h3>Priority 2 · terminal deterministic artifacts</h3>
           <ol class="todo">
+            <li class="item" style="--tone: var(--done)">
+              <strong>Done · require exact cross-check empty histories</strong>
+              <span>Deterministic report staging now rejects boolean, float, or string initial destination-history counters in alias-only cross-check materialization receipts before alias-only VCF, index, SBS96, and staged-validation artifacts can feed the first WGS report, Rosalind packet, executable cross-check handoffs, or AI/freeform review.</span>
+            </li>
             <li class="item" style="--tone: var(--done)">
               <strong>Done · require exact terminal materializer counts</strong>
               <span>Deterministic report staging now rejects boolean or float terminal materializer attempt and exit-code counters before cross-check materialization custody can feed the first WGS report, Rosalind packet, executable cross-check handoffs, or AI/freeform review.</span>
@@ -2810,6 +2815,19 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-19T23:58:00-07:00">Jul 19 · local</time>
+              <span>
+                <strong>Local patch · Reject loose cross-check materialization histories:</strong>
+                deterministic report staging now exact-checks the alias-only
+                cross-check materialization receipt's initial destination-history
+                counter, so floats, booleans, or strings cannot masquerade as an
+                empty create-only output prefix before VCF, index, SBS96, and
+                staged-validation artifacts feed downstream reports. No S3,
+                Batch, route, GPU, quota, replacement compute, or apply-mode AWS
+                work was launched; Cost Explorer was refreshed read-only.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-19T23:56:00-07:00">Jul 19 · local</time>
               <span>

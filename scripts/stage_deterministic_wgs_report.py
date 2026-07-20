@@ -2465,8 +2465,12 @@ def main() -> None:
         == crosscheck_output_prefix
         and crosscheck_materialization.get("destination_bucket_versioning")
         == "Enabled"
-        and crosscheck_materialization.get("destination_initial_version_history_count")
-        == 0
+        and integer_equals(
+            crosscheck_materialization.get(
+                "destination_initial_version_history_count"
+            ),
+            0,
+        )
         and crosscheck_materialization.get("receipt_anchor_strategy")
         == "sha256_content_addressed_create_only"
         and crosscheck_receipt_checks == EXPECTED_CROSSCHECK_RECEIPT_CHECKS
