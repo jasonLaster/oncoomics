@@ -158,11 +158,14 @@ PYTHONPATH=src /usr/bin/python3 -m diana_omics infra:aws:apply:use2
 ```
 
 Terraform writes `aws_gpu_queue`, `phase3_fast_cache_prefix`,
-`parabricks_mirror_repository`, and `parabricks_container` to
-`infra/aws/nextflow.aws.use2.json`. The cache prefix uses the regional
-private-results bucket under `phase3-fast-cache/wgs-v2`, and the mirror
+`parabricks_mirror_repository`, `parabricks_container`, and the daily Batch cost
+guard bindings to `infra/aws/nextflow.aws.use2.json`. The cache prefix uses the
+regional private-results bucket under `phase3-fast-cache/wgs-v2`, the mirror
 repository gives the Diana Parabricks runtime an immutable `us-east-2` ECR
-destination. Keep `parabricks_container` empty until a reviewed NVIDIA
+destination, and the P5 smoke/execute preflights reject generated params unless
+the daily guard covers the P5 queue and compute environment, caps same-day spend
+at no more than `$200`, and keeps the live Batch EC2 stop threshold at no more
+than 80% of that cap. Keep `parabricks_container` empty until a reviewed NVIDIA
 Parabricks base image has been selected, wrapped with the Diana runtime, and
 pinned by digest. The `awsbatch_gpu` profile maps `gpu_parabricks` processes to
 that queue and image, binds the host instance-store `/scratch` volume into the

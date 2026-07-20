@@ -98,8 +98,8 @@ variable "daily_cost_guard_live_stop_threshold_percent" {
   default     = 80
 
   validation {
-    condition     = var.daily_cost_guard_live_stop_threshold_percent > 0 && var.daily_cost_guard_live_stop_threshold_percent <= 100
-    error_message = "daily_cost_guard_live_stop_threshold_percent must be between 0 and 100."
+    condition     = var.daily_cost_guard_live_stop_threshold_percent > 0 && var.daily_cost_guard_live_stop_threshold_percent <= 80
+    error_message = "daily_cost_guard_live_stop_threshold_percent must be between 0 and 80."
   }
 }
 
