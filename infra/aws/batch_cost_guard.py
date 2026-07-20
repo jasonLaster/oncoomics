@@ -456,22 +456,41 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
         "BATCH_ESTIMATED_STOP_REASON",
         "Diana estimated daily Batch EC2 spend guard tripped",
     )
-    result = monitor_estimated_ec2_spend(
-        boto3.client("batch"),
-        {
-            region: boto3.client("ec2", region_name=region)
-            for region in env_string_list("BATCH_COST_GUARD_REGIONS")
-        },
-        boto3.resource("dynamodb").Table(os.environ["BATCH_COST_LEDGER_TABLE"]),
-        job_queues=job_queues,
-        compute_environments=compute_environments,
-        reason=reason,
-        tag_key=os.environ["BATCH_COST_GUARD_TAG_KEY"],
-        tag_value=os.environ["BATCH_COST_GUARD_TAG_VALUE"],
-        daily_limit_usd=env_decimal("BATCH_DAILY_EC2_LIMIT_USD"),
-        hourly_rates=env_decimal_map("BATCH_INSTANCE_HOURLY_RATES_USD"),
-        unknown_hourly_rate=env_decimal("BATCH_UNKNOWN_INSTANCE_HOURLY_RATE_USD"),
-    )
+    batch = boto3.client("batch")
+    try:
+        result = monitor_estimated_ec2_spend(
+            batch,
+            {
+                region: boto3.client("ec2", region_name=region)
+                for region in env_string_list("BATCH_COST_GUARD_REGIONS")
+            },
+            boto3.resource("dynamodb").Table(os.environ["BATCH_COST_LEDGER_TABLE"]),
+            job_queues=job_queues,
+            compute_environments=compute_environments,
+            reason=reason,
+            tag_key=os.environ["BATCH_COST_GUARD_TAG_KEY"],
+            tag_value=os.environ["BATCH_COST_GUARD_TAG_VALUE"],
+            daily_limit_usd=env_decimal("BATCH_DAILY_EC2_LIMIT_USD"),
+            hourly_rates=env_decimal_map("BATCH_INSTANCE_HOURLY_RATES_USD"),
+            unknown_hourly_rate=env_decimal("BATCH_UNKNOWN_INSTANCE_HOURLY_RATE_USD"),
+        )
+    except Exception as error:
+        LOGGER.exception(
+            "Diana daily cost guard failed to estimate Batch EC2 spend; "
+            "stopping protected Batch capacity"
+        )
+        return {
+            **stop_batch(
+                batch,
+                job_queues=job_queues,
+                compute_environments=compute_environments,
+                reason=os.environ.get(
+                    "BATCH_ESTIMATED_FAILURE_STOP_REASON",
+                    "Diana daily Batch cost guard could not estimate live EC2 spend",
+                ),
+            ),
+            "estimator_error": type(error).__name__,
+        }
     LOGGER.warning(
         "Diana daily cost guard checked estimated Batch EC2 spend: %s",
         json.dumps(result, sort_keys=True),

@@ -82,13 +82,13 @@ variable "daily_cost_guard_limit_usd" {
 }
 
 variable "daily_cost_guard_stop_threshold_percent" {
-  description = "Actual daily AWS spend percentage that invokes the Diana Batch kill switch."
+  description = "Actual daily AWS spend percentage that invokes the Diana Batch kill switch before the $200/day hard ceiling."
   type        = number
   default     = 80
 
   validation {
-    condition     = var.daily_cost_guard_stop_threshold_percent > 0 && var.daily_cost_guard_stop_threshold_percent <= 100
-    error_message = "daily_cost_guard_stop_threshold_percent must be between 0 and 100."
+    condition     = var.daily_cost_guard_stop_threshold_percent > 0 && var.daily_cost_guard_stop_threshold_percent <= 80
+    error_message = "daily_cost_guard_stop_threshold_percent must be between 0 and 80."
   }
 }
 
