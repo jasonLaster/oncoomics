@@ -386,7 +386,8 @@
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-20</li>
-          <li class="pill">Latest milestone = input-contract check maps</li>
+          <li class="pill">Latest milestone = staged-validation check maps</li>
+          <li class="pill">Staged-validation checks = exact</li>
           <li class="pill">Input-contract checks = exact</li>
           <li class="pill">Private report checks = exact</li>
           <li class="pill">Public-index receipts = exact</li>
@@ -1875,6 +1876,10 @@
               <span>The materializer staged-validation downloader now rejects coerced VersionId and SHA-256 values in the exact <code>staged_input_validation.json</code> custody row before exact-version cross-check report replay.</span>
             </li>
             <li class="item" style="--tone: var(--done)">
+              <strong>Done · require exact staged-validation check maps</strong>
+              <span>Materializer staged-validation download now rejects integer stand-ins inside schema-2 materializer receipt checks and <code>staged_input_validation.json</code> output custody checks before the selected staged-input validator can feed exact materializer validation capture.</span>
+            </li>
+            <li class="item" style="--tone: var(--done)">
               <strong>Done · require exact materializer-v4 submit hashes</strong>
               <span>The materializer-v4 submit preflight now rejects coerced SHA-256 values in locally materialized final-source custody and AWS-side reference SHA receipts before rendering the eight exact Batch parameters for alias-only cross-check materialization.</span>
             </li>
@@ -2864,6 +2869,20 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-20T00:27:00-07:00">Jul 20 · local</time>
+              <span>
+                <strong>Local patch · Reject loose staged-validation checks:</strong>
+                materializer staged-validation replay now exact-checks the
+                source receipt and selected <code>staged_input_validation.json</code>
+                output row, so JSON <code>1</code> cannot masquerade as
+                successful staged-input custody before exact materializer
+                validation capture or alias-only cross-check contracts consume
+                the downloaded validator. No S3, Batch, route, GPU, quota,
+                replacement compute, or apply-mode AWS work was launched; Cost
+                Explorer was refreshed read-only.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-20T00:26:00-07:00">Jul 20 · local</time>
               <span>

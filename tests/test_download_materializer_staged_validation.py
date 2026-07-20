@@ -195,6 +195,15 @@ class DownloadMaterializerStagedValidationTests(unittest.TestCase):
                 "incomplete",
             ),
             (
+                "receipt",
+                "truthy_integer",
+                lambda payload: payload["checks"].__setitem__(
+                    "sbs96_matches_independent_pass_vcf_derivation",
+                    1,
+                ),
+                "incomplete",
+            ),
+            (
                 "output",
                 "missing",
                 lambda payload: payload["outputs"][MODULE.OUTPUT_NAME]["checks"].pop(
@@ -216,6 +225,14 @@ class DownloadMaterializerStagedValidationTests(unittest.TestCase):
                 lambda payload: payload["outputs"][MODULE.OUTPUT_NAME][
                     "checks"
                 ].__setitem__("single_version_history", False),
+                "lacks exact",
+            ),
+            (
+                "output",
+                "truthy_integer",
+                lambda payload: payload["outputs"][MODULE.OUTPUT_NAME][
+                    "checks"
+                ].__setitem__("single_version_history", 1),
                 "lacks exact",
             ),
         ):
