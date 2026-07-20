@@ -2999,6 +2999,36 @@ class StageDeterministicWgsReportTests(unittest.TestCase):
                 )
                 self.assertFalse((fixture.output / "report.md").exists())
 
+    def test_crosscheck_materialization_empty_history_must_be_exact_integer(
+        self,
+    ) -> None:
+        for value in (False, 0.0, "0"):
+            with self.subTest(value=value), tempfile.TemporaryDirectory(
+                prefix="synthetic-hrd-report-"
+            ) as temporary:
+                fixture = SyntheticFixture(Path(temporary))
+                materialization = load_json(
+                    fixture.aux / "crosscheck-materialization.json"
+                )
+                materialization["destination_initial_version_history_count"] = value
+                write_json(
+                    fixture.aux / "crosscheck-materialization.json",
+                    materialization,
+                )
+
+                result = subprocess.run(
+                    fixture.command(),
+                    text=True,
+                    capture_output=True,
+                )
+
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn(
+                    "crosscheck_materialization_custody",
+                    result.stdout + result.stderr,
+                )
+                self.assertFalse((fixture.output / "report.md").exists())
+
     def test_stage_provenance_rejects_coerced_hashes_and_version_ids(self) -> None:
         for label, mutate, check_id in (
             (
