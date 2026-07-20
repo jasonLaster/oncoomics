@@ -322,36 +322,24 @@
         <p class="eyebrow">Diana WGS HRD ops tracker</p>
         <h1 id="title">Deterministic WGS → Rosalind → cross-check handoff</h1>
         <p class="lede">
-          Current evidence snapshot:
-          <strong>the public HCC1395 seven-report rehearsal stack passed</strong>.
-          All seven source reports are hash-bound to an authorized
-          <code>no_call</code> ceiling; two isolated AI reviewers validated and
-          finalized schema-1 packets; comparative synthesis rendered an
-          agreement table. HCC1395 remains a public known-answer workflow
-          rehearsal, never a Diana result. The fast DAG now labels its
-          deterministic-plus-Rosalind blocked packets as pre-route validation
-          only, and validators now enforce the pre-route and terminal scopes on
-          both sides of the handoff. The terminal runbook now skips the
-          pre-route five-packet validator once the blocked packets are rebound
-          to terminal reports, while deterministic staging, Rosalind,
-          source-freeze, private/public publication, AI, and Phase 3 packet
-          gates now share one static forbidden-token inventory plus the
-          run-specific scan. Source and AI private handoff renderers now require
-          matching dry-run receipts for every generated live private publish;
-          private report, reviewed-public report, and public-index apply gates
-          now reject stale top-level or nested dry-run receipt metadata before
-          live publication. Diana terminal deterministic artifacts are still
-          absent, compute is GPU-quota blocked under the
-          selected quota-only, no-race plan, the legacy CPU run remains stopped,
-          and Diana HRD remains
-          <code>partial_evidence</code> / <code>no_call</code>.
+          Current evidence snapshot: the reporting and review machinery is
+          ready to accept the next real WGS result, but the final Diana WGS
+          artifacts are not available yet. HCC1395 proves the rehearsal path can
+          build deterministic, Rosalind, cross-check, AI-review, and synthesis
+          packets from a public known-answer dataset; it is not a Diana result.
+          Recent hardening makes each handoff re-check the files it depends on
+          before private review or reviewed-public release can continue. The
+          selected GPU rerun is still quota-blocked, the legacy CPU run remains
+          stopped, and Diana HRD remains
+          <code>partial_evidence</code> / <code>no_call</code>
+          until terminal artifacts and reviewed cross-check reports exist.
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-19</li>
           <li class="pill">Latest milestone = local exact materializer request binding</li>
-          <li class="pill">Materializer request binding = exact</li>
-          <li class="pill">AI staging bundle rereads = exact</li>
-          <li class="pill">Cross-check staging copies = real</li>
+          <li class="pill">Materializer request binding = guarded</li>
+          <li class="pill">AI staging inputs = guarded</li>
+          <li class="pill">Cross-check staging copies = guarded</li>
           <li class="pill">Phase 3 terminal hashes = real</li>
           <li class="pill">Cross-check FASTQ lanes = exact</li>
           <li class="pill">Public recovery staging paths = real</li>
