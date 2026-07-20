@@ -172,6 +172,39 @@ class RunbookIoTests(unittest.TestCase):
             ):
                 MODULE.sha256_file(runbook)
 
+    def test_sha256_file_rejects_symlink_swap_between_reads(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            runbook = root / "runbook.md"
+            relocated = root / "relocated-runbook.md"
+            runbook.write_text("original\n", encoding="utf-8")
+            real_read_bytes = Path.read_bytes
+            reads = 0
+
+            def swap_after_initial_read(path: Path) -> bytes:
+                nonlocal reads
+                data = real_read_bytes(path)
+                if path == runbook and reads == 0:
+                    runbook.unlink()
+                    relocated.write_text("original\n", encoding="utf-8")
+                    runbook.symlink_to(relocated)
+                reads += 1
+                return data
+
+            with (
+                mock.patch.object(
+                    Path,
+                    "read_bytes",
+                    autospec=True,
+                    side_effect=swap_after_initial_read,
+                ),
+                self.assertRaisesRegex(
+                    ValueError,
+                    "runbook.md SHA-256 input is missing or a symlink",
+                ),
+            ):
+                MODULE.sha256_file(runbook)
+
     def test_write_once_is_mode_0600_and_refuses_replacement(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             output = Path(temporary) / "runbook.md"

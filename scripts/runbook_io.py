@@ -106,12 +106,18 @@ def sha256_bytes(value: bytes) -> str:
 def read_stable_file(path: Path, label: str) -> bytes:
     """Read a required local input and reject mid-read rewrites."""
 
-    require_real_input_file(path, label)
-    data = path.read_bytes()
+    data = read_real_input_file_once(path, label)
     digest = sha256_bytes(data)
-    if sha256_bytes(path.read_bytes()) != digest:
+    if sha256_bytes(read_real_input_file_once(path, label)) != digest:
         raise ValueError(f"{label} changed during read: {path}")
     return data
+
+
+def read_real_input_file_once(path: Path, label: str) -> bytes:
+    """Read a required local input after one redirected-path audit."""
+
+    require_real_input_file(path, label)
+    return path.read_bytes()
 
 
 def require_real_input_file(path: Path, label: str) -> None:
