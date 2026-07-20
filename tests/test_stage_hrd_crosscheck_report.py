@@ -165,6 +165,12 @@ class StageHrdCrosscheckReportTests(unittest.TestCase):
 
         self.assertEqual(raw_comparisons, [])
 
+    def test_exact_strings_reject_ascii_control_characters(self) -> None:
+        for value in ("report\n.md", "report\t.md", "report\x00.md", "report\x7f.md"):
+            with self.subTest(value=repr(value)):
+                with self.assertRaisesRegex(ValueError, "unit is not exact"):
+                    STAGE.require_exact_string(value, "unit")
+
     def test_packet_file_install_is_create_only_and_fsynced(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
@@ -971,6 +977,14 @@ class StageHrdCrosscheckReportTests(unittest.TestCase):
                 "publication_receipt_uri is not exact",
             ),
             (
+                "control publication receipt URI",
+                lambda payload: payload.__setitem__(
+                    "publication_receipt_uri",
+                    payload["publication_receipt_uri"] + "\n",
+                ),
+                "publication_receipt_uri is not exact",
+            ),
+            (
                 "padded route output URI",
                 lambda payload: payload.__setitem__(
                     "route_output_uri",
@@ -987,6 +1001,14 @@ class StageHrdCrosscheckReportTests(unittest.TestCase):
                 "padded prior error",
                 lambda payload: payload.__setitem__("prior_error", " stale "),
                 "prior_error is not exact",
+            ),
+            (
+                "control relative path",
+                lambda payload: payload["objects"][0].__setitem__(
+                    "relative_path",
+                    "report.md\n",
+                ),
+                "relative_path is not exact",
             ),
         )
         for label, mutate, message in cases:
@@ -1387,6 +1409,49 @@ class StageHrdCrosscheckReportTests(unittest.TestCase):
                         source,
                         "sigprofiler_sbs3",
                     )
+
+    def test_stage_rejects_control_characters_in_route_manifest_hash_keys(
+        self,
+    ) -> None:
+        cases = (
+            (
+                "support",
+                lambda manifest: manifest["support_sha256"].__setitem__(
+                    "support\n.json",
+                    "1" * 64,
+                ),
+                "route support path is not exact",
+            ),
+            (
+                "source",
+                lambda manifest: manifest["source_sha256"].__setitem__(
+                    "source\n.json",
+                    "1" * 64,
+                ),
+                "source_sha256.source\n.json is not exact",
+            ),
+        )
+
+        for label, mutate, message in cases:
+            with self.subTest(label=label), tempfile.TemporaryDirectory() as temporary:
+                root = Path(temporary)
+                source = root / "exact"
+                verification = write_route_report(source)
+                manifest_path = source / "report_manifest.json"
+                manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+                mutate(manifest)
+                write_json(manifest_path, manifest)
+                refresh_download_verification(source, verification)
+
+                with self.assertRaisesRegex(ValueError, message):
+                    STAGE.stage(
+                        source,
+                        verification,
+                        root / "staged",
+                        "sigprofiler_sbs3",
+                    )
+
+                self.assertFalse((root / "staged").exists())
 
     def test_stage_rejects_route_manifest_that_does_not_bind_support(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:

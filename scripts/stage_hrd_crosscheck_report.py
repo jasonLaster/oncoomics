@@ -211,8 +211,17 @@ def require_sha(value: Any, label: str) -> str:
     return value
 
 
+def has_ascii_control(value: str) -> bool:
+    return any(ord(character) < 32 or ord(character) == 127 for character in value)
+
+
 def require_exact_string(value: Any, label: str) -> str:
-    if not isinstance(value, str) or not value or value != value.strip():
+    if (
+        not isinstance(value, str)
+        or not value
+        or value != value.strip()
+        or has_ascii_control(value)
+    ):
         raise ValueError(f"{label} is not exact")
     return value
 
@@ -453,6 +462,7 @@ def require_download_verification(
         for key, digest in values.items():
             if not isinstance(key, str) or not key:
                 raise ValueError(f"route report manifest has a malformed {field} key")
+            require_exact_string(key, f"{field}.{key}")
             require_sha(digest, f"{field}.{key}")
     for relative, expected_sha256 in support.items():
         local = require_source_file(source_dir, relative)
@@ -617,6 +627,7 @@ def copy_route_support_files(source_dir: Path, staging: Path) -> None:
     for relative in sorted(support):
         if not isinstance(relative, str) or not relative:
             continue
+        require_exact_string(relative, "route support path")
         if relative in CORE_REPORT_FILES:
             raise ValueError(f"route support overlaps a core report file: {relative}")
         copy_route_file(source_dir, staging, relative)
