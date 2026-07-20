@@ -415,6 +415,14 @@ class FreezeStageProvenanceTests(unittest.TestCase):
                     MODULE.validate_source_document(
                         "gather.json", wrong_gather, RUN_ID
                     )
+        for value in (True, 4.0, "4"):
+            with self.subTest(lane_count=value):
+                wrong_gather = gather_payload()
+                wrong_gather["samples"][1]["lane_count"] = value
+                with self.assertRaisesRegex(ValueError, "tumor sample"):
+                    MODULE.validate_source_document(
+                        "gather.json", wrong_gather, RUN_ID
+                    )
 
     def test_source_stable_compares_full_identity(self) -> None:
         payload = json.dumps(preflight_payload()).encode()
@@ -1165,6 +1173,11 @@ class FreezeStageProvenanceTests(unittest.TestCase):
                 (
                     "boolean-passed-count",
                     lambda payload: payload.__setitem__("passed_count", False),
+                    "did not pass preflight",
+                ),
+                (
+                    "float-object-count",
+                    lambda payload: payload.__setitem__("object_count", 2.0),
                     "did not pass preflight",
                 ),
                 (

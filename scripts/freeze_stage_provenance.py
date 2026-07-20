@@ -674,7 +674,7 @@ def validate_source_document(name: str, document: dict[str, Any], run_id: str) -
     for role, sample in by_role.items():
         if (
             sample.get("status") != "passed"
-            or sample.get("lane_count") != 4
+            or not exact_int(sample.get("lane_count"), 4)
             or sample.get("output_bam") != f"{role}.markdup.bam"
             or not is_positive_exact_int(sample.get("output_bam_bytes"))
         ):
@@ -782,7 +782,7 @@ def validate_dry_run_receipt(path: Path, expected: dict[str, Any]) -> None:
         not exact_schema_version(receipt, 1)
         or receipt.get("status") != "dry_run"
         or receipt.get("batch_status") != "SUCCEEDED"
-        or receipt.get("object_count") != len(SOURCE_NAMES)
+        or not exact_int(receipt.get("object_count"), len(SOURCE_NAMES))
         or not exact_int(receipt.get("passed_count"), 0)
         or not exact_int(
             receipt.get("destination_initial_version_history_count"),
