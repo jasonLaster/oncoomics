@@ -430,10 +430,20 @@ def render_json(value: Any) -> str:
     return json.dumps(value, sort_keys=True, ensure_ascii=False, separators=(",", ":"))
 
 
+def require_allowed_string(value: Any, allowed: set[str], label: str) -> str:
+    if not isinstance(value, str) or value not in allowed:
+        raise ValueError("invalid " + label)
+    return value
+
+
 def derive_authorized_state(rows: Sequence[Dict[str, Any]]) -> str:
     classified = set()
     for row in rows:
-        state = str(row["authorized_hrd_state"])
+        state = require_allowed_string(
+            row.get("authorized_hrd_state"),
+            ALLOWED_HRD_STATES,
+            "authorized HRD state",
+        )
         if state in {"positive", "negative"}:
             if row["evidence_status"] != "ready":
                 raise ValueError("classified deterministic evidence is not ready")
@@ -456,7 +466,14 @@ def derive_authorized_state(rows: Sequence[Dict[str, Any]]) -> str:
 
 
 def aggregate_evidence_state(rows: Sequence[Dict[str, Any]]) -> str:
-    states = {str(row["evidence_status"]) for row in rows}
+    states = {
+        require_allowed_string(
+            row.get("evidence_status"),
+            ALLOWED_EVIDENCE_STATES,
+            "evidence status",
+        )
+        for row in rows
+    }
     if len(states) == 1:
         return next(iter(states))
     return "partial_evidence"
@@ -601,15 +618,25 @@ def verify_sources(
         )
         if sha256(report_path) != report_hash:
             raise ValueError("source report hash mismatch for " + method)
-        evidence_status = str(source.get("evidence_status", ""))
-        authorized_state = str(source.get("authorized_hrd_state") or source.get("interpretation_status") or "")
-        qc_status = str(source.get("classification_qc_status", "not_applicable"))
-        if evidence_status not in ALLOWED_EVIDENCE_STATES:
-            raise ValueError("invalid evidence status for " + method)
-        if authorized_state not in ALLOWED_HRD_STATES:
-            raise ValueError("invalid authorized HRD state for " + method)
-        if qc_status not in ALLOWED_QC_STATES:
-            raise ValueError("invalid classification QC state for " + method)
+        evidence_status = require_allowed_string(
+            source.get("evidence_status"),
+            ALLOWED_EVIDENCE_STATES,
+            "evidence status for " + method,
+        )
+        authorized_state = require_allowed_string(
+            (
+                source["authorized_hrd_state"]
+                if "authorized_hrd_state" in source
+                else source.get("interpretation_status")
+            ),
+            ALLOWED_HRD_STATES,
+            "authorized HRD state for " + method,
+        )
+        qc_status = require_allowed_string(
+            source.get("classification_qc_status", "not_applicable"),
+            ALLOWED_QC_STATES,
+            "classification QC state for " + method,
+        )
         source_hashes = source.get("source_sha256")
         if not isinstance(source_hashes, dict) or not source_hashes:
             raise ValueError("source-artifact hash inventory is missing for " + method)
