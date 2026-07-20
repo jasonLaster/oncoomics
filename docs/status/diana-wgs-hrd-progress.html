@@ -385,7 +385,8 @@
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-20</li>
-          <li class="pill">Latest milestone = public-index check maps</li>
+          <li class="pill">Latest milestone = public-index receipt maps</li>
+          <li class="pill">Public-index receipts = exact</li>
           <li class="pill">Public-index checks = exact</li>
           <li class="pill">Reviewed-public checks = exact</li>
           <li class="pill">Route replay checks = exact</li>
@@ -2571,6 +2572,10 @@
           <h3>Priority 5 · reviewed-public publication</h3>
           <ol class="todo">
             <li class="item" style="--tone: var(--done)">
+              <strong>Done · require exact public-index receipt maps</strong>
+              <span>Public index building now rejects integer or float stand-ins inside reviewed-public apply, private-source, and public-destination check maps before the static <code>public-index/objects.json</code> file can bind reviewed VersionIds and SHA-256s.</span>
+            </li>
+            <li class="item" style="--tone: var(--done)">
               <strong>Done · require exact public-index check maps</strong>
               <span>Final public-index publication now rejects integer or float stand-ins inside destination verification and dry-run preflight check maps before the static <code>public-index/objects.json</code> alias can advertise reviewed deterministic, Rosalind, cross-check, AI-review, or synthesis packets.</span>
             </li>
@@ -2848,6 +2853,19 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-20T00:18:00-07:00">Jul 20 · local</time>
+              <span>
+                <strong>Local patch · Reject loose public-index receipt checks:</strong>
+                public-index building now exact-checks reviewed-public apply,
+                private source-object, and public destination-object maps, so
+                JSON <code>1</code> or <code>1.0</code> cannot masquerade as
+                a successful private/public copy proof before the final static
+                object index binds reviewed VersionIds and SHA-256s. No S3,
+                Batch, route, GPU, quota, replacement compute, or apply-mode
+                AWS work was launched; Cost Explorer was refreshed read-only.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-20T00:16:00-07:00">Jul 20 · local</time>
               <span>

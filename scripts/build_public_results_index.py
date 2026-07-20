@@ -338,6 +338,17 @@ def is_nonnegative_exact_int(value: Any) -> bool:
     return type(value) is int and value >= 0
 
 
+def exact_check_map(value: Any, expected: dict[str, bool]) -> bool:
+    return (
+        isinstance(value, dict)
+        and set(value) == set(expected)
+        and all(
+            value.get(name) is expected_value
+            for name, expected_value in expected.items()
+        )
+    )
+
+
 def is_sha256(value: Any) -> bool:
     return isinstance(value, str) and SHA256_HEX.fullmatch(value) is not None
 
@@ -430,7 +441,7 @@ def validate_reviewed_public_receipts(
             raise RuntimeError(f"{method_id} reviewed-public private receipt is not exact")
         if not is_exact_receipt_path(private_publication_receipt.get("path")):
             raise RuntimeError(f"{method_id} reviewed-public private receipt is not exact")
-        if checks != REVIEWED_PUBLIC_APPLY_CHECKS:
+        if not exact_check_map(checks, REVIEWED_PUBLIC_APPLY_CHECKS):
             raise RuntimeError(f"{method_id} reviewed-public receipt failed required checks")
         if len(source_objects) != len(expected_files) or len(destination_objects) != len(expected_files):
             raise RuntimeError(f"{method_id} reviewed-public receipt has the wrong object count")
@@ -482,7 +493,7 @@ def validate_reviewed_public_receipts(
                 or row.get("checksum_sha256") != checksum_sha256(digest)
                 or not is_positive_exact_int(size)
                 or size > MAX_FILE_BYTES
-                or checks != SOURCE_PREFLIGHT_CHECKS
+                or not exact_check_map(checks, SOURCE_PREFLIGHT_CHECKS)
             ):
                 raise RuntimeError(
                     f"{method_id} reviewed-public source object is not exact: {relative}"
@@ -523,7 +534,7 @@ def validate_reviewed_public_receipts(
                 or row.get("server_side_encryption") != "AES256"
                 or not is_positive_exact_int(size)
                 or size > MAX_FILE_BYTES
-                or checks != PUBLIC_DESTINATION_OBJECT_CHECKS
+                or not exact_check_map(checks, PUBLIC_DESTINATION_OBJECT_CHECKS)
             ):
                 raise RuntimeError(
                     f"{method_id} reviewed-public destination object is not exact: {relative}"
