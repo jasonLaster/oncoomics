@@ -2658,6 +2658,7 @@ class CustodyHandoffTests(unittest.TestCase):
                     f"runs/subject01/{RUN}/deterministic/contracts/{contract_sha}.json",
                     KMS,
                     "us-east-1",
+                    contract_sha,
                 )
 
         self.assertEqual(
@@ -2690,6 +2691,146 @@ class CustodyHandoffTests(unittest.TestCase):
                 "us-east-1",
             ),
         )
+
+    def test_contract_publication_binds_dry_run_to_parsed_contract_digest(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            contract = root / "contract.json"
+            write_json(contract, CustodyFixture().finalize())
+            original_bytes = contract.read_bytes()
+            original_sha = publisher.sha256(contract)
+            anchor = root / "anchor.dry.json"
+            real_load = publisher.load_contract_with_sha256
+            mutated_sha = ""
+
+            def mutate_after_contract_parse(path):
+                nonlocal mutated_sha
+                value, digest, payload = real_load(path)
+                if not mutated_sha:
+                    mutated = dict(value)
+                    mutated["run_alias"] = "subject99"
+                    write_json(contract, mutated)
+                    mutated_sha = publisher.sha256(contract)
+                return value, digest, payload
+
+            argv = [
+                "publish_input_contract.py",
+                "--contract",
+                str(contract),
+                "--destination-prefix",
+                f"s3://{BUCKET}/runs/subject01/{RUN}/deterministic/contracts/",
+                "--kms-key-arn",
+                KMS,
+                "--anchor-output",
+                str(anchor),
+            ]
+
+            with (
+                patch.object(sys, "argv", argv),
+                patch.object(
+                    publisher,
+                    "load_contract_with_sha256",
+                    side_effect=mutate_after_contract_parse,
+                ),
+                patch.object(publisher, "aws_json", return_value={"Status": "Enabled"}),
+                patch.object(publisher, "version_history", return_value=[]),
+            ):
+                self.assertEqual(publisher.main(), 0)
+
+            receipt = json.loads(anchor.read_text(encoding="utf-8"))
+            self.assertEqual(receipt["receipt_sha256"], original_sha)
+            self.assertEqual(receipt["receipt_bytes"], len(original_bytes))
+            self.assertNotEqual(receipt["receipt_sha256"], mutated_sha)
+
+    def test_contract_publication_uploads_stable_parsed_contract_bytes(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            contract = root / "contract.json"
+            write_json(contract, CustodyFixture().finalize())
+            original_bytes = contract.read_bytes()
+            original_sha = publisher.sha256(contract)
+            version = "contract-version"
+            prefix = f"runs/subject01/{RUN}/deterministic/contracts/"
+            key = f"{prefix}{original_sha}.json"
+            checksum = base64.b64encode(bytes.fromhex(original_sha)).decode("ascii")
+            anchor = root / "anchor.json"
+            dry_run = self.write_contract_dry_run_receipt(
+                root / "anchor.dry.json", contract, prefix=prefix
+            )
+            metadata = {
+                "VersionId": version,
+                "ContentLength": len(original_bytes),
+                "ChecksumType": "FULL_OBJECT",
+                "ChecksumSHA256": checksum,
+                "ServerSideEncryption": "aws:kms",
+                "SSEKMSKeyId": KMS,
+                "Metadata": {"sha256": original_sha},
+            }
+            history = [
+                {
+                    "history_kind": "version",
+                    "Key": key,
+                    "VersionId": version,
+                    "IsLatest": True,
+                    "Size": len(original_bytes),
+                }
+            ]
+            real_load = publisher.load_contract_with_sha256
+            uploaded = {}
+
+            def mutate_after_contract_parse(path):
+                value, digest, payload = real_load(path)
+                mutated = dict(value)
+                mutated["run_alias"] = "subject99"
+                write_json(contract, mutated)
+                return value, digest, payload
+
+            def fake_put(path, bucket, object_key, kms_key_arn, region, contract_sha):
+                self.assertNotEqual(path, contract)
+                self.assertEqual(path.read_bytes(), original_bytes)
+                self.assertEqual(contract_sha, original_sha)
+                self.assertEqual(object_key, key)
+                uploaded["sha256"] = publisher.sha256(path)
+                return {"VersionId": version}
+
+            def fake_get(bucket, object_key, version_id, destination, region):
+                destination.write_bytes(original_bytes)
+                return dict(metadata)
+
+            argv = [
+                "publish_input_contract.py",
+                "--contract",
+                str(contract),
+                "--destination-prefix",
+                f"s3://{BUCKET}/{prefix}",
+                "--kms-key-arn",
+                KMS,
+                "--anchor-output",
+                str(anchor),
+                "--dry-run-receipt",
+                str(dry_run),
+                "--apply",
+            ]
+
+            with (
+                patch.object(sys, "argv", argv),
+                patch.object(
+                    publisher,
+                    "load_contract_with_sha256",
+                    side_effect=mutate_after_contract_parse,
+                ),
+                patch.object(publisher, "aws_json", return_value={"Status": "Enabled"}),
+                patch.object(publisher, "version_history", side_effect=[[], history]),
+                patch.object(publisher, "put_create_only", side_effect=fake_put),
+                patch.object(publisher, "head", return_value=metadata),
+                patch.object(publisher, "get_exact", side_effect=fake_get),
+            ):
+                self.assertEqual(publisher.main(), 0)
+
+            receipt = json.loads(anchor.read_text(encoding="utf-8"))
+            self.assertEqual(receipt["status"], "passed")
+            self.assertEqual(receipt["receipt_sha256"], original_sha)
+            self.assertEqual(uploaded["sha256"], original_sha)
 
     def test_contract_publication_recovers_put_before_anchor_update_without_second_put(self):
         with tempfile.TemporaryDirectory() as temporary:

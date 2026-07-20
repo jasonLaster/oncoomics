@@ -198,7 +198,12 @@ def get_exact(
 
 
 def put_create_only(
-    path: Path, bucket: str, key: str, kms_key_arn: str, region: str
+    path: Path,
+    bucket: str,
+    key: str,
+    kms_key_arn: str,
+    region: str,
+    contract_sha: str,
 ) -> dict[str, Any]:
     return aws_json(
         [
@@ -206,21 +211,27 @@ def put_create_only(
             "--body", str(path), "--if-none-match", "*",
             "--server-side-encryption", "aws:kms", "--sse-kms-key-id", kms_key_arn,
             "--checksum-algorithm", "SHA256",
-            "--checksum-sha256", checksum_sha256(sha256(path)),
+            "--checksum-sha256", checksum_sha256(contract_sha),
             "--content-type", "application/json",
-            "--metadata", f"sha256={sha256(path)}",
+            "--metadata", f"sha256={contract_sha}",
         ],
         region,
     )
 
 
 def load_contract(path: Path) -> dict[str, Any]:
+    value, _digest, _payload = load_contract_with_sha256(path)
+    return value
+
+
+def load_contract_with_sha256(path: Path) -> tuple[dict[str, Any], str, bytes]:
     require_no_symlinked_ancestors(path, "contract")
     if path.is_symlink() or not path.is_file():
         raise ValueError(f"contract must be a real JSON file: {path}")
+    payload = path.read_bytes()
     try:
         value = json.loads(
-            path.read_text(encoding="utf-8"),
+            payload.decode("utf-8"),
             object_pairs_hook=reject_duplicate_json_object_names,
         )
     except DuplicateJsonKeyError as error:
@@ -229,7 +240,35 @@ def load_contract(path: Path) -> dict[str, Any]:
         raise ValueError("invalid JSON in contract") from error
     if not isinstance(value, dict):
         raise ValueError("contract is not a JSON object")
-    return value
+    return value, sha256_bytes(payload), payload
+
+
+def write_stable_contract(path: Path, payload: bytes, expected_sha256: str) -> None:
+    if sha256_bytes(payload) != expected_sha256:
+        raise ValueError("stable input contract payload SHA-256 mismatch")
+    require_safe_download_destination(path, "stable input contract")
+    path.parent.mkdir(parents=True, exist_ok=True)
+    descriptor = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+    try:
+        try:
+            os.fchmod(descriptor, 0o600)
+            with os.fdopen(descriptor, "wb") as handle:
+                descriptor = -1
+                handle.write(payload)
+                handle.flush()
+                os.fsync(handle.fileno())
+            fsync_directory(path.parent)
+            require_real_downloaded_file(path, "stable input contract")
+            if (path.stat().st_mode & 0o777) != 0o600:
+                raise ValueError(f"stable input contract mode is not 0600: {path}")
+            if path.stat().st_size != len(payload) or sha256(path) != expected_sha256:
+                raise ValueError(f"stable input contract changed during write: {path}")
+        except Exception:
+            path.unlink(missing_ok=True)
+            raise
+    finally:
+        if descriptor >= 0:
+            os.close(descriptor)
 
 
 def fsync_directory(path: Path) -> None:
@@ -469,7 +508,9 @@ def main() -> int:
         )
 
     try:
-        contract = load_contract(args.contract)
+        contract, contract_sha, contract_payload = load_contract_with_sha256(
+            args.contract
+        )
     except (OSError, ValueError, json.JSONDecodeError) as error:
         raise SystemExit(f"Fail-closed: {error}") from error
     checked = validate(contract)
@@ -495,14 +536,13 @@ def main() -> int:
     )
     if versioning.get("Status") != "Enabled":
         raise SystemExit("Fail-closed: contract bucket versioning is not Enabled")
-    contract_sha = sha256(args.contract)
     key = f"{prefix}{contract_sha}.json"
     uri = f"s3://{bucket}/{key}"
     anchor: dict[str, Any] = {
         "schema_version": 1,
         "status": "dry_run" if not args.apply else "in_progress",
         "receipt_sha256": contract_sha,
-        "receipt_bytes": args.contract.stat().st_size,
+        "receipt_bytes": len(contract_payload),
         "receipt_uri": uri,
         "receipt_version_id": "",
         "bucket_versioning": "Enabled",
@@ -559,53 +599,64 @@ def main() -> int:
         return 0
 
     try:
-        observed_history = version_history(bucket, prefix, args.region)
-        if observed_history:
-            if not recovering:
-                raise ValueError("contract publication prefix has prior history")
-            if (
-                len(observed_history) != 1
-                or observed_history[0].get("history_kind") != "version"
-                or observed_history[0].get("Key") != key
-                or observed_history[0].get("IsLatest") is not True
-            ):
-                raise ValueError(
-                    "recovery history is not the single expected contract version"
+        with tempfile.TemporaryDirectory(
+            prefix=".input-contract.",
+            dir=args.anchor_output.parent,
+        ) as temporary:
+            stable_contract = Path(temporary) / f"{contract_sha}.json"
+            write_stable_contract(stable_contract, contract_payload, contract_sha)
+            observed_history = version_history(bucket, prefix, args.region)
+            if observed_history:
+                if not recovering:
+                    raise ValueError("contract publication prefix has prior history")
+                if (
+                    len(observed_history) != 1
+                    or observed_history[0].get("history_kind") != "version"
+                    or observed_history[0].get("Key") != key
+                    or observed_history[0].get("IsLatest") is not True
+                ):
+                    raise ValueError(
+                        "recovery history is not the single expected contract version"
+                    )
+                version_id = require_version_id(
+                    observed_history[0].get("VersionId"),
+                    "recovery history",
                 )
-            version_id = require_version_id(
-                observed_history[0].get("VersionId"),
-                "recovery history",
+                anchored_raw = anchor.get("receipt_version_id", "")
+                anchored_version = (
+                    require_version_id(anchored_raw, "reserved contract anchor")
+                    if anchored_raw
+                    else ""
+                )
+                if anchored_version != "" and anchored_version != version_id:
+                    raise ValueError("recovery history differs from reserved contract VersionId")
+                anchor["receipt_version_id"] = version_id
+                anchor["recovered_existing_version"] = True
+                write_json_atomic(args.anchor_output, anchor)
+            else:
+                response = put_create_only(
+                    stable_contract,
+                    bucket,
+                    key,
+                    args.kms_key_arn,
+                    args.region,
+                    contract_sha,
+                )
+                version_id = require_version_id(
+                    response.get("VersionId"),
+                    "create-only put response",
+                )
+                anchor["receipt_version_id"] = version_id
+                write_json_atomic(args.anchor_output, anchor)
+            anchor["checks"] = verify_publication(
+                stable_contract,
+                bucket,
+                prefix,
+                key,
+                version_id,
+                args.kms_key_arn,
+                args.region,
             )
-            anchored_raw = anchor.get("receipt_version_id", "")
-            anchored_version = (
-                require_version_id(anchored_raw, "reserved contract anchor")
-                if anchored_raw
-                else ""
-            )
-            if anchored_version != "" and anchored_version != version_id:
-                raise ValueError("recovery history differs from reserved contract VersionId")
-            anchor["receipt_version_id"] = version_id
-            anchor["recovered_existing_version"] = True
-            write_json_atomic(args.anchor_output, anchor)
-        else:
-            response = put_create_only(
-                args.contract, bucket, key, args.kms_key_arn, args.region
-            )
-            version_id = require_version_id(
-                response.get("VersionId"),
-                "create-only put response",
-            )
-            anchor["receipt_version_id"] = version_id
-            write_json_atomic(args.anchor_output, anchor)
-        anchor["checks"] = verify_publication(
-            args.contract,
-            bucket,
-            prefix,
-            key,
-            version_id,
-            args.kms_key_arn,
-            args.region,
-        )
         require_contract_anchor_checks(anchor["checks"])
         anchor["status"] = "passed"
         anchor.pop("error", None)

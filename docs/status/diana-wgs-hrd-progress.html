@@ -370,8 +370,9 @@
           before private review or reviewed-public release can continue. The
           materializer registration, one-shot materializer submitter,
           staged-validation downloader, input-contract finalizer, freeze steps,
-          and local materialization now carry the exact digests of the JSON
-          bytes they parsed instead of trusting a later filesystem read.
+          local materialization, and input-contract publication now carry the
+          exact digests and bytes they parsed instead of trusting a later
+          filesystem read or mutable upload path.
           The selected GPU rerun is still quota-blocked, the legacy CPU run
           remains stopped, and Diana HRD remains <code>partial_evidence</code> /
           <code>no_call</code> until terminal artifacts and reviewed cross-check
@@ -379,7 +380,8 @@
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-19</li>
-          <li class="pill">Latest milestone = staged-validation receipt reads stable</li>
+          <li class="pill">Latest milestone = input-contract publication stable</li>
+          <li class="pill">Input-contract publication = stable</li>
           <li class="pill">Staged-validation receipt reads = stable</li>
           <li class="pill">Materializer submit reads = stable</li>
           <li class="pill">Materialization receipt reads = stable</li>
@@ -723,7 +725,7 @@
           <li class="pill">AI source manifests = kind-exact</li>
           <li class="pill">AI bundle envelopes = exact</li>
           <li class="pill">Comparative synthesis manifests = exact</li>
-          <li class="pill">Prior dashboard = d6f77d1</li>
+          <li class="pill">Prior dashboard = 4c7d8dd</li>
           <li class="pill">Blocked cross-check manifests = exact</li>
           <li class="pill">Executable cross-check manifests = exact</li>
           <li class="pill">Phase 3 blocked source hashes = exact</li>
@@ -804,7 +806,7 @@
             </li>
             <li class="track" style="--tone: var(--queued)">
               <strong>Diana Rosalind packet</strong>
-              <span>55% · input-contract apply bound</span>
+              <span>55% · input-contract publication stable</span>
               <div class="bar" aria-hidden="true" style="--pct: 55%"><span></span></div>
             </li>
             <li class="track" style="--tone: var(--queued)">
@@ -912,6 +914,10 @@
 
           <h3>Priority 1 · selected GPU NGS rerun prep</h3>
           <ol class="todo">
+            <li class="item" style="--tone: var(--done)">
+              <strong>Done · publish stable input contracts</strong>
+              <span>HRD input-contract publication now binds dry-run receipts, create-only uploads, and recovery checks to the exact finalized contract bytes before the contract can feed downstream Rosalind, executable route, or AI/freeform review.</span>
+            </li>
             <li class="item" style="--tone: var(--done)">
               <strong>Done · bind cross-check staging reads</strong>
               <span>Executable cross-check report staging now records route download and source-manifest hashes from the same JSON bytes it validated, and reuses the verified review summary when it compacts a full route packet into <code>method_spec.json</code> and <code>report_manifest.json</code>.</span>
@@ -2506,6 +2512,17 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-19T19:12:15-07:00">Jul 19 · local</time>
+              <span>
+                <strong>Local patch · Upload stable input-contract bytes:</strong>
+                <code>publish_input_contract.py</code> now carries the finalized
+                contract's parsed SHA-256 and exact bytes into dry-run receipts,
+                writes a stable upload copy before create-only publication, and
+                verifies recovery against that copy so a local rewrite cannot
+                redirect the content-addressed contract object.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-19T19:07:26-07:00">Jul 19 · local</time>
               <span>
