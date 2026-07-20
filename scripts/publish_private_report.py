@@ -266,6 +266,7 @@ def validate_dry_run_receipt(
     required_checks = {
         "packet_inventory_exact": True,
         "packet_manifest_no_call_boundary": True,
+        "packet_report_kind_exact": True,
         "packet_forbidden_token_scan": True,
     }
     if checks != required_checks:
@@ -311,6 +312,7 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
         "checks": {
             "packet_inventory_exact": True,
             "packet_manifest_no_call_boundary": True,
+            "packet_report_kind_exact": True,
             "packet_forbidden_token_scan": True,
         },
     }

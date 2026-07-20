@@ -179,6 +179,7 @@ PRIVATE_RECEIPT_OBJECT_CHECKS = {
 PRIVATE_RECEIPT_APPLY_CHECKS = {
     "packet_inventory_exact": True,
     "packet_manifest_no_call_boundary": True,
+    "packet_report_kind_exact": True,
     "packet_forbidden_token_scan": True,
     "dry_run_receipt": True,
     "destination_initially_empty": True,

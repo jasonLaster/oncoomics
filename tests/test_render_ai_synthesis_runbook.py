@@ -326,6 +326,7 @@ class RenderAiSynthesisRunbookTests(unittest.TestCase):
             self.assertIn("`forbidden_token_sha256`", checklist)
             self.assertIn("`checks.packet_inventory_exact`", checklist)
             self.assertIn("`checks.packet_manifest_no_call_boundary`", checklist)
+            self.assertIn("`checks.packet_report_kind_exact`", checklist)
             self.assertIn("`checks.packet_forbidden_token_scan`", checklist)
             self.assertIn(f"`{apply_receipt}` does not already exist", checklist)
             self.assertIn("no version history", checklist)

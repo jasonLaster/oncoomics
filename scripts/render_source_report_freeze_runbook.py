@@ -324,7 +324,8 @@ def source_private_freeze_checklist(
         "- [ ] `forbidden_token_count` is nonzero and "
         "`forbidden_token_sha256` matches the token set used for the dry-run.",
         "- [ ] `checks.packet_inventory_exact`, "
-        "`checks.packet_manifest_no_call_boundary`, and "
+        "`checks.packet_manifest_no_call_boundary`, "
+        "`checks.packet_report_kind_exact`, and "
         "`checks.packet_forbidden_token_scan` are all true.",
         f"- [ ] `{apply_receipt}` does not already exist and the private "
         "destination prefix is expected to have no version history.",

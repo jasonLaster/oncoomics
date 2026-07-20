@@ -368,16 +368,17 @@
           AI review, and reviewed release must prove exactly which files it
           used before the next step can trust it. The public HCC1395 rehearsal
           path proves that packaging shape without standing in for Diana, and
-          the latest source-only guardrails make reviewer summaries and
-          deterministic report summaries fail closed if they drift from the
-          expected envelope. The selected GPU rerun is still quota-blocked, the
-          legacy CPU run remains stopped, and Diana HRD remains
+          the latest source-only guardrails make private handoffs prove every
+          report is the kind it claims to be before freeze, AI review, or
+          reviewed release can trust it. The selected GPU rerun remains
+          quota-blocked, the legacy CPU run remains stopped, and Diana HRD remains
           <code>partial_evidence</code> / <code>no_call</code> until terminal
           artifacts and reviewed cross-check reports exist.
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-19</li>
-          <li class="pill">Latest milestone = reviewed-public kind checks explicit</li>
+          <li class="pill">Latest milestone = private packet-kind checks explicit</li>
+          <li class="pill">Private packet-kind checks = explicit</li>
           <li class="pill">Reviewed-public kind checks = explicit</li>
           <li class="pill">Publication report kinds = exact</li>
           <li class="pill">Deterministic review summaries = exact</li>
@@ -1983,6 +1984,10 @@
           <h3>Priority 4 · AI / freeform review</h3>
           <ol class="todo">
             <li class="item" style="--tone: var(--done)">
+              <strong>Done · require private packet-kind proof</strong>
+              <span>Private report publishing, source-freeze handoffs, and AI-synthesis handoffs now all require dry-run receipts to prove a packet's <code>report_kind</code> matched the expected report family before any private freeze or AI private-apply can proceed.</span>
+            </li>
+            <li class="item" style="--tone: var(--done)">
               <strong>Done · seal comparative reviewer summaries</strong>
               <span>Comparative synthesis now accepts only exact Reviewer A and Reviewer B summary rows, preventing late or unbound annotations from riding inside the final two-reviewer report manifest.</span>
             </li>
@@ -2331,6 +2336,10 @@
           <h3>Priority 5 · reviewed-public publication</h3>
           <ol class="todo">
             <li class="item" style="--tone: var(--done)">
+              <strong>Done · require private kind proof before public copy</strong>
+              <span>Reviewed-public publication now rejects private apply receipts that do not carry explicit packet-kind proof, so public publication cannot rely on an older private receipt that only proved packet inventory, no-call boundaries, and forbidden-token scans.</span>
+            </li>
+            <li class="item" style="--tone: var(--done)">
               <strong>Done · bind reviewed-public kind checks</strong>
               <span>Reviewed-public dry-run and apply receipts now carry an explicit <code>source_report_kind_exact</code> preflight check after the copied packet's <code>report_kind</code> matches its allowlisted method, and the public index rejects receipts that omit that proof.</span>
             </li>
@@ -2584,6 +2593,16 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-19T20:27:27-07:00">Jul 19 · local</time>
+              <span>
+                <strong>Local patch · Bind private packet-kind checks:</strong>
+                private source-freeze, AI-synthesis, and reviewed-public apply
+                gates now all name <code>packet_report_kind_exact</code>, so
+                stale private receipts that lack explicit report-kind proof
+                fail closed.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-19T20:24:31-07:00">Jul 19 · local</time>
               <span>
