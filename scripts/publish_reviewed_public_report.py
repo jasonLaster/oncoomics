@@ -104,6 +104,7 @@ AI_REVIEW_FILES = (
 SYNTHESIS_FILES = (
     "agreement_disagreement.csv",
     "report.md",
+    "review_evidence.json",
     "report_manifest.json",
 )
 METHOD_CONTRACTS: dict[str, dict[str, Any]] = {

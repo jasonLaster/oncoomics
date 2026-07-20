@@ -57,6 +57,7 @@ def write_json(path: Path, value: Any) -> None:
 
 def synthesis_report_manifest(report: Path, agreement: Path) -> Dict[str, Any]:
     agreement_sha256 = sha256(agreement)
+    review_evidence_sha256 = sha256(agreement.with_name("review_evidence.json"))
     return {
         "schema_version": 1,
         "report_kind": "comparative_synthesis",
@@ -73,6 +74,7 @@ def synthesis_report_manifest(report: Path, agreement: Path) -> Dict[str, Any]:
         "agreement_disagreement_sha256": agreement_sha256,
         "support_sha256": {
             "agreement_disagreement.csv": agreement_sha256,
+            "review_evidence.json": review_evidence_sha256,
         },
         "source_sha256": {
             key: hashlib.sha256(key.encode()).hexdigest()
@@ -130,13 +132,14 @@ def synthesis_report_manifest(report: Path, agreement: Path) -> Dict[str, Any]:
             "agreement_status_counts": {"concordant": len(REQUIRED_METHOD_IDS)},
             "structured_disagreements": [],
             "limitations": ["synthetic limitation"],
-            "unresolved_observations": ["synthetic unresolved observation"],
+            "unresolved_observations": [],
             "authorized_conclusion": "no_call",
         },
     }
 
 
 def write_synthesis_manifest(path: Path, report: Path, agreement: Path) -> Dict[str, Any]:
+    write_synthesis_review_evidence(agreement.with_name("review_evidence.json"))
     manifest = synthesis_report_manifest(report, agreement)
     manifest["source_sha256"]["generator"] = sha256(GENERATOR)
     manifest["source_sha256"]["agreement_disagreement.csv"] = sha256(agreement)
@@ -169,6 +172,75 @@ def write_synthesis_agreement(path: Path) -> None:
             }
         )
     GENERATE.write_agreement(path, rows)
+
+
+def write_synthesis_review_evidence(path: Path) -> None:
+    methods = []
+    for index, method_id in enumerate(REQUIRED_METHOD_IDS, 1):
+        methods.append(
+            {
+                "evidence_id": "E{0:03d}".format(index),
+                "method_id": method_id,
+                "report_kind": "statistical_method",
+                "evidence_status": "partial_evidence",
+                "authorized_hrd_state": "no_call",
+                "classification_authorized": False,
+                "classification_qc_status": "not_applicable",
+                "report_sha256": hashlib.sha256(method_id.encode()).hexdigest(),
+                "source_artifact_sha256": [
+                    hashlib.sha256(("source-" + method_id).encode()).hexdigest(),
+                ],
+                "review_summary": {
+                    "limitations": ["synthetic limitation"] if index == 1 else [],
+                },
+            }
+        )
+    reviewers = []
+    for reviewer, provider, model in (
+        ("A", "synthetic-provider-a", "latest-model-a"),
+        ("B", "synthetic-provider-b", "latest-model-b"),
+    ):
+        reviewers.append(
+            {
+                "reviewer_id": reviewer,
+                "model": {
+                    "catalog_verified_at": "2026-07-17T00:00:00+00:00",
+                    "latest_available_attested": True,
+                    "provider": provider,
+                    "model_id": model,
+                },
+                "claims": [
+                    {
+                        "claim_id": "C{0:03d}".format(index),
+                        "claim": "Synthetic no-call claim {0}".format(index),
+                        "evidence_ids": "E{0:03d}".format(index),
+                        "source_methods": method_id,
+                        "evidence_states": "partial_evidence",
+                        "support_level": "direct",
+                        "caveat": "",
+                        "disposition": "aligned",
+                        "proposed_hrd_state": "no_call",
+                        "quantitative_fact_ids": "none",
+                        "disagreement_status": "none",
+                        "disagreement_evidence_ids": "none",
+                        "resolution_needed": "not_applicable",
+                    }
+                    for index, method_id in enumerate(REQUIRED_METHOD_IDS, 1)
+                ],
+            }
+        )
+    write_json(
+        path,
+        {
+            "schema_version": 1,
+            "report_kind": "comparative_synthesis_review_evidence",
+            "subject_alias": "subject01",
+            "evidence_status": "partial_evidence",
+            "authorized_hrd_state": "no_call",
+            "methods": methods,
+            "reviewers": reviewers,
+        },
+    )
 
 
 class SynthesisFixture:
@@ -776,6 +848,14 @@ class GenerateSynthesisTests(unittest.TestCase):
                 ),
                 "comparative synthesis support agreement_disagreement.csv",
             ),
+            (
+                "support review evidence",
+                lambda payload: payload["support_sha256"].__setitem__(
+                    "review_evidence.json",
+                    numeric_hash,
+                ),
+                "comparative synthesis support review_evidence.json",
+            ),
         )
 
         for label, mutate, message in cases:
@@ -1106,6 +1186,7 @@ class GenerateSynthesisTests(unittest.TestCase):
             for name in (
                 "report.md",
                 "agreement_disagreement.csv",
+                "review_evidence.json",
                 "report_manifest.json",
             ):
                 path = staging / name
@@ -1196,6 +1277,7 @@ class GenerateSynthesisTests(unittest.TestCase):
             for name in (
                 "report.md",
                 "agreement_disagreement.csv",
+                "review_evidence.json",
                 "report_manifest.json",
             ):
                 path = staging / name
@@ -1249,7 +1331,7 @@ class GenerateSynthesisTests(unittest.TestCase):
                 "agreement_disagreement.csv",
             ):
                 GENERATE.install_packet_create_only(
-                    (report, agreement, manifest),
+                    (report, agreement, staging / "review_evidence.json", manifest),
                     output,
                 )
 
@@ -1269,6 +1351,7 @@ class GenerateSynthesisTests(unittest.TestCase):
             for name in (
                 "report.md",
                 "agreement_disagreement.csv",
+                "review_evidence.json",
                 "report_manifest.json",
             ):
                 path = staging / name
@@ -1340,7 +1423,7 @@ class GenerateSynthesisTests(unittest.TestCase):
                 ),
             ):
                 GENERATE.install_packet_create_only(
-                    (report, agreement, manifest),
+                    (report, agreement, staging / "review_evidence.json", manifest),
                     output,
                 )
 
@@ -1391,7 +1474,12 @@ class GenerateSynthesisTests(unittest.TestCase):
             )
             self.assertEqual(
                 [row["relative_path"] for row in rows],
-                ["agreement_disagreement.csv", "report.md", "report_manifest.json"],
+                [
+                    "agreement_disagreement.csv",
+                    "report.md",
+                    "report_manifest.json",
+                    "review_evidence.json",
+                ],
             )
             with (fixture.output_dir / "agreement_disagreement.csv").open(newline="") as handle:
                 rows = list(csv.DictReader(handle))
@@ -1610,6 +1698,58 @@ class GenerateSynthesisTests(unittest.TestCase):
             with self.assertRaisesRegex(
                 ValueError,
                 "comparative synthesis manifest support hashes are not exact",
+            ):
+                GENERATE.require_synthesis_report_manifest(fixture.output_dir)
+
+    def test_synthesis_manifest_rejects_stale_review_evidence_limitations(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="hrd-synthesis-") as temporary:
+            fixture = SynthesisFixture(Path(temporary))
+            result = fixture.run()
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+
+            evidence_path = fixture.output_dir / "review_evidence.json"
+            evidence = json.loads(evidence_path.read_text(encoding="utf-8"))
+            for method in evidence["methods"]:
+                method["review_summary"]["limitations"] = []
+            for reviewer in evidence["reviewers"]:
+                for claim in reviewer["claims"]:
+                    claim["caveat"] = ""
+            write_json(evidence_path, evidence)
+
+            manifest_path = fixture.output_dir / "report_manifest.json"
+            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+            manifest["support_sha256"]["review_evidence.json"] = sha256(evidence_path)
+            write_json(manifest_path, manifest)
+
+            with self.assertRaisesRegex(
+                ValueError,
+                "comparative synthesis limitations are stale",
+            ):
+                GENERATE.require_synthesis_report_manifest(fixture.output_dir)
+
+    def test_synthesis_manifest_rejects_stale_review_evidence_unresolved(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory(prefix="hrd-synthesis-") as temporary:
+            fixture = SynthesisFixture(Path(temporary))
+            result = fixture.run()
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+
+            evidence_path = fixture.output_dir / "review_evidence.json"
+            evidence = json.loads(evidence_path.read_text(encoding="utf-8"))
+            evidence["reviewers"][0]["claims"][-1]["resolution_needed"] = (
+                "Complete a forged reroute."
+            )
+            write_json(evidence_path, evidence)
+
+            manifest_path = fixture.output_dir / "report_manifest.json"
+            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+            manifest["support_sha256"]["review_evidence.json"] = sha256(evidence_path)
+            write_json(manifest_path, manifest)
+
+            with self.assertRaisesRegex(
+                ValueError,
+                "comparative synthesis unresolved observations are stale",
             ):
                 GENERATE.require_synthesis_report_manifest(fixture.output_dir)
 
@@ -1890,6 +2030,7 @@ class GenerateSynthesisTests(unittest.TestCase):
                     "agreement_disagreement.csv",
                     "report.md",
                     "report_manifest.json",
+                    "review_evidence.json",
                     "unexpected.txt",
                 ],
             )

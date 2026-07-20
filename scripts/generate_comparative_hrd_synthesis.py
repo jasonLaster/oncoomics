@@ -85,6 +85,32 @@ REVIEWER_SUMMARY_KEYS = {
     "claim_count",
     "disagreement_claim_count",
 }
+REVIEW_EVIDENCE_KEYS = {
+    "schema_version",
+    "report_kind",
+    "subject_alias",
+    "evidence_status",
+    "authorized_hrd_state",
+    "methods",
+    "reviewers",
+}
+REVIEW_EVIDENCE_METHOD_KEYS = {
+    "evidence_id",
+    "method_id",
+    "report_kind",
+    "evidence_status",
+    "authorized_hrd_state",
+    "classification_authorized",
+    "classification_qc_status",
+    "report_sha256",
+    "source_artifact_sha256",
+    "review_summary",
+}
+REVIEW_EVIDENCE_REVIEWER_KEYS = {
+    "reviewer_id",
+    "model",
+    "claims",
+}
 REVIEW_SUMMARY_KEYS = {
     "evidence_scope",
     "process",
@@ -148,7 +174,12 @@ REQUIRED_ATTESTATION = {
     "input_directory_contained_only_declared_artifacts": True,
 }
 REVIEW_FILES = {"validation.json", "review_manifest.json", "report.md", "claims.csv"}
-OUTPUT_FILES = {"report.md", "agreement_disagreement.csv", "report_manifest.json"}
+OUTPUT_FILES = {
+    "report.md",
+    "agreement_disagreement.csv",
+    "review_evidence.json",
+    "report_manifest.json",
+}
 REPORT_MANIFEST_KEYS = {
     "schema_version",
     "report_kind",
@@ -1244,6 +1275,32 @@ def require_synthesis_source_hashes(
         raise ValueError("comparative synthesis source hashes are stale")
 
 
+def review_evidence_payload(
+    *,
+    subject_alias: str,
+    evidence_status: str,
+    authorized_hrd_state: str,
+    evidence_rows: Sequence[Dict[str, Any]],
+    reviews: Sequence[Dict[str, Any]],
+) -> Dict[str, Any]:
+    return {
+        "schema_version": 1,
+        "report_kind": "comparative_synthesis_review_evidence",
+        "subject_alias": subject_alias,
+        "evidence_status": evidence_status,
+        "authorized_hrd_state": authorized_hrd_state,
+        "methods": list(evidence_rows),
+        "reviewers": [
+            {
+                "reviewer_id": str(review["reviewer_id"]),
+                "model": review["manifest"]["model"],
+                "claims": list(review["claims"]),
+            }
+            for review in reviews
+        ],
+    }
+
+
 def require_string_list(value: Any, label: str) -> List[str]:
     if not isinstance(value, list) or any(
         not isinstance(item, str) or not item.strip() for item in value
@@ -1417,6 +1474,169 @@ def require_synthesis_review_summary(
     return required_methods
 
 
+def require_review_evidence_methods(
+    value: Any,
+    agreement_rows: Sequence[Dict[str, str]],
+    required_methods: Sequence[str],
+) -> List[Dict[str, Any]]:
+    expected_methods = expected_method_summary(agreement_rows, required_methods)
+    if not isinstance(value, list) or len(value) != len(expected_methods):
+        raise ValueError("comparative synthesis review evidence methods are not exact")
+
+    methods: List[Dict[str, Any]] = []
+    for row, expected in zip(value, expected_methods):
+        if not isinstance(row, dict) or set(row) != REVIEW_EVIDENCE_METHOD_KEYS:
+            raise ValueError("comparative synthesis review evidence methods are not exact")
+        if {
+            "evidence_id": row.get("evidence_id"),
+            "method_id": row.get("method_id"),
+            "report_kind": row.get("report_kind"),
+            "evidence_status": row.get("evidence_status"),
+            "authorized_hrd_state": row.get("authorized_hrd_state"),
+        } != expected:
+            raise ValueError("comparative synthesis review evidence methods are stale")
+        if (
+            row.get("evidence_status") not in ALLOWED_EVIDENCE_STATES
+            or row.get("authorized_hrd_state") not in ALLOWED_HRD_STATES
+            or type(row.get("classification_authorized")) is not bool
+            or row.get("classification_qc_status") not in ALLOWED_QC_STATES
+            or not isinstance(row.get("review_summary"), dict)
+            or not row.get("review_summary")
+        ):
+            raise ValueError("comparative synthesis review evidence methods are not exact")
+        checked_hash(
+            row.get("report_sha256"),
+            "comparative synthesis review evidence report",
+        )
+        source_hashes = row.get("source_artifact_sha256")
+        if (
+            not isinstance(source_hashes, list)
+            or not source_hashes
+            or any(
+                checked_hash(
+                    digest,
+                    "comparative synthesis review evidence source artifact",
+                )
+                != digest
+                for digest in source_hashes
+            )
+        ):
+            raise ValueError("comparative synthesis review evidence methods are not exact")
+        methods.append(row)
+
+    return methods
+
+
+def render_claims_csv(rows: Sequence[Dict[str, str]]) -> str:
+    handle = io.StringIO(newline="")
+    writer = csv.DictWriter(handle, fieldnames=CLAIMS_FIELDS, lineterminator="\n")
+    writer.writeheader()
+    writer.writerows(rows)
+    return handle.getvalue()
+
+
+def require_review_evidence_reviewers(
+    value: Any,
+    methods: Sequence[Dict[str, Any]],
+    expected_reviewers: Any,
+    ceiling: str,
+) -> List[Dict[str, Any]]:
+    if (
+        not isinstance(value, list)
+        or not isinstance(expected_reviewers, list)
+        or len(value) != 2
+        or len(expected_reviewers) != 2
+    ):
+        raise ValueError("comparative synthesis review evidence reviewers are not exact")
+
+    evidence_by_id = {str(row["evidence_id"]): row for row in methods}
+    reviewers: List[Dict[str, Any]] = []
+    for row, expected, reviewer in zip(value, expected_reviewers, ("A", "B")):
+        if (
+            not isinstance(row, dict)
+            or set(row) != REVIEW_EVIDENCE_REVIEWER_KEYS
+            or not isinstance(expected, dict)
+            or row.get("reviewer_id") != reviewer
+            or row.get("model") != expected.get("model")
+        ):
+            raise ValueError(
+                "comparative synthesis review evidence reviewers are not exact"
+            )
+        claims = row.get("claims")
+        if not isinstance(claims, list) or not claims:
+            raise ValueError(
+                "comparative synthesis review evidence reviewers are not exact"
+            )
+        exact_claim_rows: List[Dict[str, str]] = []
+        for claim in claims:
+            if not isinstance(claim, dict) or set(claim) != set(CLAIMS_FIELDS):
+                raise ValueError(
+                    "comparative synthesis review evidence reviewers are not exact"
+                )
+            exact_claim_rows.append(
+                require_exact_csv_row(
+                    claim,
+                    CLAIMS_FIELDS,
+                    "review_evidence.json claims",
+                )
+            )
+        exact_claims = read_claims_text(
+            render_claims_csv(exact_claim_rows),
+            evidence_by_id,
+            ceiling,
+        )
+        if (
+            expected.get("claim_count") != len(exact_claims)
+            or expected.get("disagreement_claim_count")
+            != sum(claim["disagreement_status"] != "none" for claim in exact_claims)
+        ):
+            raise ValueError(
+                "comparative synthesis review evidence reviewers are stale"
+            )
+        reviewers.append({"reviewer_id": reviewer, "claims": exact_claims})
+    return reviewers
+
+
+def require_synthesis_review_evidence(
+    review_evidence: Dict[str, Any],
+    manifest: Dict[str, Any],
+    agreement_rows: Sequence[Dict[str, str]],
+    required_methods: Sequence[str],
+) -> None:
+    summary = manifest.get("review_summary")
+    if (
+        set(review_evidence) != REVIEW_EVIDENCE_KEYS
+        or not is_exact_int(review_evidence.get("schema_version"), 1)
+        or review_evidence.get("report_kind")
+        != "comparative_synthesis_review_evidence"
+        or review_evidence.get("subject_alias") != manifest.get("subject_alias")
+        or review_evidence.get("evidence_status") != manifest.get("evidence_status")
+        or review_evidence.get("authorized_hrd_state")
+        != manifest.get("authorized_hrd_state")
+        or not isinstance(summary, dict)
+    ):
+        raise ValueError("comparative synthesis review evidence is not exact")
+
+    methods = require_review_evidence_methods(
+        review_evidence.get("methods"),
+        agreement_rows,
+        required_methods,
+    )
+    if derive_authorized_state(methods) != manifest.get("authorized_hrd_state"):
+        raise ValueError("comparative synthesis review evidence authorization is stale")
+
+    reviewers = require_review_evidence_reviewers(
+        review_evidence.get("reviewers"),
+        methods,
+        summary.get("reviewers"),
+        str(manifest["authorized_hrd_state"]),
+    )
+    if summary.get("limitations") != collect_limitations(methods, reviewers):
+        raise ValueError("comparative synthesis limitations are stale")
+    if summary.get("unresolved_observations") != collect_unresolved(reviewers):
+        raise ValueError("comparative synthesis unresolved observations are stale")
+
+
 def require_synthesis_report_manifest(
     packet_dir: Path,
     *,
@@ -1476,7 +1696,10 @@ def require_synthesis_report_manifest(
     support_hashes = manifest.get("support_sha256")
     if (
         not isinstance(support_hashes, dict)
-        or set(support_hashes) != {"agreement_disagreement.csv"}
+        or set(support_hashes) != {
+            "agreement_disagreement.csv",
+            "review_evidence.json",
+        }
     ):
         raise ValueError("comparative synthesis manifest support hashes are not exact")
     expected.append(
@@ -1485,6 +1708,15 @@ def require_synthesis_report_manifest(
             checked_hash(
                 support_hashes.get("agreement_disagreement.csv"),
                 "comparative synthesis support agreement_disagreement.csv",
+            ),
+        )
+    )
+    expected.append(
+        (
+            "review_evidence.json",
+            checked_hash(
+                support_hashes.get("review_evidence.json"),
+                "comparative synthesis support review_evidence.json",
             ),
         )
     )
@@ -1508,6 +1740,12 @@ def require_synthesis_report_manifest(
         agreement_sha256,
         required_methods,
         expected_source_hashes=expected_source_hashes,
+    )
+    require_synthesis_review_evidence(
+        load_object(packet_dir / "review_evidence.json", "synthesis review evidence"),
+        manifest,
+        agreement_rows,
+        required_methods,
     )
 
 
@@ -1677,8 +1915,21 @@ def main() -> None:
         staging = Path(temporary)
         report_path = staging / "report.md"
         agreement_path = staging / "agreement_disagreement.csv"
+        review_evidence_path = staging / "review_evidence.json"
         write_staged_text(report_path, report)
         write_agreement(agreement_path, agreement_rows)
+        write_staged_bytes(
+            review_evidence_path,
+            canonical_json_bytes(
+                review_evidence_payload(
+                    subject_alias=str(bundle["subject_alias"]),
+                    evidence_status=evidence_state,
+                    authorized_hrd_state=ceiling,
+                    evidence_rows=evidence_rows,
+                    reviews=(review_a, review_b),
+                )
+            ),
+        )
         status_counts = summarize_agreement_status_counts(agreement_rows)
         disagreements = summarize_structured_disagreements(agreement_rows)
         source_hashes = {
@@ -1710,6 +1961,7 @@ def main() -> None:
             "agreement_disagreement_sha256": sha256(agreement_path),
             "support_sha256": {
                 "agreement_disagreement.csv": sha256(agreement_path),
+                "review_evidence.json": sha256(review_evidence_path),
             },
             "source_sha256": source_hashes,
             "review_summary": {
@@ -1770,7 +2022,7 @@ def main() -> None:
         )
         try:
             install_packet_create_only(
-                (report_path, agreement_path, manifest_path),
+                (report_path, agreement_path, review_evidence_path, manifest_path),
                 output,
             )
         except ValueError as error:
