@@ -356,11 +356,11 @@ def json_bytes(value: Any) -> bytes:
 
 def sha256_file(path: Path) -> str:
     require_real_hash_input(path)
-    digest = hashlib.sha256()
-    with path.open("rb") as handle:
-        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
-            digest.update(chunk)
-    return digest.hexdigest()
+    data = path.read_bytes()
+    digest = hashlib.sha256(data).hexdigest()
+    if hashlib.sha256(path.read_bytes()).hexdigest() != digest:
+        raise ValueError(f"{path.name} SHA-256 input changed during read")
+    return digest
 
 
 def is_platform_root_alias(path: Path) -> bool:
