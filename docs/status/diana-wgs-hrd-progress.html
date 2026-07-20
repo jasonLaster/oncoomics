@@ -437,6 +437,7 @@
           contracts, final-freeze and materialized-final receipt checks,
           final-freeze relative keys at both materialized-final gates,
           alias-only materializer final-freeze job IDs and receipt row keys,
+          alias-only materializer reference CRC64 checksum fields,
           deterministic WGS staging check maps,
           input-contract publication receipts, alias-only
           cross-check materialization, alias-only
@@ -489,6 +490,7 @@
           <li class="pill">Batch worker check maps = exact</li>
           <li class="pill">Materializer response checks = exact</li>
           <li class="pill">Materializer final keys = exact</li>
+          <li class="pill">Materializer reference CRC = exact</li>
           <li class="pill">AI staging receipt checks = exact</li>
           <li class="pill">Final-freeze checks = exact</li>
           <li class="pill">Materialized-final checks = exact</li>
@@ -1269,6 +1271,10 @@
             <li class="item" style="--tone: var(--done)">
               <strong>Done · require exact materializer final keys</strong>
               <span>The alias-only materializer submitter now rejects boolean, numeric, missing, or empty final-freeze <code>batch_job_id</code> and receipt row keys before a coerced identifier can satisfy final-freeze, anchor, exact-materialization, or reference custody checks for the one-shot Batch request.</span>
+            </li>
+            <li class="item" style="--tone: var(--done)">
+              <strong>Done · require exact materializer reference CRCs</strong>
+              <span>The reference freeze preflight now rejects boolean, numeric, missing, or empty CRC64 checksum fields before a coerced checksum can satisfy the reference freeze, AWS-side SHA receipt, and alias-only materializer request.</span>
             </li>
             <li class="item" style="--tone: var(--done)">
               <strong>Done · bind materialization receipt reads</strong>
@@ -3181,6 +3187,18 @@
                 Batch, GPU, rerun, route, quota, or data S3 work was launched.
                 Cost Explorer was refreshed read-only for 2026-07-19 UTC and
                 remained at $5.24.
+              </span>
+            </li>
+            <li class="item">
+              <time datetime="2026-07-20">Jul 20 · local</time>
+              <span>
+                <strong>Local patch · Require exact materializer reference CRCs:</strong>
+                alias-only materializer submission preflight now rejects
+                non-string reference-freeze CRC64 fields before coerced checksum
+                values can satisfy the reference-freeze and AWS-side SHA
+                receipts. No S3, Batch, route, GPU, quota, rerun, or apply-mode
+                AWS work was launched; Cost Explorer was refreshed read-only
+                for 2026-07-19 UTC and remained at $5.24.
               </span>
             </li>
             <li class="item">
