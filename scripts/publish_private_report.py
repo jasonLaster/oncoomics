@@ -30,6 +30,7 @@ from publish_reviewed_public_report import (
     content_type,
     exact_final_history,
     exact_int,
+    exact_check_map,
     exact_non_null_version_id,
     exact_schema_version,
     head_object,
@@ -68,10 +69,10 @@ PRIVATE_DRY_RUN_RECEIPT_KEYS = {
 
 
 def require_private_object_checks_exact(
-    checks: dict[str, bool],
+    checks: Any,
     relative_path: str,
 ) -> None:
-    if checks != PRIVATE_RECEIPT_OBJECT_CHECKS:
+    if not exact_check_map(checks, PRIVATE_RECEIPT_OBJECT_CHECKS):
         raise ValueError(
             f"private destination verification failed for {relative_path}: {checks}"
         )
@@ -269,7 +270,7 @@ def validate_dry_run_receipt(
         "packet_report_kind_exact": True,
         "packet_forbidden_token_scan": True,
     }
-    if checks != required_checks:
+    if not exact_check_map(checks, required_checks):
         raise ValueError("private report dry-run receipt did not pass packet checks")
 
     return {

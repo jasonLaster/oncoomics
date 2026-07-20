@@ -689,6 +689,14 @@ class PublishPrivateReportTests(unittest.TestCase):
             {"version_id": True},
             {
                 **MODULE.PRIVATE_RECEIPT_OBJECT_CHECKS,
+                "version_id": 1,
+            },
+            {
+                **MODULE.PRIVATE_RECEIPT_OBJECT_CHECKS,
+                "checksum_sha256": 1.0,
+            },
+            {
+                **MODULE.PRIVATE_RECEIPT_OBJECT_CHECKS,
                 "unexpected_late_check": True,
             },
         )
@@ -812,6 +820,10 @@ class PublishPrivateReportTests(unittest.TestCase):
             "extra": lambda checks: checks.__setitem__("unexpected_late_check", False),
             "missing_report_kind": lambda checks: checks.pop(
                 "packet_report_kind_exact",
+            ),
+            "truthy_integer": lambda checks: checks.__setitem__(
+                "packet_inventory_exact",
+                1,
             ),
         }
         for label, mutate in cases.items():
