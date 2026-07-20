@@ -452,6 +452,65 @@ class ValidateMaterializerRegistrationTests(unittest.TestCase):
         ):
             module.sha256_path(linked_input)
 
+    def test_sha256_path_rejects_changing_hash_inputs(self) -> None:
+        hash_input = self.root / "materializer-script-anchor.json"
+        hash_input.write_text('{"status":"first"}\n', encoding="utf-8")
+        real_read_bytes = Path.read_bytes
+        reads = 0
+
+        def mutate_after_first_read(path: Path) -> bytes:
+            nonlocal reads
+            data = real_read_bytes(path)
+            if path == hash_input and reads == 0:
+                hash_input.write_text('{"status":"second"}\n', encoding="utf-8")
+            reads += 1
+            return data
+
+        with (
+            mock.patch.object(
+                Path,
+                "read_bytes",
+                autospec=True,
+                side_effect=mutate_after_first_read,
+            ),
+            self.assertRaisesRegex(
+                ValueError,
+                "materializer-script-anchor.json SHA-256 input changed during read",
+            ),
+        ):
+            module.sha256_path(hash_input)
+
+    def test_load_json_rejects_changing_json_inputs(self) -> None:
+        receipt = self.root / "registration-response.json"
+        receipt.write_text('{"status":"first"}\n', encoding="utf-8")
+        real_read_bytes = Path.read_bytes
+        reads = 0
+
+        def mutate_after_first_read(path: Path) -> bytes:
+            nonlocal reads
+            data = real_read_bytes(path)
+            if path == receipt and reads == 0:
+                receipt.write_text('{"status":"second"}\n', encoding="utf-8")
+            reads += 1
+            return data
+
+        with (
+            mock.patch.object(
+                Path,
+                "read_bytes",
+                autospec=True,
+                side_effect=mutate_after_first_read,
+            ),
+            self.assertRaisesRegex(
+                ValueError,
+                "materializer registration response changed during read",
+            ),
+        ):
+            module.load_json_with_sha256(
+                receipt,
+                "materializer registration response",
+            )
+
     def test_output_rehashes_after_parent_fsync(self) -> None:
         real_fsync_directory = module.fsync_directory
 
