@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import csv
 import hashlib
+import io
 import json
 import os
 from pathlib import Path
@@ -54,19 +55,23 @@ REVIEW_PACKET_FILES = REVIEW_PACKET_INPUT_FILES | {"report_manifest.json"}
 
 
 def sha256(path: Path) -> str:
-    require_real_hash_input(path)
-    digest = hashlib.sha256()
-    with path.open("rb") as handle:
-        for block in iter(lambda: handle.read(8 * 1024 * 1024), b""):
-            digest.update(block)
-    return digest.hexdigest()
+    return read_stable_file_with_sha256(
+        path,
+        f"{path.name} SHA-256 input",
+    )[1]
 
 
 def load_object(path: Path, label: str) -> dict[str, Any]:
+    value, _ = load_object_with_sha256(path, label)
+    return value
+
+
+def load_object_with_sha256(path: Path, label: str) -> tuple[dict[str, Any], str]:
     path = resolve_real_file(path, label)
+    data, digest = read_stable_file_with_sha256(path, label)
     try:
         value = json.loads(
-            path.read_text(encoding="utf-8"),
+            data.decode("utf-8"),
             object_pairs_hook=reject_duplicate_json_object_names,
         )
     except DuplicateJsonKeyError as error:
@@ -75,7 +80,24 @@ def load_object(path: Path, label: str) -> dict[str, Any]:
         raise ValueError(f"invalid JSON in {label}") from error
     if not isinstance(value, dict):
         raise ValueError(f"{label} must be a JSON object")
-    return value
+    return value, digest
+
+
+def read_stable_file_with_sha256(path: Path, label: str) -> tuple[bytes, str]:
+    require_real_hash_input(path)
+    data = path.read_bytes()
+    digest = hashlib.sha256(data).hexdigest()
+    if not data or hashlib.sha256(path.read_bytes()).hexdigest() != digest:
+        raise ValueError(f"{label} changed during read: {path}")
+    return data, digest
+
+
+def read_stable_text_with_sha256(path: Path, label: str) -> tuple[str, str]:
+    data, digest = read_stable_file_with_sha256(path, label)
+    try:
+        return data.decode("utf-8"), digest
+    except UnicodeError as error:
+        raise ValueError(f"invalid UTF-8 in {label}") from error
 
 
 def require_file(path: Path, label: str) -> None:
@@ -198,7 +220,7 @@ def split_semicolon(value: str) -> list[str]:
 def validated_claim_summary(
     claims_path: Path,
     evidence_sources: Sequence[Any],
-) -> dict[str, Any]:
+) -> tuple[dict[str, Any], str]:
     evidence_ids = []
     for row in evidence_sources:
         if not isinstance(row, dict) or not isinstance(row.get("evidence_id"), str):
@@ -207,11 +229,15 @@ def validated_claim_summary(
     if len(evidence_ids) != len(set(evidence_ids)):
         raise ValueError("review bundle evidence IDs are not exact")
 
-    with claims_path.open(newline="", encoding="utf-8") as handle:
-        reader = csv.DictReader(handle)
-        if reader.fieldnames != CLAIMS_FIELDS:
-            raise ValueError("claims.csv header does not match the required schema")
-        claims = list(reader)
+    claims_text, claims_hash = read_stable_text_with_sha256(
+        claims_path,
+        "claims.csv",
+    )
+    handle = io.StringIO(claims_text, newline="")
+    reader = csv.DictReader(handle)
+    if reader.fieldnames != CLAIMS_FIELDS:
+        raise ValueError("claims.csv header does not match the required schema")
+    claims = list(reader)
     if not claims:
         raise ValueError("claims.csv contains no claims")
     if any(
@@ -230,13 +256,16 @@ def validated_claim_summary(
     if covered != sorted(evidence_ids):
         raise ValueError("claims do not preserve every evidence source and state")
 
-    return {
-        "claim_count": len(claims),
-        "covered_evidence_ids": covered,
-        "disagreement_claim_count": sum(
-            row["disagreement_status"].strip() != "none" for row in claims
-        ),
-    }
+    return (
+        {
+            "claim_count": len(claims),
+            "covered_evidence_ids": covered,
+            "disagreement_claim_count": sum(
+                row["disagreement_status"].strip() != "none" for row in claims
+            ),
+        },
+        claims_hash,
+    )
 
 
 def build_manifest(
@@ -262,11 +291,23 @@ def build_manifest(
     bundle_path = paths["review_bundle.json"]
     bundle_manifest_path = paths["bundle_manifest.json"]
     prompt_path = paths[f"reviewer-{reviewer.lower()}.prompt.md"]
-    review_manifest = load_object(review_manifest_path, "review manifest")
-    validation = load_object(validation_path, "validation")
-    bundle = load_object(bundle_path, "review bundle")
-    bundle_manifest = load_object(bundle_manifest_path, "bundle manifest")
-    catalog = load_object(model_catalog_receipt, "model catalog receipt")
+    review_manifest, review_manifest_hash = load_object_with_sha256(
+        review_manifest_path,
+        "review manifest",
+    )
+    validation, validation_hash = load_object_with_sha256(
+        validation_path,
+        "validation",
+    )
+    bundle, bundle_hash = load_object_with_sha256(bundle_path, "review bundle")
+    bundle_manifest, bundle_manifest_hash = load_object_with_sha256(
+        bundle_manifest_path,
+        "bundle manifest",
+    )
+    catalog, catalog_hash = load_object_with_sha256(
+        model_catalog_receipt,
+        "model catalog receipt",
+    )
     if set(review_manifest) != REVIEW_MANIFEST_KEYS:
         raise ValueError("review manifest envelope is not exact")
     if set(validation) != VALIDATION_KEYS:
@@ -289,22 +330,7 @@ def build_manifest(
     ):
         raise ValueError("subject alias differs across artifacts")
 
-    report_hash = sha256(report_path)
-    claims_hash = sha256(claims_path)
-    review_manifest_hash = sha256(review_manifest_path)
-    bundle_hash = sha256(bundle_path)
     prompt_hash = sha256(prompt_path)
-    catalog_hash = sha256(model_catalog_receipt)
-    expected_outputs = {"report.md": report_hash, "claims.csv": claims_hash}
-    if review_manifest.get("output_sha256") != expected_outputs:
-        raise ValueError("review output hashes differ from review_manifest.json")
-    if not (
-        validation.get("report_sha256") == report_hash
-        and validation.get("claims_sha256") == claims_hash
-        and validation.get("review_manifest_sha256") == review_manifest_hash
-    ):
-        raise ValueError("validation output hashes differ from the review files")
-
     expected_inputs = {
         "review_bundle.json": bundle_hash,
         prompt_path.name: prompt_hash,
@@ -397,10 +423,30 @@ def build_manifest(
     evidence_sources = bundle.get("evidence_sources")
     if not isinstance(evidence_sources, list) or not evidence_sources:
         raise ValueError("review bundle has no evidence sources")
-    expected_claim_summary = validated_claim_summary(
+    expected_claim_summary, claims_hash = validated_claim_summary(
         claims_path,
         evidence_sources,
     )
+    report_hash = sha256(report_path)
+    source_sha256 = {
+        "bundle_manifest.json": bundle_manifest_hash,
+        "claims.csv": claims_hash,
+        "model_catalog_receipt.json": catalog_hash,
+        prompt_path.name: prompt_hash,
+        "review_bundle.json": bundle_hash,
+        "review_manifest.json": review_manifest_hash,
+        "validation.json": validation_hash,
+    }
+    expected_outputs = {"report.md": report_hash, "claims.csv": claims_hash}
+    if review_manifest.get("output_sha256") != expected_outputs:
+        raise ValueError("review output hashes differ from review_manifest.json")
+    if not (
+        validation.get("report_sha256") == report_hash
+        and validation.get("claims_sha256") == claims_hash
+        and validation.get("review_manifest_sha256") == review_manifest_hash
+    ):
+        raise ValueError("validation output hashes differ from the review files")
+
     if any(
         validation.get(key) != expected
         for key, expected in expected_claim_summary.items()
@@ -420,9 +466,9 @@ def build_manifest(
         "support_sha256": {
             "claims.csv": claims_hash,
             "review_manifest.json": review_manifest_hash,
-            "validation.json": sha256(validation_path),
+            "validation.json": validation_hash,
         },
-        "source_sha256": expected_source_sha256(paths),
+        "source_sha256": source_sha256,
         "review_summary": {
             "overall": {
                 "evidence_status": "partial_evidence",

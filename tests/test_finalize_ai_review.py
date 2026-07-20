@@ -663,6 +663,125 @@ class FinalizeAiReviewTests(unittest.TestCase):
             ):
                 FINALIZE.sha256(linked_inputs / "review_manifest.json")
 
+    def test_sha256_rejects_hash_input_that_changes_during_read(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            input_path = Path(temporary) / "input.json"
+            input_path.write_text('{"status": "ready"}\n', encoding="utf-8")
+            real_read_bytes = Path.read_bytes
+            calls = 0
+
+            def mutating_read_bytes(path: Path) -> bytes:
+                nonlocal calls
+                data = real_read_bytes(path)
+                calls += 1
+                if calls == 1:
+                    input_path.write_text(
+                        '{"status": "mutated"}\n',
+                        encoding="utf-8",
+                    )
+                return data
+
+            with mock.patch.object(Path, "read_bytes", mutating_read_bytes):
+                with self.assertRaisesRegex(ValueError, "changed during read"):
+                    FINALIZE.sha256(input_path)
+
+    def test_load_object_rejects_json_input_that_changes_during_read(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            input_path = Path(temporary) / "input.json"
+            input_path.write_text('{"status": "ready"}\n', encoding="utf-8")
+            real_read_bytes = Path.read_bytes
+            calls = 0
+
+            def mutating_read_bytes(path: Path) -> bytes:
+                nonlocal calls
+                data = real_read_bytes(path)
+                calls += 1
+                if calls == 1:
+                    input_path.write_text(
+                        '{"status": "mutated"}\n',
+                        encoding="utf-8",
+                    )
+                return data
+
+            with mock.patch.object(Path, "read_bytes", mutating_read_bytes):
+                with self.assertRaisesRegex(ValueError, "changed during read"):
+                    FINALIZE.load_object(input_path, "input")
+
+    def test_final_manifest_binds_parsed_validation_bytes(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            fixture, review = self.validated_review(temporary)
+            validation_path = review / "validation.json"
+            expected_validation_hash = FINALIZE.sha256(validation_path)
+            real_load_object_with_sha256 = FINALIZE.load_object_with_sha256
+
+            def mutate_validation_after_read(
+                path: Path,
+                label: str,
+            ) -> tuple[dict[str, object], str]:
+                value, digest = real_load_object_with_sha256(path, label)
+                if path == validation_path:
+                    validation = load_json(validation_path)
+                    validation["status"] = "failed"
+                    write_json(validation_path, validation)
+                return value, digest
+
+            with mock.patch.object(
+                FINALIZE,
+                "load_object_with_sha256",
+                side_effect=mutate_validation_after_read,
+            ):
+                manifest = FINALIZE.build_manifest(
+                    fixture.bundle_dir,
+                    review,
+                    "A",
+                    fixture.catalog_receipt,
+                )
+
+        self.assertEqual(
+            manifest["support_sha256"]["validation.json"],
+            expected_validation_hash,
+        )
+        self.assertEqual(
+            manifest["source_sha256"]["validation.json"],
+            expected_validation_hash,
+        )
+
+    def test_final_manifest_parses_claims_from_stable_bytes(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            fixture, review = self.validated_review(temporary)
+            claims_path = review / "claims.csv"
+            expected_claims_hash = FINALIZE.sha256(claims_path)
+            real_read_stable_text_with_sha256 = (
+                FINALIZE.read_stable_text_with_sha256
+            )
+
+            def mutate_claims_after_read(
+                path: Path,
+                label: str,
+            ) -> tuple[str, str]:
+                text, digest = real_read_stable_text_with_sha256(path, label)
+                if path == claims_path:
+                    claims_path.write_text(
+                        "claim_id,changed\nC001,stale\n",
+                        encoding="utf-8",
+                    )
+                return text, digest
+
+            with mock.patch.object(
+                FINALIZE,
+                "read_stable_text_with_sha256",
+                side_effect=mutate_claims_after_read,
+            ):
+                manifest = FINALIZE.build_manifest(
+                    fixture.bundle_dir,
+                    review,
+                    "A",
+                    fixture.catalog_receipt,
+                )
+
+        self.assertEqual(manifest["support_sha256"]["claims.csv"], expected_claims_hash)
+        self.assertEqual(manifest["source_sha256"]["claims.csv"], expected_claims_hash)
+
     def test_rejects_symlinked_hash_inputs_after_file_audit(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             fixture, review = self.validated_review(temporary)
