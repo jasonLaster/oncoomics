@@ -946,6 +946,69 @@ PHASE3_FAST_CROSSCHECK_ROUTE_FIELDS = {
         "blockers",
     },
 }
+TERMINAL_CROSSCHECK_INPUT_PLAN_KEYS = {
+    "schema_version",
+    "plan_type",
+    "status",
+    "authorized_hrd_state",
+    "classification_authorized",
+    "routes",
+}
+TERMINAL_CROSSCHECK_ROUTE_FIELDS = {
+    "sigprofiler_sbs3": {
+        "status",
+        "execution_status",
+        "interpretation_status",
+        "materializer",
+        "source_artifacts",
+        "source_sha256",
+        "validation",
+        "blockers",
+    },
+    "sequenza_scarhrd": {
+        "status",
+        "execution_status",
+        "interpretation_status",
+        "source_sha256",
+        "method_parameters",
+        "blockers",
+    },
+}
+TERMINAL_SIGPROFILER_SOURCE_ARTIFACT_PATHS = {
+    "somatic_vcf": "somatic.pass.vcf.gz",
+    "somatic_vcf_index": "somatic.pass.vcf.gz.tbi",
+    "sbs96_matrix": "sbs96.csv",
+    "staged_validation": "staged_input_validation.json",
+}
+TERMINAL_SIGPROFILER_SOURCE_SHA256_KEYS = {
+    "filtered_vcf",
+    "filtered_vcf_index",
+    "reference_fai",
+    "reference_fasta",
+    "source_sbs96_matrix",
+}
+TERMINAL_SEQUENZA_SOURCE_SHA256_KEYS = {
+    "tumor_bam",
+    "tumor_bai",
+    "normal_bam",
+    "normal_bai",
+}
+TERMINAL_SIGPROFILER_VALIDATION_KEYS = {
+    "pass_snv_records",
+    "pass_snv_alleles",
+    "sbs96_contexts",
+    "sbs96_burden",
+    "matrix_matches_independent_pass_vcf_derivation",
+    "source_sample_names_retained",
+}
+TERMINAL_SIGPROFILER_BLOCKERS = (
+    "SigProfilerAssignment execution and SBS3 thresholds are not validated.",
+    "The executable cross-check route has not run on the materialized inputs.",
+)
+TERMINAL_SEQUENZA_BLOCKERS = (
+    "Sequenza and scarHRD have not run on the finalized contract.",
+    "Purity/ploidy and scarHRD interpretation thresholds are not validated.",
+)
 PHASE3_FAST_SEQUENZA_ATTESTATIONS = {
     "input_sha256_verified": True,
     "bam_quickcheck_passed": True,
@@ -1446,6 +1509,12 @@ def diana_wgs_deterministic_binding() -> dict[str, Any]:
         )
         for key in ("bcftools", "bwa", "gatk", "samtools")
     }
+    terminal_crosscheck_input_plan_summary(
+        read_json_file(
+            paths["crosscheck_input_plans.json"],
+            "deterministic cross-check input plan",
+        )
+    )
     return {
         "binding_kind": "terminal_worker",
         "deterministic_report_sha256": deterministic_report_sha256,
@@ -1644,6 +1713,173 @@ def phase3_fast_crosscheck_route_summary(value: Any) -> dict[str, str]:
     if not isinstance(value, Mapping) or value != PHASE3_FAST_CROSSCHECK_ROUTE_STATES:
         raise ValueError("Phase 3 fast cross-check route summary is not exact")
     return dict(PHASE3_FAST_CROSSCHECK_ROUTE_STATES)
+
+
+def exact_terminal_crosscheck_source_artifact(
+    value: Any,
+    *,
+    path: str,
+    label: str,
+) -> dict[str, Any]:
+    if not isinstance(value, Mapping) or set(value) != {"path", "bytes", "sha256"}:
+        raise ValueError(f"{label} source artifact is not exact")
+    if require_exact_nonempty_string(value.get("path"), f"{label} path") != path:
+        raise ValueError(f"{label} source artifact is not exact")
+    bytes_ = require_json_nonnegative_int(value.get("bytes"), f"{label} bytes")
+    if bytes_ <= 0:
+        raise ValueError(f"{label} bytes must be positive")
+    return {
+        "path": path,
+        "bytes": bytes_,
+        "sha256": require_sha256(value.get("sha256"), f"{label} sha256"),
+    }
+
+
+def exact_terminal_crosscheck_sha256_map(
+    value: Any,
+    *,
+    keys: set[str],
+    label: str,
+) -> dict[str, str]:
+    if not isinstance(value, Mapping) or set(value) != keys:
+        raise ValueError(f"{label} SHA-256 inventory is not exact")
+    return {
+        key: require_sha256(value.get(key), f"{label} {key}")
+        for key in sorted(keys)
+    }
+
+
+def exact_terminal_crosscheck_blockers(
+    value: Any,
+    expected: tuple[str, ...],
+    label: str,
+) -> list[str]:
+    if not isinstance(value, list) or tuple(value) != expected:
+        raise ValueError(f"{label} blockers are not exact")
+    return list(expected)
+
+
+def terminal_crosscheck_input_plan_summary(value: Any) -> dict[str, Any]:
+    if (
+        not isinstance(value, Mapping)
+        or set(value) != TERMINAL_CROSSCHECK_INPUT_PLAN_KEYS
+        or not is_exact_int(value.get("schema_version"), 1)
+        or value.get("plan_type") != "terminal_crosscheck_input_materialization_plan"
+        or value.get("status") != "contract_ready"
+        or value.get("authorized_hrd_state") != "no_call"
+        or value.get("classification_authorized") is not False
+    ):
+        raise ValueError("terminal cross-check input plan contract is not exact")
+
+    routes = value.get("routes")
+    if not isinstance(routes, Mapping) or set(routes) != set(
+        TERMINAL_CROSSCHECK_ROUTE_FIELDS
+    ):
+        raise ValueError("terminal cross-check input plan lacks exact routes")
+
+    sigprofiler = routes["sigprofiler_sbs3"]
+    if (
+        not isinstance(sigprofiler, Mapping)
+        or set(sigprofiler) != TERMINAL_CROSSCHECK_ROUTE_FIELDS["sigprofiler_sbs3"]
+        or sigprofiler.get("status") != "inputs_materialized"
+        or sigprofiler.get("execution_status") != "not_run"
+        or sigprofiler.get("interpretation_status") != "no_call"
+        or sigprofiler.get("materializer") != "scripts/materialize_crosscheck_inputs.py"
+    ):
+        raise ValueError("terminal sigprofiler_sbs3 materialization plan is not exact")
+
+    sigprofiler_source_artifacts = sigprofiler.get("source_artifacts")
+    if (
+        not isinstance(sigprofiler_source_artifacts, Mapping)
+        or set(sigprofiler_source_artifacts)
+        != set(TERMINAL_SIGPROFILER_SOURCE_ARTIFACT_PATHS)
+    ):
+        raise ValueError("terminal sigprofiler_sbs3 source artifacts are not exact")
+    sigprofiler_validation = sigprofiler.get("validation")
+    if (
+        not isinstance(sigprofiler_validation, Mapping)
+        or set(sigprofiler_validation) != TERMINAL_SIGPROFILER_VALIDATION_KEYS
+        or sigprofiler_validation.get(
+            "matrix_matches_independent_pass_vcf_derivation"
+        )
+        is not True
+        or sigprofiler_validation.get("source_sample_names_retained") is not False
+    ):
+        raise ValueError("terminal sigprofiler_sbs3 validation is not exact")
+
+    sequenza = routes["sequenza_scarhrd"]
+    method_parameters = (
+        sequenza.get("method_parameters") if isinstance(sequenza, Mapping) else None
+    )
+    if (
+        not isinstance(sequenza, Mapping)
+        or set(sequenza) != TERMINAL_CROSSCHECK_ROUTE_FIELDS["sequenza_scarhrd"]
+        or sequenza.get("status") != "contract_ready"
+        or sequenza.get("execution_status") != "not_run"
+        or sequenza.get("interpretation_status") != "no_call"
+        or not isinstance(method_parameters, Mapping)
+        or set(method_parameters) != {"female"}
+        or not isinstance(method_parameters.get("female"), bool)
+    ):
+        raise ValueError("terminal sequenza_scarhrd materialization plan is not exact")
+
+    return {
+        "sigprofiler_sbs3": {
+            "source_artifacts": {
+                role: exact_terminal_crosscheck_source_artifact(
+                    sigprofiler_source_artifacts[role],
+                    path=path,
+                    label=f"terminal sigprofiler_sbs3 {role}",
+                )
+                for role, path in sorted(
+                    TERMINAL_SIGPROFILER_SOURCE_ARTIFACT_PATHS.items()
+                )
+            },
+            "source_sha256": exact_terminal_crosscheck_sha256_map(
+                sigprofiler.get("source_sha256"),
+                keys=TERMINAL_SIGPROFILER_SOURCE_SHA256_KEYS,
+                label="terminal sigprofiler_sbs3 source",
+            ),
+            "validation": {
+                "pass_snv_records": require_json_nonnegative_int(
+                    sigprofiler_validation.get("pass_snv_records"),
+                    "terminal sigprofiler_sbs3 pass_snv_records",
+                ),
+                "pass_snv_alleles": require_json_nonnegative_int(
+                    sigprofiler_validation.get("pass_snv_alleles"),
+                    "terminal sigprofiler_sbs3 pass_snv_alleles",
+                ),
+                "sbs96_contexts": require_json_nonnegative_int(
+                    sigprofiler_validation.get("sbs96_contexts"),
+                    "terminal sigprofiler_sbs3 sbs96_contexts",
+                ),
+                "sbs96_burden": require_json_nonnegative_int(
+                    sigprofiler_validation.get("sbs96_burden"),
+                    "terminal sigprofiler_sbs3 sbs96_burden",
+                ),
+                "matrix_matches_independent_pass_vcf_derivation": True,
+                "source_sample_names_retained": False,
+            },
+            "blockers": exact_terminal_crosscheck_blockers(
+                sigprofiler.get("blockers"),
+                TERMINAL_SIGPROFILER_BLOCKERS,
+                "terminal sigprofiler_sbs3",
+            ),
+        },
+        "sequenza_scarhrd": {
+            "source_sha256": exact_terminal_crosscheck_sha256_map(
+                sequenza.get("source_sha256"),
+                keys=TERMINAL_SEQUENZA_SOURCE_SHA256_KEYS,
+                label="terminal sequenza_scarhrd source",
+            ),
+            "method_parameters": {"female": method_parameters["female"]},
+            "blockers": exact_terminal_crosscheck_blockers(
+                sequenza.get("blockers"),
+                TERMINAL_SEQUENZA_BLOCKERS,
+                "terminal sequenza_scarhrd",
+            ),
+        },
+    }
 
 
 def phase3_fast_evidence_check_inputs(value: Any) -> list[dict[str, str]]:

@@ -180,19 +180,74 @@ def write_deterministic_report(root: Path, artifact_root: Path) -> Path:
         {
             "schema_version": 1,
             "plan_type": "terminal_crosscheck_input_materialization_plan",
-            "status": "materialized",
+            "status": "contract_ready",
             "authorized_hrd_state": "no_call",
             "classification_authorized": False,
             "routes": {
-                "sequenza_scarhrd": {
-                    "status": "inputs_materialized",
-                    "execution_status": "not_run",
-                    "interpretation_status": "no_call",
-                },
                 "sigprofiler_sbs3": {
                     "status": "inputs_materialized",
                     "execution_status": "not_run",
                     "interpretation_status": "no_call",
+                    "materializer": "scripts/materialize_crosscheck_inputs.py",
+                    "source_artifacts": {
+                        "somatic_vcf": {
+                            "path": "somatic.pass.vcf.gz",
+                            "bytes": 1,
+                            "sha256": "c" * 64,
+                        },
+                        "somatic_vcf_index": {
+                            "path": "somatic.pass.vcf.gz.tbi",
+                            "bytes": 1,
+                            "sha256": "d" * 64,
+                        },
+                        "sbs96_matrix": {
+                            "path": "sbs96.csv",
+                            "bytes": 1,
+                            "sha256": "e" * 64,
+                        },
+                        "staged_validation": {
+                            "path": "staged_input_validation.json",
+                            "bytes": 1,
+                            "sha256": "f" * 64,
+                        },
+                    },
+                    "source_sha256": {
+                        "filtered_vcf": "c" * 64,
+                        "filtered_vcf_index": "d" * 64,
+                        "reference_fai": "e" * 64,
+                        "reference_fasta": "f" * 64,
+                        "source_sbs96_matrix": "1" * 64,
+                    },
+                    "validation": {
+                        "pass_snv_records": 1,
+                        "pass_snv_alleles": 1,
+                        "sbs96_contexts": 96,
+                        "sbs96_burden": 1,
+                        "matrix_matches_independent_pass_vcf_derivation": True,
+                        "source_sample_names_retained": False,
+                    },
+                    "blockers": [
+                        "SigProfilerAssignment execution and SBS3 thresholds are not validated.",
+                        "The executable cross-check route has not run on the materialized inputs.",
+                    ],
+                },
+                "sequenza_scarhrd": {
+                    "status": "contract_ready",
+                    "execution_status": "not_run",
+                    "interpretation_status": "no_call",
+                    "source_sha256": {
+                        "tumor_bam": "2" * 64,
+                        "tumor_bai": "3" * 64,
+                        "normal_bam": "4" * 64,
+                        "normal_bai": "5" * 64,
+                    },
+                    "method_parameters": {
+                        "female": True,
+                    },
+                    "blockers": [
+                        "Sequenza and scarHRD have not run on the finalized contract.",
+                        "Purity/ploidy and scarHRD interpretation thresholds are not validated.",
+                    ],
                 },
             },
         },
@@ -309,6 +364,23 @@ def mutate_deterministic_evidence_checks(
     report_manifest = utils.read_json(report_manifest_path)
     report_manifest["support_sha256"]["evidence_checks.json"] = (
         hashlib.sha256(checks_path.read_bytes()).hexdigest()
+    )
+    utils.write_json(report_manifest_path, report_manifest)
+
+
+def mutate_deterministic_crosscheck_plans(
+    deterministic_root: Path,
+    mutation: Callable[[dict], None],
+) -> None:
+    plans_path = deterministic_root / "crosscheck_input_plans.json"
+    plans = utils.read_json(plans_path)
+    mutation(plans)
+    utils.write_json(plans_path, plans)
+
+    report_manifest_path = deterministic_root / "report_manifest.json"
+    report_manifest = utils.read_json(report_manifest_path)
+    report_manifest["support_sha256"]["crosscheck_input_plans.json"] = (
+        hashlib.sha256(plans_path.read_bytes()).hexdigest()
     )
     utils.write_json(report_manifest_path, report_manifest)
 
@@ -1475,6 +1547,146 @@ class RosalindHrdPacketTest(unittest.TestCase):
                     artifact_root,
                 )
                 mutate_deterministic_evidence_checks(deterministic_root, mutation)
+
+                with (
+                    patch.object(packet, "path_from_root", lambda relative: output_root / relative),
+                    patch.dict(
+                        "os.environ",
+                        {
+                            "ROSALIND_HRD_ARTIFACT_ROOT": str(artifact_root),
+                            "ROSALIND_HRD_DETERMINISTIC_REPORT_DIR": str(deterministic_root),
+                        },
+                    ),
+                    self.assertRaisesRegex(ValueError, error),
+                ):
+                    packet.write_packet(packet.PACKET_SPECS["diana_wgs"], "unit")
+
+                self.assertFalse(
+                    (
+                        output_root
+                        / "results/rosalind_hrd/diana_wgs/unit/report_manifest.json"
+                    ).exists()
+                )
+
+    def test_diana_wgs_packet_rejects_loose_terminal_crosscheck_input_plans(self):
+        cases = (
+            (
+                "extra_top_level",
+                lambda plans: plans.__setitem__("extra", "stale"),
+                "terminal cross-check input plan contract is not exact",
+            ),
+            (
+                "float_schema",
+                lambda plans: plans.__setitem__("schema_version", 1.0),
+                "terminal cross-check input plan contract is not exact",
+            ),
+            (
+                "promoted_overall_status",
+                lambda plans: plans.__setitem__("authorized_hrd_state", "positive"),
+                "terminal cross-check input plan contract is not exact",
+            ),
+            (
+                "extra_route",
+                lambda plans: plans["routes"].__setitem__(
+                    "facets",
+                    {
+                        "status": "blocked",
+                        "execution_status": "not_run",
+                        "interpretation_status": "no_call",
+                    },
+                ),
+                "terminal cross-check input plan lacks exact routes",
+            ),
+            (
+                "extra_sigprofiler_field",
+                lambda plans: plans["routes"]["sigprofiler_sbs3"].__setitem__(
+                    "extra",
+                    "stale",
+                ),
+                "terminal sigprofiler_sbs3 materialization plan is not exact",
+            ),
+            (
+                "promoted_sigprofiler_status",
+                lambda plans: plans["routes"]["sigprofiler_sbs3"].__setitem__(
+                    "interpretation_status",
+                    "ready",
+                ),
+                "terminal sigprofiler_sbs3 materialization plan is not exact",
+            ),
+            (
+                "wrong_sigprofiler_output_path",
+                lambda plans: plans["routes"]["sigprofiler_sbs3"][
+                    "source_artifacts"
+                ]["sbs96_matrix"].__setitem__("path", "raw-sbs96.csv"),
+                "terminal sigprofiler_sbs3 sbs96_matrix source artifact is not exact",
+            ),
+            (
+                "bad_sigprofiler_source_hash",
+                lambda plans: plans["routes"]["sigprofiler_sbs3"][
+                    "source_sha256"
+                ].__setitem__("filtered_vcf", "C" * 64),
+                "terminal sigprofiler_sbs3 source filtered_vcf must be a SHA-256 hex digest",
+            ),
+            (
+                "failed_sbs96_equivalence",
+                lambda plans: plans["routes"]["sigprofiler_sbs3"][
+                    "validation"
+                ].__setitem__(
+                    "matrix_matches_independent_pass_vcf_derivation",
+                    False,
+                ),
+                "terminal sigprofiler_sbs3 validation is not exact",
+            ),
+            (
+                "dropped_sigprofiler_blockers",
+                lambda plans: plans["routes"]["sigprofiler_sbs3"].__setitem__(
+                    "blockers",
+                    [],
+                ),
+                "terminal sigprofiler_sbs3 blockers are not exact",
+            ),
+            (
+                "extra_sequenza_field",
+                lambda plans: plans["routes"]["sequenza_scarhrd"].__setitem__(
+                    "extra",
+                    "stale",
+                ),
+                "terminal sequenza_scarhrd materialization plan is not exact",
+            ),
+            (
+                "promoted_sequenza_status",
+                lambda plans: plans["routes"]["sequenza_scarhrd"].__setitem__(
+                    "status",
+                    "inputs_materialized",
+                ),
+                "terminal sequenza_scarhrd materialization plan is not exact",
+            ),
+            (
+                "numeric_sequenza_female",
+                lambda plans: plans["routes"]["sequenza_scarhrd"][
+                    "method_parameters"
+                ].__setitem__("female", 1),
+                "terminal sequenza_scarhrd materialization plan is not exact",
+            ),
+            (
+                "missing_sequenza_source_hash",
+                lambda plans: plans["routes"]["sequenza_scarhrd"][
+                    "source_sha256"
+                ].pop("normal_bai"),
+                "terminal sequenza_scarhrd source SHA-256 inventory is not exact",
+            ),
+        )
+
+        for label, mutation, error in cases:
+            with self.subTest(label=label), tempfile.TemporaryDirectory() as tmp, tempfile.TemporaryDirectory() as artifacts:
+                output_root = Path(tmp)
+                artifact_root = Path(artifacts)
+                write_diana_wgs_worker_artifacts(artifact_root)
+                deterministic_root = write_deterministic_report(
+                    output_root / "deterministic",
+                    artifact_root,
+                )
+                mutate_deterministic_crosscheck_plans(deterministic_root, mutation)
 
                 with (
                     patch.object(packet, "path_from_root", lambda relative: output_root / relative),

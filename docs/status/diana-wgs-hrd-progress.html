@@ -798,7 +798,7 @@
           <li class="pill">AI synthesis source hashes = exact</li>
           <li class="pill">AI synthesis hashes = carried</li>
           <li class="pill">AI validation method inventory = exact</li>
-          <li class="pill">Terminal cross-check inputs = absent</li>
+          <li class="pill">Terminal cross-check inputs = exact</li>
           <li class="pill">AI bundle staging = exact</li>
           <li class="pill">AI staging bundle rereads = exact</li>
           <li class="pill">Pre-route digests = bound</li>
@@ -1205,6 +1205,10 @@
 
           <h3>Priority 2 · terminal deterministic artifacts</h3>
           <ol class="todo">
+            <li class="item" style="--tone: var(--done)">
+              <strong>Done · seal terminal cross-check inputs</strong>
+              <span>Rosalind packet building now opens the terminal deterministic <code>crosscheck_input_plans.json</code> support file instead of trusting only its manifest hash, and rejects schema drift, route drift, promoted HRD states, stale SigProfiler materialized inputs, or Sequenza/scarHRD contract loosening before a terminal packet can feed model review.</span>
+            </li>
             <li class="item" style="--tone: var(--done)">
               <strong>Done · keep materializer registration reads stable</strong>
               <span>The validator that approves the reviewed Batch materializer registration now rereads local JSON and SHA-256 inputs before trusting frozen-script, job-definition, registration, or described-definition custody, so the exact alias-only materializer fails closed if any local registration input changes mid-read.</span>
