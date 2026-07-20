@@ -12,7 +12,11 @@ import re
 from pathlib import Path
 from typing import Any, Mapping
 
-from forbidden_text import DEFAULT_FORBIDDEN_TOKENS, normalize_forbidden_tokens_json
+from forbidden_text import (
+    DEFAULT_FORBIDDEN_TOKENS,
+    normalize_forbidden_tokens_json,
+    normalized_scan_text,
+)
 from generate_blocked_hrd_crosscheck_reports import (
     BLOCKED_REVIEW_SUMMARY_KEYS,
     METHODS_BY_ID,
@@ -29,7 +33,6 @@ from publish_reviewed_public_report import (
     checked_final_source_artifact_id,
     load_json,
     scan_no_call_language,
-    scan_text,
     sha256,
     validate_report_manifest_support,
 )
@@ -191,29 +194,84 @@ def validate_packet_dir(
     total_bytes = 0
     for relative in expected:
         path = packet_dir / relative
-        if path.is_symlink() or not path.is_file():
-            raise ValueError(f"packet file must be a real file: {relative}")
-        size = path.stat().st_size
-        if size <= 0 or size > MAX_FILE_BYTES:
-            raise ValueError(f"packet file size is out of bounds: {relative}")
-        scan_text(path, tokens)
-        digest = sha256(path)
+        row = stable_packet_file_row(path, relative, tokens)
         paths[relative] = path
-        rows.append(
-            {
-                "relative_path": relative,
-                "path": path,
-                "bytes": size,
-                "sha256": digest,
-                "checksum_sha256": checksum_sha256(digest),
-            }
-        )
-        total_bytes += size
+        rows.append(row)
+        total_bytes += row["bytes"]
 
     if total_bytes > MAX_PACKET_BYTES:
         raise ValueError("packet directory is too large")
     validate_report_packet(paths, method_id, expected)
     return rows
+
+
+def stable_packet_file_row(
+    path: Path,
+    relative_path: str,
+    tokens: tuple[str, ...],
+) -> dict[str, Any]:
+    if path.is_symlink() or not path.is_file():
+        raise ValueError(f"packet file must be a real file: {relative_path}")
+
+    payload = read_stable_file(path, f"{relative_path} packet file")
+    size = len(payload)
+    if size <= 0 or size > MAX_FILE_BYTES:
+        raise ValueError(f"packet file size is out of bounds: {relative_path}")
+
+    scan_packet_payload(relative_path, payload, tokens)
+    digest = sha256_bytes(payload)
+    return {
+        "relative_path": relative_path,
+        "path": path,
+        "bytes": size,
+        "sha256": digest,
+        "checksum_sha256": checksum_sha256(digest),
+    }
+
+
+def packet_payload_scan_haystacks(
+    relative_path: str,
+    payload: bytes,
+) -> tuple[str, ...]:
+    try:
+        text = payload.decode("utf-8")
+    except UnicodeError as error:
+        raise ValueError(f"report packet contains a non-UTF-8 file: {relative_path}") from error
+
+    haystacks = [text]
+    if Path(relative_path).suffix == ".json":
+        try:
+            decoded = json.loads(text)
+        except json.JSONDecodeError as error:
+            raise ValueError(f"report packet contains malformed JSON: {relative_path}") from error
+        haystacks.append(
+            json.dumps(decoded, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+        )
+    return tuple(haystacks)
+
+
+def scan_packet_payload(
+    relative_path: str,
+    payload: bytes,
+    tokens: tuple[str, ...],
+) -> None:
+    normalized_tokens = tuple(
+        normalized
+        for normalized in (
+            normalized_scan_text(token).casefold() for token in tokens
+        )
+        if normalized
+    )
+    normalized_haystacks = tuple(
+        normalized_scan_text(haystack).casefold()
+        for haystack in packet_payload_scan_haystacks(relative_path, payload)
+    )
+    if any(
+        token in haystack
+        for token in normalized_tokens
+        for haystack in normalized_haystacks
+    ):
+        raise ValueError(f"forbidden identifier token remains in {relative_path}")
 
 
 def sha256_file(path: Path) -> str:
