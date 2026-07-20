@@ -485,19 +485,23 @@ class PublishReviewedPublicReportTests(unittest.TestCase):
             root = Path(temporary)
             receipt = root / "private-publication.json"
             receipt.write_text('{"status":"passed"}\n', encoding="utf-8")
-            real_read_bytes = Path.read_bytes
+            real_read_once = MODULE.read_real_input_file_once
             calls = 0
 
-            def mutating_read_bytes(path: Path) -> bytes:
+            def mutating_read_once(path: Path, label: str) -> bytes:
                 nonlocal calls
-                data = real_read_bytes(path)
+                data = real_read_once(path, label)
                 calls += 1
                 if calls == 1:
                     receipt.write_text('{"status":"tampered"}\n', encoding="utf-8")
                 return data
 
             with (
-                mock.patch.object(Path, "read_bytes", mutating_read_bytes),
+                mock.patch.object(
+                    MODULE,
+                    "read_real_input_file_once",
+                    side_effect=mutating_read_once,
+                ),
                 self.assertRaisesRegex(ValueError, "changed during read"),
             ):
                 MODULE.sha256(receipt)
@@ -507,25 +511,86 @@ class PublishReviewedPublicReportTests(unittest.TestCase):
             root = Path(temporary)
             receipt = root / "private-publication.json"
             receipt.write_text('{"status":"passed"}\n', encoding="utf-8")
-            real_read_bytes = Path.read_bytes
+            real_read_once = MODULE.read_real_input_file_once
             calls = 0
 
-            def mutating_read_bytes(path: Path) -> bytes:
+            def mutating_read_once(path: Path, label: str) -> bytes:
                 nonlocal calls
-                data = real_read_bytes(path)
+                data = real_read_once(path, label)
                 calls += 1
                 if calls == 1:
                     receipt.write_text('{"status":"tampered"}\n', encoding="utf-8")
                 return data
 
             with (
-                mock.patch.object(Path, "read_bytes", mutating_read_bytes),
+                mock.patch.object(
+                    MODULE,
+                    "read_real_input_file_once",
+                    side_effect=mutating_read_once,
+                ),
                 self.assertRaisesRegex(
                     ValueError,
                     "private publication receipt changed during read",
                 ),
             ):
                 MODULE.load_json_with_sha256(receipt, "private publication receipt")
+
+    def test_hash_input_rejects_leaf_replaced_after_preflight(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            receipt = root / "private-publication.json"
+            target = root / "redirected-publication.json"
+            receipt.write_text('{"status":"passed"}\n', encoding="utf-8")
+            target.write_text('{"status":"redirected"}\n', encoding="utf-8")
+            real_require = MODULE.require_real_input_file
+            swapped = False
+
+            def swap_leaf_after_preflight(path: Path, label: str) -> None:
+                nonlocal swapped
+                real_require(path, label)
+                if path == receipt and not swapped:
+                    swapped = True
+                    receipt.unlink()
+                    receipt.symlink_to(target)
+
+            with (
+                mock.patch.object(
+                    MODULE,
+                    "require_real_input_file",
+                    side_effect=swap_leaf_after_preflight,
+                ),
+                self.assertRaisesRegex(ValueError, "changed during read"),
+            ):
+                MODULE.sha256(receipt)
+
+    def test_second_scan_rejects_hash_input_that_changes_during_read(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            report = root / "report.md"
+            report.write_text("# Reviewed\n\nNo call.\n", encoding="utf-8")
+            real_read_once = MODULE.read_real_input_file_once
+            calls = 0
+
+            def mutating_read_once(path: Path, label: str) -> bytes:
+                nonlocal calls
+                data = real_read_once(path, label)
+                calls += 1
+                if calls == 1:
+                    report.write_text(
+                        "# Reviewed\n\npersonalis direct label\n",
+                        encoding="utf-8",
+                    )
+                return data
+
+            with (
+                mock.patch.object(
+                    MODULE,
+                    "read_real_input_file_once",
+                    side_effect=mutating_read_once,
+                ),
+                self.assertRaisesRegex(ValueError, "changed during read"),
+            ):
+                MODULE.scan_text(report, MODULE.DEFAULT_FORBIDDEN_TOKENS)
 
     def test_report_packet_hash_rejects_symlink_after_manifest_load(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
