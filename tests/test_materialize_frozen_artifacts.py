@@ -681,12 +681,12 @@ class MaterializeFrozenArtifactsTests(unittest.TestCase):
             root = Path(temporary)
             receipt = root / "receipt.json"
             receipt.write_text('{"status":"passed"}\n', encoding="utf-8")
-            real_read_bytes = Path.read_bytes
+            real_read_once = MODULE.read_real_hash_input_once
             moved = False
 
-            def swap_to_symlink_after_first_read(path: Path) -> bytes:
+            def swap_to_symlink_after_first_read(path: Path, label: str) -> bytes:
                 nonlocal moved
-                raw = real_read_bytes(path)
+                raw = real_read_once(path, label)
                 if path == receipt and not moved:
                     moved = True
                     real_receipt = root / "receipt.real.json"
@@ -695,12 +695,12 @@ class MaterializeFrozenArtifactsTests(unittest.TestCase):
                 return raw
 
             with patch.object(
-                Path,
-                "read_bytes",
+                MODULE,
+                "read_real_hash_input_once",
                 swap_to_symlink_after_first_read,
             ), self.assertRaisesRegex(
                 ValueError,
-                "receipt must be a real JSON file",
+                "receipt.json SHA-256 input must be a real file",
             ):
                 MODULE.load_object_with_sha256(receipt, "receipt")
 
@@ -1146,12 +1146,12 @@ class MaterializeFrozenArtifactsTests(unittest.TestCase):
             root = Path(temporary)
             receipt = root / "materialization.json"
             receipt.write_text('{"stable": true}\n', encoding="utf-8")
-            real_read_bytes = Path.read_bytes
+            real_read_once = MODULE.read_real_hash_input_once
             moved = False
 
-            def swap_to_symlink_after_first_read(path: Path) -> bytes:
+            def swap_to_symlink_after_first_read(path: Path, label: str) -> bytes:
                 nonlocal moved
-                raw = real_read_bytes(path)
+                raw = real_read_once(path, label)
                 if path == receipt and not moved:
                     moved = True
                     real_receipt = root / "materialization.real.json"
@@ -1160,12 +1160,44 @@ class MaterializeFrozenArtifactsTests(unittest.TestCase):
                 return raw
 
             with patch.object(
-                Path,
-                "read_bytes",
+                MODULE,
+                "read_real_hash_input_once",
                 swap_to_symlink_after_first_read,
             ), self.assertRaisesRegex(
                 ValueError,
                 "materialization.json SHA-256 input must be a real file",
+            ):
+                MODULE.sha256(receipt)
+
+            self.assertTrue(moved)
+
+    def test_sha256_rejects_symlink_swap_after_preflight(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            receipt = root / "materialization.json"
+            receipt.write_text('{"stable": true}\n', encoding="utf-8")
+            real_require = MODULE.require_real_hash_input
+            moved = False
+
+            def swap_to_symlink_after_preflight(path: Path) -> None:
+                nonlocal moved
+                real_require(path)
+                if path == receipt and not moved:
+                    moved = True
+                    real_receipt = root / "materialization.real.json"
+                    receipt.rename(real_receipt)
+                    receipt.symlink_to(real_receipt)
+
+            with (
+                patch.object(
+                    MODULE,
+                    "require_real_hash_input",
+                    side_effect=swap_to_symlink_after_preflight,
+                ),
+                self.assertRaisesRegex(
+                    ValueError,
+                    "materialization.json SHA-256 input changed during read",
+                ),
             ):
                 MODULE.sha256(receipt)
 
