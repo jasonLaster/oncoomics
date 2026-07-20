@@ -9,6 +9,7 @@ import json
 import os
 import shutil
 import tempfile
+from contextlib import suppress
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Sequence
@@ -371,7 +372,16 @@ def stage(bundle_dir: Path, output_root: Path, receipt_output: Path) -> dict[str
             "no_cross_prompt": True,
         },
     }
-    write_json_once(receipt_output, receipt)
+    try:
+        write_json_once(receipt_output, receipt)
+        for role in ROLES:
+            reviewer_inventory(destinations[role], role, hashes)
+    except Exception:
+        for destination in destinations.values():
+            remove_destination_tree(destination)
+        with suppress(OSError):
+            receipt_output.unlink()
+        raise
     return receipt
 
 

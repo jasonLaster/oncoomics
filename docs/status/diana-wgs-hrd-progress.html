@@ -376,7 +376,8 @@
           generated cost-guard bindings for that GPU queue and the guarded
           region set, staged AI reviewer packets now have to carry the exact
           bundle-manifest fingerprint that
-          authorized them, validated and synthesized Reviewer A/B outputs now
+          authorized them and still match it after their receipt is written,
+          validated and synthesized Reviewer A/B outputs now
           stay bound to that same bundle-manifest fingerprint, finalized
           AI-review packets now exact-check the bundle envelopes they are about
           to source-freeze, finalized Reviewer A/B summaries now have to keep
@@ -457,6 +458,7 @@
           <li class="pill">AI finalizer evidence rows = exact</li>
           <li class="pill">AI synthesis summary = exact</li>
           <li class="pill">AI review summaries = exact</li>
+          <li class="pill">AI input receipt = final-checked</li>
           <li class="pill">AI reviewer inputs = rehashed</li>
           <li class="pill">AI reviewer pair = same packet</li>
           <li class="pill">AI validation outputs = post-write checked</li>
@@ -1127,6 +1129,10 @@
             <li class="item" style="--tone: var(--done)">
               <strong>Done · reject coerced route replay object paths</strong>
               <span>Exact route replay staging now rejects non-string downloaded-object <code>relative_path</code> values before they can be coerced into support filenames and rebound into compact no-call cross-check packets.</span>
+            </li>
+            <li class="item" style="--tone: var(--done)">
+              <strong>Done · recheck AI inputs after receipt write</strong>
+              <span>AI-review input staging now reopens both isolated Reviewer A/B directories after the receipt is committed and removes both published directories plus the partial receipt if that final check sees a stale prompt, stale bundle, broad file mode, or receipt-write failure.</span>
             </li>
             <li class="item" style="--tone: var(--done)">
               <strong>Done · re-render generated blocked packets</strong>
@@ -3126,6 +3132,19 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-20">Jul 20 · local</time>
+              <span>
+                <strong>Local patch · Recheck AI inputs after receipt write:</strong>
+                AI-review input staging now revalidates both exact two-file
+                Reviewer A/B directories after writing the handoff receipt and
+                unlinks the receipt plus both published reviewer directories if
+                a final prompt or bundle check fails. No S3, Batch, route, GPU,
+                quota, rerun, or apply-mode AWS work was launched; Cost
+                Explorer was refreshed read-only for 2026-07-19 UTC and
+                remained at $5.24.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-20">Jul 20 · local</time>
               <span>
