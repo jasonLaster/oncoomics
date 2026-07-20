@@ -487,6 +487,13 @@ class FreezeFinalArtifactsTests(unittest.TestCase):
                     "did not pass preflight",
                 ),
                 (
+                    "truthy-int-check",
+                    lambda payload: payload["checks"].__setitem__(
+                        "complete_source_inventory_unchanged", 1
+                    ),
+                    "did not pass preflight",
+                ),
+                (
                     "non-exact-schema",
                     lambda payload: payload.__setitem__("schema_version", 1.0),
                     "did not pass preflight",
@@ -2064,6 +2071,7 @@ class FreezeFinalArtifactsTests(unittest.TestCase):
             ("missing", lambda checks: checks.pop("receipt_envelope")),
             ("unexpected", lambda checks: checks.__setitem__("forged_extra", True)),
             ("failed", lambda checks: checks.__setitem__("live_freeze_command", False)),
+            ("truthy-int", lambda checks: checks.__setitem__("live_freeze_command", 1)),
         ):
             with self.subTest(label=label):
                 candidate = deepcopy(receipt)

@@ -353,6 +353,9 @@ class FreezeStageProvenanceTests(unittest.TestCase):
         failed_worker_check = deepcopy(receipt)
         failed_worker_check["worker"]["checks"]["live_freeze_command"] = False
         tampered.append(failed_worker_check)
+        truthy_int_worker_check = deepcopy(receipt)
+        truthy_int_worker_check["worker"]["checks"]["live_freeze_command"] = 1
+        tampered.append(truthy_int_worker_check)
         for candidate in tampered:
             with self.subTest(candidate=candidate):
                 with self.assertRaisesRegex(ValueError, "exact successful"):
@@ -1210,6 +1213,13 @@ class FreezeStageProvenanceTests(unittest.TestCase):
                         "source_kms_exact", False
                     ),
                     "object evidence does not match this apply",
+                ),
+                (
+                    "truthy-int-object-check",
+                    lambda payload: payload["objects"][0]["checks"].__setitem__(
+                        "source_kms_exact", 1
+                    ),
+                    "stale or malformed object metadata",
                 ),
             ):
                 with self.subTest(label=label):

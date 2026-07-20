@@ -125,6 +125,17 @@ def exact_int(value: Any, expected: int) -> bool:
     return type(value) is int and type(expected) is int and value == expected
 
 
+def exact_check_map(value: Any, expected: dict[str, bool]) -> bool:
+    return (
+        isinstance(value, dict)
+        and set(value) == set(expected)
+        and all(
+            value.get(name) is expected_value
+            for name, expected_value in expected.items()
+        )
+    )
+
+
 def exact_batch_int(value: Any, label: str) -> int:
     if type(value) is not int:
         raise ValueError(f"{label} must be an exact integer")
@@ -613,7 +624,7 @@ def validate_execution(
         or not is_positive_exact_int(worker.get("bytes"))
         or worker.get("server_side_encryption") != "aws:kms"
         or worker.get("kms_key_id") != kms_key_arn
-        or worker_checks != EXPECTED_BATCH_WORKER_CHECKS
+        or not exact_check_map(worker_checks, EXPECTED_BATCH_WORKER_CHECKS)
     ):
         raise ValueError("execution receipt does not match the exact successful Batch job")
     expected_worker_checksum = base64.b64encode(bytes.fromhex(worker_sha)).decode("ascii")
@@ -847,7 +858,7 @@ def validate_dry_run_receipt(path: Path, expected: dict[str, Any]) -> None:
         if (
             not isinstance(row, dict)
             or set(row) != EXPECTED_DRY_RUN_OBJECT_KEYS
-            or row.get("checks") != EXPECTED_DRY_RUN_CHECKS
+            or not exact_check_map(row.get("checks"), EXPECTED_DRY_RUN_CHECKS)
             or row.get("status") != "dry_run"
         ):
             raise ValueError(

@@ -74,6 +74,14 @@ def exact_schema_version(payload: dict[str, Any], expected: int) -> bool:
     return type(payload.get("schema_version")) is int and payload["schema_version"] == expected
 
 
+def exact_check_map(value: Any, expected: dict[str, bool]) -> bool:
+    return (
+        isinstance(value, dict)
+        and set(value) == set(expected)
+        and all(value[key] is expected[key] for key in expected)
+    )
+
+
 def canonical_json_bytes(value: dict[str, Any]) -> bytes:
     return (json.dumps(value, indent=2, sort_keys=True) + "\n").encode("utf-8")
 
@@ -374,7 +382,7 @@ def validate_materialized(
         "sse": response.get("ServerSideEncryption") == "aws:kms",
         "kms": response.get("SSEKMSKeyId") == expected_kms_key_arn,
     }
-    if checks != EXPECTED_MATERIALIZATION_CHECKS:
+    if not exact_check_map(checks, EXPECTED_MATERIALIZATION_CHECKS):
         raise ValueError(f"exact-version materialization checks failed: {checks}")
     return {
         "bytes": expected_bytes,
@@ -411,7 +419,10 @@ def require_exact_final_freeze(
         or not INPUT_CONTRACT.exact_int(freeze.get("passed_count"), len(rows))
         or freeze.get("initial_inventory_identity")
         != freeze.get("final_inventory_identity")
-        or freeze.get("checks") != INPUT_CONTRACT.EXPECTED_FINAL_FREEZE_CHECKS
+        or not exact_check_map(
+            freeze.get("checks"),
+            INPUT_CONTRACT.EXPECTED_FINAL_FREEZE_CHECKS,
+        )
     ):
         raise ValueError("private freeze receipt is incomplete or not exact")
 
@@ -421,7 +432,10 @@ def require_exact_final_freeze(
             not isinstance(row, dict)
             or set(row) != INPUT_CONTRACT.EXPECTED_FINAL_ROW_KEYS
             or row.get("status") != "passed"
-            or row.get("checks") != INPUT_CONTRACT.EXPECTED_FINAL_ROW_CHECKS
+            or not exact_check_map(
+                row.get("checks"),
+                INPUT_CONTRACT.EXPECTED_FINAL_ROW_CHECKS,
+            )
         ):
             raise ValueError("private freeze receipt object row is not exact")
         source = row.get("source")

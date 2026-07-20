@@ -118,6 +118,17 @@ def exact_int(value: Any, expected: int) -> bool:
     return type(value) is int and type(expected) is int and value == expected
 
 
+def exact_check_map(value: Any, expected: dict[str, bool]) -> bool:
+    return (
+        isinstance(value, dict)
+        and set(value) == set(expected)
+        and all(
+            value.get(name) is expected_value
+            for name, expected_value in expected.items()
+        )
+    )
+
+
 def exact_s3_size(value: Any) -> int:
     if type(value) is not int or value < 0:
         raise RuntimeError("S3 object size must be an exact integer")
@@ -682,7 +693,7 @@ def validate_dry_run_receipt(path: Path, expected: dict[str, Any]) -> None:
         or not receipt.get("generated_at")
         or not isinstance(receipt.get("completed_at"), str)
         or not receipt.get("completed_at")
-        or receipt.get("checks") != EXPECTED_DRY_RUN_CHECKS
+        or not exact_check_map(receipt.get("checks"), EXPECTED_DRY_RUN_CHECKS)
     ):
         raise ValueError("final artifact freeze dry-run receipt did not pass preflight")
 
@@ -903,7 +914,7 @@ def validate_execution_binding(
         or not exact_int(normalized_attempts[0].get("exit_code"), 0)
         or captured_container.get("task_arn") != live_container.get("taskArn")
         or batch.get("log_stream") != live_container.get("logStreamName")
-        or worker_checks != EXPECTED_BATCH_WORKER_CHECKS
+        or not exact_check_map(worker_checks, EXPECTED_BATCH_WORKER_CHECKS)
     ):
         raise ValueError("execution receipt does not match the exact successful Batch job")
 
