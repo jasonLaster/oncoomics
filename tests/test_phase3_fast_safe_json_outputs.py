@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import unittest
+from unittest import mock
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from typing import Any, Callable, Mapping
@@ -137,6 +138,52 @@ class Phase3FastSafeJsonOutputsTests(unittest.TestCase):
             payload = safe_json_output.read_real_json(input_path, "source", ManifestError)
 
         self.assertEqual({"status": "ready"}, payload)
+
+    def test_read_real_json_rejects_file_that_changes_during_read(self) -> None:
+        with TemporaryDirectory() as tmp:
+            input_path = Path(tmp) / "input.json"
+            input_path.write_text('{"status": "ready"}\n', encoding="utf-8")
+            real_read_bytes = Path.read_bytes
+            calls = 0
+
+            def mutating_read_bytes(path: Path) -> bytes:
+                nonlocal calls
+                data = real_read_bytes(path)
+                calls += 1
+                if calls == 1:
+                    input_path.write_text('{"status": "mutated"}\n', encoding="utf-8")
+                return data
+
+            with mock.patch.object(
+                Path,
+                "read_bytes",
+                mutating_read_bytes,
+            ):
+                with self.assertRaisesRegex(ManifestError, "changed during read"):
+                    safe_json_output.read_real_json(input_path, "source", ManifestError)
+
+    def test_sha256_real_file_rejects_file_that_changes_during_read(self) -> None:
+        with TemporaryDirectory() as tmp:
+            input_path = Path(tmp) / "input.txt"
+            input_path.write_text("ready\n", encoding="utf-8")
+            real_sha256_once = safe_json_output._sha256_real_file_once
+            calls = 0
+
+            def mutating_sha256_once(path: Path) -> str:
+                nonlocal calls
+                digest = real_sha256_once(path)
+                calls += 1
+                if calls == 1:
+                    input_path.write_text("mutated\n", encoding="utf-8")
+                return digest
+
+            with mock.patch.object(
+                safe_json_output,
+                "_sha256_real_file_once",
+                mutating_sha256_once,
+            ):
+                with self.assertRaisesRegex(ManifestError, "changed during read"):
+                    safe_json_output.sha256_real_file(input_path, ManifestError)
 
 
 if __name__ == "__main__":

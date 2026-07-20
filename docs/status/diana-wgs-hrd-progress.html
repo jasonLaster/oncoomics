@@ -328,15 +328,17 @@
           build deterministic, Rosalind, cross-check, AI-review, and synthesis
           packets from a public known-answer dataset; it is not a Diana result.
           Recent hardening makes each handoff re-check the files it depends on
-          before private review or reviewed-public release can continue. The
-          selected GPU rerun is still quota-blocked, the legacy CPU run remains
-          stopped, and Diana HRD remains
+          before private review or reviewed-public release can continue, and
+          Phase 3 now stops if an input changes while it is being read instead
+          of mixing old and new file bytes. The selected GPU rerun is still
+          quota-blocked, the legacy CPU run remains stopped, and Diana HRD remains
           <code>partial_evidence</code> / <code>no_call</code>
           until terminal artifacts and reviewed cross-check reports exist.
         </p>
         <ul class="pills" aria-label="Current state">
           <li class="pill">Updated 2026-07-19</li>
-          <li class="pill">Latest milestone = public index receipt binding guarded</li>
+          <li class="pill">Latest milestone = Phase 3 input reads rechecked</li>
+          <li class="pill">Phase 3 JSON reads = stable</li>
           <li class="pill">Public-index receipt digests = guarded</li>
           <li class="pill">Runbook receipts = rechecked</li>
           <li class="pill">Batch worker receipts = rechecked</li>
@@ -817,6 +819,10 @@
 
           <h3>Priority 1 · selected GPU NGS rerun prep</h3>
           <ol class="todo">
+            <li class="item" style="--tone: var(--done)">
+              <strong>Done · stop on changing Phase 3 inputs</strong>
+              <span>Shared Phase 3 JSON and SHA-256 readers now reread real local inputs and fail if file bytes change mid-read, so a handoff cannot validate one version of an input and bind a digest from another.</span>
+            </li>
             <li class="item" style="--tone: var(--done)">
               <strong>Done · require real Phase 3 terminal hashes</strong>
               <span>Phase 3 cache, replication, and deterministic report handoffs now route local SHA-256 reads through the shared real-file guard, rejecting symlinked leaves and parents before those handoff hashes can be bound.</span>
@@ -2335,6 +2341,15 @@
         <article class="card wide">
           <h2>Changelog</h2>
           <ol class="changelog">
+            <li class="item">
+              <time datetime="2026-07-19T18:06:57-07:00">Jul 19 · local</time>
+              <span>
+                <strong>Local patch · Stop on changing Phase 3 inputs:</strong>
+                the shared Phase 3 JSON reader and SHA-256 helper now recheck
+                local real-file reads and fail closed if input bytes change
+                before duplicate-key parsing or digest binding can continue.
+              </span>
+            </li>
             <li class="item">
               <time datetime="2026-07-19T18:01:09-07:00">Jul 19 · local</time>
               <span>

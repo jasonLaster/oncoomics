@@ -60,6 +60,13 @@ def require_real_hash_input(path: Path, error_type: type[Exception]) -> Path:
 
 def sha256_real_file(path: Path, error_type: type[Exception]) -> str:
     path = require_real_hash_input(path, error_type)
+    digest = _sha256_real_file_once(path)
+    if _sha256_real_file_once(path) != digest:
+        raise error_type(f"{path.name} SHA-256 input changed during read: {path}")
+    return digest
+
+
+def _sha256_real_file_once(path: Path) -> str:
     digest = hashlib.sha256()
     with path.open("rb") as handle:
         while chunk := handle.read(1024 * 1024):
@@ -67,13 +74,29 @@ def sha256_real_file(path: Path, error_type: type[Exception]) -> str:
     return digest.hexdigest()
 
 
+def _sha256_bytes(data: bytes) -> str:
+    return hashlib.sha256(data).hexdigest()
+
+
+def read_stable_real_file_bytes(
+    path: Path,
+    label: str,
+    error_type: type[Exception],
+) -> bytes:
+    path = require_real_input_file(path, label, error_type)
+    data = path.read_bytes()
+    digest = _sha256_bytes(data)
+    if _sha256_bytes(path.read_bytes()) != digest:
+        raise error_type(f"{label} changed during read: {path}")
+    return data
+
+
 def read_real_json(path: Path, label: str, error_type: type[Exception]) -> Any:
     if path.is_symlink() or not path.is_file():
         raise error_type(f"{label} must be a real JSON file: {path}")
-    require_no_symlinked_ancestors(path, label, error_type)
     try:
         return json.loads(
-            path.read_text(encoding="utf-8"),
+            read_stable_real_file_bytes(path, label, error_type).decode("utf-8"),
             object_pairs_hook=reject_duplicate_json_object_names,
         )
     except DuplicateJsonObjectName as error:
