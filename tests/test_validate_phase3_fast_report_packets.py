@@ -17,6 +17,8 @@ SCRIPT_DIR = ROOT / "scripts"
 if str(SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPT_DIR))
 
+import runbook_io as RUNBOOK_IO
+
 VALIDATOR_SCRIPT = SCRIPT_DIR / "validate_phase3_fast_report_packets.py"
 VALIDATOR_SPEC = importlib.util.spec_from_file_location("validate_phase3_fast_report_packets", VALIDATOR_SCRIPT)
 assert VALIDATOR_SPEC and VALIDATOR_SPEC.loader
@@ -277,19 +279,23 @@ class ValidatePhase3FastReportPacketsTests(unittest.TestCase):
             source = root / "report_manifest.json"
             source.write_text('{"stable": true}\n', encoding="utf-8")
 
-            original_read_bytes = Path.read_bytes
+            original_read_once = RUNBOOK_IO.read_real_input_file_once
             mutated = False
 
-            def mutate_after_first_read(path: Path) -> bytes:
+            def mutate_after_first_read(path: Path, label: str) -> bytes:
                 nonlocal mutated
-                data = original_read_bytes(path)
+                data = original_read_once(path, label)
                 if path == source and not mutated:
                     mutated = True
                     path.write_text('{"stable": false}\n', encoding="utf-8")
                 return data
 
             with (
-                mock.patch.object(Path, "read_bytes", mutate_after_first_read),
+                mock.patch.object(
+                    RUNBOOK_IO,
+                    "read_real_input_file_once",
+                    side_effect=mutate_after_first_read,
+                ),
                 self.assertRaisesRegex(
                     ValueError,
                     "report_manifest.json SHA-256 input changed during read",
