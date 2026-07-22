@@ -19,6 +19,29 @@ test("defines the Diana run monitor shell", async () => {
   assert.match(viewer, /data-testid="toggle-left-rail"/);
   assert.match(viewer, /data-testid="toggle-right-rail"/);
   assert.match(viewer, /data-testid="workflow-progress"/);
+  assert.match(viewer, /href="\/costs"/);
+});
+
+test("defines a live, no-cache AWS cost view", async () => {
+  const [page, viewer, route, costs] = await Promise.all([
+    readFile(new URL("../app/costs/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/costs/cost-viewer.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/api/costs/route.ts", import.meta.url), "utf8"),
+    readFile(new URL("../lib/costs.ts", import.meta.url), "utf8"),
+  ]);
+
+  assert.match(viewer, /Seven-day cost breakdown/);
+  assert.match(viewer, /fetch\("\/api\/costs", \{ cache: "no-store" \}\)/);
+  assert.match(viewer, /Refresh costs/);
+  assert.match(viewer, /data-testid="daily-cost-chart"/);
+  assert.match(route, /dynamic = "force-dynamic"/);
+  assert.match(page, /initialPayload = await getWeeklyCosts\(\)/);
+  assert.match(page, /initialPayload=\{initialPayload\}/);
+  assert.match(route, /Cache-Control.*no-store/s);
+  assert.match(costs, /GetCostAndUsageCommand/);
+  assert.match(costs, /Granularity: "DAILY"/);
+  assert.match(costs, /Metrics: \["UnblendedCost"\]/);
+  assert.match(costs, /Key: "SERVICE"/);
 });
 
 test("implements automatic refresh and server-side AWS access", async () => {

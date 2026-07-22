@@ -110,7 +110,7 @@ export function extractChromosomeProgressEvents(
   }));
 }
 
-function clientConfig() {
+export function awsClientConfig() {
   const accessKeyId = process.env.AWS_ACCESS_KEY_ID;
   const secretAccessKey = process.env.AWS_SECRET_ACCESS_KEY;
   const sessionToken = process.env.AWS_SESSION_TOKEN;
@@ -131,8 +131,8 @@ function clientConfig() {
   };
 }
 
-export const batch = new BatchClient(clientConfig());
-export const logs = new CloudWatchLogsClient(clientConfig());
+export const batch = new BatchClient(awsClientConfig());
+export const logs = new CloudWatchLogsClient(awsClientConfig());
 
 function chunk<T>(items: T[], size: number): T[][] {
   const chunks: T[][] = [];

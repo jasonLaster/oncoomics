@@ -12,7 +12,7 @@ npm run viewer
 
 Then open [http://localhost:3000](http://localhost:3000). The viewer reads the current AWS CLI profile, discovers enabled Batch queues, and uses adaptive polling so active work updates more often than an idle inventory. Set `AWS_PROFILE` before launching to use a profile other than `default`.
 
-AWS credentials stay in the server process and are never sent to the browser. The profile only needs read access for Batch job discovery and CloudWatch log events.
+AWS credentials stay in the server process and are never sent to the browser. The profile only needs read access for Batch job discovery, CloudWatch log events, and `ce:GetCostAndUsage` for the cost view.
 
 Vercel deployments use `AWS_ROLE_ARN` with Vercel OIDC to exchange short-lived tokens for a scoped AWS read-only session. Static AWS access keys are not required.
 
@@ -27,6 +27,7 @@ The stable Convex production deployment is released with `npm run convex:deploy`
 - The flexible workspace has independently collapsible job and context-inspector rails. Desktop rail state persists across reloads; mobile uses one temporary rail at a time so the work surface stays readable.
 - **Overview** combines run health, observed stage state, dependency progress, execution context, and chromosome-level GATK progress.
 - **Logs** renders cursor-paginated Convex history as a compact structured ledger. Diana, AWS, Nextflow, GATK, JSON telemetry, command, artifact, warning, and error adapters preserve the raw message while promoting useful fields. Selecting an event opens parsed fields, provenance, and the raw payload in the contextual right rail without reflowing the feed. Search, level filters, and event-type filters apply to every page loaded so far.
+- **Costs** at `/costs` reads the latest seven completed billing days directly from AWS Cost Explorer. Browser reloads and the explicit **Refresh costs** action request a fresh, uncached service-level breakdown; the page does not poll automatically because Cost Explorer API calls are metered.
 - Older events load automatically when the history sentinel enters the scroll viewport. Rows use browser-native `content-visibility` so large loaded archives remain inexpensive to paint.
 
 The complete v2 behavior, accessibility, responsive-layout, API, and stable-selector contract is specified in [docs/viewer-v2.md](docs/viewer-v2.md).

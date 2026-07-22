@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import {
   useCallback,
   useEffect,
@@ -850,6 +851,9 @@ export function JobViewer() {
         </div>
 
         <div className="topbar-meta">
+          <Link className="section-link" href="/costs">
+            Costs
+          </Link>
           <div className="connection-state">
             <span
               className={`live-dot ${error || dataIsStale ? "is-error" : ""}`}
