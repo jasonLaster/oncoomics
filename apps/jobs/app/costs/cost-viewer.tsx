@@ -24,6 +24,12 @@ const dayLabel = new Intl.DateTimeFormat("en-US", {
   timeZone: "UTC",
 });
 
+const refreshTime = new Intl.DateTimeFormat("en-US", {
+  hour: "numeric",
+  minute: "2-digit",
+  timeZone: "UTC",
+});
+
 function formatDay(date: string) {
   return dayLabel.format(new Date(`${date}T00:00:00Z`));
 }
@@ -108,7 +114,7 @@ export function CostViewer({
           {payload && (
             <div className={styles.freshness}>
               <span className={styles.liveDot} aria-hidden="true" />
-              Updated {new Date(payload.generatedAt).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}
+              Updated {refreshTime.format(new Date(payload.generatedAt))} UTC
             </div>
           )}
         </div>
