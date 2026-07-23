@@ -1,0 +1,36 @@
+{
+  "generatedAt": "2026-07-22T05:51:24.612163Z",
+  "rows": [
+    {
+      "bytes": 10229,
+      "path": "/opt/diana/manifests/target_discovery_candidates.csv",
+      "sha256": "bfb76ffdbd93294edf5f25d57451427905e55c3e9010bc992c198fc9d730caae"
+    },
+    {
+      "bytes": 3165,
+      "path": "/opt/diana/manifests/target_gene_loci_hs37d5.csv",
+      "sha256": "ee9d6f98e2b20a46cc878fefaeec37caaf2a7c093329666abaef6755fa3cf1a3"
+    },
+    {
+      "bytes": 8766,
+      "path": "/s3/target/output/target_dna_evidence.csv",
+      "sha256": "29995fdf1f8e5719b2f097fe9657f3b72aca6665f3b633b27475019b079ed136"
+    },
+    {
+      "bytes": 9746,
+      "path": "/s3/target/output/rna_target_expression_summary.csv",
+      "sha256": "14608b70f1940ae16ae5215e87e142373cc025ea8826fa083fa8040793616d69"
+    },
+    {
+      "bytes": 14557,
+      "path": "/s3/target/output/candidate_target_board.csv",
+      "sha256": "a697545aa0ff9a73c48ebaabe2082babb5ef49b5cab4275f1456725c50f4ae9c"
+    },
+    {
+      "bytes": 2089,
+      "path": "/s3/target/output/dna_target_locus_summary.csv",
+      "sha256": "95c38d80ccb4ad6b4cd53a9b091440b1ede1e2b35878e2c656853c473eff1a5f"
+    }
+  ],
+  "status": "passed"
+}

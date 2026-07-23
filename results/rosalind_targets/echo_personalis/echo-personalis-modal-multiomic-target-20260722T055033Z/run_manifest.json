@@ -1,0 +1,17 @@
+{
+  "boundary": "Pan-target Rosalind discovery is research-use follow-up triage.",
+  "generatedAt": "2026-07-22T05:51:25.069073Z",
+  "outputs": [
+    "sample_validation_summary.csv",
+    "dna_target_locus_summary.csv",
+    "rna_target_expression_summary.csv",
+    "candidate_target_board.csv",
+    "orthogonal_followup.csv",
+    "research_context_sources.json",
+    "reviewer_packet.md",
+    "next_actions.md"
+  ],
+  "runId": "echo-personalis-modal-multiomic-target-20260722T055033Z",
+  "sampleOrCohort": "echo_personalis",
+  "status": "passed"
+}

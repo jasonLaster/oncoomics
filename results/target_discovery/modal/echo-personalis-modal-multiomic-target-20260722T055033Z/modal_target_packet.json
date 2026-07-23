@@ -1,0 +1,131 @@
+{
+  "boardSummary": {
+    "callableRows": 37,
+    "candidateRows": 37,
+    "partialEvidenceRows": 37,
+    "readyRows": 0,
+    "rnaEvidenceRows": 37,
+    "rnaPartialEvidenceRows": 37,
+    "trop2CandidateClass": "expression_supported_protein_unconfirmed",
+    "trop2NormalReads": 1946,
+    "trop2ProteinStatus": "no_call",
+    "trop2RnaReads": 53220,
+    "trop2RnaStatus": "partial_evidence",
+    "trop2Status": "partial_evidence",
+    "trop2TumorReads": 5277
+  },
+  "boundary": "Modal consumed public mounted raw BAM indexes for DNA locus callability and unnormalized RNA expression support only; raw BAM range counts do not call SNVs, CNVs, HLA loss, surface protein abundance, malignant-cell heterogeneity, or drug sensitivity.",
+  "execution": {
+    "app": "diana-modal-s3-target-discovery",
+    "inputPath": "/s3/raw",
+    "outputPath": "/s3/target/output",
+    "rawDataMounted": true,
+    "rawS3Prefix": "s3://diana-omics-raw-inputs-172630973301-us-east-1/diana/inbox/2026-07-14-echo-personalis",
+    "rnaDataMounted": true,
+    "runtime": "modal",
+    "s3Mount": "modal.CloudBucketMount"
+  },
+  "generatedAt": "2026-07-22T05:51:25.797384Z",
+  "inputEvidence": [
+    {
+      "bytes": 10229,
+      "path": "/opt/diana/manifests/target_discovery_candidates.csv",
+      "sha256": "bfb76ffdbd93294edf5f25d57451427905e55c3e9010bc992c198fc9d730caae"
+    },
+    {
+      "bytes": 3165,
+      "path": "/opt/diana/manifests/target_gene_loci_hs37d5.csv",
+      "sha256": "ee9d6f98e2b20a46cc878fefaeec37caaf2a7c093329666abaef6755fa3cf1a3"
+    },
+    {
+      "bytes": 44738172176,
+      "path": "/s3/raw/data/immunoid/E019_S01/DNA_Pipeline/Alignments/DNA_E019_S01_tumor_dna_aligned_recal.sorted.bam",
+      "sha256": "bea3d781b823cb0ad4955a08a4b6c2a2c62ef23234795961078cd2786b04909e"
+    },
+    {
+      "bytes": 6226096,
+      "path": "/s3/raw/data/immunoid/E019_S01/DNA_Pipeline/Alignments/DNA_E019_S01_tumor_dna_aligned_recal.sorted.bai",
+      "sha256": "5efa9cefef497e6ea1d7dfb9c94e6e3777300ca98995c8b77cdabc0d61b3cc09"
+    },
+    {
+      "bytes": 21035825255,
+      "path": "/s3/raw/data/immunoid/E019_S01/DNA_Pipeline/Alignments/DNA_E019_S05_Vial1_normal_dna_aligned_recal.sorted.bam",
+      "sha256": "2671e13f4afaefdb9f38412a71fc6f88e428f83dbd52d8307997c9f48054263e"
+    },
+    {
+      "bytes": 4547768,
+      "path": "/s3/raw/data/immunoid/E019_S01/DNA_Pipeline/Alignments/DNA_E019_S05_Vial1_normal_dna_aligned_recal.sorted.bai",
+      "sha256": "787d65f585cf7fa9227fca8edb7a1d3f813e104fa9a333ae421e46a034eff1af"
+    },
+    {
+      "bytes": 24905892448,
+      "path": "/s3/raw/data/immunoid/E019_S01/RNA_Pipeline/Alignments/RNA_E019_S01_tumor_rna_aligned.recal.sorted.bam",
+      "sha256": "cbca1be437a294b07f2d2fe5ead19cb737eb0592abfc0984c829994ce933e7e2"
+    },
+    {
+      "bytes": 3411312,
+      "path": "/s3/raw/data/immunoid/E019_S01/RNA_Pipeline/Alignments/RNA_E019_S01_tumor_rna_aligned.recal.sorted.bam.bai",
+      "sha256": "309aa3eaa3240e98a56b572dca485b36db04ba2b4e02c4ce2a484da574cc57c4"
+    }
+  ],
+  "outputs": [
+    {
+      "bytes": 8766,
+      "path": "/s3/target/output/target_dna_evidence.csv",
+      "sha256": "29995fdf1f8e5719b2f097fe9657f3b72aca6665f3b633b27475019b079ed136"
+    },
+    {
+      "bytes": 9746,
+      "path": "/s3/target/output/rna_target_expression_summary.csv",
+      "sha256": "14608b70f1940ae16ae5215e87e142373cc025ea8826fa083fa8040793616d69"
+    },
+    {
+      "bytes": 14557,
+      "path": "/s3/target/output/candidate_target_board.csv",
+      "sha256": "a697545aa0ff9a73c48ebaabe2082babb5ef49b5cab4275f1456725c50f4ae9c"
+    },
+    {
+      "bytes": 2089,
+      "path": "/s3/target/output/dna_target_locus_summary.csv",
+      "sha256": "95c38d80ccb4ad6b4cd53a9b091440b1ede1e2b35878e2c656853c473eff1a5f"
+    },
+    {
+      "bytes": 4266,
+      "path": "/s3/target/output/orthogonal_followup.csv",
+      "sha256": "2b546397d3e760851dd1895ca09a725195657ce4d2df8ed528a8017971722b65"
+    },
+    {
+      "bytes": 224,
+      "path": "/s3/target/output/sample_validation_summary.csv",
+      "sha256": "eb5d223d117c8437abcc48ab7ddcc988f52b574e97278e5a128058959bd41149"
+    },
+    {
+      "bytes": 1245,
+      "path": "/s3/target/output/research_context_sources.json",
+      "sha256": "afeefcd1a6a6712ddf24fbe24edf6bcece87c261fc7d341130c48f85765dcd4d"
+    },
+    {
+      "bytes": 1183,
+      "path": "/s3/target/output/input_evidence_index.json",
+      "sha256": "e3af642d66f309389ac168b81f9a9da619acaae2939cdd40a635ae0dc364616e"
+    },
+    {
+      "bytes": 547,
+      "path": "/s3/target/output/run_manifest.json",
+      "sha256": "95e2f9d921a7594158863ab2c560945a1cd75c4f0e386497a8df9bce13ddc55f"
+    },
+    {
+      "bytes": 8248,
+      "path": "/s3/target/output/reviewer_packet.md",
+      "sha256": "6873f12fb1381d184f7120892bd778a97418c2986f70ea06be11ff5e677242ed"
+    },
+    {
+      "bytes": 4673,
+      "path": "/s3/target/output/next_actions.md",
+      "sha256": "ece844c71b20bfb366031efb848a2641c797f764217ba2c546d1f4185637d42a"
+    }
+  ],
+  "runId": "echo-personalis-modal-multiomic-target-20260722T055033Z",
+  "schema": "diana_modal_target_packet.v1",
+  "status": "partial_evidence"
+}

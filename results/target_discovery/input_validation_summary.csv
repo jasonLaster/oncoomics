@@ -1,0 +1,2 @@
+status,samplesheet,row_count,dna_row_count,rna_rows,protein_rows,phospho_protein_rows,report_rows,ready_to_interpret,error_count,warning_count
+passed,manifests/target_discovery_inputs.csv,3,1,1,1,0,0,no,0,0

@@ -24,6 +24,7 @@ class CliParityTest(unittest.TestCase):
             "analyze:hrd",
             "analyze:lehmann",
             "analyze:rna",
+            "analyze:dna-targets",
             "audit:raw-tools",
             "benchmark:full-wes",
             "benchmark:sra-range",
@@ -44,6 +45,9 @@ class CliParityTest(unittest.TestCase):
             "build:panel",
             "build:raw-samplesheets",
             "build:rosalind-hrd-packet",
+            "build:rosalind-target-packet",
+            "build:target-dna-evidence",
+            "build:target-template",
             "diagnose:pipeline",
             "fetch:full-reference-smoke",
             "fetch:full-wes",
@@ -95,6 +99,7 @@ class CliParityTest(unittest.TestCase):
             "verify:known-answer-public-findings",
             "verify:known-answer-readiness",
             "verify:known-answer-sample-pull-plan",
+            "verify:modal-target-packet",
             "verify:orthogonal",
             "verify:outputs",
             "verify:parabricks-mirror-receipt",
@@ -104,6 +109,7 @@ class CliParityTest(unittest.TestCase):
             "verify:phase3-fast-staged-inputs",
             "verify:plan",
             "verify:sv-caller-readiness",
+            "verify:target-inputs",
         }
         commands = _load_commands()
         self.assertEqual(expected, set(commands))

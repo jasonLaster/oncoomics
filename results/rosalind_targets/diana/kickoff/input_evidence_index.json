@@ -1,0 +1,31 @@
+{
+  "generatedAt": "2026-07-22T04:20:43.256Z",
+  "status": "passed",
+  "rows": [
+    {
+      "path": "manifests/target_discovery_candidates.csv",
+      "bytes": 10229,
+      "sha256": "bfb76ffdbd93294edf5f25d57451427905e55c3e9010bc992c198fc9d730caae"
+    },
+    {
+      "path": "results/target_discovery/candidate_target_board.csv",
+      "bytes": 11158,
+      "sha256": "27e441ed093ceb866a98c11d259b9593bc32dc7b3cc7d28f066e1763fc688f26"
+    },
+    {
+      "path": "results/target_discovery/dna_target_locus_summary.csv",
+      "bytes": 4949,
+      "sha256": "c3a716937065819dd65240738ef91476215c48836546a9b704f6fd9b7d891a19"
+    },
+    {
+      "path": "results/target_discovery/dna_target_locus_summary.json",
+      "bytes": 419,
+      "sha256": "bf0672ca805ec12ae77f0913dd58892a7c6462c058fdc6467df4910910d02410"
+    },
+    {
+      "path": "results/target_discovery/input_validation_summary.json",
+      "bytes": 704,
+      "sha256": "921f622b0c96a120856d6c78e5f1a31430a0996bef8e5b2d398a85969b289fe3"
+    }
+  ]
+}

@@ -1,19 +1,32 @@
 {
-  "generatedAt": "2026-06-13T12:41:10.911Z",
-  "status": "waiting_for_diana_raw_data",
+  "generatedAt": "2026-07-22T04:26:35.221Z",
+  "status": "passed",
   "samplesheet": "manifests/diana_raw_inputs.csv",
   "summary": {
-    "rowCount": 0,
-    "dnaRowCount": 0,
-    "tumorDnaRows": 0,
-    "normalDnaRows": 0,
-    "rnaRows": 0,
-    "matchedPairIds": []
+    "rowCount": 11,
+    "dnaRowCount": 10,
+    "tumorDnaRows": 5,
+    "normalDnaRows": 5,
+    "rnaRows": 1,
+    "matchedPairIds": [
+      "DIANA_WES_immunoid",
+      "DIANA_WGS_wgs"
+    ],
+    "referenceIds": [
+      "ucsc_hg38_analysis_set_full"
+    ],
+    "assays": [
+      "RNA",
+      "WES",
+      "WGS"
+    ],
+    "dataTypes": [
+      "FASTQ",
+      "RNA_FASTQ"
+    ]
   },
   "errors": [],
-  "warnings": [
-    "manifests/diana_raw_inputs.csv is not present yet; Diana raw data are still pending."
-  ],
+  "warnings": [],
   "contract": {
     "samplesheet": "manifests/diana_raw_inputs.csv",
     "template": "manifests/diana_raw_inputs.template.csv",
@@ -68,6 +81,8 @@
     "rnaContract": "Optional RNA_FASTQ rows can be included for expression context, but DNA tumor-normal rows are required for HRD mechanics.",
     "referenceContract": "Diana DNA rows should use the same reference_id/reference_path/reference_fai_path/reference_dict_path unless a reviewer approves a build-specific split.",
     "handoffPlanCommand": "PYTHONPATH=src /usr/bin/python3 -m diana_omics plan:diana-raw-handoff",
+    "s3InboxUri": "s3://diana-omics-raw-inputs-172630973301-us-east-1/diana/inbox",
+    "uploadContract": "Upload or transfer Diana raw files only under the diana/inbox prefix with S3-managed AES256 encryption. The AWS bucket policy allows authenticated writes plus anonymous listing and downloads for this prefix.",
     "recomputeCommand": "DIANA_RAW_SAMPLESHEET=manifests/diana_raw_inputs.csv DIANA_RAW_REQUIRE_DATA=1 PYTHONPATH=src /usr/bin/python3 -m diana_omics stage:diana-raw",
     "validationCommand": "DIANA_RAW_SAMPLESHEET=manifests/diana_raw_inputs.csv DIANA_RAW_REQUIRE_DATA=1 PYTHONPATH=src /usr/bin/python3 -m diana_omics verify:diana-raw"
   }

@@ -1,0 +1,77 @@
+{
+  "boardSummary": {
+    "callableRows": 37,
+    "candidateRows": 37,
+    "partialEvidenceRows": 37,
+    "readyRows": 0,
+    "trop2CandidateClass": "genomically_supported_expression_unconfirmed",
+    "trop2NormalReads": 1946,
+    "trop2ProteinStatus": "no_call",
+    "trop2RnaStatus": "no_call",
+    "trop2Status": "partial_evidence",
+    "trop2TumorReads": 5277
+  },
+  "boundary": "Modal consumed public mounted raw BAM indexes for DNA locus callability only; raw BAM range counts do not call SNVs, CNVs, HLA loss, RNA expression, surface protein abundance, or drug sensitivity.",
+  "execution": {
+    "app": "diana-modal-s3-target-discovery",
+    "inputPath": "/s3/raw",
+    "outputPath": "/s3/target/output",
+    "rawDataMounted": true,
+    "rawS3Prefix": "s3://diana-omics-raw-inputs-172630973301-us-east-1/diana/inbox/2026-07-14-echo-personalis",
+    "runtime": "modal",
+    "s3Mount": "modal.CloudBucketMount"
+  },
+  "generatedAt": "2026-07-22T05:42:17.905668Z",
+  "inputEvidence": [
+    {
+      "bytes": 10229,
+      "path": "/opt/diana/manifests/target_discovery_candidates.csv",
+      "sha256": "bfb76ffdbd93294edf5f25d57451427905e55c3e9010bc992c198fc9d730caae"
+    },
+    {
+      "bytes": 3165,
+      "path": "/opt/diana/manifests/target_gene_loci_hs37d5.csv",
+      "sha256": "ee9d6f98e2b20a46cc878fefaeec37caaf2a7c093329666abaef6755fa3cf1a3"
+    },
+    {
+      "bytes": 44738172176,
+      "path": "/s3/raw/data/immunoid/E019_S01/DNA_Pipeline/Alignments/DNA_E019_S01_tumor_dna_aligned_recal.sorted.bam",
+      "sha256": "bea3d781b823cb0ad4955a08a4b6c2a2c62ef23234795961078cd2786b04909e"
+    },
+    {
+      "bytes": 6226096,
+      "path": "/s3/raw/data/immunoid/E019_S01/DNA_Pipeline/Alignments/DNA_E019_S01_tumor_dna_aligned_recal.sorted.bai",
+      "sha256": "5efa9cefef497e6ea1d7dfb9c94e6e3777300ca98995c8b77cdabc0d61b3cc09"
+    },
+    {
+      "bytes": 21035825255,
+      "path": "/s3/raw/data/immunoid/E019_S01/DNA_Pipeline/Alignments/DNA_E019_S05_Vial1_normal_dna_aligned_recal.sorted.bam",
+      "sha256": "2671e13f4afaefdb9f38412a71fc6f88e428f83dbd52d8307997c9f48054263e"
+    },
+    {
+      "bytes": 4547768,
+      "path": "/s3/raw/data/immunoid/E019_S01/DNA_Pipeline/Alignments/DNA_E019_S05_Vial1_normal_dna_aligned_recal.sorted.bai",
+      "sha256": "787d65f585cf7fa9227fca8edb7a1d3f813e104fa9a333ae421e46a034eff1af"
+    }
+  ],
+  "outputs": [
+    {
+      "bytes": 9136,
+      "path": "/s3/target/output/target_dna_evidence.csv",
+      "sha256": "f21757a90bc6214e1954ec0ff4d83dcec26bfd083cc0318c8d218be32d300c8f"
+    },
+    {
+      "bytes": 14504,
+      "path": "/s3/target/output/candidate_target_board.csv",
+      "sha256": "5d0ebc718f37eb27b2d60cd0dc8c42ece3bf89a0d65de18d48fa8ecfab34d13b"
+    },
+    {
+      "bytes": 2089,
+      "path": "/s3/target/output/dna_target_locus_summary.csv",
+      "sha256": "95c38d80ccb4ad6b4cd53a9b091440b1ede1e2b35878e2c656853c473eff1a5f"
+    }
+  ],
+  "runId": "echo-personalis-modal-target-20260722T054121Z",
+  "schema": "diana_modal_target_packet.v1",
+  "status": "partial_evidence"
+}

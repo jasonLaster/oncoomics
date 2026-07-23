@@ -51,6 +51,9 @@ COMMAND_SPECS: dict[str, CommandSpec] = {
     "build:panel": CommandSpec("diana_omics.commands.hrd_context.build_reference_panel"),
     "build:raw-samplesheets": CommandSpec("diana_omics.commands.raw_validation.build_raw_samplesheets"),
     "build:rosalind-hrd-packet": CommandSpec("diana_omics.commands.hrd_context.build_rosalind_hrd_packet"),
+    "build:rosalind-target-packet": CommandSpec("diana_omics.commands.target_discovery.build_rosalind_target_packet"),
+    "build:target-dna-evidence": CommandSpec("diana_omics.commands.target_discovery.build_target_dna_evidence"),
+    "build:target-template": CommandSpec("diana_omics.commands.target_discovery.build_target_template"),
     "benchmark:sra-range": CommandSpec("diana_omics.commands.phase3_wgs.run_sra_benchmark"),
     "diagnose:pipeline": CommandSpec("diana_omics.commands.quality.diagnose_pipeline"),
     "fetch:full-reference-smoke": CommandSpec("diana_omics.commands.alignment_validation.fetch_full_reference_smoke_assets"),
@@ -72,6 +75,7 @@ COMMAND_SPECS: dict[str, CommandSpec] = {
         "diana_omics.commands.phase3_wgs.run_phase3_fast_parabricks_mutect"
     ),
     "run:phase3-fast-sv-evidence": CommandSpec("diana_omics.commands.phase3_wgs.run_phase3_fast_sv_evidence"),
+    "analyze:dna-targets": CommandSpec("diana_omics.commands.target_discovery.analyze_dna_targets"),
     "export:phase3-fast-small-variants": CommandSpec(
         "diana_omics.commands.phase3_wgs.export_phase3_fast_small_variant_artifacts"
     ),
@@ -97,6 +101,8 @@ COMMAND_SPECS: dict[str, CommandSpec] = {
     "verify:phase3-fast-aws-execute": CommandSpec("diana_omics.commands.phase3_wgs.verify_phase3_fast_aws_execute"),
     "verify:phase3-fast-gpu-smoke": CommandSpec("diana_omics.commands.phase3_wgs.verify_phase3_fast_gpu_smoke"),
     "verify:phase3-fast-staged-inputs": CommandSpec("diana_omics.commands.phase3_wgs.verify_phase3_fast_staged_inputs"),
+    "verify:target-inputs": CommandSpec("diana_omics.commands.target_discovery.verify_target_inputs"),
+    "verify:modal-target-packet": CommandSpec("diana_omics.commands.target_discovery.verify_modal_target_packet"),
     "smoke:production-somatic": CommandSpec("diana_omics.commands.alignment_validation.run_production_somatic_smoke"),
     "smoke:raw": CommandSpec("diana_omics.commands.raw_validation.run_raw_smoke"),
     "stage:diana-raw": CommandSpec("diana_omics.commands.diana_intake.stage_diana_raw_analysis"),
@@ -275,6 +281,18 @@ COMMAND_FAMILIES: tuple[CommandFamily, ...] = (
         ),
     ),
     CommandFamily(
+        "Target discovery",
+        "Build conservative ADC, bispecific, CDK12, and CDK4/6 follow-up target boards.",
+        (
+            "build:target-template",
+            "verify:target-inputs",
+            "build:target-dna-evidence",
+            "analyze:dna-targets",
+            "build:rosalind-target-packet",
+            "verify:modal-target-packet",
+        ),
+    ),
+    CommandFamily(
         "Quality and diagnostics",
         "Run developer quality checks, output verifiers, and pipeline diagnostics.",
         (
@@ -378,4 +396,5 @@ FAMILY_PACKAGES = {
     "phase3_wgs",
     "quality",
     "raw_validation",
+    "target_discovery",
 }

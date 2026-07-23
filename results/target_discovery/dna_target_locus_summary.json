@@ -1,0 +1,11 @@
+{
+  "generatedAt": "2026-07-22T05:42:44.812Z",
+  "status": "partial_evidence",
+  "candidateManifest": "manifests/target_discovery_candidates.csv",
+  "dnaEvidence": "results/target_discovery/modal/echo-personalis-modal-target-20260722T054121Z/target_dna_evidence.csv",
+  "candidateCount": 37,
+  "evidenceRowCount": 37,
+  "blockedCount": 0,
+  "notSupportedCount": 0,
+  "boundary": "DNA target evidence cannot confirm RNA expression, surface protein abundance, CDK dependency, or drug response."
+}

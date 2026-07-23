@@ -1,0 +1,2 @@
+status,candidate_count,board_row_count,ready_count,partial_evidence_count,blocked_count,not_supported_count,boundary
+passed,37,37,0,0,37,0,Target packets rank follow-up hypotheses; they do not authorize treatment decisions.

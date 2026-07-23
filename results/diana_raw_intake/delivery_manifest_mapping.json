@@ -1,0 +1,56 @@
+{
+  "generatedAt": "2026-07-22T04:26:35.069Z",
+  "status": "mapped",
+  "sourceManifest": "manifests/diana_raw_delivery_manifest.csv",
+  "sourceChecksums": "manifests/diana_raw_delivery_checksums.sha256",
+  "outputSamplesheet": "manifests/diana_raw_inputs.csv",
+  "deliveryRoot": "data/raw/diana",
+  "summary": {
+    "manifestRows": 30,
+    "mappedRows": 11,
+    "skippedRows": 4,
+    "validation": {
+      "rowCount": 11,
+      "dnaRowCount": 10,
+      "tumorDnaRows": 5,
+      "normalDnaRows": 5,
+      "rnaRows": 1,
+      "matchedPairIds": [
+        "DIANA_WES_immunoid",
+        "DIANA_WGS_wgs"
+      ],
+      "referenceIds": [
+        "ucsc_hg38_analysis_set_full"
+      ],
+      "assays": [
+        "RNA",
+        "WES",
+        "WGS"
+      ],
+      "dataTypes": [
+        "FASTQ",
+        "RNA_FASTQ"
+      ]
+    }
+  },
+  "skipped": [
+    {
+      "relative_path": "data/immunoid/E019_S01/DNA_Pipeline/Alignments/DNA_E019_S01_tumor_dna_aligned_recal.sorted.bam",
+      "reason": "bam_reference_not_selected_analysis_reference"
+    },
+    {
+      "relative_path": "data/immunoid/E019_S01/DNA_Pipeline/Alignments/DNA_E019_S05_Vial1_normal_dna_aligned_recal.sorted.bam",
+      "reason": "bam_reference_not_selected_analysis_reference"
+    },
+    {
+      "relative_path": "data/immunoid/E019_S01/RNA_Pipeline/Alignments/RNA_E019_S01_tumor_rna_aligned.recal.sorted.bam",
+      "reason": "rna_bam_not_in_strict_samplesheet"
+    },
+    {
+      "relative_path": "data/immunoid/E019_S01/RNA_Pipeline/Alignments/RNA_E019_S01_tumor_rna_aligned.sorted.bam",
+      "reason": "rna_bam_not_in_strict_samplesheet"
+    }
+  ],
+  "validationErrors": [],
+  "validationWarnings": []
+}

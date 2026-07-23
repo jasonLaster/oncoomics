@@ -51,6 +51,8 @@ The pattern is:
 | Workflow | Use it when | Main output |
 | --- | --- | --- |
 | [HRD Workflow](hrd-workflow.md) | You want to assess HRD score readiness from WGS/WES tumor-normal data and integrate sample evidence with sourced HRR context. | HRD adapter status, no-call gates, evidence tables, and reviewer packet. |
+| [Broad WGS Delta Workflow](broad-wgs-delta-workflow.md) | You want to ask what WGS adds beyond WES, including structural variants, breakpoints, allele-specific CNV/LOH, noncoding candidates, and mutational signatures. | WGS-vs-WES delta table, CNV/SV/signature boards, target-board updates, and reviewer packet. |
+| [Pan-Target Discovery Workflow](target-discovery-workflow.md) | You want to rank ADC, bispecific, CDK12/13, CDK4/6, and other target hypotheses without overcalling WGS/WES evidence. | DNA target-locus evidence, candidate target board, orthogonal follow-up list, and reviewer packet. |
 | [TROP-2 ADC Target Workflow](trop2-adc-workflow.md) | You want to evaluate whether TROP-2/`TACSTD2` is a plausible ADC target using bulk WES plus scRNA-seq. | WES target-locus evidence, scRNA target-expression evidence, external ADC context, and target-confidence class. |
 
 ## Patterns From The Codex Life-Sciences Use Cases
@@ -88,7 +90,9 @@ Use consistent result roots so Rosalind-generated packets are easy to audit:
 
 ```text
 results/rosalind_hrd/<sample_set>/<run_id>/
+results/rosalind_targets/<sample_or_cohort>/<run_id>/
 results/rosalind_trop2_adc/<sample_or_cohort>/<run_id>/
+results/wgs_broad/<sample_or_cohort>/<run_id>/
 ```
 
 Common files:
@@ -115,4 +119,3 @@ These docs summarize patterns and details from:
 - [Life Science Research plugin](https://github.com/openai/plugins/tree/main/plugins/life-science-research)
 - [Life Sciences NGS Analysis plugin](https://github.com/openai/plugins/tree/main/plugins/ngs-analysis)
 - current project docs and artifacts under `docs/`, `manifests/`, and `results/`
-

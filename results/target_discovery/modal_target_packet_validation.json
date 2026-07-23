@@ -1,0 +1,6 @@
+{
+  "status": "passed",
+  "packet": "results/target_discovery/modal_target_packet.json",
+  "errors": [],
+  "boundary": "Modal target packets can contribute derived engineering evidence only; they must not convert DNA-only callability into expression, protein, or therapy claims."
+}

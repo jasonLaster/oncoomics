@@ -1,0 +1,16 @@
+{
+  "generatedAt": "2026-07-22T04:20:43.256Z",
+  "status": "passed",
+  "sampleOrCohort": "diana",
+  "runId": "kickoff",
+  "outputs": [
+    "sample_validation_summary.csv",
+    "dna_target_locus_summary.csv",
+    "candidate_target_board.csv",
+    "orthogonal_followup.csv",
+    "research_context_sources.json",
+    "reviewer_packet.md",
+    "next_actions.md"
+  ],
+  "boundary": "Pan-target Rosalind discovery is research-use follow-up triage."
+}
