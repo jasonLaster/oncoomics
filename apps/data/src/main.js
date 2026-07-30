@@ -159,10 +159,6 @@ const focusedIntro = focusedPage ? `
       <p class="eyebrow">${focusedPage.eyebrow}</p>
       <h1>${focusedPage.title}</h1>
       <p class="intro-copy">${focusedPage.description} No AWS account or credentials are required.</p>
-      <div class="focused-actions">
-        <button id="copy-share-link" type="button">Copy page link</button>
-        <a href="/">View all public data <span aria-hidden="true">→</span></a>
-      </div>
     </div>
     <dl class="dataset-stats" aria-label="Input summary">
       <div><dt>Files</dt><dd id="object-count">—</dd></div>
@@ -204,7 +200,6 @@ const downloadSection = focusedPage ? `
         <li>Run the anonymous copy command. It downloads this import only.</li>
         <li>Run the checksum command after download to verify file integrity.</li>
       </ol>
-      <a class="back-link" href="/">← Browse all public data</a>
     </div>
     <div class="code-card">
       <div class="code-bar">
@@ -284,7 +279,7 @@ document.querySelector('#app').innerHTML = `
   </footer>
 
   <div class="action-menu" id="row-action-menu" role="menu" aria-label="File and folder actions" hidden>
-    <button type="button" role="menuitem" data-open-focused hidden>Open download page</button>
+    <a role="menuitem" data-open-focused hidden>Open download page</a>
     <button type="button" role="menuitem" data-copy-action="s3-uri">Copy bucket path</button>
     <button type="button" role="menuitem" data-copy-action="aws-command">Copy AWS CLI command</button>
   </div>
@@ -669,7 +664,8 @@ const openActionMenu = (trigger) => {
   trigger.setAttribute('aria-expanded', 'true');
   const focusedAction = actionMenu.querySelector('[data-open-focused]');
   focusedAction.hidden = !trigger.dataset.focusedInputUrl;
-  focusedAction.dataset.focusedInputUrl = trigger.dataset.focusedInputUrl ?? '';
+  if (trigger.dataset.focusedInputUrl) focusedAction.href = trigger.dataset.focusedInputUrl;
+  else focusedAction.removeAttribute('href');
   actionMenu.hidden = false;
 
   const triggerRect = trigger.getBoundingClientRect();
@@ -684,7 +680,7 @@ const openActionMenu = (trigger) => {
     : triggerRect.bottom + 4;
   actionMenu.style.left = `${left}px`;
   actionMenu.style.top = `${top}px`;
-  actionMenu.querySelector('button:not([hidden])')?.focus();
+  actionMenu.querySelector(':is(a, button):not([hidden])')?.focus();
 };
 
 const copyText = async (value) => {
@@ -724,18 +720,6 @@ document.querySelector('#copy-instructions').addEventListener('click', async (ev
   }
 });
 
-document.querySelector('#copy-share-link')?.addEventListener('click', async (event) => {
-  const button = event.currentTarget;
-  try {
-    await copyText(window.location.href);
-    button.textContent = 'Link copied';
-    window.setTimeout(() => { button.textContent = 'Copy page link'; }, 1800);
-  } catch (error) {
-    console.error(error);
-    showCopyToast('Could not copy page link');
-  }
-});
-
 document.addEventListener('click', async (event) => {
   const trigger = event.target.closest('.action-menu-trigger');
   if (trigger) {
@@ -743,12 +727,6 @@ document.addEventListener('click', async (event) => {
     event.stopPropagation();
     if (trigger === activeActionTrigger) closeActionMenu({ restoreFocus: true });
     else openActionMenu(trigger);
-    return;
-  }
-
-  const focusedAction = event.target.closest('[data-open-focused]');
-  if (focusedAction && focusedAction.dataset.focusedInputUrl) {
-    window.location.assign(focusedAction.dataset.focusedInputUrl);
     return;
   }
 
