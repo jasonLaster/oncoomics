@@ -5,6 +5,8 @@ import {
 } from "@aws-sdk/client-cost-explorer";
 import { awsClientConfig } from "./aws.ts";
 import {
+  SCALE_TO_ZERO_EFFECTIVE_DATE,
+  WEEKLY_COST_ALERT_THRESHOLD_USD,
   type CostCategoryKey,
   type DailyServiceCost,
   type WeeklyCostPayload,
@@ -112,6 +114,9 @@ export function buildWeeklyCostPayload(
     currency: "USD",
     estimated: days.some((day) => day.estimated),
     total,
+    alertThresholdUsd: WEEKLY_COST_ALERT_THRESHOLD_USD,
+    overAlertThreshold: total > WEEKLY_COST_ALERT_THRESHOLD_USD,
+    scaleToZeroEffectiveDate: SCALE_TO_ZERO_EFFECTIVE_DATE,
     dailyAverage: days.length ? total / days.length : 0,
     peakDay: peakDay ? { date: peakDay.date, total: peakDay.total } : null,
     days,

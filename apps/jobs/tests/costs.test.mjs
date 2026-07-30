@@ -57,6 +57,9 @@ test("builds daily service and chart-category totals without inventing values", 
   assert.ok(Math.abs(payload.dailyAverage - 3.765) < 1e-10);
   assert.deepEqual(payload.peakDay, { date: "2026-07-15", total: 7.51 });
   assert.equal(payload.estimated, true);
+  assert.equal(payload.alertThresholdUsd, 10);
+  assert.equal(payload.overAlertThreshold, false);
+  assert.equal(payload.scaleToZeroEffectiveDate, "2026-07-30");
   assert.deepEqual(payload.days[0].categories, {
     s3: 2.5,
     ec2Compute: 3,
@@ -85,4 +88,24 @@ test("requests unblended daily costs grouped by AWS service", async () => {
   assert.deepEqual(input.Metrics, ["UnblendedCost"]);
   assert.deepEqual(input.GroupBy, [{ Type: "DIMENSION", Key: "SERVICE" }]);
   assert.equal(payload.days.length, 0);
+});
+
+test("alerts only when the seven-day total is strictly above ten dollars", () => {
+  const atThreshold = buildWeeklyCostPayload(
+    [{
+      TimePeriod: { Start: "2026-07-23", End: "2026-07-24" },
+      Groups: [group("Amazon Simple Storage Service", 10)],
+    }],
+    { start: "2026-07-23", end: "2026-07-30" },
+  );
+  const overThreshold = buildWeeklyCostPayload(
+    [{
+      TimePeriod: { Start: "2026-07-23", End: "2026-07-24" },
+      Groups: [group("Amazon Simple Storage Service", 10.01)],
+    }],
+    { start: "2026-07-23", end: "2026-07-30" },
+  );
+
+  assert.equal(atThreshold.overAlertThreshold, false);
+  assert.equal(overThreshold.overAlertThreshold, true);
 });

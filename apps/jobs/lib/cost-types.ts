@@ -18,6 +18,9 @@ export const COST_CATEGORY_LABELS: Record<CostCategoryKey, string> = {
   other: "Other",
 };
 
+export const WEEKLY_COST_ALERT_THRESHOLD_USD = 10;
+export const SCALE_TO_ZERO_EFFECTIVE_DATE = "2026-07-30";
+
 export type DailyServiceCost = {
   name: string;
   label: string;
@@ -39,6 +42,9 @@ export type WeeklyCostPayload = {
   currency: "USD";
   estimated: boolean;
   total: number;
+  alertThresholdUsd: number;
+  overAlertThreshold: boolean;
+  scaleToZeroEffectiveDate: string;
   dailyAverage: number;
   peakDay: { date: string; total: number } | null;
   days: DailyCost[];

@@ -49,6 +49,17 @@ function displayServices(day: DailyCost) {
     : visible;
 }
 
+function costWindowMessage(payload: WeeklyCostPayload) {
+  const effectiveDay = formatDay(payload.scaleToZeroEffectiveDate);
+  if (payload.end <= payload.scaleToZeroEffectiveDate) {
+    return `This window predates the ${effectiveDay} change, so EC2 other and VPC still include the retired always-on network baseline. It will roll out of view one day at a time.`;
+  }
+  if (payload.start < payload.scaleToZeroEffectiveDate) {
+    return `This window mixes days before and after the ${effectiveDay} change. The retired network baseline will keep shrinking until all seven days are post-change.`;
+  }
+  return "All seven days are after the scale-to-zero change. EC2 compute and public IPv4 costs should now appear only when Batch jobs needed hosts.";
+}
+
 export function CostViewer({
   initialPayload = null,
   initialError = null,
@@ -138,8 +149,30 @@ export function CostViewer({
           <>
             <section className={styles.summary} aria-label="Seven-day cost summary">
               <div><span>Seven-day cost</span><strong>{money.format(payload.total)}</strong><small>{formatDay(payload.start)}–{formatDay(payload.days.at(-1)?.date || payload.start)}</small></div>
+              <div className={payload.overAlertThreshold ? styles.alerting : styles.withinThreshold}>
+                <span>Weekly alert</span>
+                <strong>{payload.overAlertThreshold ? "Above $10" : "Within $10"}</strong>
+                <small>{payload.overAlertThreshold ? `${money.format(payload.total - payload.alertThresholdUsd)} over threshold` : `${money.format(payload.alertThresholdUsd - payload.total)} remaining`}</small>
+              </div>
               <div><span>Daily average</span><strong>{money.format(payload.dailyAverage)}</strong><small>Across {payload.days.length} completed days</small></div>
               <div><span>Peak day</span><strong>{money.format(payload.peakDay?.total || 0)}</strong><small>{payload.peakDay ? formatDay(payload.peakDay.date) : "No usage"}</small></div>
+            </section>
+
+            <section
+              className={styles.infrastructureStatus}
+              aria-label="Scale-to-zero infrastructure status"
+              data-testid="scale-to-zero-status"
+            >
+              <div className={styles.statusHeading}>
+                <span><i aria-hidden="true" />Scale-to-zero active</span>
+                <strong>NAT gateways removed {formatDay(payload.scaleToZeroEffectiveDate)}</strong>
+              </div>
+              <p>{costWindowMessage(payload)}</p>
+              <dl>
+                <div><dt>Batch capacity</dt><dd>Starts at zero</dd></div>
+                <div><dt>Idle compute</dt><dd>$0</dd></div>
+                <div><dt>Still metered</dt><dd>S3, ECR, KMS, logs, and active jobs</dd></div>
+              </dl>
             </section>
 
             <div className={styles.legend} aria-label="Cost category legend">

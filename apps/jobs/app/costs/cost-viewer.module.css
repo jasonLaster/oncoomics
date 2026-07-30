@@ -151,7 +151,7 @@
 
 .summary {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   border: 1px solid var(--line);
   border-radius: 7px;
   background: var(--surface);
@@ -172,6 +172,73 @@
   font-family: var(--font-data), monospace;
   font-size: clamp(22px, 3vw, 30px);
   font-weight: 500;
+}
+
+.summary .alerting strong { color: var(--amber); }
+.summary .withinThreshold strong { color: var(--green-strong); }
+
+.infrastructureStatus {
+  margin-top: 14px;
+  padding: 16px 18px;
+  border: 1px solid #315946;
+  border-radius: 7px;
+  background: linear-gradient(135deg, #0c1a15, var(--surface) 68%);
+}
+
+.statusHeading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.statusHeading span {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--green-strong);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.statusHeading i {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--green);
+  box-shadow: 0 0 0 4px rgba(57, 211, 137, 0.1);
+}
+
+.statusHeading strong {
+  color: var(--text);
+  font-family: var(--font-data), monospace;
+  font-size: 10px;
+  font-weight: 500;
+}
+
+.infrastructureStatus p {
+  max-width: 850px;
+  margin: 10px 0 13px;
+  color: var(--muted-strong);
+  font-size: 11px;
+  line-height: 1.55;
+}
+
+.infrastructureStatus dl {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 24px;
+  margin: 0;
+}
+
+.infrastructureStatus dl div { display: inline-flex; gap: 6px; }
+.infrastructureStatus dt,
+.infrastructureStatus dd { font-size: 10px; }
+.infrastructureStatus dt { color: var(--muted); }
+.infrastructureStatus dd {
+  margin: 0;
+  color: var(--text);
+  font-family: var(--font-data), monospace;
 }
 
 .legend {
@@ -271,6 +338,9 @@
   .summary { grid-template-columns: 1fr; }
   .summary > div { border-right: 0; border-bottom: 1px solid var(--line); }
   .summary > div:last-child { border-bottom: 0; }
+  .statusHeading { align-items: flex-start; flex-direction: column; gap: 6px; }
+  .infrastructureStatus dl { display: grid; gap: 5px; }
+  .infrastructureStatus dl div { justify-content: space-between; }
   .details { display: grid; grid-template-columns: 1fr 1fr; gap: 5px 12px; }
   .details div { justify-content: space-between; min-width: 0; }
   .details dt { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

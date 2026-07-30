@@ -17,6 +17,9 @@ function payload(total: number, generatedAt: string) {
     currency: "USD",
     estimated: true,
     total,
+    alertThresholdUsd: 10,
+    overAlertThreshold: total > 10,
+    scaleToZeroEffectiveDate: "2026-07-30",
     dailyAverage: total / 7,
     peakDay: { date: "2026-07-16", total: 20 },
     days: Array.from({ length: 7 }, (_, index) => ({
@@ -53,6 +56,9 @@ test("shows a responsive daily breakdown and refreshes live cost data", async ({
   await expect(page.getByRole("heading", { name: "Seven-day cost breakdown" })).toBeVisible();
   await page.getByRole("button", { name: /Refresh costs|Try again/ }).click();
   await expect(page.getByText("$60.50", { exact: true })).toBeVisible();
+  await expect(page.getByText("Above $10", { exact: true })).toBeVisible();
+  await expect(page.getByTestId("scale-to-zero-status")).toContainText("Scale-to-zero active");
+  await expect(page.getByTestId("scale-to-zero-status")).toContainText("predates");
   await expect(page.getByTestId("daily-cost-chart").locator("article")).toHaveCount(7);
   await expect(page.getByText("EC2 compute", { exact: true }).first()).toBeVisible();
 

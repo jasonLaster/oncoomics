@@ -33,6 +33,8 @@ test("defines a live, no-cache AWS cost view", async () => {
   assert.match(viewer, /Seven-day cost breakdown/);
   assert.match(viewer, /fetch\("\/api\/costs", \{ cache: "no-store" \}\)/);
   assert.match(viewer, /Refresh costs/);
+  assert.match(viewer, /Scale-to-zero active/);
+  assert.match(viewer, /Weekly alert/);
   assert.match(viewer, /data-testid="daily-cost-chart"/);
   assert.match(route, /dynamic = "force-dynamic"/);
   assert.match(page, /initialPayload = await getWeeklyCosts\(\)/);
@@ -42,6 +44,7 @@ test("defines a live, no-cache AWS cost view", async () => {
   assert.match(costs, /Granularity: "DAILY"/);
   assert.match(costs, /Metrics: \["UnblendedCost"\]/);
   assert.match(costs, /Key: "SERVICE"/);
+  assert.match(costs, /WEEKLY_COST_ALERT_THRESHOLD_USD/);
 });
 
 test("implements automatic refresh and server-side AWS access", async () => {
