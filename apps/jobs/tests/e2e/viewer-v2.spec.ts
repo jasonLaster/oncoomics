@@ -35,13 +35,19 @@ test.describe("viewer v2 desktop workspace", () => {
   });
 
   test("selects a job and presents structured overview progress", async ({ page }) => {
-    const selectedJob = page.getByRole("button", { name: /Diana HRD evidence/ });
-    const failedJob = page.getByRole("button", { name: /Filter failure sentinel/ });
-    const archivedJob = page.getByRole("button", { name: /Archived validation/ });
+    const selectedJob = page
+      .getByRole("heading", { name: /Running now/ })
+      .locator("..")
+      .getByRole("button", { name: /Diana HRD evidence/ });
+    const failedJob = page
+      .getByRole("heading", { name: /Past day/ })
+      .locator("..")
+      .getByRole("button", { name: /Filter failure sentinel/ });
 
     await expect(page.getByRole("heading", { name: /Running now/ })).toBeVisible();
-    await expect(page.getByRole("heading", { name: /Last 24 hours/ })).toBeVisible();
-    await expect(page.getByRole("heading", { name: /All jobs/ })).toBeVisible();
+    await expect(page.getByRole("heading", { name: /Past day 2/ })).toBeVisible();
+    await expect(page.getByRole("heading", { name: /Past week 1/ })).toBeVisible();
+    await expect(page.getByRole("heading", { name: /All jobs 4/ })).toBeVisible();
     await expect(selectedJob).toHaveAttribute("aria-pressed", "true");
     const metrics = page.getByLabel("Run metrics");
     await expect(metrics.getByText("37.5%", { exact: true })).toBeVisible();
@@ -60,6 +66,10 @@ test.describe("viewer v2 desktop workspace", () => {
     await expect(page.getByRole("heading", { name: "Filter failure sentinel" })).toBeVisible();
     await expect(page.getByText(/retry budget was exhausted/i)).toBeVisible();
 
+    const archivedJob = page
+      .getByRole("heading", { name: /Past week/ })
+      .locator("..")
+      .getByRole("button", { name: /Archived validation/ });
     await archivedJob.click();
     await expect(archivedJob).toHaveAttribute("aria-pressed", "true");
     await expect(page.getByRole("heading", { name: "Archived validation" })).toBeVisible();
@@ -277,7 +287,11 @@ test.describe("viewer v2 mobile workspace", () => {
     await expect(leftRail).toHaveAttribute("data-collapsed", "false");
     await expect(rightRail).toHaveAttribute("data-collapsed", "true");
 
-    await page.getByRole("button", { name: /Filter failure sentinel/ }).click();
+    await page
+      .getByRole("heading", { name: /Past day/ })
+      .locator("..")
+      .getByRole("button", { name: /Filter failure sentinel/ })
+      .click();
     await expect(leftRail).toHaveAttribute("data-collapsed", "true");
     await expect(page.getByRole("heading", { name: "Filter failure sentinel" })).toBeVisible();
 

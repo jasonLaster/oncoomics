@@ -347,6 +347,29 @@ export const getAggregates = query({
   },
 });
 
+export const listJobs = query({
+  args: {},
+  returns: v.array(jobValidator),
+  handler: async (ctx) => {
+    await requireViewerIdentity(ctx);
+    const jobs = await ctx.db.query("jobs").collect();
+    return jobs
+      .map((job) => ({
+        jobId: job.jobId,
+        name: job.name,
+        status: job.status,
+        statusReason: job.statusReason,
+        queue: job.queue,
+        createdAt: job.createdAt,
+        startedAt: job.startedAt,
+        stoppedAt: job.stoppedAt,
+        runId: job.runId,
+        stage: job.stage,
+      }))
+      .sort((left, right) => (right.createdAt || 0) - (left.createdAt || 0));
+  },
+});
+
 export const getDashboardSummary = query({
   args: {},
   returns: v.object({

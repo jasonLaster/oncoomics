@@ -20,7 +20,8 @@ const ACTIVE_INVENTORY_REFRESH_SECONDS = 30;
 const IDLE_INVENTORY_REFRESH_SECONDS = 120;
 const ACTIVE_DETAIL_REFRESH_SECONDS = 10;
 const TERMINAL_LOG_REFRESH_SECONDS = 60;
-const RECENT_JOB_WINDOW_MS = 24 * 60 * 60 * 1_000;
+const PAST_DAY_WINDOW_MS = 24 * 60 * 60 * 1_000;
+const PAST_WEEK_WINDOW_MS = 7 * PAST_DAY_WINDOW_MS;
 const LOG_PAGE_SIZE = 250;
 const LEFT_RAIL_KEY = "diana-viewer-v2:left-rail-collapsed";
 const RIGHT_RAIL_KEY = "diana-viewer-v2:right-rail-collapsed";
@@ -682,18 +683,23 @@ export function JobViewer() {
       )
     : jobs;
   const generatedAt = Date.parse(payload?.generatedAt || "");
-  const recentJobCutoff =
+  const pastDayCutoff =
     (Number.isFinite(generatedAt) ? generatedAt : Number.POSITIVE_INFINITY) -
-    RECENT_JOB_WINDOW_MS;
+    PAST_DAY_WINDOW_MS;
+  const pastWeekCutoff =
+    (Number.isFinite(generatedAt) ? generatedAt : Number.POSITIVE_INFINITY) -
+    PAST_WEEK_WINDOW_MS;
   const activeJobs = visibleJobs.filter((job) => ACTIVE_STATUSES.has(job.status));
   const terminalJobs = visibleJobs.filter(
     (job) => !ACTIVE_STATUSES.has(job.status),
   );
-  const recentJobs = terminalJobs.filter(
-    (job) => (job.createdAt || 0) >= recentJobCutoff,
+  const pastDayJobs = terminalJobs.filter(
+    (job) => (job.createdAt || 0) >= pastDayCutoff,
   );
-  const olderJobs = terminalJobs.filter(
-    (job) => (job.createdAt || 0) < recentJobCutoff,
+  const pastWeekJobs = terminalJobs.filter(
+    (job) =>
+      (job.createdAt || 0) >= pastWeekCutoff &&
+      (job.createdAt || 0) < pastDayCutoff,
   );
 
   const displayedLogs = logs?.jobId === selectedId ? logs : null;
@@ -943,21 +949,27 @@ export function JobViewer() {
               onSelect={selectJob}
             />
           )}
-          {recentJobs.length > 0 && (
-            <JobGroup
-              title="Last 24 hours"
-              jobs={recentJobs}
-              selectedId={selectedId}
-              onSelect={selectJob}
-            />
-          )}
-          {olderJobs.length > 0 && (
-            <JobGroup
-              title="All jobs"
-              jobs={olderJobs}
-              selectedId={selectedId}
-              onSelect={selectJob}
-            />
+          {payload && visibleJobs.length > 0 && (
+            <>
+              <JobGroup
+                title="Past day"
+                jobs={pastDayJobs}
+                selectedId={selectedId}
+                onSelect={selectJob}
+              />
+              <JobGroup
+                title="Past week"
+                jobs={pastWeekJobs}
+                selectedId={selectedId}
+                onSelect={selectJob}
+              />
+              <JobGroup
+                title="All jobs"
+                jobs={visibleJobs}
+                selectedId={selectedId}
+                onSelect={selectJob}
+              />
+            </>
           )}
 
           <div className="rail-footer">
