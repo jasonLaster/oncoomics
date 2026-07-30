@@ -2,6 +2,13 @@ import hljs from 'highlight.js/lib/core';
 import bash from 'highlight.js/lib/languages/bash';
 import markdown from 'highlight.js/lib/languages/markdown';
 import 'highlight.js/styles/github-dark.css';
+import {
+  focusedInputPathFor,
+  focusedInputPrefix,
+  inputDownloadCommand,
+  inputPageConfig,
+  parseFocusedInputPath,
+} from './focused-input.js';
 import { shouldOpenDirectory } from './tree.js';
 import './styles.css';
 
@@ -42,7 +49,21 @@ const PUBLIC_SOURCES = [
   s3Uri: `s3://${source.bucket}/${source.prefix ?? ''}`,
 }));
 
-const markdownInstructions = `## Download the reviewed analysis index
+const focusedInputSlug = parseFocusedInputPath(window.location.pathname);
+const focusedPage = focusedInputSlug ? inputPageConfig(focusedInputSlug) : null;
+const rawInputSource = PUBLIC_SOURCES.find((source) => source.id === 'raw-inputs');
+const focusedSource = focusedInputSlug ? {
+  ...rawInputSource,
+  name: focusedPage.title,
+  treeName: focusedInputSlug,
+  prefix: focusedInputPrefix(focusedInputSlug),
+  s3Uri: `s3://${rawInputSource.bucket}/${focusedInputPrefix(focusedInputSlug)}`,
+  description: focusedPage.description,
+  downloadDirectory: focusedInputSlug,
+} : null;
+const ACTIVE_SOURCES = focusedSource ? [focusedSource] : PUBLIC_SOURCES;
+
+const allDataMarkdownInstructions = `## Download the reviewed analysis index
 
 \`\`\`bash
 curl --fail --location \\
@@ -68,6 +89,26 @@ aws s3 cp \\
   --no-sign-request
 \`\`\``;
 
+const focusedMarkdownInstructions = focusedSource ? `## Download this input
+
+\`\`\`bash
+${inputDownloadCommand(focusedSource)}
+\`\`\`
+
+## Verify the downloaded files
+
+\`\`\`bash
+cd '${focusedInputSlug}'
+# Linux
+sha256sum -c checksums.sha256
+# macOS
+shasum -a 256 -c checksums.sha256
+\`\`\`` : '';
+
+const markdownInstructions = focusedSource
+  ? focusedMarkdownInstructions
+  : allDataMarkdownInstructions;
+
 const highlightMarkdownWithBash = (source) => {
   const fencePattern = /```bash\n([\s\S]*?)\n```/g;
   let highlighted = '';
@@ -86,72 +127,128 @@ const highlightMarkdownWithBash = (source) => {
   return highlighted;
 };
 
+if (focusedPage) {
+  document.title = `${focusedPage.title} | Diana Omics`;
+  document.querySelector('meta[name="description"]')?.setAttribute('content', focusedPage.description);
+  document.querySelector('meta[property="og:title"]')?.setAttribute('content', `${focusedPage.title} | Diana Omics`);
+  document.querySelector('meta[property="og:description"]')?.setAttribute('content', focusedPage.description);
+}
+
+const allDataIntro = `
+  <section class="intro">
+    <div>
+      <p class="eyebrow">Open genomic dataset</p>
+      <h1>Diana Omics public data</h1>
+      <p class="intro-copy">Browse reviewed current analysis outputs and raw Diana inbox deliveries. No AWS account or credentials are required for these public files.</p>
+    </div>
+    <dl class="dataset-stats" aria-label="Dataset summary">
+      <div><dt>Files</dt><dd id="object-count">—</dd></div>
+      <div><dt>Size</dt><dd id="total-size">—</dd></div>
+      <div><dt>Updated</dt><dd id="last-updated">—</dd></div>
+    </dl>
+  </section>`;
+
+const focusedIntro = focusedPage ? `
+  <nav class="breadcrumbs" aria-label="Breadcrumb">
+    <a href="/">All data</a>
+    <span aria-hidden="true">/</span>
+    <span>Diana input</span>
+  </nav>
+  <section class="intro focused-intro">
+    <div>
+      <p class="eyebrow">${focusedPage.eyebrow}</p>
+      <h1>${focusedPage.title}</h1>
+      <p class="intro-copy">${focusedPage.description} No AWS account or credentials are required.</p>
+      <div class="focused-actions">
+        <button id="copy-share-link" type="button">Copy page link</button>
+        <a href="/">View all public data <span aria-hidden="true">→</span></a>
+      </div>
+    </div>
+    <dl class="dataset-stats" aria-label="Input summary">
+      <div><dt>Files</dt><dd id="object-count">—</dd></div>
+      <div><dt>Size</dt><dd id="total-size">—</dd></div>
+      <div><dt>Updated</dt><dd id="last-updated">—</dd></div>
+    </dl>
+  </section>` : '';
+
+const sourceSection = focusedPage ? '' : `
+  <section class="source-section" aria-labelledby="sources-heading">
+    <div class="source-heading">
+      <p class="eyebrow">Public S3 sources</p>
+      <h2 id="sources-heading">Live data surfaces</h2>
+    </div>
+    <div class="source-grid">
+      ${PUBLIC_SOURCES.map((source) => `
+        <article class="source-card" id="source-${source.id}">
+          <div class="source-card-heading">
+            <h3>${source.name}</h3>
+            <span class="source-state"><i></i><span>Loading</span></span>
+          </div>
+          <p>${source.description}</p>
+          <code>${source.indexUrl ?? source.s3Uri}</code>
+          <div class="source-stats" aria-live="polite">
+            <strong>—</strong>
+            <span>${source.loadingLabel}</span>
+          </div>
+        </article>`).join('')}
+    </div>
+  </section>`;
+
+const downloadSection = focusedPage ? `
+  <section class="download-section focused-download" aria-labelledby="download-heading">
+    <div class="download-copy">
+      <p class="eyebrow">Download this import</p>
+      <h2 id="download-heading">Get the files</h2>
+      <ol class="download-steps">
+        <li>Install the <a href="https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html">AWS CLI</a> if it is not already available.</li>
+        <li>Run the anonymous copy command. It downloads this import only.</li>
+        <li>Run the checksum command after download to verify file integrity.</li>
+      </ol>
+      <a class="back-link" href="/">← Browse all public data</a>
+    </div>
+    <div class="code-card">
+      <div class="code-bar">
+        <span>DOWNLOAD.md</span>
+        <button id="copy-instructions" type="button">Copy instructions</button>
+      </div>
+      <pre><code id="markdown-code" class="language-markdown"></code></pre>
+    </div>
+  </section>` : `
+  <section class="download-section" aria-labelledby="download-heading">
+    <div class="download-copy">
+      <p class="eyebrow">Download guide</p>
+      <h2 id="download-heading">Get the data</h2>
+      <p>Download individual public objects directly, use the reviewed index for report outputs, or copy the live Diana inbox with anonymous S3 reads.</p>
+      <a href="https://github.com/jasonLaster/oncoomics/blob/main/docs/operations/diana-public-data-download.md">Open the full download guide <span aria-hidden="true">→</span></a>
+    </div>
+    <div class="code-card">
+      <div class="code-bar">
+        <span>DOWNLOAD.md</span>
+        <button id="copy-instructions" type="button">Copy Markdown</button>
+      </div>
+      <pre><code id="markdown-code" class="language-markdown"></code></pre>
+    </div>
+  </section>`;
+
 document.querySelector('#app').innerHTML = `
   <header class="site-header">
-    <a class="brand" href="#top" aria-label="Diana Omics home">
+    <a class="brand" href="/" aria-label="Diana Omics home">
       <span class="brand-mark" aria-hidden="true">D<span>/</span></span>
       <span>Diana Omics</span>
     </a>
-    <span class="access-badge"><i></i> Public S3 data</span>
+    <span class="access-badge"><i></i> ${focusedPage ? 'Public input' : 'Public S3 data'}</span>
   </header>
 
-  <main class="shell" id="top">
-    <section class="intro">
-      <div>
-        <p class="eyebrow">Open genomic dataset</p>
-        <h1>Diana Omics public data</h1>
-        <p class="intro-copy">Browse reviewed current analysis outputs and raw Diana inbox deliveries. No AWS account or credentials are required for these public files.</p>
-      </div>
-      <dl class="dataset-stats" aria-label="Dataset summary">
-        <div><dt>Files</dt><dd id="object-count">—</dd></div>
-        <div><dt>Size</dt><dd id="total-size">—</dd></div>
-        <div><dt>Updated</dt><dd id="last-updated">—</dd></div>
-      </dl>
-    </section>
-
-    <section class="source-section" aria-labelledby="sources-heading">
-      <div class="source-heading">
-        <p class="eyebrow">Public S3 sources</p>
-        <h2 id="sources-heading">Live data surfaces</h2>
-      </div>
-      <div class="source-grid">
-        ${PUBLIC_SOURCES.map((source) => `
-          <article class="source-card" id="source-${source.id}">
-            <div class="source-card-heading">
-              <h3>${source.name}</h3>
-              <span class="source-state"><i></i><span>Loading</span></span>
-            </div>
-            <p>${source.description}</p>
-            <code>${source.indexUrl ?? source.s3Uri}</code>
-            <div class="source-stats" aria-live="polite">
-              <strong>—</strong>
-              <span>${source.loadingLabel}</span>
-            </div>
-          </article>`).join('')}
-      </div>
-    </section>
-
-    <section class="download-section" aria-labelledby="download-heading">
-      <div class="download-copy">
-        <p class="eyebrow">Download guide</p>
-        <h2 id="download-heading">Get the data</h2>
-        <p>Download individual public objects directly, use the reviewed index for report outputs, or copy the live Diana inbox with anonymous S3 reads.</p>
-        <a href="https://github.com/jasonLaster/oncoomics/blob/main/docs/operations/diana-public-data-download.md">Open the full download guide <span aria-hidden="true">→</span></a>
-      </div>
-      <div class="code-card">
-        <div class="code-bar">
-          <span>DOWNLOAD.md</span>
-          <button id="copy-instructions" type="button">Copy Markdown</button>
-        </div>
-        <pre><code id="markdown-code" class="language-markdown"></code></pre>
-      </div>
-    </section>
+  <main class="shell${focusedPage ? ' focused-page' : ''}" id="top">
+    ${focusedPage ? focusedIntro : allDataIntro}
+    ${sourceSection}
+    ${downloadSection}
 
     <section class="tree-section" aria-labelledby="files-heading">
       <div class="section-heading">
         <div>
-          <h2 id="files-heading">Public files</h2>
-          <p id="inventory-status">Loading public inventories…</p>
+          <h2 id="files-heading">${focusedPage ? 'Files in this import' : 'Public files'}</h2>
+          <p id="inventory-status">${focusedPage ? 'Loading this public import…' : 'Loading public inventories…'}</p>
         </div>
         <div class="tree-actions">
           <button id="expand-all" type="button">Expand all</button>
@@ -161,11 +258,11 @@ document.querySelector('#app').innerHTML = `
 
       <div class="tree-panel">
         <div class="tree-toolbar">
-          <div class="path-label"><span>s3</span><code>${PUBLIC_SOURCES.length} public sources</code></div>
+          <div class="path-label"><span>s3</span><code>${focusedSource?.s3Uri ?? `${PUBLIC_SOURCES.length} public sources`}</code></div>
           <label class="search-field">
             <span aria-hidden="true">⌕</span>
-            <span class="sr-only">Search files, folders, and buckets</span>
-            <input id="tree-search" type="search" placeholder="Search files, folders, and buckets" autocomplete="off" />
+            <span class="sr-only">${focusedPage ? 'Search this import' : 'Search files, folders, and buckets'}</span>
+            <input id="tree-search" type="search" placeholder="${focusedPage ? 'Search this import' : 'Search files, folders, and buckets'}" autocomplete="off" />
           </label>
         </div>
         <div class="tree-column-headings" aria-hidden="true">
@@ -187,6 +284,7 @@ document.querySelector('#app').innerHTML = `
   </footer>
 
   <div class="action-menu" id="row-action-menu" role="menu" aria-label="File and folder actions" hidden>
+    <button type="button" role="menuitem" data-open-focused hidden>Open download page</button>
     <button type="button" role="menuitem" data-copy-action="s3-uri">Copy bucket path</button>
     <button type="button" role="menuitem" data-copy-action="aws-command">Copy AWS CLI command</button>
   </div>
@@ -230,6 +328,7 @@ const searchTokens = () => normalizeSearch(searchQuery).trim().split(/\s+/).filt
 
 const renderActionTrigger = (item) => {
   if (!item.source) return '';
+  const focusedUrl = focusedPage ? null : focusedInputPathFor(item);
 
   return `
     <button
@@ -241,6 +340,7 @@ const renderActionTrigger = (item) => {
       title="Actions"
       data-s3-uri="${escapeHtml(s3UriFor(item))}"
       data-aws-command="${escapeHtml(awsCopyCommandFor(item))}"
+      ${focusedUrl ? `data-focused-input-url="${escapeHtml(focusedUrl)}"` : ''}
     >&#8942;</button>`;
 };
 
@@ -267,6 +367,7 @@ const typeForKey = (key) => {
   if (key.endsWith('.vcf.gz') || key.endsWith('.vcf')) return 'VCF';
   if (key.endsWith('.bam')) return 'BAM';
   if (key.endsWith('.bai')) return 'BAI';
+  if (key.endsWith('.svs')) return 'SVS';
   if (key.endsWith('.sha256') || key.endsWith('checksum.txt')) return 'SHA-256';
   if (key.endsWith('.csv')) return 'CSV';
   if (key.endsWith('.tsv')) return 'TSV';
@@ -281,7 +382,7 @@ const typeForKey = (key) => {
 
 function buildTree(items) {
   const root = {
-    name: 'Diana public S3',
+    name: focusedPage ? focusedPage.title : 'Diana public S3',
     type: 'directory',
     children: new Map(),
     size: 0,
@@ -402,7 +503,9 @@ function renderTree() {
   if (!filtered.length) {
     treeElement.innerHTML = objects.length
       ? '<div class="empty-tree">No files or folders match that search.</div>'
-      : '<div class="empty-tree error">The public inventories are currently unavailable. Refresh to try again.</div>';
+      : focusedPage
+        ? '<div class="empty-tree error">No public files were found for this input. Check the shared URL or browse all public data.</div>'
+        : '<div class="empty-tree error">The public inventories are currently unavailable. Refresh to try again.</div>';
   } else {
     treeElement.innerHTML = renderDirectory(buildTree(filtered), 0, true);
   }
@@ -490,6 +593,7 @@ async function fetchS3Inventory(source) {
 
 function updateSourceCard(source, sourceObjects, generatedAt = null, error = null) {
   const card = document.querySelector(`#source-${source.id}`);
+  if (!card) return;
   const state = card.querySelector('.source-state');
   const stats = card.querySelector('.source-stats');
 
@@ -510,10 +614,10 @@ function updateSourceCard(source, sourceObjects, generatedAt = null, error = nul
 }
 
 async function loadInventory() {
-  const inventories = await Promise.allSettled(PUBLIC_SOURCES.map((source) => fetchInventory(source)));
+  const inventories = await Promise.allSettled(ACTIVE_SOURCES.map((source) => fetchInventory(source)));
 
   inventories.forEach((result, index) => {
-    const source = PUBLIC_SOURCES[index];
+    const source = ACTIVE_SOURCES[index];
     if (result.status === 'fulfilled') {
       objects.push(...result.value.objects);
       updateSourceCard(source, result.value.objects, result.value.generatedAt);
@@ -545,13 +649,6 @@ document.querySelector('#collapse-all').addEventListener('click', () => {
   document.querySelectorAll('.tree-directory').forEach((directory) => { directory.open = directory.classList.contains('root-directory'); });
 });
 
-document.querySelector('#copy-instructions').addEventListener('click', async (event) => {
-  await navigator.clipboard.writeText(markdownInstructions);
-  const button = event.currentTarget;
-  button.textContent = 'Copied';
-  window.setTimeout(() => { button.textContent = 'Copy Markdown'; }, 1800);
-});
-
 const actionMenu = document.querySelector('#row-action-menu');
 const copyToast = document.querySelector('#copy-toast');
 let activeActionTrigger = null;
@@ -570,6 +667,9 @@ const openActionMenu = (trigger) => {
   closeActionMenu();
   activeActionTrigger = trigger;
   trigger.setAttribute('aria-expanded', 'true');
+  const focusedAction = actionMenu.querySelector('[data-open-focused]');
+  focusedAction.hidden = !trigger.dataset.focusedInputUrl;
+  focusedAction.dataset.focusedInputUrl = trigger.dataset.focusedInputUrl ?? '';
   actionMenu.hidden = false;
 
   const triggerRect = trigger.getBoundingClientRect();
@@ -584,7 +684,7 @@ const openActionMenu = (trigger) => {
     : triggerRect.bottom + 4;
   actionMenu.style.left = `${left}px`;
   actionMenu.style.top = `${top}px`;
-  actionMenu.querySelector('[role="menuitem"]').focus();
+  actionMenu.querySelector('button:not([hidden])')?.focus();
 };
 
 const copyText = async (value) => {
@@ -611,6 +711,31 @@ const showCopyToast = (message) => {
   toastTimer = window.setTimeout(() => { copyToast.hidden = true; }, 1800);
 };
 
+document.querySelector('#copy-instructions').addEventListener('click', async (event) => {
+  const button = event.currentTarget;
+  const originalLabel = button.textContent;
+  try {
+    await copyText(markdownInstructions);
+    button.textContent = 'Copied';
+    window.setTimeout(() => { button.textContent = originalLabel; }, 1800);
+  } catch (error) {
+    console.error(error);
+    showCopyToast('Could not copy to clipboard');
+  }
+});
+
+document.querySelector('#copy-share-link')?.addEventListener('click', async (event) => {
+  const button = event.currentTarget;
+  try {
+    await copyText(window.location.href);
+    button.textContent = 'Link copied';
+    window.setTimeout(() => { button.textContent = 'Copy page link'; }, 1800);
+  } catch (error) {
+    console.error(error);
+    showCopyToast('Could not copy page link');
+  }
+});
+
 document.addEventListener('click', async (event) => {
   const trigger = event.target.closest('.action-menu-trigger');
   if (trigger) {
@@ -618,6 +743,12 @@ document.addEventListener('click', async (event) => {
     event.stopPropagation();
     if (trigger === activeActionTrigger) closeActionMenu({ restoreFocus: true });
     else openActionMenu(trigger);
+    return;
+  }
+
+  const focusedAction = event.target.closest('[data-open-focused]');
+  if (focusedAction && focusedAction.dataset.focusedInputUrl) {
+    window.location.assign(focusedAction.dataset.focusedInputUrl);
     return;
   }
 
