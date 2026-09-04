@@ -1,0 +1,407 @@
+<section class="trop2-viz" data-viz-root="trop2-evidence" aria-labelledby="trop2-title">
+  <style>
+    .trop2-viz {
+      color: var(--foreground);
+      display: grid;
+      gap: 1.25rem;
+      width: 100%;
+    }
+
+    .trop2-viz header {
+      display: grid;
+      gap: 0.35rem;
+    }
+
+    .trop2-viz h1,
+    .trop2-viz h2,
+    .trop2-viz p {
+      margin: 0;
+    }
+
+    .trop2-viz .eyebrow {
+      color: var(--muted-foreground);
+      font-size: 0.8rem;
+      font-weight: 650;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .trop2-viz .lede {
+      color: var(--muted-foreground);
+      max-width: 72ch;
+    }
+
+    .trop2-viz .chart-section {
+      display: grid;
+      gap: 0.5rem;
+      min-width: 0;
+    }
+
+    .trop2-viz .section-heading {
+      align-items: baseline;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.4rem 0.8rem;
+      justify-content: space-between;
+    }
+
+    .trop2-viz .chart-wrap {
+      min-height: 360px;
+      position: relative;
+      width: 100%;
+    }
+
+    .trop2-viz .depth-chart {
+      display: block;
+      overflow: visible;
+      width: 100%;
+    }
+
+    .trop2-viz .depth-chart .plot-frame,
+    .trop2-viz .depth-chart .axis line,
+    .trop2-viz .depth-chart .axis path {
+      stroke: var(--border);
+    }
+
+    .trop2-viz .depth-chart .axis text,
+    .trop2-viz .depth-chart .axis-title,
+    .trop2-viz .depth-chart .annotation {
+      fill: var(--muted-foreground);
+    }
+
+    .trop2-viz .depth-chart .depth-area {
+      fill: color-mix(in srgb, var(--viz-series-1) 18%, transparent);
+    }
+
+    .trop2-viz .depth-chart .depth-line {
+      fill: none;
+      stroke: var(--viz-series-1);
+      stroke-linejoin: round;
+      stroke-linecap: round;
+      stroke-width: 2.25;
+    }
+
+    .trop2-viz .depth-chart .coding-band {
+      fill: color-mix(in srgb, var(--viz-series-2) 12%, transparent);
+    }
+
+    .trop2-viz .depth-chart .coding-edge {
+      stroke: var(--viz-series-2);
+      stroke-dasharray: 4 4;
+    }
+
+    .trop2-viz .depth-chart .qc-line {
+      stroke: var(--viz-series-3);
+      stroke-dasharray: 5 4;
+    }
+
+    .trop2-viz .depth-chart .focus-mark {
+      fill: var(--viz-series-1);
+      stroke: var(--background);
+      stroke-width: 1.5;
+    }
+
+    .trop2-viz .selection-line {
+      color: var(--muted-foreground);
+      min-height: 1.35rem;
+    }
+
+    .trop2-viz .decision-boundary {
+      display: grid;
+      gap: 0.3rem;
+    }
+
+    .trop2-viz .decision-boundary strong {
+      color: var(--foreground);
+    }
+
+    .trop2-viz .next-step {
+      align-items: flex-start;
+      display: flex;
+      gap: 0.55rem;
+    }
+
+    .trop2-viz .next-step i {
+      color: var(--viz-series-2);
+      flex: 0 0 auto;
+      margin-top: 0.15rem;
+    }
+
+    .trop2-viz details {
+      color: var(--muted-foreground);
+    }
+
+    .trop2-viz details p {
+      margin-top: 0.55rem;
+    }
+
+    @media (max-width: 540px) {
+      .trop2-viz {
+        gap: 1rem;
+      }
+
+      .trop2-viz .chart-wrap {
+        min-height: 330px;
+      }
+
+    }
+  </style>
+
+  <header>
+    <div class="eyebrow">E019_S01 · immunoid · bulk tumor RNA-seq</div>
+    <h1 id="trop2-title">TROP-2 RNA evidence</h1>
+    <p class="lede">A strong, cross-checked <code>TACSTD2</code> transcript signal is present. The analysis remains a transcript-level finding—not a protein, cell-origin, or treatment-selection result.</p>
+  </header>
+
+  <div class="viz-grid summary-grid" aria-label="Key evidence summary">
+    <article class="card viz-stat">
+      <div class="text-muted">Working conclusion</div>
+      <div class="viz-stat-value">Strong RNA evidence</div>
+      <div class="text-small text-muted">Expert disposition: narrower claim validated with QC warnings</div>
+    </article>
+    <article class="card viz-stat">
+      <div class="text-muted">Coding span</div>
+      <div class="viz-stat-value">100% ≥100×</div>
+      <div class="text-small text-muted">972 bp · minimum 155× · median 4,439×</div>
+    </article>
+    <article class="card viz-stat">
+      <div class="text-muted">Cross-BAM agreement</div>
+      <div class="viz-stat-value">0.67%</div>
+      <div class="text-small text-muted">53,132 recalibrated vs 53,491 pre-BQSR primary reads</div>
+    </article>
+  </div>
+
+  <section class="chart-section" aria-labelledby="depth-heading">
+    <div class="section-heading">
+      <h2 id="depth-heading">Depth across the TACSTD2 locus</h2>
+      <span class="text-small text-muted">GRCh37 · ENST00000371225.2</span>
+    </div>
+    <div class="chart-wrap" data-depth-chart></div>
+    <p class="selection-line text-small" data-selection aria-live="polite">Hover or focus a point to inspect 16-bp binned mean depth.</p>
+  </section>
+
+  <section aria-labelledby="gate-heading">
+    <div class="section-heading">
+      <h2 id="gate-heading">Evidence gates</h2>
+      <span class="text-small text-muted">Automated status: review required</span>
+    </div>
+    <div class="table-responsive">
+      <table class="table table-sm">
+        <thead>
+          <tr>
+            <th scope="col">Gate</th>
+            <th scope="col">Observed evidence</th>
+            <th scope="col">Disposition</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <th scope="row">Input reads</th>
+            <td>150.0M pairs · 150 bp · mean Q38.4–39.6 · zero poor-quality reads</td>
+            <td class="text-nowrap">✓ Passed</td>
+          </tr>
+          <tr>
+            <th scope="row">Library QC</th>
+            <td>75.3–76.0% estimated duplicates · 3′ adapter content rises to ~22.5%</td>
+            <td class="text-nowrap">△ Review</td>
+          </tr>
+          <tr>
+            <th scope="row">Cross-BAM presence</th>
+            <td>Primary locus read counts agree within 0.67%</td>
+            <td class="text-nowrap">✓ Concordant</td>
+          </tr>
+          <tr>
+            <th scope="row">Coding coverage</th>
+            <td>All 972 coding bases ≥100×; mean 4,104.6×</td>
+            <td class="text-nowrap">✓ Strong</td>
+          </tr>
+          <tr>
+            <th scope="row">Differential expression</th>
+            <td>One tumor sample; no comparator, replicates, or batch design</td>
+            <td class="text-nowrap">— Blocked</td>
+          </tr>
+          <tr>
+            <th scope="row">Protein / ADC relevance</th>
+            <td>Surface abundance, malignant-cell origin, and heterogeneity were not measured</td>
+            <td class="text-nowrap">— Not established</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <hr>
+
+  <section class="decision-boundary" aria-labelledby="boundary-heading">
+    <h2 id="boundary-heading">Decision boundary</h2>
+    <p><strong>Supported:</strong> abundant <code>TACSTD2</code> RNA is present in this bulk specimen.</p>
+    <p><strong>Not supported:</strong> malignant-cell specificity, membrane protein abundance, intratumoral heterogeneity, ADC eligibility, response prediction, or treatment selection.</p>
+  </section>
+
+  <div class="next-step">
+    <i data-lucide="microscope" aria-hidden="true"></i>
+    <p><strong>Most decisive next evidence:</strong> controlled TROP-2 membrane IHC or another protein-localizing assay reporting malignant-cell percent positive, membrane intensity, H-score, heterogeneity, clone/platform, and controls.</p>
+  </div>
+
+  <details>
+    <summary>Provenance and reproducibility</summary>
+    <p class="text-small">46/46 indexed run artifacts hash-verified; six source S3 VersionIds unchanged; 4/4 indexed review artifacts verified. The run and review outputs are KMS-encrypted and versioned. Run manifest SHA-256: <code>5f07adccc8465e4001df4d08b813d6244eecedf1c4c0f72883aa1fc7e0385dab</code>.</p>
+  </details>
+
+  <script src="https://cdn.jsdelivr.net/npm/d3@7.9.0/dist/d3.min.js"></script>
+  <script>
+    (() => {
+      const root = document.querySelector('[data-viz-root="trop2-evidence"]');
+      if (!root || !window.d3) return;
+
+      const data = [[59041106,40.1,42],[59041122,44.1,46],[59041138,44.1,46],[59041154,42.1,44],[59041170,37.1,39],[59041186,32.8,35],[59041202,26.4,29],[59041218,20.2,23],[59041234,15.7,19],[59041250,10.1,13],[59041266,6.6,9],[59041282,3.1,4],[59041298,0.9,2],[59041314,0,0],[59041330,0,0],[59041346,0,0],[59041362,0,0],[59041378,0,0],[59041394,0,0],[59041410,0,0],[59041426,0,0],[59041442,0,0],[59041458,0,0],[59041474,0,0],[59041490,0,0],[59041506,0,0],[59041522,0,0],[59041538,0,0],[59041554,0,0],[59041570,0,0],[59041586,0,0],[59041602,0,0],[59041618,0,0],[59041634,0,0],[59041650,0,0],[59041666,0,0],[59041682,9.6,28],[59041698,69.5,95],[59041714,433.9,686],[59041730,793.7,930],[59041746,1059.6,1132],[59041762,1493.1,1766],[59041778,2008.7,2129],[59041794,2283.4,2376],[59041810,2550.6,2647],[59041826,2834.1,3148],[59041842,3508.4,3970],[59041858,4295.9,4700],[59041874,4765.4,4876],[59041890,5662.2,6035],[59041906,6394.2,6582],[59041922,6437.8,6568],[59041938,6626.4,6672],[59041954,6711.6,6781],[59041970,6557.1,6755],[59041986,6302.3,6466],[59042002,5706.2,6033],[59042018,5564.1,5708],[59042034,5294.6,5587],[59042050,4987.5,5179],[59042066,4698.3,4830],[59042082,4457.2,4579],[59042098,4396.8,4498],[59042114,4678.4,4766],[59042130,5005.1,5359],[59042146,5430.8,5653],[59042162,5291.6,5428],[59042178,5035.4,5224],[59042194,4676.8,4876],[59042210,4524,4561],[59042226,4579.7,4623],[59042242,4575.8,4625],[59042258,4242.9,4424],[59042274,4178,4244],[59042290,3954.4,4118],[59042306,3660.5,3757],[59042322,3957.9,4104],[59042338,4167.7,4297],[59042354,4374,4504],[59042370,4588.6,4702],[59042386,4483.3,4628],[59042402,4445.1,4523],[59042418,4515.6,4588],[59042434,4629,4732],[59042450,4669.3,4732],[59042466,4433.8,4602],[59042482,4075.7,4226],[59042498,3929.3,3973],[59042514,4135.3,4405],[59042530,4499.9,4541],[59042546,4475.1,4528],[59042562,4260.6,4293],[59042578,4219.1,4320],[59042594,4130.3,4190],[59042610,4157.9,4239],[59042626,3926.7,3951],[59042642,3617,3853],[59042658,2970.4,3316],[59042674,2278.1,2582],[59042690,1876.1,1962],[59042706,1610,1715],[59042722,1241.6,1433],[59042738,859.6,1045],[59042754,545.9,669],[59042770,380.6,453],[59042786,271.5,315],[59042802,214.9,241],[59042818,240.6,371],[59042834,162.4,166],[59042850,155.3,165],[59042866,159.4,202],[59042882,131.7,140],[59042898,114.8,124],[59042914,67.4,91],[59042930,53.2,54],[59042946,47.5,52],[59042962,39,45],[59042978,30.1,31],[59042994,20.2,26],[59043010,14.3,18],[59043026,8,8],[59043042,7,7],[59043058,6.1,7],[59043074,3.4,6],[59043090,1.3,2],[59043106,0.6,1],[59043122,0,0],[59043138,0,0],[59043154,0,0],[59043164,0,0]].map(([position, mean, max]) => ({ position, mean, max }));
+      const locus = [59041099, 59043166];
+      const coding = [59041857, 59042828];
+      const chartHost = root.querySelector('[data-depth-chart]');
+      const selection = root.querySelector('[data-selection]');
+      const formatPosition = d3.format(',');
+      const formatDepth = d3.format(',.1f');
+      let lastWidth = 0;
+
+      function render() {
+        const width = Math.max(300, Math.round(chartHost.getBoundingClientRect().width));
+        if (Math.abs(width - lastWidth) < 2) return;
+        lastWidth = width;
+        chartHost.replaceChildren();
+
+        const compact = width < 560;
+        const height = compact ? 330 : 380;
+        const margin = compact
+          ? { top: 28, right: 14, bottom: 66, left: 56 }
+          : { top: 30, right: 24, bottom: 64, left: 66 };
+        const innerWidth = width - margin.left - margin.right;
+        const innerHeight = height - margin.top - margin.bottom;
+        const x = d3.scaleLinear().domain(locus).range([0, innerWidth]);
+        const y = d3.scaleSymlog().constant(10).domain([0, 7000]).range([innerHeight, 0]);
+
+        const svg = d3.select(chartHost)
+          .append('svg')
+          .attr('class', 'depth-chart')
+          .attr('viewBox', `0 0 ${width} ${height}`)
+          .attr('role', 'img')
+          .attr('aria-labelledby', 'depth-svg-title depth-svg-desc');
+
+        svg.append('title').attr('id', 'depth-svg-title').text('TACSTD2 read depth across its genomic locus');
+        svg.append('desc').attr('id', 'depth-svg-desc').text('Mean binned depth is near zero through part of the untranslated region, then rises sharply and remains above 100-fold across the full coding span.');
+
+        const plot = svg.append('g').attr('transform', `translate(${margin.left},${margin.top})`);
+
+        plot.append('rect')
+          .attr('class', 'coding-band')
+          .attr('x', x(coding[0]))
+          .attr('y', 0)
+          .attr('width', x(coding[1]) - x(coding[0]))
+          .attr('height', innerHeight);
+
+        coding.forEach(position => {
+          plot.append('line')
+            .attr('class', 'coding-edge')
+            .attr('x1', x(position))
+            .attr('x2', x(position))
+            .attr('y1', 0)
+            .attr('y2', innerHeight);
+        });
+
+        [10, 100].forEach(threshold => {
+          plot.append('line')
+            .attr('class', 'qc-line')
+            .attr('x1', 0)
+            .attr('x2', innerWidth)
+            .attr('y1', y(threshold))
+            .attr('y2', y(threshold));
+
+          plot.append('text')
+            .attr('class', 'annotation text-small')
+            .attr('x', innerWidth - 4)
+            .attr('y', y(threshold) - 5)
+            .attr('text-anchor', 'end')
+            .text(`${threshold}×`);
+        });
+
+        const area = d3.area()
+          .x(d => x(d.position))
+          .y0(innerHeight)
+          .y1(d => y(d.mean))
+          .curve(d3.curveMonotoneX);
+        const line = d3.line()
+          .x(d => x(d.position))
+          .y(d => y(d.mean))
+          .curve(d3.curveMonotoneX);
+
+        plot.append('path').datum(data).attr('class', 'depth-area').attr('d', area);
+        plot.append('path').datum(data).attr('class', 'depth-line').attr('d', line);
+
+        plot.selectAll('.focus-mark')
+          .data(data.filter((_, index) => index % (compact ? 8 : 4) === 0))
+          .join('circle')
+          .attr('class', 'focus-mark')
+          .attr('cx', d => x(d.position))
+          .attr('cy', d => y(d.mean))
+          .attr('r', compact ? 2.8 : 3.2)
+          .attr('tabindex', 0)
+          .attr('role', 'graphics-symbol')
+          .attr('aria-label', d => `Position ${formatPosition(d.position)}, mean depth ${formatDepth(d.mean)} fold`)
+          .attr('data-tooltip', d => `chr1:${formatPosition(d.position)} · mean ${formatDepth(d.mean)}× · bin max ${formatPosition(d.max)}×`)
+          .on('mouseenter focus', (_, d) => {
+            const region = d.position >= coding[0] && d.position <= coding[1] ? 'coding span' : 'non-coding span';
+            selection.textContent = `chr1:${formatPosition(d.position)} · mean ${formatDepth(d.mean)}× · max ${formatPosition(d.max)}× · ${region}`;
+          })
+          .on('mouseleave blur', () => {
+            selection.textContent = 'Hover or focus a point to inspect 16-bp binned mean depth.';
+          });
+
+        const xAxis = d3.axisBottom(x)
+          .ticks(compact ? 3 : 6)
+          .tickFormat(value => compact ? `${(value / 1e6).toFixed(3)}M` : formatPosition(value));
+        const yAxis = d3.axisLeft(y)
+          .tickValues([0, 10, 100, 1000, 5000])
+          .tickFormat(value => value === 0 ? '0' : d3.format('~s')(value));
+
+        plot.append('g')
+          .attr('class', 'axis text-small')
+          .attr('transform', `translate(0,${innerHeight})`)
+          .call(xAxis);
+        plot.append('g')
+          .attr('class', 'axis text-small')
+          .call(yAxis);
+
+        plot.append('rect')
+          .attr('class', 'plot-frame')
+          .attr('x', 0)
+          .attr('y', 0)
+          .attr('width', innerWidth)
+          .attr('height', innerHeight)
+          .attr('fill', 'none');
+
+        plot.append('text')
+          .attr('class', 'annotation text-small')
+          .attr('x', x((coding[0] + coding[1]) / 2))
+          .attr('y', 14)
+          .attr('text-anchor', 'middle')
+          .text(compact ? 'coding span' : 'TACSTD2 coding span · 972 bp');
+
+        svg.append('text')
+          .attr('class', 'axis-title text-small')
+          .attr('x', margin.left + innerWidth / 2)
+          .attr('y', height - 10)
+          .attr('text-anchor', 'middle')
+          .text('GRCh37 chr1 genomic position');
+
+        svg.append('text')
+          .attr('class', 'axis-title text-small')
+          .attr('transform', `translate(15,${margin.top + innerHeight / 2}) rotate(-90)`)
+          .attr('text-anchor', 'middle')
+          .text('Mean read depth (×, symlog scale)');
+      }
+
+      const observer = new ResizeObserver(render);
+      observer.observe(chartHost);
+      render();
+    })();
+  </script>
+</section>

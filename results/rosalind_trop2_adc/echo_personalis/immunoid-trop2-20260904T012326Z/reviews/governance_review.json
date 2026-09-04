@@ -1,0 +1,16 @@
+{
+  "deploymentContext": "reviewer_packet",
+  "highestLeverageNextArtifact": "matched TROP-2 membrane-IHC pathology report with specimen lineage and a locked scoring rubric",
+  "requiredHumanOversight": [
+    "bioinformatics review",
+    "pathology review for protein assay",
+    "oncologist review for any treatment relevance"
+  ],
+  "requiredNoCallStates": [
+    "failed FASTQ/BAM QC",
+    "reference mismatch",
+    "discordant BAM forms",
+    "missing protein confirmation"
+  ],
+  "verdict": "research_only"
+}

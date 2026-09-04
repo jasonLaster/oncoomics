@@ -1,0 +1,64 @@
+{
+  "classification": "private_human_tumor_rna",
+  "directHashVerification": [
+    "E019_S01/RNA_Pipeline/Alignments/RNA_E019_S01_tumor_rna_aligned.recal.sorted.bam.bai",
+    "E019_S01/RNA_Pipeline/Alignments/RNA_E019_S01_tumor_rna_aligned.sorted.bam.bai"
+  ],
+  "largeObjectHashPolicy": "Large objects were matched to the mounted vendor MD5 ledger and bound to SHA-256 values and S3 VersionIds from the versioned intake manifest; the analysis did not re-read all large objects solely to recompute their hashes.",
+  "objects": [
+    {
+      "bytes": 9465843803,
+      "path": "E019_S01/RNA_Pipeline/FASTQ/RNA_E019_S01_tumor_rna_reads1.fastq.gz",
+      "s3Uri": "s3://diana-omics-raw-inputs-172630973301-us-east-1/diana/inbox/2026-07-14-echo-personalis/data/immunoid/E019_S01/RNA_Pipeline/FASTQ/RNA_E019_S01_tumor_rna_reads1.fastq.gz",
+      "sha256": "272c5f5f16ebfc1bde50f1b64d3c855cb328c5c60a2597d9769603cba0f9a3f5",
+      "vendorMd5": "cbdea4afbc7359a39c6ffb0fcaf3a6f2",
+      "versionId": "1YAZ8n1nvfdkFlxfIOg24y7egbO.YZFx"
+    },
+    {
+      "bytes": 9630262591,
+      "path": "E019_S01/RNA_Pipeline/FASTQ/RNA_E019_S01_tumor_rna_reads2.fastq.gz",
+      "s3Uri": "s3://diana-omics-raw-inputs-172630973301-us-east-1/diana/inbox/2026-07-14-echo-personalis/data/immunoid/E019_S01/RNA_Pipeline/FASTQ/RNA_E019_S01_tumor_rna_reads2.fastq.gz",
+      "sha256": "218b487fe5341842a6a353fe5f3c8a21e4c95c05508525670872247d8eba6a80",
+      "vendorMd5": "dfbae08c65ed5cff710289a590545537",
+      "versionId": "9FSDHC2EVgunzHphA_3YzHUTO4owsdLb"
+    },
+    {
+      "bytes": 24905892448,
+      "path": "E019_S01/RNA_Pipeline/Alignments/RNA_E019_S01_tumor_rna_aligned.recal.sorted.bam",
+      "s3Uri": "s3://diana-omics-raw-inputs-172630973301-us-east-1/diana/inbox/2026-07-14-echo-personalis/data/immunoid/E019_S01/RNA_Pipeline/Alignments/RNA_E019_S01_tumor_rna_aligned.recal.sorted.bam",
+      "sha256": "cbca1be437a294b07f2d2fe5ead19cb737eb0592abfc0984c829994ce933e7e2",
+      "vendorMd5": "fba901d6e8e3198f84c4feda38a0d377",
+      "versionId": "g9JfmajCh6R1ObwwtC.DA1rts0uPNGIJ"
+    },
+    {
+      "bytes": 3411312,
+      "path": "E019_S01/RNA_Pipeline/Alignments/RNA_E019_S01_tumor_rna_aligned.recal.sorted.bam.bai",
+      "s3Uri": "s3://diana-omics-raw-inputs-172630973301-us-east-1/diana/inbox/2026-07-14-echo-personalis/data/immunoid/E019_S01/RNA_Pipeline/Alignments/RNA_E019_S01_tumor_rna_aligned.recal.sorted.bam.bai",
+      "sha256": "309aa3eaa3240e98a56b572dca485b36db04ba2b4e02c4ce2a484da574cc57c4",
+      "vendorMd5": "e84e598da54687c82c10bbcf22b4d8eb",
+      "versionId": "1zcicEZYfAVK9YiR.PUKtVpZqrKuqoxu"
+    },
+    {
+      "bytes": 9769769184,
+      "path": "E019_S01/RNA_Pipeline/Alignments/RNA_E019_S01_tumor_rna_aligned.sorted.bam",
+      "s3Uri": "s3://diana-omics-raw-inputs-172630973301-us-east-1/diana/inbox/2026-07-14-echo-personalis/data/immunoid/E019_S01/RNA_Pipeline/Alignments/RNA_E019_S01_tumor_rna_aligned.sorted.bam",
+      "sha256": "422326debfd42ba0639898d646a5961aa780b954a2de08a7f184d28ed84e4b95",
+      "vendorMd5": "4bde7113fd6e810dbf6a96ab3bb95a82",
+      "versionId": "ntUadPKrIcUDmSfTqyk37GClAHg8Y8CC"
+    },
+    {
+      "bytes": 12571960,
+      "path": "E019_S01/RNA_Pipeline/Alignments/RNA_E019_S01_tumor_rna_aligned.sorted.bam.bai",
+      "s3Uri": "s3://diana-omics-raw-inputs-172630973301-us-east-1/diana/inbox/2026-07-14-echo-personalis/data/immunoid/E019_S01/RNA_Pipeline/Alignments/RNA_E019_S01_tumor_rna_aligned.sorted.bam.bai",
+      "sha256": "7cae2b1fd89b1b5657c08213fe801b1f63b132a01a71cfa6bd844e2b9db884b4",
+      "vendorMd5": "f9525043480b26d7916710a4f38b8409",
+      "versionId": "_BmbDSZGlnaaCcvzrEVFNBWim8SYKoZQ"
+    }
+  ],
+  "schema": "diana_rosalind_rnaseq_trop2_input_index.v1",
+  "sourceManifest": {
+    "uri": "s3://diana-omics-raw-inputs-172630973301-us-east-1/diana/inbox/2026-07-14-echo-personalis/manifest.csv",
+    "versionId": "Wvu0g3LJg1mJIMoYUOSryNLUGSSBdqe4"
+  },
+  "sourcePrefix": "s3://diana-omics-raw-inputs-172630973301-us-east-1/diana/inbox/2026-07-14-echo-personalis/data/immunoid/"
+}

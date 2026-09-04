@@ -1,0 +1,236 @@
+{
+  "artifacts": [
+    {
+      "bytes": 225,
+      "path": "differential_expression_status.json",
+      "sha256": "fed824381b02cb1365cde75d8c8ded6beb6b63bf413d91a23fe762bf99f5c3ba"
+    },
+    {
+      "bytes": 4050,
+      "path": "input_evidence_index.json",
+      "sha256": "1aa56d86c715a51ad18f427fc253d6078517e868626fa6fed221aad69d87800f"
+    },
+    {
+      "bytes": 122,
+      "path": "logs/fastqc.log",
+      "sha256": "ce2f855ac7fd4d4b6c28ae052e3c7449e8aa980028d8161028b29962e1a342a7"
+    },
+    {
+      "bytes": 2510,
+      "path": "logs/fastqc.stderr.log",
+      "sha256": "bbee931977f125fc723dd981b8a6cb080e7f485e40c6432e0d25b2ebde415f2f"
+    },
+    {
+      "bytes": 0,
+      "path": "logs/multiqc.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "bytes": 522,
+      "path": "logs/multiqc.stderr.log",
+      "sha256": "578627812ab750d32b2a1dcc0aaa3cbce7c961959cb989447ff5e166bc4cb931"
+    },
+    {
+      "bytes": 0,
+      "path": "logs/samtools_flagstat.stderr.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "bytes": 88477,
+      "path": "plots/tacstd2_depth.png",
+      "sha256": "94a7abcaec9d258a1d0fc78548dd35817e8a295cf6717e30cb36c592560241fa"
+    },
+    {
+      "bytes": 1570,
+      "path": "qa_summary.json",
+      "sha256": "2581d96012771674f777e45b1e7461f5f588d4bc20ec0f871e76af7f34c80154"
+    },
+    {
+      "bytes": 1980,
+      "path": "qc/bam/pre_bqsr_idxstats.tsv",
+      "sha256": "561312293bc85721d7bb3935cd6d5c5d608ea5c8121cd3697d7dbb9444c58754"
+    },
+    {
+      "bytes": 569,
+      "path": "qc/bam/recalibrated_flagstat.txt",
+      "sha256": "314427ce33d1c8b7908bd5c076c57a6ba83ad082d42c56a0624ea6f97587c660"
+    },
+    {
+      "bytes": 576403,
+      "path": "qc/bam/recalibrated_header.sam",
+      "sha256": "56a335688eafd4539e08d9870e1732f3933eca08e34c0a18e07efc64c1dc6fdf"
+    },
+    {
+      "bytes": 1881,
+      "path": "qc/bam/recalibrated_idxstats.tsv",
+      "sha256": "456d82f9a0c04d286654c43cec47c11d061f88235173d82b16cc1ed9d1de8ed1"
+    },
+    {
+      "bytes": 614537,
+      "path": "qc/fastqc/RNA_E019_S01_tumor_rna_reads1_fastqc.html",
+      "sha256": "140c63e62c42e7991fb9b2aa9569b50af1cb5a419331104a9bf638b34b1bed2a"
+    },
+    {
+      "bytes": 739051,
+      "path": "qc/fastqc/RNA_E019_S01_tumor_rna_reads1_fastqc.zip",
+      "sha256": "9fe6e36a2a9cb2c8ba31ec5803884cc07c02ec7bc49078d57a729ad559295dd4"
+    },
+    {
+      "bytes": 620065,
+      "path": "qc/fastqc/RNA_E019_S01_tumor_rna_reads2_fastqc.html",
+      "sha256": "ce00fcadf12d74da65e57017a157387bedccb17f9eaeaf1136cf20f48109f352"
+    },
+    {
+      "bytes": 736295,
+      "path": "qc/fastqc/RNA_E019_S01_tumor_rna_reads2_fastqc.zip",
+      "sha256": "fe9891341e74f3099779a3437eae59241884b32494c4ce09813416821e22bd01"
+    },
+    {
+      "bytes": 844,
+      "path": "qc/fastqc_basic_statistics.csv",
+      "sha256": "46dce3ead0f0157f54830b215f846f84ef6250104d7f66ccb353dcceb9764560"
+    },
+    {
+      "bytes": 1321,
+      "path": "qc/fastqc_module_status.csv",
+      "sha256": "24e2e079a941feb1ede224b05b8994e79146c1b462f1407eed7834e159f81d54"
+    },
+    {
+      "bytes": 399,
+      "path": "qc/multiqc/multiqc_data/fastqc-status-check-heatmap.txt",
+      "sha256": "c75212a49455fcaf33bc988d808d0f720f1b58436e31239421c412cfe4ba16d5"
+    },
+    {
+      "bytes": 4235,
+      "path": "qc/multiqc/multiqc_data/fastqc_adapter_content_plot.txt",
+      "sha256": "39b4ac4b9253a80c3563417f2e756e70a315c420805c54c3371c75fd48b33be1"
+    },
+    {
+      "bytes": 2142,
+      "path": "qc/multiqc/multiqc_data/fastqc_per_base_n_content_plot.txt",
+      "sha256": "412fc806a02b47621621096af70ee57a4692fb74e7ff93eed042d505054a7cde"
+    },
+    {
+      "bytes": 2018,
+      "path": "qc/multiqc/multiqc_data/fastqc_per_base_sequence_quality_plot.txt",
+      "sha256": "ffe18c0eb39dfd4c19024cd5788f4a49de5992b53d762c5aa8dbb4cfbd3a98fe"
+    },
+    {
+      "bytes": 3639,
+      "path": "qc/multiqc/multiqc_data/fastqc_per_sequence_gc_content_plot_Counts.txt",
+      "sha256": "58a5a1366d3e7e904c676da01db7abf1c528af394fe8c126da41ba9893b588c2"
+    },
+    {
+      "bytes": 6006,
+      "path": "qc/multiqc/multiqc_data/fastqc_per_sequence_gc_content_plot_Percentages.txt",
+      "sha256": "7fc356ed615223fdaf4e4570e25d55a64a84e4117441a40ee8706c23ab5afeb3"
+    },
+    {
+      "bytes": 1168,
+      "path": "qc/multiqc/multiqc_data/fastqc_per_sequence_quality_scores_plot.txt",
+      "sha256": "152cbee2f88bb51eb241eaecb915171689de73dd3e117575870ff3c2c1e7fed3"
+    },
+    {
+      "bytes": 142,
+      "path": "qc/multiqc/multiqc_data/fastqc_sequence_counts_plot.txt",
+      "sha256": "9d6dcadd25d2d9c60f8ab0fea637ba55794eef05732446cad3472268a51da9b5"
+    },
+    {
+      "bytes": 959,
+      "path": "qc/multiqc/multiqc_data/fastqc_sequence_duplication_levels_plot.txt",
+      "sha256": "ecf9b85c503204093c8555aa117aa6f56ea7b68067aadb6ec67e062d7788c7e5"
+    },
+    {
+      "bytes": 122,
+      "path": "qc/multiqc/multiqc_data/fastqc_top_overrepresented_sequences_table.txt",
+      "sha256": "42b28b9621751d50a6fe82473997cab253541baf976b6d46a593c67b0e0cdab0"
+    },
+    {
+      "bytes": 32674,
+      "path": "qc/multiqc/multiqc_data/llms-full.txt",
+      "sha256": "3f15faf1cdaab0c6324c919810f583861ae642799cbd25fd8f472360e96c199b"
+    },
+    {
+      "bytes": 13414,
+      "path": "qc/multiqc/multiqc_data/multiqc.log",
+      "sha256": "abaa08c17f83a1520dc610359fe3c991f14e285981ba76aa251e6a82d6548037"
+    },
+    {
+      "bytes": 1174340,
+      "path": "qc/multiqc/multiqc_data/multiqc.parquet",
+      "sha256": "7086a7a14c2324cd53b7fa5683ea2da8765aa2a6e249b62a5effd540213c3fe2"
+    },
+    {
+      "bytes": 62,
+      "path": "qc/multiqc/multiqc_data/multiqc_citations.txt",
+      "sha256": "01b7abc926d9e75aa87ee19b7c0674c7a3998af6438a8b5361cf8835770a0ccb"
+    },
+    {
+      "bytes": 323047,
+      "path": "qc/multiqc/multiqc_data/multiqc_data.json",
+      "sha256": "fb7f86173bc46827638dfe0bb868d5b7641cd6faa5da8d97ad0b3e8ee44cf98d"
+    },
+    {
+      "bytes": 893,
+      "path": "qc/multiqc/multiqc_data/multiqc_fastqc.txt",
+      "sha256": "f6220c20301f75e6e891b0b5049a2a47be1b6dbe3030be143c28805a91bfaff5"
+    },
+    {
+      "bytes": 352,
+      "path": "qc/multiqc/multiqc_data/multiqc_general_stats.txt",
+      "sha256": "19ae9043f86cb10974534bece19a57ef3d3e3adc79c9b70254b0c78ee9abf8a4"
+    },
+    {
+      "bytes": 28,
+      "path": "qc/multiqc/multiqc_data/multiqc_software_versions.txt",
+      "sha256": "b31c2b1c96459177c46d702cdd39556305b1b06aa51e8098775816111f2377dd"
+    },
+    {
+      "bytes": 366,
+      "path": "qc/multiqc/multiqc_data/multiqc_sources.txt",
+      "sha256": "dfb0b20b2df07fa178c0e2d0086cc145a9821f3e612f2ad06a03b4ccf5c08b1f"
+    },
+    {
+      "bytes": 4990632,
+      "path": "qc/multiqc/multiqc_report.html",
+      "sha256": "bb461fa3952d42d60b84a6a461aa97d5287926239c30d1311c0df6b4afe2f872"
+    },
+    {
+      "bytes": 569,
+      "path": "reviews/custody_review.json",
+      "sha256": "dd5fbe78cfaede05561b0e0725a90f1d6ea5e076300a8a51864e764a1a1517a9"
+    },
+    {
+      "bytes": 513,
+      "path": "reviews/governance_review.json",
+      "sha256": "ef9c2be60ae91e7e401bca6fc015d9d3bd9f915febb7fd7eed018fab7fbde914"
+    },
+    {
+      "bytes": 582,
+      "path": "reviews/strategy_review.json",
+      "sha256": "f888af08904d6a3670bef0ed4a7540ed2489869794b15b554788545d44c55870"
+    },
+    {
+      "bytes": 466,
+      "path": "reviews/validation_review.json",
+      "sha256": "75ee057bf7edeb2589a18439377f2993700f92c5fc7255ad9f0d54b113d0f1e3"
+    },
+    {
+      "bytes": 1534,
+      "path": "summary.md",
+      "sha256": "948a749e1f36cacea83285d91e63a941d714d51e2187a0cecb7f4787399cd76d"
+    },
+    {
+      "bytes": 30583,
+      "path": "tables/tacstd2_depth.tsv",
+      "sha256": "b89ab5fdd0812d4f2c5b1d0948249e5f8db8c1b0f7bb2572cfa18cdb9dab277d"
+    },
+    {
+      "bytes": 533,
+      "path": "tables/tacstd2_expression.csv",
+      "sha256": "6419ae20bf6fa6b6776bffd7dc34cb0aaf6b3b62eb0b2d9a24a7b1075c7da748"
+    }
+  ],
+  "runId": "immunoid-trop2-20260904T012326Z",
+  "schema": "diana_rosalind_rnaseq_trop2_artifact_index.v1"
+}

@@ -54,6 +54,7 @@ The pattern is:
 | [Broad WGS Delta Workflow](broad-wgs-delta-workflow.md) | You want to ask what WGS adds beyond WES, including structural variants, breakpoints, allele-specific CNV/LOH, noncoding candidates, and mutational signatures. | WGS-vs-WES delta table, CNV/SV/signature boards, target-board updates, and reviewer packet. |
 | [Pan-Target Discovery Workflow](target-discovery-workflow.md) | You want to rank ADC, bispecific, CDK12/13, CDK4/6, and other target hypotheses without overcalling WGS/WES evidence. | DNA target-locus evidence, candidate target board, orthogonal follow-up list, and reviewer packet. |
 | [TROP-2 ADC Target Workflow](trop2-adc-workflow.md) | You want to evaluate whether TROP-2/`TACSTD2` is a plausible ADC target using bulk WES plus scRNA-seq. | WES target-locus evidence, scRNA target-expression evidence, external ADC context, and target-confidence class. |
+| [Bulk RNA-seq TROP-2 Modal + S3](bulk-rna-trop2-modal-s3.md) | You want a custody-bound, single-sample `TACSTD2` transcript check on the Personalis ImmunoID tumor RNA data. | FastQC/MultiQC, BAM QA, two-BAM concordance, locus depth, review verdicts, a responsive evidence visualization, and an immutable S3 run envelope. |
 | [scRNA-seq Modal + S3 Kickoff](scrna-modal-s3-kickoff.md) | You want to prove the S3, Modal, Scanpy, and artifact-custody path on a small public 10x matrix before introducing cohort data. | H5AD, QC, clusters, markers, UMAP, checksummed artifact index, and run manifest. |
 
 ## Patterns From The Codex Life-Sciences Use Cases
@@ -113,10 +114,10 @@ The `input_evidence_index.json` should point back to existing `results/`, `manif
 
 These docs summarize patterns and details from:
 
-- [Introducing new capabilities to GPT-Rosalind](https://openai.com/index/introducing-new-capabilities-to-gpt-rosalind/)
-- [Codex Life Sciences collection](https://developers.openai.com/codex/use-cases/collections/life-sciences)
-- [Bulk RNA-seq FASTQ QC use case](https://developers.openai.com/codex/use-cases/bulk-rna-seq-fastq-qc)
-- [scRNA-seq post-count QC use case](https://developers.openai.com/codex/use-cases/scrna-seq-post-count-qc)
+- [Rosalind Workbench](https://developers.openai.com/blog/rosalind-workbench)
+- [Codex Life Sciences collection](https://learn.chatgpt.com/use-cases/collections/life-sciences)
+- [Bulk RNA-seq FASTQ QC use case](https://learn.chatgpt.com/use-cases/bulk-rna-seq-fastq-qc)
+- [scRNA-seq post-count QC use case](https://learn.chatgpt.com/use-cases/scrna-seq-post-count-qc)
 - [Life Science Research plugin](https://github.com/openai/plugins/tree/main/plugins/life-science-research)
 - [Life Sciences NGS Analysis plugin](https://github.com/openai/plugins/tree/main/plugins/ngs-analysis)
 - current project docs and artifacts under `docs/`, `manifests/`, and `results/`

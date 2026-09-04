@@ -1,0 +1,13 @@
+{
+  "gaps": [
+    "Library strandedness and complete library-preparation metadata are absent from the intake manifest.",
+    "No normal RNA, cohort comparator, tumor purity estimate, or cell-compartment annotation is available."
+  ],
+  "strengths": [
+    "Manifest SHA-256 records and S3 VersionIds are preserved.",
+    "The exact human-data prefix is mounted read-only.",
+    "BAM indexes are directly re-hashed and both BAMs pass samtools quickcheck.",
+    "Outputs land in a versioned KMS-encrypted private bucket."
+  ],
+  "verdict": "usable_with_documented_gaps"
+}
