@@ -52,6 +52,11 @@ class PanCancerAdcAtlasTest(unittest.TestCase):
         self.assertEqual("partial_evidence", queue[0]["evidence_status"])
         self.assertIn("not a therapeutic ranking", queue[0]["interpretation_boundary"])
 
+        second_queue = build_orthogonal_followup(rows, start=1, limit=1)
+        self.assertEqual("trop2", second_queue[0]["target_id"])
+        self.assertEqual(2, second_queue[0]["review_order"])
+        self.assertIn("rank 2", second_queue[0]["prioritization_basis"])
+
     def test_visualization_links_the_selected_patient_bridge_run(self):
         html = _render_html({"patient_bridge": {"run_id": "adc-atlas-patient-bridge-new-run"}})
         self.assertIn("results/workbench/adc-atlas-patient-bridge-new-run", html)

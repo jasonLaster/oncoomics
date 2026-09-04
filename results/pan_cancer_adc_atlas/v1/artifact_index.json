@@ -1,13 +1,13 @@
 [
   {
     "path": "results/pan_cancer_adc_atlas/v1/README.md",
-    "bytes": 1017,
-    "sha256": "fedea6aae181f8351757d3fd8da7e172d250192ab1393419d31e70372bb78d29"
+    "bytes": 1101,
+    "sha256": "3624817858c6e1285f418fac316c78cd859d14b9a6ed68444988513c626ce034"
   },
   {
     "path": "results/pan_cancer_adc_atlas/v1/atlas_payload.json",
-    "bytes": 911934,
-    "sha256": "3f1e275432d30b63746865e3cf5c96d6d4a4c9dbf96519bebe595e840d748344"
+    "bytes": 911997,
+    "sha256": "6be64fe2bfc5d38922ce34340cbd0527d9f4707f21c2145fc69dd0554f6c9934"
   },
   {
     "path": "results/pan_cancer_adc_atlas/v1/cancer_expression_summary.csv",
@@ -41,8 +41,13 @@
   },
   {
     "path": "results/pan_cancer_adc_atlas/v1/orthogonal_followup.csv",
-    "bytes": 3862,
-    "sha256": "4db8cdc071df72877f7edca1edd880f677cf00637fb174a40b7ef2b8d9f978e2"
+    "bytes": 3886,
+    "sha256": "d946abb2fbd8e5b2828a9b954b11c0fb0cee885f9234884c5cf2b031aacb5a80"
+  },
+  {
+    "path": "results/pan_cancer_adc_atlas/v1/orthogonal_followup_next.csv",
+    "bytes": 3725,
+    "sha256": "1714eeb3f36d861c8f757726e497d26741cceaaee844170a8af0453107396797"
   },
   {
     "path": "results/pan_cancer_adc_atlas/v1/patient_bridge_summary.csv",
@@ -52,12 +57,12 @@
   {
     "path": "results/pan_cancer_adc_atlas/v1/source_manifest.json",
     "bytes": 3646,
-    "sha256": "73a49c5701f02c6c9e2c417fedc070d3f13a88e95e5a61840d35151c90763018"
+    "sha256": "f293e58d0aab058fe393e6324a12a38c94afa4ad0d407b4d8420a3a0a81d5a2d"
   },
   {
     "path": "results/pan_cancer_adc_atlas/v1/summary.json",
-    "bytes": 561,
-    "sha256": "c15a9ee710a765da3678c38d374bc510973dac6a1503d74f7ebc07627df8fd3c"
+    "bytes": 620,
+    "sha256": "5ccb056281eaec462e104ce22b9b58ebd90ad9f4d3b73acfcc449cfd4c63eb47"
   },
   {
     "path": "results/pan_cancer_adc_atlas/v1/target_summary.csv",
@@ -66,7 +71,7 @@
   },
   {
     "path": "docs/rosalind/visualizations/pan-cancer-adc-atlas-v1.html",
-    "bytes": 671307,
-    "sha256": "9997f52d264a2750d1a894b2328e21152e294e1067f3a0ca0a45a7a6bb90f4aa"
+    "bytes": 672748,
+    "sha256": "700f5f300ff5e95bb013c1adc12a39a8a31eb91daf554d6c1966691c16584137"
   }
 ]

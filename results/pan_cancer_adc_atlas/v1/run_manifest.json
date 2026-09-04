@@ -1,15 +1,15 @@
 {
-  "runId": "pan-cancer-adc-atlas-v1-20260904T185327.988Z",
+  "runId": "pan-cancer-adc-atlas-v1-20260904T204711.654Z",
   "analysis": "pan-cancer ADC target reference atlas",
   "atlasVersion": "v1",
   "status": "completed",
-  "generatedAt": "2026-09-04T18:53:27.988Z",
+  "generatedAt": "2026-09-04T20:47:11.654Z",
   "command": "python3 -m diana_omics build:pan-cancer-adc-atlas",
   "executionBackend": "local metadata/API aggregation",
   "targetManifest": "manifests/adc_atlas_targets_v1.csv",
   "sourceManifest": "results/pan_cancer_adc_atlas/v1/source_manifest.json",
   "artifactIndex": "results/pan_cancer_adc_atlas/v1/artifact_index.json",
-  "artifactCount": 14,
+  "artifactCount": 15,
   "evidenceCeiling": "partial_evidence",
   "readyCandidateCount": 0,
   "patientComparisonStatus": "directionally_comparable"

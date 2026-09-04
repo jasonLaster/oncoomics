@@ -56,7 +56,7 @@ The builder writes versioned artifacts to [`results/pan_cancer_adc_atlas/v1/`](.
 - tumor and normal-tissue RNA summaries;
 - HPA cancer IHC, normal IHC, and CPTAC subsets;
 - target and candidate evidence matrices;
-- an eight-row RNA-to-protein follow-up queue with target-specific localization gates;
+- two eight-row RNA-to-protein follow-up queues covering ranks 1–16 with target-specific localization gates;
 - embedded visualization payload;
 - source manifest and run summary;
 - Workbench-style run manifest and checksummed artifact index;
@@ -90,6 +90,23 @@ The newly recomputed run is [`adc-atlas-patient-bridge-20260904T183020Z`](../../
 | NaPi2b (`SLC34A2`) | 80.720 | At or above p95 | Membrane IHC with lung normal-tissue review |
 
 This is ordered by patient TPM within the frozen panel, not by predicted efficacy or safety. TROP-2's descriptive patient-to-TCGA-BRCA-median ratio is 0.6809, and its within-sample percentile among protein-coding gene TPM values is 95.19. Those two statistics use different denominators and neither proves membrane protein. The pan-BRCA band also does not replace a Basal-like or receptor-defined TNBC subtype analysis.
+
+### Second RNA-to-protein follow-up set
+
+The next eight targets extend the same fixed-panel RNA review order. They do not replace the first set and do not constitute an ADC treatment ranking.
+
+| RNA review order | Diana TPM | TCGA-BRCA band | Target-specific protein or compartment gate |
+| --- | ---: | --- | --- |
+| MUC1 | 70.929 | Below Q1 | Epitope-specific membrane assay; gene RNA cannot resolve therapeutic glycoforms or epitopes |
+| MET | 63.913 | At or above p95 | Membrane IHC plus amplification review; separate expression from genomic activation and establish internalization |
+| Nectin-4 (`NECTIN4`; queried as `PVRL4`) | 63.097 | Q3 to p90 | Membrane IHC on viable tumor |
+| PTK7 | 61.064 | Median to Q3 | Membrane IHC plus a target- and construct-relevant internalization assay |
+| LIV-1 (`SLC39A6`) | 32.292 | Below Q1 | Membrane IHC on viable tumor; broad RNA alone does not establish a therapeutic window |
+| PSMA (`FOLH1`) | 27.029 | At or above p95 | Membrane IHC with vascular review because non-prostate signal can be vascular rather than malignant-cell expression |
+| Glypican-3 (`GPC3`) | 15.307 | Median to Q3 | Membrane IHC with oncofetal and normal-tissue review |
+| Tissue factor (`F3`) | 11.490 | Median to Q3 | Membrane IHC with compartment and coagulation-safety review |
+
+MET and PSMA sit at or above the public pan-BRCA p95 boundary, while Nectin-4 falls between Q3 and p90. MUC1 and LIV-1 are below the pan-BRCA Q1 boundary despite being the ninth- and thirteenth-highest patient RNA signals in the frozen target panel. Those bands are descriptive cross-pipeline context, not exact patient percentiles. The second queue therefore broadens orthogonal review while preserving the target-specific epitope, cellular-compartment, internalization, and safety questions that RNA cannot answer.
 
 Implementation references:
 

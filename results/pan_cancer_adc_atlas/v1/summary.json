@@ -1,6 +1,6 @@
 {
   "atlas_version": "v1",
-  "generated_at": "2026-09-04T18:53:27.988Z",
+  "generated_at": "2026-09-04T20:47:11.654Z",
   "target_count": 23,
   "cancer_count": 32,
   "normal_tissue_count": 32,
@@ -8,6 +8,8 @@
   "partial_evidence_count": 23,
   "ready_count": 0,
   "patient_bridge_target_count": 23,
+  "primary_followup_count": 8,
+  "next_followup_count": 8,
   "patient_comparison_status": "directionally_comparable",
   "matrix_samples": 19131,
   "phenotype_rows": 19131,

@@ -1,6 +1,6 @@
 # Pan-cancer ADC Atlas v1
 
-Generated: 2026-09-04T18:53:27.988Z
+Generated: 2026-09-04T20:47:11.654Z
 
 This run profiles 23 ADC targets across 32 TCGA primary-tumor cohorts and 32 GTEx normal-tissue groups using the UCSC Toil harmonized RNA-seq recompute. HPA v25.1 cancer IHC, normal-tissue IHC, and CPTAC rows provide separate protein-context lanes.
 
@@ -10,6 +10,7 @@ This run profiles 23 ADC targets across 32 TCGA primary-tumor cohorts and 32 GTE
 - `partial_evidence`: 23
 - `ready`: 0
 - Patient comparison: `directionally_comparable` across 23 targets. The same GENCODE v23 feature model and TPM scale support directional TCGA-BRCA bands, but Salmon versus Toil/RSEM and other technical/specimen differences preclude exact cohort percentiles.
+- Protein follow-up queues: 8 targets in ranks 1–8 and 8 targets in ranks 9–16.
 
 ## Interpretation boundary
 
