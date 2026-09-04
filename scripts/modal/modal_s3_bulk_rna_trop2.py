@@ -24,6 +24,27 @@ RAW_PREFIX = "diana/inbox/2026-07-14-echo-personalis/data/immunoid/"
 RESULTS_BUCKET = "diana-omics-private-results-172630973301-us-east-1"
 RESULTS_PREFIX = "modal/rosalind-rnaseq-trop2/"
 
+REVIEW_BUNDLE_RELATIVE_PATHS = (
+    "artifact_index.json",
+    "run_manifest.json",
+    "input_evidence_index.json",
+    "qa_summary.json",
+    "differential_expression_status.json",
+    "summary.md",
+    "tables/tacstd2_expression.csv",
+    "tables/tacstd2_depth.tsv",
+    "plots/tacstd2_depth.png",
+    "qc/bam/alignment_lineage.json",
+    "qc/bam/pre_bqsr_flagstat.txt",
+    "qc/bam/recalibrated_flagstat.txt",
+    "qc/fastqc_basic_statistics.csv",
+    "qc/fastqc_module_status.csv",
+    "reviews/strategy_review.json",
+    "reviews/custody_review.json",
+    "reviews/validation_review.json",
+    "reviews/governance_review.json",
+)
+
 FASTQ_1 = "E019_S01/RNA_Pipeline/FASTQ/RNA_E019_S01_tumor_rna_reads1.fastq.gz"
 FASTQ_2 = "E019_S01/RNA_Pipeline/FASTQ/RNA_E019_S01_tumor_rna_reads2.fastq.gz"
 RECAL_BAM = "E019_S01/RNA_Pipeline/Alignments/RNA_E019_S01_tumor_rna_aligned.recal.sorted.bam"
@@ -80,10 +101,17 @@ TACSTD2 = {
     "contig": "1",
     "start": 59_041_099,
     "end": 59_043_166,
+    "codingStart": 59_041_857,
+    "codingEnd": 59_042_828,
     "strand": "-",
     "annotationSource": "https://grch37.rest.ensembl.org/lookup/symbol/homo_sapiens/TACSTD2?expand=1",
 }
 TACSTD2["lengthBp"] = TACSTD2["end"] - TACSTD2["start"] + 1
+
+PRIMARY_EXCLUDED_FLAGS = 0x904
+HQ_EXCLUDED_FLAGS = 0xF04
+MINIMUM_MAPQ = 20
+MINIMUM_BASE_QUALITY = 20
 
 
 def _env(name: str, default: str) -> str:
@@ -169,7 +197,18 @@ def _samtools_count(bam: Path, *, excluded_flags: int, minimum_mapq: int = 0) ->
 def _unique_templates(bam: Path) -> int:
     region = f"{TACSTD2['contig']}:{TACSTD2['start']}-{TACSTD2['end']}"
     output = _run(
-        ["samtools", "view", "-@", "4", "-F", str(0xF04), "-q", "20", bam.as_posix(), region]
+        [
+            "samtools",
+            "view",
+            "-@",
+            "4",
+            "-F",
+            str(HQ_EXCLUDED_FLAGS),
+            "-q",
+            str(MINIMUM_MAPQ),
+            bam.as_posix(),
+            region,
+        ]
     )
     return len({line.split("\t", 1)[0] for line in output.splitlines() if line})
 
@@ -223,6 +262,25 @@ def _write_csv(path: Path, rows: Sequence[Mapping[str, Any]], columns: Sequence[
 def _write_text(path: Path, value: str) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(value.rstrip() + "\n", encoding="utf-8")
+
+
+def _materialize_review_bundle(
+    bundle: Mapping[str, bytes], destination: Path, run_result: Mapping[str, Any]
+) -> None:
+    if destination.exists():
+        raise RuntimeError(f"refusing to overwrite existing download directory: {destination}")
+    destination.mkdir(parents=True)
+    root = destination.resolve()
+    for relative, payload in bundle.items():
+        relative_path = Path(relative)
+        if relative_path.is_absolute() or ".." in relative_path.parts:
+            raise RuntimeError(f"unsafe review-bundle path: {relative}")
+        output = (root / relative_path).resolve()
+        if root not in output.parents:
+            raise RuntimeError(f"review-bundle path escapes destination: {relative}")
+        output.parent.mkdir(parents=True, exist_ok=True)
+        output.write_bytes(payload)
+    _write_json(root / "modal_run_result.json", run_result)
 
 
 def _fastqc_records(fastqc_dir: Path) -> tuple[list[dict[str, str]], list[dict[str, str]]]:
@@ -303,6 +361,31 @@ def preflight_inputs() -> str:
 
 @app.function(
     image=image,
+    volumes={RESULTS_MOUNT_PATH.as_posix(): results_mount},
+    timeout=600,
+    region="us-east",
+    single_use_containers=True,
+    restrict_modal_access=True,
+)
+def fetch_review_bundle(run_id: str) -> dict[str, bytes]:
+    from diana_omics.trop2_rna import require_run_id
+
+    run_id = require_run_id(run_id)
+    run_dir = RESULTS_MOUNT_PATH / "runs" / run_id
+    manifest = run_dir / "run_manifest.json"
+    if not manifest.is_file():
+        raise RuntimeError(f"completed run manifest is missing: {run_id}")
+    bundle: dict[str, bytes] = {}
+    for relative in REVIEW_BUNDLE_RELATIVE_PATHS:
+        path = run_dir / relative
+        if not path.is_file():
+            raise RuntimeError(f"review-bundle artifact is missing: {relative}")
+        bundle[relative] = path.read_bytes()
+    return bundle
+
+
+@app.function(
+    image=image,
     cpu=2,
     memory=4096,
     timeout=300,
@@ -357,9 +440,9 @@ def run_trop2_rna(run_id: str) -> str:
     import matplotlib.pyplot as plt
 
     from diana_omics.trop2_rna import (
-        build_expression_metrics,
         compare_counts,
         parse_depth,
+        parse_flagstat,
         parse_idxstats,
         require_run_id,
         summarize_depth,
@@ -410,8 +493,13 @@ def run_trop2_rna(run_id: str) -> str:
         _write_text(run_dir / "qc" / "bam" / f"{label}_idxstats.tsv", idxstats_text)
         idxstats[label] = parse_idxstats(idxstats_text)
         target_counts[label] = {
-            "primaryRegionReads": _samtools_count(bam, excluded_flags=0x904),
-            "hqNonduplicateRegionReads": _samtools_count(bam, excluded_flags=0xF04, minimum_mapq=20),
+            "primaryRegionReads": _samtools_count(bam, excluded_flags=PRIMARY_EXCLUDED_FLAGS),
+            "primaryNonduplicateRegionReads": _samtools_count(bam, excluded_flags=HQ_EXCLUDED_FLAGS),
+            "hqNonduplicateRegionReads": _samtools_count(
+                bam,
+                excluded_flags=HQ_EXCLUDED_FLAGS,
+                minimum_mapq=MINIMUM_MAPQ,
+            ),
         }
 
     recal_chr1 = next(row for row in idxstats["recalibrated"]["contigs"] if row["contig"] == "1")
@@ -425,8 +513,11 @@ def run_trop2_rna(run_id: str) -> str:
 
     print("Running raw FASTQ QC and full-BAM flagstat in parallel.", flush=True)
     fastqc_log = logs_dir / "fastqc.log"
-    flagstat_path = run_dir / "qc" / "bam" / "recalibrated_flagstat.txt"
-    with ThreadPoolExecutor(max_workers=2) as executor:
+    flagstat_paths = {
+        "recalibrated": run_dir / "qc" / "bam" / "recalibrated_flagstat.txt",
+        "pre_bqsr": run_dir / "qc" / "bam" / "pre_bqsr_flagstat.txt",
+    }
+    with ThreadPoolExecutor(max_workers=3) as executor:
         fastqc_future = executor.submit(
             _run,
             [
@@ -441,14 +532,18 @@ def run_trop2_rna(run_id: str) -> str:
             stdout_path=fastqc_log,
             stderr_path=logs_dir / "fastqc.stderr.log",
         )
-        flagstat_future = executor.submit(
-            _run,
-            ["samtools", "flagstat", "-@", "8", selected_bam.as_posix()],
-            stdout_path=flagstat_path,
-            stderr_path=logs_dir / "samtools_flagstat.stderr.log",
-        )
+        flagstat_futures = {
+            label: executor.submit(
+                _run,
+                ["samtools", "flagstat", "-@", "4", paths[bam_relative].as_posix()],
+                stdout_path=flagstat_paths[label],
+                stderr_path=logs_dir / f"samtools_{label}_flagstat.stderr.log",
+            )
+            for label, bam_relative in (("recalibrated", RECAL_BAM), ("pre_bqsr", PRE_BQSR_BAM))
+        }
         fastqc_future.result()
-        flagstat_future.result()
+        for future in flagstat_futures.values():
+            future.result()
 
     print("FASTQ QC complete; building MultiQC and TROP-2 depth evidence.", flush=True)
     _run(
@@ -466,6 +561,49 @@ def run_trop2_rna(run_id: str) -> str:
         if row["metric"] == "Total Sequences"
     }
     pair_status = "matched" if len(total_sequences) == 2 and len(set(total_sequences.values())) == 1 else "mismatch"
+    total_fastq_reads = sum(total_sequences.values())
+    flagstats = {
+        label: parse_flagstat(path.read_text(encoding="utf-8"))
+        for label, path in flagstat_paths.items()
+    }
+
+    header_text = header_path.read_text(encoding="utf-8")
+    split_n_cigar_detected = "SplitNCigarReads" in header_text
+    aligned_only_bams = all(idxstats[label]["totalUnmappedAlignments"] == 0 for label in idxstats)
+    pre_primary_fraction_of_fastq = (
+        flagstats["pre_bqsr"]["primaryAlignments"] / total_fastq_reads if total_fastq_reads else 0.0
+    )
+    recal_primary_inflation = (
+        flagstats["recalibrated"]["primaryAlignments"] - total_fastq_reads
+    )
+    transformed_alignment_space_documented = (
+        pair_status == "matched"
+        and aligned_only_bams
+        and split_n_cigar_detected
+        and flagstats["pre_bqsr"]["primaryAlignments"] <= total_fastq_reads
+        and recal_primary_inflation > 0
+    )
+    lineage_status = (
+        "documented_non_equivalent_alignment_record_space"
+        if transformed_alignment_space_documented
+        else "review_required"
+    )
+    lineage = {
+        "status": lineage_status,
+        "fastqReads": total_fastq_reads,
+        "preBqsrPrimaryAlignments": flagstats["pre_bqsr"]["primaryAlignments"],
+        "preBqsrPrimaryFractionOfFastqReads": pre_primary_fraction_of_fastq,
+        "recalibratedPrimaryAlignments": flagstats["recalibrated"]["primaryAlignments"],
+        "recalibratedPrimaryAlignmentDifferenceFromFastqReads": recal_primary_inflation,
+        "alignedOnlyBams": aligned_only_bams,
+        "splitNCigarReadsDetected": split_n_cigar_detected,
+        "oneToOneReadIdentityVerified": False,
+        "interpretation": (
+            "FASTQ read counts, pre-BQSR aligned-read records, and post-SplitNCigarReads recalibrated "
+            "alignment records are different accounting spaces and must not be compared as equivalent totals."
+        ),
+    }
+    _write_json(run_dir / "qc" / "bam" / "alignment_lineage.json", lineage)
 
     unique_templates = _unique_templates(selected_bam)
     region = f"{TACSTD2['contig']}:{TACSTD2['start']}-{TACSTD2['end']}"
@@ -477,11 +615,12 @@ def run_trop2_rna(run_id: str) -> str:
             "-d",
             "0",
             "-Q",
-            "20",
+            str(MINIMUM_MAPQ),
             "-q",
-            "20",
+            str(MINIMUM_BASE_QUALITY),
             "-G",
-            "0x800",
+            f"0x{HQ_EXCLUDED_FLAGS:X}",
+            "-s",
             "-r",
             region,
             selected_bam.as_posix(),
@@ -496,14 +635,32 @@ def run_trop2_rna(run_id: str) -> str:
         end=int(TACSTD2["end"]),
     )
     depth_summary = summarize_depth(depths)
-    expression = build_expression_metrics(
-        primary_region_reads=target_counts["recalibrated"]["primaryRegionReads"],
-        hq_nonduplicate_region_reads=target_counts["recalibrated"]["hqNonduplicateRegionReads"],
-        unique_hq_templates=unique_templates,
-        total_index_mapped_alignments=idxstats["recalibrated"]["totalMappedAlignments"],
-        gene_length_bp=int(TACSTD2["lengthBp"]),
+    coding_start_offset = int(TACSTD2["codingStart"]) - int(TACSTD2["start"])
+    coding_end_offset = int(TACSTD2["codingEnd"]) - int(TACSTD2["start"]) + 1
+    coding_depth_summary = summarize_depth(depths[coding_start_offset:coding_end_offset])
+
+    recal_primary_nonduplicate_total = flagstats["recalibrated"]["primaryNonduplicateAlignments"]
+    expression = {
+        "primaryRegionReads": target_counts["recalibrated"]["primaryRegionReads"],
+        "primaryNonduplicateRegionReads": target_counts["recalibrated"]["primaryNonduplicateRegionReads"],
+        "hqNonduplicateRegionReads": target_counts["recalibrated"]["hqNonduplicateRegionReads"],
+        "uniqueHqTemplates": unique_templates,
+        "primaryNonduplicateMappedAlignments": recal_primary_nonduplicate_total,
+        "primaryNonduplicateRegionReadsPerMillion": (
+            target_counts["recalibrated"]["primaryNonduplicateRegionReads"]
+            / recal_primary_nonduplicate_total
+            * 1_000_000
+        ),
+        "normalizationCaveat": (
+            "Within-BAM alignment diagnostic only. It is not transcript-aware TPM/RPKM, does not use a "
+            "stranded gene model, and is not suitable for cross-sample or cross-study comparison."
+        ),
+    }
+    primary_bam_comparison = compare_counts(
+        target_counts["recalibrated"]["primaryRegionReads"],
+        target_counts["pre_bqsr"]["primaryRegionReads"],
     )
-    bam_comparison = compare_counts(
+    hq_bam_comparison = compare_counts(
         target_counts["recalibrated"]["hqNonduplicateRegionReads"],
         target_counts["pre_bqsr"]["hqNonduplicateRegionReads"],
     )
@@ -520,14 +677,14 @@ def run_trop2_rna(run_id: str) -> str:
                 "gene_length_bp": TACSTD2["lengthBp"],
                 "primary_region_reads": target_counts[label]["primaryRegionReads"],
                 "hq_nonduplicate_region_reads": target_counts[label]["hqNonduplicateRegionReads"],
-                "total_index_mapped_alignments": idxstats[label]["totalMappedAlignments"],
-                "alignment_reads_per_million": (
-                    target_counts[label]["primaryRegionReads"]
-                    / idxstats[label]["totalMappedAlignments"]
+                "primary_nonduplicate_region_reads": target_counts[label]["primaryNonduplicateRegionReads"],
+                "primary_nonduplicate_mapped_alignments": flagstats[label]["primaryNonduplicateAlignments"],
+                "primary_nonduplicate_region_reads_per_million": (
+                    target_counts[label]["primaryNonduplicateRegionReads"]
+                    / flagstats[label]["primaryNonduplicateAlignments"]
                     * 1_000_000
                 ),
                 "unique_hq_templates": unique_templates if label == "recalibrated" else "not_computed",
-                "approximate_fragment_rpkm": expression["approximateFragmentRpkm"] if label == "recalibrated" else "not_computed",
                 "evidence_status": "partial_evidence",
             }
         )
@@ -542,7 +699,7 @@ def run_trop2_rna(run_id: str) -> str:
     plt.plot(positions, depths, color="#7c3aed", linewidth=1)
     plt.axhline(100, color="#64748b", linestyle="--", linewidth=0.8, label="100x")
     plt.xlabel("GRCh37 chromosome 1 position")
-    plt.ylabel("HQ nonduplicate read depth")
+    plt.ylabel("MAPQ 20 flag-filtered, overlap-adjusted depth")
     plt.title("TACSTD2 / TROP-2 RNA alignment depth")
     plt.legend()
     plt.tight_layout()
@@ -553,11 +710,16 @@ def run_trop2_rna(run_id: str) -> str:
     module_warnings = sorted({row["module"] for row in module_rows if row["status"] == "warn"})
     narrow_signal_supported = (
         target_counts["recalibrated"]["hqNonduplicateRegionReads"] >= 100
-        and depth_summary["fractionAtLeast10x"] >= 0.90
-        and bam_comparison["status"] == "concordant"
+        and coding_depth_summary["fractionAtLeast10x"] >= 0.90
+        and primary_bam_comparison["status"] == "concordant"
         and pair_status == "matched"
+        and lineage_status == "documented_non_equivalent_alignment_record_space"
     )
-    qa_status = "passed_for_narrow_expression_signal" if narrow_signal_supported else "review_required"
+    qa_status = (
+        "passed_for_narrow_transcript_presence_with_source_qc_warnings"
+        if narrow_signal_supported
+        else "review_required"
+    )
 
     _write_json(
         run_dir / "input_evidence_index.json",
@@ -591,8 +753,20 @@ def run_trop2_rna(run_id: str) -> str:
             "fastqcWarningModules": module_warnings,
             "bamQuickcheck": {"recalibrated": "passed", "preBqsr": "passed"},
             "referenceCheck": "passed_hs37d5_chr1_length",
-            "bamFormCountComparison": bam_comparison,
-            "depth": depth_summary,
+            "bamPrimaryCountComparison": primary_bam_comparison,
+            "bamHqCountProcessingStateComparison": hq_bam_comparison,
+            "alignmentLineage": lineage,
+            "depth": {
+                "wholeAnnotatedLocus": depth_summary,
+                "canonicalCodingRegion": coding_depth_summary,
+                "filters": {
+                    "minimumMappingQuality": MINIMUM_MAPQ,
+                    "minimumBaseQuality": MINIMUM_BASE_QUALITY,
+                    "excludedFlags": "UNMAP|SECONDARY|QCFAIL|DUP|SUPPLEMENTARY",
+                    "excludedFlagsMask": f"0x{HQ_EXCLUDED_FLAGS:X}",
+                    "pairedOverlapHandling": "count_first_read_only",
+                },
+            },
             "expression": expression,
         },
     )
@@ -636,7 +810,14 @@ def run_trop2_rna(run_id: str) -> str:
             "verdict": "validated_for_narrower_claim" if narrow_signal_supported else "partial",
             "claim": "TACSTD2-aligned RNA reads are reproducibly present in this indexed bulk tumor RNA dataset.",
             "evidenceLevel": "internal_qc",
-            "controls": ["paired FASTQ count check", "FastQC/MultiQC", "two BAM-form concordance", "MAPQ/duplicate filtering", "basewise depth"],
+            "controls": [
+                "paired FASTQ count check",
+                "FastQC/MultiQC",
+                "two BAM-form primary-count concordance",
+                "explicit BAM processing-state accounting",
+                "MAPQ/base-quality/full-flag filtering",
+                "paired-overlap-adjusted basewise depth",
+            ],
             "notValidated": ["TPM", "differential expression", "tumor-cell specificity", "surface protein", "drug response"],
         },
     )
@@ -663,17 +844,18 @@ def run_trop2_rna(run_id: str) -> str:
                 f"- Recalibrated BAM primary TACSTD2 reads: {target_counts['recalibrated']['primaryRegionReads']:,}",
                 f"- Recalibrated BAM HQ nonduplicate TACSTD2 reads: {target_counts['recalibrated']['hqNonduplicateRegionReads']:,}",
                 f"- Unique HQ TACSTD2 templates: {unique_templates:,}",
-                f"- Index-normalized TACSTD2 reads per million: {expression['alignmentReadsPerMillion']:.3f}",
-                f"- Approximate fragment RPKM diagnostic: {expression['approximateFragmentRpkm']:.3f}",
-                f"- TACSTD2 bases with at least 10x depth: {depth_summary['fractionAtLeast10x']:.1%}",
-                f"- Recalibrated versus pre-BQSR count status: `{bam_comparison['status']}`",
+                f"- Primary nonduplicate TACSTD2 alignments per million primary nonduplicate BAM alignments: {expression['primaryNonduplicateRegionReadsPerMillion']:.3f}",
+                f"- Whole annotated TACSTD2 locus bases with at least 10x corrected depth: {depth_summary['fractionAtLeast10x']:.1%}",
+                f"- Canonical coding-region bases with at least 10x corrected depth: {coding_depth_summary['fractionAtLeast10x']:.1%}",
+                f"- Recalibrated versus pre-BQSR primary-count status: `{primary_bam_comparison['status']}`",
+                f"- BAM/FASTQ accounting status: `{lineage_status}`",
                 f"- Raw FASTQ pair count status: `{pair_status}`",
                 f"- FastQC failed modules: {', '.join(module_failures) if module_failures else 'none'}",
                 f"- FastQC warning modules: {', '.join(module_warnings) if module_warnings else 'none'}",
                 "",
                 "## Interpretation boundary",
                 "",
-                "This run can support only the narrow claim that reproducible `TACSTD2`-aligned transcript signal is present in this bulk tumor RNA dataset if the QA gates pass. The RPKM value is an approximate single-gene diagnostic, not Salmon/tximport TPM. There is one tumor sample, so differential expression is blocked. Bulk RNA cannot identify malignant-cell specificity, antigen heterogeneity, membrane localization, surface abundance, or treatment benefit.",
+                "This run can support only the narrow claim that reproducible `TACSTD2`-aligned transcript signal is present in this bulk tumor RNA dataset if the QA gates pass. The alignment-rate diagnostic is not transcript-aware TPM/RPKM. There is one tumor sample, so differential expression is blocked. Bulk RNA cannot identify malignant-cell specificity, antigen heterogeneity, membrane localization, surface abundance, or treatment benefit.",
                 "",
                 "The next decisive measurement is controlled TROP-2 membrane IHC (or another protein-localizing assay) on a lineage-matched specimen.",
             ]
@@ -721,7 +903,9 @@ def run_trop2_rna(run_id: str) -> str:
             "thresholds": {
                 "minimumMapq": 20,
                 "minimumBaseQualityForDepth": 20,
-                "excludedFlags": "UNMAP|SECONDARY|DUP|SUPPLEMENTARY",
+                "excludedFlags": "UNMAP|SECONDARY|QCFAIL|DUP|SUPPLEMENTARY",
+                "excludedFlagsMask": f"0x{HQ_EXCLUDED_FLAGS:X}",
+                "pairedOverlapHandling": "count_first_read_only",
                 "minimumHqReadsForNarrowSignal": 100,
                 "minimumFractionBasesAt10x": 0.90,
                 "maximumBamFormRelativeDifference": 0.02,
@@ -758,10 +942,13 @@ def run_trop2_rna(run_id: str) -> str:
             "primaryRegionReads": expression["primaryRegionReads"],
             "hqNonduplicateRegionReads": expression["hqNonduplicateRegionReads"],
             "uniqueHqTemplates": expression["uniqueHqTemplates"],
-            "alignmentReadsPerMillion": expression["alignmentReadsPerMillion"],
-            "approximateFragmentRpkm": expression["approximateFragmentRpkm"],
+            "primaryNonduplicateRegionReadsPerMillion": expression[
+                "primaryNonduplicateRegionReadsPerMillion"
+            ],
             "fractionBasesAt10x": depth_summary["fractionAtLeast10x"],
-            "bamFormCountStatus": bam_comparison["status"],
+            "codingFractionBasesAt10x": coding_depth_summary["fractionAtLeast10x"],
+            "bamPrimaryCountStatus": primary_bam_comparison["status"],
+            "bamLineageStatus": lineage_status,
             "fastqPairCountStatus": pair_status,
             "outputPrefix": f"s3://{RESULTS_BUCKET}/{RESULTS_PREFIX}runs/{run_id}/",
             "runManifestSha256": _sha256(run_manifest_path),
@@ -772,10 +959,38 @@ def run_trop2_rna(run_id: str) -> str:
 
 
 @app.local_entrypoint()
-def main(run_id: str = "", preflight_only: bool = False) -> None:
+def main(
+    run_id: str = "",
+    preflight_only: bool = False,
+    download_dir: str = "",
+    download_only: bool = False,
+) -> None:
+    if preflight_only and download_only:
+        raise ValueError("preflight_only and download_only cannot be combined")
     if preflight_only:
         print(preflight_inputs.remote())
         print(preflight_postprocessing.remote())
         return
     resolved_run_id = run_id or f"immunoid-trop2-{datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ')}"
-    print(run_trop2_rna.remote(resolved_run_id))
+    if download_only:
+        if not download_dir:
+            raise ValueError("download_dir is required with download_only")
+        bundle = fetch_review_bundle.remote(resolved_run_id)
+        manifest = json.loads(bundle["run_manifest.json"].decode("utf-8"))
+        result = {
+            "status": "recovered_completed_research_analysis",
+            "runId": resolved_run_id,
+            "qaStatus": manifest["qaStatus"],
+            "evidenceStatus": manifest["evidenceStatus"],
+            "outputPrefix": manifest["outputPrefix"],
+        }
+        print(json.dumps(result, indent=2, sort_keys=True))
+    else:
+        result_text = run_trop2_rna.remote(resolved_run_id)
+        result = json.loads(result_text)
+        print(result_text)
+        bundle = fetch_review_bundle.remote(resolved_run_id) if download_dir else {}
+    if download_dir:
+        destination = Path(download_dir).expanduser().resolve()
+        _materialize_review_bundle(bundle, destination, result)
+        print(json.dumps({"downloadedReviewBundle": destination.as_posix()}, sort_keys=True))

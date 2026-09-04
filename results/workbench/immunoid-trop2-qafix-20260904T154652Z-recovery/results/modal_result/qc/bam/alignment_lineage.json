@@ -1,0 +1,12 @@
+{
+  "alignedOnlyBams": true,
+  "fastqReads": 300007398,
+  "interpretation": "FASTQ read counts, pre-BQSR aligned-read records, and post-SplitNCigarReads recalibrated alignment records are different accounting spaces and must not be compared as equivalent totals.",
+  "oneToOneReadIdentityVerified": false,
+  "preBqsrPrimaryAlignments": 251685736,
+  "preBqsrPrimaryFractionOfFastqReads": 0.8389317652760017,
+  "recalibratedPrimaryAlignmentDifferenceFromFastqReads": 91238161,
+  "recalibratedPrimaryAlignments": 391245559,
+  "splitNCigarReadsDetected": true,
+  "status": "documented_non_equivalent_alignment_record_space"
+}

@@ -25,14 +25,14 @@ This choice matches the current nf-core guidance: arbitrary vendor BAM reprocess
 ## Execution plan
 
 1. Preflight every required object against the intake manifest and mounted vendor checksum ledger.
-2. Run `samtools quickcheck`, `idxstats`, the chr1/hs37d5 reference gate, and indexed `TACSTD2` counts on both BAM forms.
-3. Stream both full FASTQs through FastQC; run whole-BAM `flagstat` concurrently.
+2. Run `samtools quickcheck`, whole-BAM `flagstat`, the chr1/hs37d5 reference gate, and indexed `TACSTD2` counts on both BAM forms.
+3. Stream both full FASTQs through FastQC while the BAM accounting checks run concurrently.
 4. Aggregate FastQC with MultiQC and verify paired total-read counts.
-5. Count primary and MAPQ 20 nonduplicate reads at the one-exon GRCh37 `TACSTD2` locus, collapse high-quality alignments to unique templates, and compute basewise depth.
-6. Require the two BAM forms to agree within 2% and at least 90% of the locus to reach 10x before allowing the narrow “transcript signal present” result.
+5. Count primary and MAPQ 20 nonduplicate reads at the one-exon GRCh37 `TACSTD2` locus, collapse high-quality alignments to unique templates, and compute depth at MAPQ and base quality 20 while excluding unmapped, secondary, QC-fail, duplicate, and supplementary records and suppressing paired overlap.
+6. Require primary locus counts from the two BAM processing states to agree within 2%, at least 90% of the canonical coding region to reach 10x, matched FASTQ mate counts, and documented BAM/FASTQ record-space lineage before allowing the narrow “transcript signal present” result.
 7. Write all artifacts locally on the Modal worker, then copy them sequentially to S3. Upload `run_manifest.json` last as the completion marker.
 
-The single-gene fragment RPKM is explicitly diagnostic and approximate. It is not Salmon/tximport TPM and must not be compared across studies.
+The single-gene pseudo-RPKM has been removed. The remaining locus-alignments-per-million value is explicitly a within-BAM diagnostic; it is not transcript-aware TPM/RPKM and must not be compared across samples or studies.
 
 ## Next optimization after the baseline
 
@@ -84,15 +84,21 @@ A passing run can support only: reproducible `TACSTD2`-aligned RNA reads are pre
 
 It cannot establish which cells express the transcript, malignant-cell specificity, antigen heterogeneity, membrane localization, surface-protein abundance, ADC eligibility, response, or treatment benefit. The smallest decisive next measurement is controlled TROP-2 membrane IHC or another protein-localizing assay on a lineage-matched specimen, recording malignant-cell percent positive, intensity, H-score, heterogeneity, and controls.
 
-## Executed run
+## Corrective Workbench run
 
-Run `immunoid-trop2-20260904T012326Z` completed on 2026-09-04 with automated status `review_required`. Both 150,003,699-read mates completed FastQC. The two BAM forms agreed on primary TACSTD2 overlap within 0.67%; the recalibrated BAM retained 30,856 MAPQ 20 nonduplicate reads and 15,521 unique high-quality templates at the locus. Although only 71.9% of the full 2,068-bp transcript span reached 10x, the complete 972-bp annotated coding region had at least 155x depth and 100% of coding bases reached 100x.
+Run `immunoid-trop2-qafix-20260904T154652Z` recomputed the affected values on 2026-09-04 and completed with automated status `passed_for_narrow_transcript_presence_with_source_qc_warnings`. The earlier run `immunoid-trop2-20260904T012326Z` is superseded for depth and normalization interpretation because it excluded only supplementary alignments from depth, did not suppress mate overlap, compared processing-state-sensitive nonduplicate counts as if they were a biological concordance gate, and reported a non-transcript-aware pseudo-RPKM.
 
-Expert review classified this as `validated_for_narrower_claim_with_qc_warnings`: strong TACSTD2 transcript evidence worth protein-level follow-up. The remaining warnings are high duplicate estimates, 3-prime adapter accumulation, other FastQC composition/tile findings, and non-equivalent duplicate marking between the pre-BQSR and recalibrated BAMs.
+The corrected run excludes flags `0xF04`, applies MAPQ and base quality 20, suppresses paired overlap, and separates raw FASTQ reads from pre-BQSR primary alignments and post-`SplitNCigarReads` records. Corrected mean coding-region depth is 2,878.1x, median depth is 3,149.5x, minimum depth is 131x, and all 972 coding bases remain at least 100x. The two BAM processing states agree on primary TACSTD2 overlap within 0.67%; the recalibrated BAM contains 30,856 MAPQ 20 nonduplicate locus alignments and 15,521 unique high-quality templates.
+
+Workbench registry run `59a88946-fa34-430a-9a5b-bc38698e2f85` is attempt 2 of lineage `nextflow-diana-trop2-modal-corrective-20260904-154746-320809e8`. Attempt 1 completed the Modal compute and immutable S3 write but failed while returning the oversized MultiQC HTML through Modal; attempt 2 recovered a bounded review bundle from the same immutable S3 run without recomputing or overwriting it. The Workbench-authored interpretation is saved with the completed run.
+
+The interpretation remains `validated_for_narrower_claim`: reproducible TACSTD2 transcript-aligned signal is present and merits protein-level follow-up. The source warnings are high duplicate estimates, 3-prime adapter accumulation, other FastQC composition/tile findings, and non-equivalent duplicate marking between the pre-BQSR and recalibrated BAMs.
 
 The responsive [TROP-2 RNA evidence visualization](visualizations/trop2-rna-evidence.html) presents the coding-depth profile, QC gates, interpretation boundary, and protein-localization follow-up in one review surface. It is a checked-in interpretive companion to the immutable run envelope, not an additional hash-bound run artifact.
 
 The immutable compute run contains 48 versioned KMS-encrypted objects and all 46 indexed artifact hashes passed after download. A separate five-object review prefix preserves the expert packet and its own last-written manifest. Exact VersionIds, hashes, failed zero-output attempts, and validation checks are in the [kickoff receipt](../../results/rosalind_trop2_adc/echo_personalis/immunoid-trop2-20260904T012326Z/kickoff_receipt.json). The [reviewer packet](../../results/rosalind_trop2_adc/echo_personalis/immunoid-trop2-20260904T012326Z/reviewer_packet.md) contains the full evidence synthesis, and the [Workbench handoff](../../results/rosalind_trop2_adc/echo_personalis/immunoid-trop2-20260904T012326Z/workbench_handoff.md) provides the exact review prompt.
+
+The preceding paragraph documents the superseded baseline run only. For the corrective run, S3 contains a 49-record artifact index. The bounded local review bundle contains 16 indexed artifacts; all 16 match their indexed SHA-256 values, and the artifact index matches the hash recorded in the run manifest. The 33 S3-only artifacts were not independently re-hashed locally. The complete corrective interpretation and run provenance are in the [Workbench analysis](../../results/workbench/immunoid-trop2-qafix-20260904T154652Z-recovery/trop2_workbench_analysis.md); affected depth and pseudo-RPKM values in the earlier artifacts are superseded.
 
 ## Optimization and QA sources
 
@@ -100,6 +106,8 @@ The immutable compute run contains 48 versioned KMS-encrypted objects and all 46
 - [OpenAI Life Sciences collection](https://learn.chatgpt.com/use-cases/collections/life-sciences): the wider Codex pattern for connecting repository work, benchmarks, and iterative scientific review.
 - [OpenAI bulk RNA-seq FASTQ QC use case](https://learn.chatgpt.com/use-cases/bulk-rna-seq-fastq-qc): preflight, FastQC/MultiQC, quantification readiness, and QC interpretation before downstream claims.
 - [Modal CloudBucketMount guide](https://modal.com/docs/guide/cloud-bucket-mounts): co-located sequential reads, read-only mounts, and local temporary writes before an object-store copy.
+- [Samtools depth 1.16](https://www.htslib.org/doc/1.16/samtools-depth.html): exclusion-mask, quality-threshold, unlimited-depth, and paired-overlap semantics used by the correction.
+- [GATK SplitNCigarReads](https://gatk.broadinstitute.org/hc/en-us/articles/360037069592-SplitNCigarReads): why post-split RNA BAM records cannot be compared one-for-one with raw FASTQ reads.
 - [nf-core/rnaseq usage guidance](https://nf-co.re/rnaseq/latest/docs/usage/): sample design, strandedness inference, reference compatibility, pinned versions, cached indices, resume behavior, and resource retries.
 - [Ensembl GRCh37 TACSTD2 annotation](https://grch37.rest.ensembl.org/lookup/symbol/homo_sapiens/TACSTD2?expand=1): the exact gene locus and canonical transcript used by the focused count.
 - [UniProt P09758](https://www.uniprot.org/uniprotkb/P09758/entry): reviewed TROP-2 protein identity and topology.

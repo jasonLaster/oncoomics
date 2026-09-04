@@ -1,0 +1,5 @@
+{
+  "allowedConclusion": "Single-sample TACSTD2 alignment and QC evidence only.",
+  "reason": "One tumor RNA sample and no contrast, biological replicates, batch design, or comparator were supplied.",
+  "status": "blocked"
+}

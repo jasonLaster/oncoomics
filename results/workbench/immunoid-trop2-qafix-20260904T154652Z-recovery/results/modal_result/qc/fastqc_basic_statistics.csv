@@ -1,0 +1,15 @@
+sample,metric,value
+RNA_E019_S01_tumor_rna_reads1,Filename,RNA_E019_S01_tumor_rna_reads1.fastq.gz
+RNA_E019_S01_tumor_rna_reads1,File type,Conventional base calls
+RNA_E019_S01_tumor_rna_reads1,Encoding,Sanger / Illumina 1.9
+RNA_E019_S01_tumor_rna_reads1,Total Sequences,150003699
+RNA_E019_S01_tumor_rna_reads1,Sequences flagged as poor quality,0
+RNA_E019_S01_tumor_rna_reads1,Sequence length,150
+RNA_E019_S01_tumor_rna_reads1,%GC,52
+RNA_E019_S01_tumor_rna_reads2,Filename,RNA_E019_S01_tumor_rna_reads2.fastq.gz
+RNA_E019_S01_tumor_rna_reads2,File type,Conventional base calls
+RNA_E019_S01_tumor_rna_reads2,Encoding,Sanger / Illumina 1.9
+RNA_E019_S01_tumor_rna_reads2,Total Sequences,150003699
+RNA_E019_S01_tumor_rna_reads2,Sequences flagged as poor quality,0
+RNA_E019_S01_tumor_rna_reads2,Sequence length,150
+RNA_E019_S01_tumor_rna_reads2,%GC,53

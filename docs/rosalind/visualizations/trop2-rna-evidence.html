@@ -1,4 +1,4 @@
-<section class="trop2-viz" data-viz-root="trop2-evidence" aria-labelledby="trop2-title">
+<section id="trop2-evidence-v2" class="trop2-viz" data-viz-root="trop2-evidence" aria-labelledby="trop2-title">
   <style>
     .trop2-viz {
       color: var(--foreground);
@@ -149,20 +149,20 @@
 
   <header>
     <div class="eyebrow">E019_S01 · immunoid · bulk tumor RNA-seq</div>
-    <h1 id="trop2-title">TROP-2 RNA evidence</h1>
-    <p class="lede">A strong, cross-checked <code>TACSTD2</code> transcript signal is present. The analysis remains a transcript-level finding—not a protein, cell-origin, or treatment-selection result.</p>
+    <h1 id="trop2-title">Corrected TROP-2 RNA evidence</h1>
+    <p class="lede">Cross-checked <code>TACSTD2</code>-aligned RNA signal remains present after duplicate, flag, quality, and mate-overlap correction. This is a transcript-level alignment finding—not a protein, cell-origin, or treatment-selection result.</p>
   </header>
 
   <div class="viz-grid summary-grid" aria-label="Key evidence summary">
     <article class="card viz-stat">
       <div class="text-muted">Working conclusion</div>
-      <div class="viz-stat-value">Strong RNA evidence</div>
-      <div class="text-small text-muted">Expert disposition: narrower claim validated with QC warnings</div>
+      <div class="viz-stat-value">RNA signal present</div>
+      <div class="text-small text-muted">Narrow alignment claim passes with source-QC warnings</div>
     </article>
     <article class="card viz-stat">
       <div class="text-muted">Coding span</div>
       <div class="viz-stat-value">100% ≥100×</div>
-      <div class="text-small text-muted">972 bp · minimum 155× · median 4,439×</div>
+      <div class="text-small text-muted">972 bp · minimum 131× · median 3,149.5×</div>
     </article>
     <article class="card viz-stat">
       <div class="text-muted">Cross-BAM agreement</div>
@@ -183,7 +183,7 @@
   <section aria-labelledby="gate-heading">
     <div class="section-heading">
       <h2 id="gate-heading">Evidence gates</h2>
-      <span class="text-small text-muted">Automated status: review required</span>
+      <span class="text-small text-muted">Automated status: narrow presence passed with source-QC warnings</span>
     </div>
     <div class="table-responsive">
       <table class="table table-sm">
@@ -212,7 +212,7 @@
           </tr>
           <tr>
             <th scope="row">Coding coverage</th>
-            <td>All 972 coding bases ≥100×; mean 4,104.6×</td>
+            <td>All 972 coding bases ≥100×; corrected mean 2,878.1×</td>
             <td class="text-nowrap">✓ Strong</td>
           </tr>
           <tr>
@@ -234,7 +234,7 @@
 
   <section class="decision-boundary" aria-labelledby="boundary-heading">
     <h2 id="boundary-heading">Decision boundary</h2>
-    <p><strong>Supported:</strong> abundant <code>TACSTD2</code> RNA is present in this bulk specimen.</p>
+    <p><strong>Supported:</strong> reproducible <code>TACSTD2</code>-aligned RNA signal is present in this bulk specimen.</p>
     <p><strong>Not supported:</strong> malignant-cell specificity, membrane protein abundance, intratumoral heterogeneity, ADC eligibility, response prediction, or treatment selection.</p>
   </section>
 
@@ -245,16 +245,16 @@
 
   <details>
     <summary>Provenance and reproducibility</summary>
-    <p class="text-small">46/46 indexed run artifacts hash-verified; six source S3 VersionIds unchanged; 4/4 indexed review artifacts verified. The run and review outputs are KMS-encrypted and versioned. Run manifest SHA-256: <code>5f07adccc8465e4001df4d08b813d6244eecedf1c4c0f72883aa1fc7e0385dab</code>.</p>
+    <p class="text-small">16/16 downloaded indexed artifacts hash-verified; the 49-record artifact index also matches the run manifest. The 33 S3-only artifacts were not independently re-hashed locally. Inputs remain bound to exact S3 VersionIds, sizes, vendor MD5 records, and intake-manifest SHA-256 records. Corrective run manifest SHA-256: <code>923314a55584ca524fd72bab5f9b40fb5c50be19d87e92454141b57fc725a828</code>.</p>
   </details>
 
   <script src="https://cdn.jsdelivr.net/npm/d3@7.9.0/dist/d3.min.js"></script>
   <script>
     (() => {
-      const root = document.querySelector('[data-viz-root="trop2-evidence"]');
+      const root = document.getElementById('trop2-evidence-v2');
       if (!root || !window.d3) return;
 
-      const data = [[59041106,40.1,42],[59041122,44.1,46],[59041138,44.1,46],[59041154,42.1,44],[59041170,37.1,39],[59041186,32.8,35],[59041202,26.4,29],[59041218,20.2,23],[59041234,15.7,19],[59041250,10.1,13],[59041266,6.6,9],[59041282,3.1,4],[59041298,0.9,2],[59041314,0,0],[59041330,0,0],[59041346,0,0],[59041362,0,0],[59041378,0,0],[59041394,0,0],[59041410,0,0],[59041426,0,0],[59041442,0,0],[59041458,0,0],[59041474,0,0],[59041490,0,0],[59041506,0,0],[59041522,0,0],[59041538,0,0],[59041554,0,0],[59041570,0,0],[59041586,0,0],[59041602,0,0],[59041618,0,0],[59041634,0,0],[59041650,0,0],[59041666,0,0],[59041682,9.6,28],[59041698,69.5,95],[59041714,433.9,686],[59041730,793.7,930],[59041746,1059.6,1132],[59041762,1493.1,1766],[59041778,2008.7,2129],[59041794,2283.4,2376],[59041810,2550.6,2647],[59041826,2834.1,3148],[59041842,3508.4,3970],[59041858,4295.9,4700],[59041874,4765.4,4876],[59041890,5662.2,6035],[59041906,6394.2,6582],[59041922,6437.8,6568],[59041938,6626.4,6672],[59041954,6711.6,6781],[59041970,6557.1,6755],[59041986,6302.3,6466],[59042002,5706.2,6033],[59042018,5564.1,5708],[59042034,5294.6,5587],[59042050,4987.5,5179],[59042066,4698.3,4830],[59042082,4457.2,4579],[59042098,4396.8,4498],[59042114,4678.4,4766],[59042130,5005.1,5359],[59042146,5430.8,5653],[59042162,5291.6,5428],[59042178,5035.4,5224],[59042194,4676.8,4876],[59042210,4524,4561],[59042226,4579.7,4623],[59042242,4575.8,4625],[59042258,4242.9,4424],[59042274,4178,4244],[59042290,3954.4,4118],[59042306,3660.5,3757],[59042322,3957.9,4104],[59042338,4167.7,4297],[59042354,4374,4504],[59042370,4588.6,4702],[59042386,4483.3,4628],[59042402,4445.1,4523],[59042418,4515.6,4588],[59042434,4629,4732],[59042450,4669.3,4732],[59042466,4433.8,4602],[59042482,4075.7,4226],[59042498,3929.3,3973],[59042514,4135.3,4405],[59042530,4499.9,4541],[59042546,4475.1,4528],[59042562,4260.6,4293],[59042578,4219.1,4320],[59042594,4130.3,4190],[59042610,4157.9,4239],[59042626,3926.7,3951],[59042642,3617,3853],[59042658,2970.4,3316],[59042674,2278.1,2582],[59042690,1876.1,1962],[59042706,1610,1715],[59042722,1241.6,1433],[59042738,859.6,1045],[59042754,545.9,669],[59042770,380.6,453],[59042786,271.5,315],[59042802,214.9,241],[59042818,240.6,371],[59042834,162.4,166],[59042850,155.3,165],[59042866,159.4,202],[59042882,131.7,140],[59042898,114.8,124],[59042914,67.4,91],[59042930,53.2,54],[59042946,47.5,52],[59042962,39,45],[59042978,30.1,31],[59042994,20.2,26],[59043010,14.3,18],[59043026,8,8],[59043042,7,7],[59043058,6.1,7],[59043074,3.4,6],[59043090,1.3,2],[59043106,0.6,1],[59043122,0,0],[59043138,0,0],[59043154,0,0],[59043164,0,0]].map(([position, mean, max]) => ({ position, mean, max }));
+      const data = [[59041106,25.8,27],[59041122,27.2,28],[59041138,28.0,29],[59041154,27.7,29],[59041170,23.7,25],[59041186,22.0,22],[59041202,20.6,22],[59041218,18.0,19],[59041234,14.2,17],[59041250,10.1,13],[59041266,6.6,9],[59041282,3.1,4],[59041298,0.9,2],[59041314,0.0,0],[59041330,0.0,0],[59041346,0.0,0],[59041362,0.0,0],[59041378,0.0,0],[59041394,0.0,0],[59041410,0.0,0],[59041426,0.0,0],[59041442,0.0,0],[59041458,0.0,0],[59041474,0.0,0],[59041490,0.0,0],[59041506,0.0,0],[59041522,0.0,0],[59041538,0.0,0],[59041554,0.0,0],[59041570,0.0,0],[59041586,0.0,0],[59041602,0.0,0],[59041618,0.0,0],[59041634,0.0,0],[59041650,0.0,0],[59041666,0.0,0],[59041682,9.6,28],[59041698,69.5,95],[59041714,429.8,672],[59041730,749.5,864],[59041746,937.5,963],[59041762,1228.9,1421],[59041778,1546.1,1594],[59041794,1662.6,1701],[59041810,1779.9,1823],[59041826,1917.8,2139],[59041842,2442.9,2835],[59041858,3047.2,3333],[59041874,3525.6,3621],[59041890,4137.3,4319],[59041906,4562.3,4687],[59041922,4574.3,4635],[59041938,4626.2,4682],[59041954,4468.2,4582],[59041970,4273.4,4376],[59041986,4048.4,4161],[59042002,3807.8,3935],[59042018,3919.6,3967],[59042034,3798.6,3918],[59042050,3739.6,3804],[59042066,3564.8,3700],[59042082,3330.3,3448],[59042098,3178.4,3224],[59042114,3305.2,3392],[59042130,3429.3,3656],[59042146,3694.4,3842],[59042162,3687.9,3750],[59042178,3494.8,3670],[59042194,3263.4,3344],[59042210,3211.4,3240],[59042226,3203.1,3250],[59042242,3162.6,3256],[59042258,2919.2,3034],[59042274,2870.5,2927],[59042290,2824.9,2883],[59042306,2694.1,2763],[59042322,2890.2,2996],[59042338,2993.0,3081],[59042354,3205.3,3330],[59042370,3378.9,3415],[59042386,3241.1,3329],[59042402,3139.9,3192],[59042418,3160.4,3209],[59042434,3179.8,3252],[59042450,3154.9,3227],[59042466,2980.4,3084],[59042482,2772.3,2887],[59042498,2759.7,2832],[59042514,3019.1,3212],[59042530,3242.4,3293],[59042546,3150.3,3210],[59042562,2941.5,2989],[59042578,2870.2,2986],[59042594,2722.9,2788],[59042610,2633.4,2705],[59042626,2442.4,2470],[59042642,2220.9,2368],[59042658,1959.4,2078],[59042674,1701.4,1852],[59042690,1455.6,1519],[59042706,1244.4,1347],[59042722,965.5,1080],[59042738,714.6,846],[59042754,453.1,568],[59042770,319.4,367],[59042786,241.6,282],[59042802,190.2,213],[59042818,210.6,328],[59042834,138.0,141],[59042850,129.5,138],[59042866,135.9,178],[59042882,110.8,120],[59042898,94.6,103],[59042914,50.4,72],[59042930,34.7,35],[59042946,29.6,33],[59042962,24.1,28],[59042978,18.7,19],[59042994,13.3,17],[59043010,9.3,12],[59043026,8.0,8],[59043042,7.0,7],[59043058,6.1,7],[59043074,3.4,6],[59043090,1.3,2],[59043106,0.6,1],[59043122,0.0,0],[59043138,0.0,0],[59043154,0.0,0],[59043164,0.0,0]].map(([position, mean, max]) => ({ position, mean, max }));
       const locus = [59041099, 59043166];
       const coding = [59041857, 59042828];
       const chartHost = root.querySelector('[data-depth-chart]');
@@ -277,7 +277,10 @@
         const innerWidth = width - margin.left - margin.right;
         const innerHeight = height - margin.top - margin.bottom;
         const x = d3.scaleLinear().domain(locus).range([0, innerWidth]);
-        const y = d3.scaleSymlog().constant(10).domain([0, 7000]).range([innerHeight, 0]);
+        const y = d3.scaleSymlog()
+          .constant(10)
+          .domain([0, d3.max(data, d => d.max) * 1.08])
+          .range([innerHeight, 0]);
 
         const svg = d3.select(chartHost)
           .append('svg')
@@ -287,7 +290,7 @@
           .attr('aria-labelledby', 'depth-svg-title depth-svg-desc');
 
         svg.append('title').attr('id', 'depth-svg-title').text('TACSTD2 read depth across its genomic locus');
-        svg.append('desc').attr('id', 'depth-svg-desc').text('Mean binned depth is near zero through part of the untranslated region, then rises sharply and remains above 100-fold across the full coding span.');
+        svg.append('desc').attr('id', 'depth-svg-desc').text('Corrected mean binned depth is near zero through part of the untranslated region, then rises sharply and remains above 100-fold across the full coding span.');
 
         const plot = svg.append('g').attr('transform', `translate(${margin.left},${margin.top})`);
 
@@ -396,7 +399,7 @@
           .attr('class', 'axis-title text-small')
           .attr('transform', `translate(15,${margin.top + innerHeight / 2}) rotate(-90)`)
           .attr('text-anchor', 'middle')
-          .text('Mean read depth (×, symlog scale)');
+          .text('Corrected mean depth (×, symlog scale)');
       }
 
       const observer = new ResizeObserver(render);

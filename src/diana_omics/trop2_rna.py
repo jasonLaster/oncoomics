@@ -47,6 +47,35 @@ def parse_idxstats(text: str) -> dict[str, Any]:
     }
 
 
+def parse_flagstat(text: str) -> dict[str, int]:
+    patterns = {
+        "totalAlignments": r"^(\d+) \+ \d+ in total ",
+        "primaryAlignments": r"^(\d+) \+ \d+ primary$",
+        "secondaryAlignments": r"^(\d+) \+ \d+ secondary$",
+        "supplementaryAlignments": r"^(\d+) \+ \d+ supplementary$",
+        "duplicateAlignments": r"^(\d+) \+ \d+ duplicates$",
+        "primaryDuplicateAlignments": r"^(\d+) \+ \d+ primary duplicates$",
+        "mappedAlignments": r"^(\d+) \+ \d+ mapped ",
+        "primaryMappedAlignments": r"^(\d+) \+ \d+ primary mapped ",
+        "pairedAlignments": r"^(\d+) \+ \d+ paired in sequencing$",
+        "read1Alignments": r"^(\d+) \+ \d+ read1$",
+        "read2Alignments": r"^(\d+) \+ \d+ read2$",
+        "properlyPairedAlignments": r"^(\d+) \+ \d+ properly paired ",
+    }
+    metrics: dict[str, int] = {}
+    for key, pattern in patterns.items():
+        match = re.search(pattern, text, re.MULTILINE)
+        if not match:
+            raise ValueError(f"flagstat output is missing {key}")
+        metrics[key] = int(match.group(1))
+    if metrics["primaryDuplicateAlignments"] > metrics["primaryAlignments"]:
+        raise ValueError("flagstat primary duplicates exceed primary alignments")
+    metrics["primaryNonduplicateAlignments"] = (
+        metrics["primaryAlignments"] - metrics["primaryDuplicateAlignments"]
+    )
+    return metrics
+
+
 def parse_depth(text: str, *, contig: str, start: int, end: int) -> list[int]:
     if start < 1 or end < start:
         raise ValueError("depth interval must use one-based inclusive coordinates")
