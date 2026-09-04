@@ -1,0 +1,72 @@
+[
+  {
+    "path": "results/pan_cancer_adc_atlas/v1/README.md",
+    "bytes": 1017,
+    "sha256": "fedea6aae181f8351757d3fd8da7e172d250192ab1393419d31e70372bb78d29"
+  },
+  {
+    "path": "results/pan_cancer_adc_atlas/v1/atlas_payload.json",
+    "bytes": 911934,
+    "sha256": "3f1e275432d30b63746865e3cf5c96d6d4a4c9dbf96519bebe595e840d748344"
+  },
+  {
+    "path": "results/pan_cancer_adc_atlas/v1/cancer_expression_summary.csv",
+    "bytes": 71166,
+    "sha256": "4a3ac426668cb51d3ba4bda93a1dddc273ee3b1f91ea7e14d682878cfc6c70a3"
+  },
+  {
+    "path": "results/pan_cancer_adc_atlas/v1/cancer_ihc_summary.csv",
+    "bytes": 18066,
+    "sha256": "eacac0d7a081e2046795c70566ec5de16960cb3805c9b797e153db3c5cdeb469"
+  },
+  {
+    "path": "results/pan_cancer_adc_atlas/v1/candidate_matrix.csv",
+    "bytes": 8458,
+    "sha256": "dd3d4d5c9241e610d71882dae9c9f61a5076d7d49077ead2fa13950961034625"
+  },
+  {
+    "path": "results/pan_cancer_adc_atlas/v1/cptac_summary.csv",
+    "bytes": 14230,
+    "sha256": "3a3a916a62358031ebf8d4ce01786e5ed40d45f88dd24ac2c6eb354c4966ac20"
+  },
+  {
+    "path": "results/pan_cancer_adc_atlas/v1/normal_expression_summary.csv",
+    "bytes": 58209,
+    "sha256": "bfa3b9bb1a4aa33a3ef5a9e1d1d0a8305319a55f039ce39c64ebc7fa2730ce90"
+  },
+  {
+    "path": "results/pan_cancer_adc_atlas/v1/normal_ihc_summary.csv",
+    "bytes": 42596,
+    "sha256": "f9540e9c06c47e227a5a9cb0b53ed8c64c4a573c2f01f0482e9191f787a50edd"
+  },
+  {
+    "path": "results/pan_cancer_adc_atlas/v1/orthogonal_followup.csv",
+    "bytes": 3862,
+    "sha256": "4db8cdc071df72877f7edca1edd880f677cf00637fb174a40b7ef2b8d9f978e2"
+  },
+  {
+    "path": "results/pan_cancer_adc_atlas/v1/patient_bridge_summary.csv",
+    "bytes": 8760,
+    "sha256": "a297eee02ecb1b812c87d16f81a810d06a3b04208ff546f0963b739ac38d7f4a"
+  },
+  {
+    "path": "results/pan_cancer_adc_atlas/v1/source_manifest.json",
+    "bytes": 3646,
+    "sha256": "73a49c5701f02c6c9e2c417fedc070d3f13a88e95e5a61840d35151c90763018"
+  },
+  {
+    "path": "results/pan_cancer_adc_atlas/v1/summary.json",
+    "bytes": 561,
+    "sha256": "c15a9ee710a765da3678c38d374bc510973dac6a1503d74f7ebc07627df8fd3c"
+  },
+  {
+    "path": "results/pan_cancer_adc_atlas/v1/target_summary.csv",
+    "bytes": 10040,
+    "sha256": "f4ab7ddb27c6172a2ded042d59c9f80af770cf622de8d09d4481fc62815008f4"
+  },
+  {
+    "path": "docs/rosalind/visualizations/pan-cancer-adc-atlas-v1.html",
+    "bytes": 671307,
+    "sha256": "9997f52d264a2750d1a894b2328e21152e294e1067f3a0ca0a45a7a6bb90f4aa"
+  }
+]

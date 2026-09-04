@@ -1,0 +1,104 @@
+{
+  "atlasVersion": "v1",
+  "generatedAt": "2026-09-04T18:53:27.988Z",
+  "targetManifest": "manifests/adc_atlas_targets_v1.csv",
+  "targetManifestSha256": "2b829d3cb0148a41f798c0c4d7e4f177decc6fd1daa75fa8524cc14439cb6e44",
+  "xena": {
+    "hub": "https://toil.xenahubs.net",
+    "dataset": "TcgaTargetGtex_rsem_gene_tpm",
+    "release": "UCSC Toil RNA-seq recompute, 2016-09-03",
+    "assembly": "hg38",
+    "annotation": "GENCODE v23",
+    "unit": "log2(TPM + 0.001), inverted to TPM",
+    "queryGenes": [
+      "TACSTD2",
+      "ERBB2",
+      "ERBB3",
+      "SLC39A6",
+      "PVRL4",
+      "CD276",
+      "FOLR1",
+      "F3",
+      "EGFR",
+      "MET",
+      "MSLN",
+      "CEACAM5",
+      "PTK7",
+      "MUC1",
+      "GPNMB",
+      "ROR1",
+      "ROR2",
+      "SLC34A2",
+      "DLL3",
+      "CLDN18",
+      "FOLH1",
+      "GPC3",
+      "TNFRSF17"
+    ],
+    "matrixSampleCount": 19131,
+    "matrixSampleIdsSha256": "ea93ed38214c591f800a28d971ad2b4e3043a15ec22b06df57459e8cb95e616e",
+    "queriedGeneSliceSha256": "140b7ba44cf708b4473c485b81943102dd3b084800acf6484c12b576ea0507d6"
+  },
+  "downloads": [
+    {
+      "label": "UCSC Toil TCGA/TARGET/GTEx phenotype",
+      "url": "https://toil.xenahubs.net/download/TcgaTargetGTEX_phenotype.txt.gz",
+      "version": "2016-09-15",
+      "bytes": 135753,
+      "sha256": "ba4d4461cff0fe5e91cc3e58f793aa47ff3c5d6fbf77d65ccff5a07231aaf2db"
+    },
+    {
+      "label": "HPA pathology IHC",
+      "url": "https://www.proteinatlas.org/download/tsv/cancer_data.tsv.zip",
+      "version": "25.1",
+      "bytes": 1724018,
+      "sha256": "6e771693dc1019a3536d8834175ee97dcfde4f835d5cb3bed7c5a48803668135"
+    },
+    {
+      "label": "HPA normal tissue IHC",
+      "url": "https://www.proteinatlas.org/download/tsv/normal_ihc_data.tsv.zip",
+      "version": "25.1",
+      "bytes": 5732831,
+      "sha256": "fa2315e5a53ecffd9427a5bfe219c8cc41b54089ef6f6be7b5d79b5455e0677f"
+    },
+    {
+      "label": "HPA CPTAC protein expression",
+      "url": "https://www.proteinatlas.org/download/tsv/cancer_cptac.tsv.zip",
+      "version": "25.1",
+      "bytes": 1166551,
+      "sha256": "539c84d10a49b7756e19a6dd242dd3a437a219319a98f0bc0ac5bcb188b36223"
+    }
+  ],
+  "cohortPolicy": {
+    "included": [
+      "TCGA Primary Tumor",
+      "GTEx Normal Tissue"
+    ],
+    "excluded": [
+      "TARGET",
+      "TCGA non-primary sample types",
+      "non-TCGA/non-GTEx studies"
+    ]
+  },
+  "counts": {
+    "matrix_samples": 19131,
+    "phenotype_rows": 19131,
+    "analysis_samples": 16614,
+    "tcga_primary_tumors": 9185,
+    "gtex_normal_tissues": 7429,
+    "target_samples_excluded": 734,
+    "other_samples_excluded": 1783,
+    "missing_gene_values": 0
+  },
+  "patientBridge": {
+    "sampleLabel": "Diana E019_S01 tumor RNA",
+    "runId": "adc-atlas-patient-bridge-20260904T183020Z",
+    "referenceId": "gencode-v23-grch38-primary-full-decoy-salmon-1.10.3",
+    "method": "Salmon selective alignment with full-genome decoys, automatic library inference, sequence bias correction, and GC bias correction",
+    "qaStatus": "passed_for_directional_comparison_with_cross_pipeline_caveat",
+    "comparisonStatus": "directionally_comparable",
+    "pointerPath": "/Users/jasonlaster/.codex/worktrees/c75146ae-986b-4916-a212-616ff4d7d1a6/diana-omics/manifests/adc_atlas_patient_bridge_current.json",
+    "pointerSha256": "e75437ef393d6ff314d6ab739d8fec65856438624486c732a0711a9140916f44"
+  },
+  "interpretationBoundary": "Reference RNA and public protein context rank hypotheses. They do not establish patient comparability, accessible membrane antigen, internalization, payload sensitivity, safety, or treatment benefit."
+}

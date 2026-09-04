@@ -1,0 +1,75 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Diana ADC Atlas patient bridge parameters",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "repo_root",
+    "runner_path",
+    "runner_sha256",
+    "helper_path",
+    "helper_sha256",
+    "target_manifest_path",
+    "target_manifest_sha256",
+    "cancer_reference_path",
+    "cancer_reference_sha256",
+    "run_id"
+  ],
+  "properties": {
+    "repo_root": {
+      "type": "string",
+      "format": "directory-path",
+      "description": "Absolute path to the diana-omics checkout"
+    },
+    "runner_path": {
+      "type": "string",
+      "format": "file-path",
+      "description": "Absolute path to the Modal bridge runner"
+    },
+    "runner_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$",
+      "description": "Approval-bound SHA-256 of the Modal runner"
+    },
+    "helper_path": {
+      "type": "string",
+      "format": "file-path",
+      "description": "Absolute path to the gene-aggregation helper bundled into the Modal image"
+    },
+    "helper_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$",
+      "description": "Approval-bound SHA-256 of the gene-aggregation helper"
+    },
+    "target_manifest_path": {
+      "type": "string",
+      "format": "file-path",
+      "description": "Absolute path to the ADC target manifest bundled into the Modal image"
+    },
+    "target_manifest_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$",
+      "description": "Approval-bound SHA-256 of the ADC target manifest"
+    },
+    "cancer_reference_path": {
+      "type": "string",
+      "format": "file-path",
+      "description": "Absolute path to the generated public cancer expression summary"
+    },
+    "cancer_reference_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$",
+      "description": "Approval-bound SHA-256 of the public cancer expression summary"
+    },
+    "run_id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$",
+      "description": "New immutable Modal/S3 run identifier"
+    },
+    "recover_existing_run": {
+      "type": "boolean",
+      "default": false,
+      "description": "Recover bounded outputs from an already completed immutable S3 run without recomputation"
+    }
+  }
+}

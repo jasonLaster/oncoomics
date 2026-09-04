@@ -1,0 +1,43 @@
+{
+  "annotation": "GENCODE v23",
+  "assembly": "GRCh38.p3 primary assembly",
+  "decoyCount": 194,
+  "indexMode": "Salmon full-genome decoy-aware selective-alignment index",
+  "indexVersionInfo": {
+    "auxKmerLength": 31,
+    "hasAuxIndex": false,
+    "indexType": 2,
+    "indexVersion": 5,
+    "salmonVersion": "1.10.3"
+  },
+  "referenceId": "gencode-v23-grch38-primary-full-decoy-salmon-1.10.3",
+  "salmon": "salmon 1.10.3",
+  "schema": "diana_adc_atlas_reference.v1",
+  "sources": {
+    "GRCh38.primary_assembly.genome.fa.gz": {
+      "bytes": 844691642,
+      "md5": "5d6d8cc23bea6d1beb18efa041c55496",
+      "observedBytes": 844691642,
+      "observedMd5": "5d6d8cc23bea6d1beb18efa041c55496",
+      "observedSha256": "fd1a48565294ff8867067744540e135c1d5812b45b99fe5782fb2d5a4db49d24",
+      "url": "https://ftp.ebi.ac.uk/pub/databases/gencode/Gencode_human/release_23/GRCh38.primary_assembly.genome.fa.gz"
+    },
+    "gencode.v23.annotation.gtf.gz": {
+      "bytes": 38449390,
+      "md5": "4c06cb6f2eb5d4e1e161f895be32c33b",
+      "observedBytes": 38449390,
+      "observedMd5": "4c06cb6f2eb5d4e1e161f895be32c33b",
+      "observedSha256": "adfda26c291cfb68ae13b54b285f1c0023abc2dfc703b8871f43b9655ab64a56",
+      "url": "https://ftp.ebi.ac.uk/pub/databases/gencode/Gencode_human/release_23/gencode.v23.annotation.gtf.gz"
+    },
+    "gencode.v23.transcripts.fa.gz": {
+      "bytes": 47012866,
+      "md5": "98ba7a199a2bc9b0a707d9567edb4aec",
+      "observedBytes": 47012866,
+      "observedMd5": "98ba7a199a2bc9b0a707d9567edb4aec",
+      "observedSha256": "f19557d65d3aaba05a25ae4e78f260bcbff76e37843e767ac0222174da9916d2",
+      "url": "https://ftp.ebi.ac.uk/pub/databases/gencode/Gencode_human/release_23/gencode.v23.transcripts.fa.gz"
+    }
+  },
+  "status": "ready"
+}

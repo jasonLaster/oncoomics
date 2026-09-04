@@ -1,0 +1,12 @@
+gene_symbol,role,patient_tpm,gene_type,evidence_status,interpretation_boundary
+TOP1,topoisomerase-I payload target,37.771602,protein_coding,context_only,"Expression is mechanistic context, not a payload-sensitivity or resistance prediction."
+SLFN11,DNA-damage response sensitization context,20.361989,protein_coding,context_only,"Expression is mechanistic context, not a payload-sensitivity or resistance prediction."
+ABCB1,drug-efflux resistance context,5.947122,protein_coding,context_only,"Expression is mechanistic context, not a payload-sensitivity or resistance prediction."
+ABCG2,drug-efflux resistance context,1.11716,protein_coding,context_only,"Expression is mechanistic context, not a payload-sensitivity or resistance prediction."
+TUBB3,microtubule payload context,8.773014,protein_coding,context_only,"Expression is mechanistic context, not a payload-sensitivity or resistance prediction."
+LAMP1,lysosomal trafficking context,73.808643,protein_coding,context_only,"Expression is mechanistic context, not a payload-sensitivity or resistance prediction."
+CTSD,lysosomal protease context,353.93075,protein_coding,context_only,"Expression is mechanistic context, not a payload-sensitivity or resistance prediction."
+RAB5A,early-endosome trafficking context,75.246977,protein_coding,context_only,"Expression is mechanistic context, not a payload-sensitivity or resistance prediction."
+RAB7A,late-endosome trafficking context,88.074477,protein_coding,context_only,"Expression is mechanistic context, not a payload-sensitivity or resistance prediction."
+BAX,apoptosis context,53.416753,protein_coding,context_only,"Expression is mechanistic context, not a payload-sensitivity or resistance prediction."
+BCL2,apoptosis resistance context,43.804823,protein_coding,context_only,"Expression is mechanistic context, not a payload-sensitivity or resistance prediction."

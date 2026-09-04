@@ -22,6 +22,7 @@ COMMAND_SPECS: dict[str, CommandSpec] = {
     "analyze:rna": CommandSpec("diana_omics.commands.hrd_context.build_rna_context"),
     "audit:raw-tools": CommandSpec("diana_omics.commands.raw_validation.audit_raw_tools"),
     "build:alignment-smoke": CommandSpec("diana_omics.commands.alignment_validation.build_alignment_smoke_assets"),
+    "build:pan-cancer-adc-atlas": CommandSpec("diana_omics.commands.adc_atlas.build_pan_cancer_adc_atlas"),
     "build:diana-samplesheet-from-delivery": CommandSpec(
         "diana_omics.commands.diana_intake.build_diana_raw_samplesheet_from_delivery"
     ),
@@ -153,6 +154,13 @@ TASK_ONLY_MODULES: tuple[str, ...] = (
 )
 
 COMMAND_FAMILIES: tuple[CommandFamily, ...] = (
+    CommandFamily(
+        "ADC target discovery",
+        "Build a harmonized public tumor, normal-tissue, and protein-context atlas for evidence-gated ADC target research.",
+        (
+            "build:pan-cancer-adc-atlas",
+        ),
+    ),
     CommandFamily(
         "HRD and RNA context",
         "Build processed public context and reviewer-facing HRD/RNA evidence.",
@@ -388,6 +396,7 @@ COMMAND_FAMILIES: tuple[CommandFamily, ...] = (
 
 
 FAMILY_PACKAGES = {
+    "adc_atlas",
     "alignment_validation",
     "clinical_readiness",
     "diana_intake",

@@ -41,6 +41,9 @@ For command, evidence, and domain vocabulary, see [terms.md](terms.md).
 | [rosalind/README.md](rosalind/README.md) | Understand how GPT-Rosalind, NGS Analysis, and Life Science Research would integrate with this project. |
 | [rosalind/hrd-workflow.md](rosalind/hrd-workflow.md) | Review the GPT-Rosalind workflow for HRD evidence and score readiness from WGS/WES. |
 | [rosalind/trop2-adc-workflow.md](rosalind/trop2-adc-workflow.md) | Review the GPT-Rosalind workflow for TROP-2 ADC target assessment from bulk WES and scRNA-seq. |
+| [rosalind/pan-cancer-adc-atlas-v1.md](rosalind/pan-cancer-adc-atlas-v1.md) | Review the public pan-cancer RNA/protein-context atlas and its directional Diana patient bridge. |
+| [rosalind/modal-s3-ngs-plugin-replication.md](rosalind/modal-s3-ngs-plugin-replication.md) | Reproduce or extend the custody-bound Modal, S3, NGS Analysis, and Workbench pattern used for the TROP-2 RNA run. |
+| [rosalind/modal-s3-ngs-plugin-prompts.md](rosalind/modal-s3-ngs-plugin-prompts.md) | Copy prompts for intake, planning, execution, recovery, correction, new targets, cohort comparison, optimization, visualization, and analyst handoff. |
 | [operations/running-the-pipeline.md](operations/running-the-pipeline.md) | Run local, Docker, Nextflow, and AWS workflows. |
 | [operations/fast-rerun-performance-cost-summary.md](operations/fast-rerun-performance-cost-summary.md) | Compare today's run with the projected CPU and GPU fast-rerun performance and cost. |
 | [operations/next-generation-fast-rerun.md](operations/next-generation-fast-rerun.md) | Review the measured bottlenecks and selected `us-east-2` P5/Parabricks fast-rerun design. |

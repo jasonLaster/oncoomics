@@ -1,0 +1,146 @@
+{
+  "artifacts": [
+    {
+      "bytes": 1459,
+      "path": "input_evidence_index.json",
+      "sha256": "2cf441c429c69f834794b73c977c4f6cde64fdbe1cb5c76e1212d1a4d1d48290"
+    },
+    {
+      "bytes": 36700,
+      "path": "logs/salmon.stderr.log",
+      "sha256": "6c456f2c45c46f331988d21e3b93b8734c139282050136ec3f51a5fd378ebdeb"
+    },
+    {
+      "bytes": 1,
+      "path": "logs/salmon.stdout.log",
+      "sha256": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b"
+    },
+    {
+      "bytes": 996,
+      "path": "qa_summary.json",
+      "sha256": "eb881e290e8717e4f21af6ba243f269e19a361ec1b1c5375c7c202a84f8a22e3"
+    },
+    {
+      "bytes": 1776,
+      "path": "reference_manifest.json",
+      "sha256": "7218c47a72f96fab7a9b2287887b2eff88a3178dd9fc9f5695747554b3cd35f1"
+    },
+    {
+      "bytes": 1148505,
+      "path": "salmon/aux_info/ambig_info.tsv",
+      "sha256": "ae6d7b5261c8a58ceb5019f30a6b802ed4e71873fd2358832e488d38afb36685"
+    },
+    {
+      "bytes": 3873,
+      "path": "salmon/aux_info/exp3_seq.gz",
+      "sha256": "1c6e0b0d81312062def0b4d8ffbc90ace97a1712d313a27aacf79d826fcadead"
+    },
+    {
+      "bytes": 3869,
+      "path": "salmon/aux_info/exp5_seq.gz",
+      "sha256": "7505a82a083992c49b1a80091135c7a5782aff32671b0c526434471c5ed6622d"
+    },
+    {
+      "bytes": 667,
+      "path": "salmon/aux_info/exp_gc.gz",
+      "sha256": "7bab9496c490a938a49fc677bac572c8f207e11470c83a6fec937b8c95ab8fa5"
+    },
+    {
+      "bytes": 89,
+      "path": "salmon/aux_info/expected_bias.gz",
+      "sha256": "4fd777aa7f863a78c072a2b8f2aefac9ed9d6d6de332113fbe1adcb9632c7181"
+    },
+    {
+      "bytes": 582,
+      "path": "salmon/aux_info/fld.gz",
+      "sha256": "2b8edb6f354e1a3c24f0e1d6c893e72b72ff2eb75f67d9cb7efa8a84ee611393"
+    },
+    {
+      "bytes": 1865,
+      "path": "salmon/aux_info/meta_info.json",
+      "sha256": "52440adc954055c85c7ddcfb49f66c79bbb89d8e8aa96b44b2826eb8457d3a20"
+    },
+    {
+      "bytes": 3987,
+      "path": "salmon/aux_info/obs3_seq.gz",
+      "sha256": "11941987b3a723b855d80ec9feaf1931f76f3f2036c58a06a7eb2de84ebfba30"
+    },
+    {
+      "bytes": 3976,
+      "path": "salmon/aux_info/obs5_seq.gz",
+      "sha256": "e6c54d4cf767799b45a82bef64a4ff3f3991fd5ff0f6991b46f06429d73d053d"
+    },
+    {
+      "bytes": 595,
+      "path": "salmon/aux_info/obs_gc.gz",
+      "sha256": "e514959244c5932c7a7d52d2f1e4711637e3d199e4a7eaeea6deb294bcaaf589"
+    },
+    {
+      "bytes": 54,
+      "path": "salmon/aux_info/observed_bias.gz",
+      "sha256": "5026e8534eece566358cc949606b89ededf87f44940b7c471b8791f0e19af101"
+    },
+    {
+      "bytes": 54,
+      "path": "salmon/aux_info/observed_bias_3p.gz",
+      "sha256": "5026e8534eece566358cc949606b89ededf87f44940b7c471b8791f0e19af101"
+    },
+    {
+      "bytes": 544,
+      "path": "salmon/cmd_info.json",
+      "sha256": "7e8633b3cc33030e90fa5a9613ae9e414c79a391d7bb601e993e27ad963d6b0c"
+    },
+    {
+      "bytes": 11678,
+      "path": "salmon/libParams/flenDist.txt",
+      "sha256": "fd7b8cc6671355547b1f74a052fb1b347d759fb7a3c0b34e86a152607d7d7b1d"
+    },
+    {
+      "bytes": 692,
+      "path": "salmon/lib_format_counts.json",
+      "sha256": "8e27827097dbcbd9b123a6a9ecdf71aa8e612f96290e0394770322f06dacc8aa"
+    },
+    {
+      "bytes": 6856,
+      "path": "salmon/logs/salmon_quant.log",
+      "sha256": "5be7646ba4cb16876808ed5e8fae5490ad24191ca168bd46804741ced1e6e0ed"
+    },
+    {
+      "bytes": 9197648,
+      "path": "salmon/quant.sf",
+      "sha256": "46806fa3424183fd9e510685e85200a54b9abcdb3886f5954f359e83799dfda4"
+    },
+    {
+      "bytes": 1498,
+      "path": "summary.md",
+      "sha256": "2308555221c996314413037c132602093146ee52a5bc9c439b3b51370a0d7d86"
+    },
+    {
+      "bytes": 8760,
+      "path": "tables/adc_target_breast_comparison.csv",
+      "sha256": "a297eee02ecb1b812c87d16f81a810d06a3b04208ff546f0963b739ac38d7f4a"
+    },
+    {
+      "bytes": 8760,
+      "path": "tables/adc_target_expression.csv",
+      "sha256": "dea4a16a1520041a422dcc6bb3e07297b6e80a439f55b2a2b159fc5a08299b2c"
+    },
+    {
+      "bytes": 3319356,
+      "path": "tables/gene_expression.csv",
+      "sha256": "f93d5d90d61fce9953d5e97d6bd2e5c085ac9fb9c8884d86fdb9ba6de997800e"
+    },
+    {
+      "bytes": 1870,
+      "path": "tables/payload_context_expression.csv",
+      "sha256": "a8819449c0ad591cd59fec514991b1e89984c3ac00396f8088cbaa6dce49184e"
+    },
+    {
+      "bytes": 110,
+      "path": "versions/software.json",
+      "sha256": "a7f7e5af63fc4d79a8caf37c2b8b906b47b12882077d07cd439894d720bb3a1b"
+    }
+  ],
+  "runId": "adc-atlas-patient-bridge-20260904T183020Z",
+  "schema": "diana_adc_atlas_patient_bridge_artifact_index.v1"
+}
