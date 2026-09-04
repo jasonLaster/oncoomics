@@ -54,6 +54,7 @@ The pattern is:
 | [Broad WGS Delta Workflow](broad-wgs-delta-workflow.md) | You want to ask what WGS adds beyond WES, including structural variants, breakpoints, allele-specific CNV/LOH, noncoding candidates, and mutational signatures. | WGS-vs-WES delta table, CNV/SV/signature boards, target-board updates, and reviewer packet. |
 | [Pan-Target Discovery Workflow](target-discovery-workflow.md) | You want to rank ADC, bispecific, CDK12/13, CDK4/6, and other target hypotheses without overcalling WGS/WES evidence. | DNA target-locus evidence, candidate target board, orthogonal follow-up list, and reviewer packet. |
 | [TROP-2 ADC Target Workflow](trop2-adc-workflow.md) | You want to evaluate whether TROP-2/`TACSTD2` is a plausible ADC target using bulk WES plus scRNA-seq. | WES target-locus evidence, scRNA target-expression evidence, external ADC context, and target-confidence class. |
+| [scRNA-seq Modal + S3 Kickoff](scrna-modal-s3-kickoff.md) | You want to prove the S3, Modal, Scanpy, and artifact-custody path on a small public 10x matrix before introducing cohort data. | H5AD, QC, clusters, markers, UMAP, checksummed artifact index, and run manifest. |
 
 ## Patterns From The Codex Life-Sciences Use Cases
 

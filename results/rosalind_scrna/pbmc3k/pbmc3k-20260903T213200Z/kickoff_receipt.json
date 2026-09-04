@@ -1,0 +1,98 @@
+{
+  "schema": "diana_rosalind_scrna_kickoff_receipt.v1",
+  "status": "passed",
+  "validatedAt": "2026-09-03T21:33:57Z",
+  "runId": "pbmc3k-20260903T213200Z",
+  "evidenceClass": "public_benchmark",
+  "dianaSampleEvidence": "not_present",
+  "sourceCode": {
+    "gitHead": "efb384190db574a6280f8a721478b4307f7c04a5",
+    "runner": {
+      "path": "scripts/modal/modal_s3_scrna_kickoff.py",
+      "sha256": "6dfcafa2d3c936a5d443ab890fba5ee93b87ce6a1bef505f89993ac83b18cc43"
+    },
+    "helper": {
+      "path": "src/diana_omics/scrna_kickoff.py",
+      "sha256": "2ad1ff5997ba96006943df65693b5254ede18627bc1fff60ae22d0e7b40c0680"
+    },
+    "inputManifest": {
+      "path": "manifests/rosalind_scrna_kickoff.csv",
+      "sha256": "e49ca8fae410c10a9d3f41c3e687e1b48a67ab4be1894c72d2908662b1adc579"
+    }
+  },
+  "modal": {
+    "app": "diana-rosalind-scrna-kickoff",
+    "profile": "jason-laster-11",
+    "successfulRunUrl": "https://modal.com/apps/jason-laster-11/main/ap-ZzUsTMFB7JteXaebw3xitE",
+    "awsCredentialSource": "modal_named_secret",
+    "credentialValuesStoredInRepository": false
+  },
+  "input": {
+    "sourceUrl": "https://s3-us-west-2.amazonaws.com/10x.files/samples/cell/pbmc3k/pbmc3k_filtered_gene_bc_matrices.tar.gz",
+    "s3Uri": "s3://diana-omics-raw-inputs-172630973301-us-east-1/public/10x/pbmc3k/pbmc3k_filtered_gene_bc_matrices.tar.gz",
+    "versionId": "9i03sAPBUOC9PM460_k.XH.o.6M4Nt32",
+    "bytes": 7621991,
+    "sha256": "847d6ebd9a1ec9a768f2be7e40ca42cbfe75ebeb6d76a4c24167041699dc28b5",
+    "serverSideEncryption": "AES256"
+  },
+  "output": {
+    "s3Prefix": "s3://diana-omics-results-172630973301-us-east-1/modal/rosalind-scrna/runs/pbmc3k-20260903T213200Z/",
+    "objectCount": 10,
+    "totalBytes": 29946290,
+    "serverSideEncryption": "AES256",
+    "runManifest": {
+      "versionId": "oPWs5H3LuGJX.uhqCh0c9gmmostp1.J2",
+      "bytes": 2786,
+      "sha256": "9d31d1fc5da1db2dd52f2af0f8b8aa72131f0cfe0b881f34021f594070175868"
+    },
+    "artifactIndex": {
+      "versionId": "n0w8pQeE4VZTEYwcDyHtytLxeOp1jFqL",
+      "bytes": 1338,
+      "sha256": "48cfec12968a1de824fcdf6d2449021155e2052dffc2dc86ed2685d9d115d899"
+    },
+    "processedH5ad": {
+      "versionId": "dqQ_iz7H.RvN.a93Bt5dFEIkrWWzNzNz",
+      "bytes": 29682830,
+      "sha256": "965fa4b8ad742fb52edf8713818cf8c062ebcaf612db180415f16896024ffcb6"
+    },
+    "umap": {
+      "versionId": "rpBLABWJe_.phjN9dACleiWckKKJ7Qe3",
+      "bytes": 141106,
+      "sha256": "66acdc6da90a21ae823479a3e7be8f442c4e884e40de8e08b6b4d8e854766270"
+    }
+  },
+  "runSummary": {
+    "inputCells": 2700,
+    "retainedCells": 2638,
+    "retainedFraction": 0.977037037037037,
+    "highlyVariableGenes": 1826,
+    "unreviewedLeidenClusters": 6
+  },
+  "validation": {
+    "artifactIndexSha256Checks": "passed_8_of_8",
+    "runManifestContract": "passed",
+    "csvContract": "passed",
+    "h5adMagic": "894844460d0a1a0a",
+    "h5adFileType": "Hierarchical Data Format version 5",
+    "h5adAnndataRead": "passed_shape_2638x1826_raw_2638x13656_umap_2638x2_clusters_6",
+    "umapVisualInspection": "passed",
+    "focusedUnitTests": "passed_3_of_3",
+    "ruff": "passed",
+    "gitDiffCheck": "passed"
+  },
+  "priorFailedAttempts": [
+    {
+      "runUrl": "https://modal.com/apps/jason-laster-11/main/ap-GLBkpu8xDF2rOxG2DeBthj",
+      "stage": "resource_validation",
+      "reason": "unsupported explicit ephemeral disk request",
+      "outputObjects": 0
+    },
+    {
+      "runUrl": "https://modal.com/apps/jason-laster-11/main/ap-tgMyfJGJgOIUmLaAoXEKKK",
+      "stage": "h5ad_export",
+      "reason": "HDF5 random-access write attempted directly on the S3 FUSE mount",
+      "outputObjects": 0
+    }
+  ],
+  "boundary": "This validates public PBMC3k workflow mechanics only. Cell labels remain unreviewed, and no Diana sample, malignant-cell, clinical, target-readiness, or treatment conclusion is present."
+}
