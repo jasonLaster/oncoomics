@@ -53,3 +53,6 @@ results/diana_wgs_hrd/**/staged_inputs/
 results/diana_wgs_hrd/**/SHA256SUMS
 results/diana_wgs_hrd/**/MANIFEST.tsv
 results/diana_wgs_hrd/**/MANIFEST.tsv.sha256
+
+# Reproducible public scRNA checkpoints live in S3; keep small review artifacts in Git.
+results/scrna/**/*.h5ad

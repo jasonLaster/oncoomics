@@ -1,0 +1,15 @@
+{
+  "dataset_id": "pbmc3k",
+  "exact_hash_checks": {
+    "conda-explicit.txt": true,
+    "pbmc3k/all_cells_qc.csv": true,
+    "pbmc3k/markers.csv": true,
+    "pbmc3k/umap.csv": true,
+    "python_packages.json": true,
+    "source_hashes.json": true
+  },
+  "first_run": "pbmc-calibration-v2-20261001T210600Z",
+  "scope": "Same pinned environment, inputs, parameters, and code. Exact barcode QC, UMAP/cluster table, and marker reproducibility.",
+  "second_run": "pbmc-calibration-v2-20261001T210600Z-repeat",
+  "status": "pass"
+}

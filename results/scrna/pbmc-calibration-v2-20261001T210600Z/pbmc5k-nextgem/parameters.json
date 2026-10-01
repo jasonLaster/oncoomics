@@ -1,0 +1,53 @@
+{
+  "latent_method": "HVG PCA; captures analyzed separately; no cross-donor integration or DE",
+  "marker_panel": {
+    "B cells": [
+      "MS4A1",
+      "CD79A",
+      "CD79B"
+    ],
+    "Dendritic cells": [
+      "FCER1A",
+      "CD1C",
+      "CLEC10A"
+    ],
+    "Monocytes": [
+      "LYZ",
+      "LST1",
+      "S100A8",
+      "S100A9"
+    ],
+    "NK cells": [
+      "NKG7",
+      "GNLY",
+      "PRF1"
+    ],
+    "Platelets": [
+      "PPBP",
+      "PF4"
+    ],
+    "T cells": [
+      "CD3D",
+      "CD3E",
+      "TRAC"
+    ]
+  },
+  "parameters": {
+    "ambient_rna_policy": "not_assessed: filtered matrices lack empty droplets; do not claim correction",
+    "annotation_policy": "provisional PBMC cluster marker scores; reference labels reserved for evaluation only",
+    "leiden_iterations": -1,
+    "leiden_resolution": 0.5,
+    "n_hvg": 2000,
+    "n_neighbors": 15,
+    "n_pcs": 40,
+    "qc_mad_multiplier": 3.0,
+    "qc_policy": "PBMC pilot: log1p genes/UMIs lower 3-MAD; mt upper 3-MAD with 5-25 percent bounds; no upper-count exclusion",
+    "seed": 42
+  },
+  "thresholds": {
+    "max_pct_mt": 15.014801502227783,
+    "min_genes": 827,
+    "min_umis": 1938,
+    "rationale": "Capture-level 3-MAD robust tails; PBMC guardrails retain low-RNA lymphocytes and bound the mt tail. Review plots before other tissues."
+  }
+}

@@ -101,6 +101,7 @@ Start here:
 - [docs/operations/analytics-sequence.md](docs/operations/analytics-sequence.md): systems architecture for analytics orchestration and OSS tool calls.
 - [docs/data/source-map.md](docs/data/source-map.md): provenance for datasets, tools, truth sets, and vendor context.
 - [docs/operations/running-the-pipeline.md](docs/operations/running-the-pipeline.md): local, Docker, Nextflow, and AWS commands.
+- [docs/scrna-platform.md](docs/scrna-platform.md): public single-cell RNA-seq calibration, Modal workers, S3 custody, and verified review artifacts.
 - [docs/operations/diana-public-data-download.md](docs/operations/diana-public-data-download.md): access-controlled Diana dataset retrieval and transfer guide (legacy filename).
 - [apps/data/README.md](apps/data/README.md): reviewed public-validation results landing page and S3 file browser.
 - [apps/jobs/README.md](apps/jobs/README.md): private viewer for live AWS Batch progress and CloudWatch logs.
