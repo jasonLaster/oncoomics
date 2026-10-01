@@ -1,0 +1,56 @@
+<!doctype html><html lang="en"><meta charset="utf-8">
+        <meta name="viewport" content="width=device-width,initial-scale=1"><title>Diana single-cell calibration</title>
+        <style>body{font:16px/1.5 system-ui,sans-serif;color:#182a39;background:#f6f8fa;margin:0 auto;padding:28px;max-width:1100px}
+        h1,h2{line-height:1.2}section{background:white;border:1px solid #dbe3ea;border-radius:10px;padding:20px;margin:20px 0}
+        .plots{display:grid;grid-template-columns:1fr 1fr;gap:12px}img{width:100%;height:auto}.qc{margin:16px 0}
+        a{color:#17547c}details{padding:12px;background:#eef3f7}header p{max-width:850px}
+        @media(max-width:650px){body{padding:14px}.plots{grid-template-columns:1fr}section{padding:12px}}</style>
+        <header><h1>Single-cell calibration</h1><p>Public single-cell post-count analysis · Modal CPU workers · S3 artifacts</p>
+        <p>Ambient RNA is unassessed because empty-droplet matrices were not provided. Doublet precision/recall is unvalidated. PBMC3k tutorial labels are a same-dataset comparison, not independent truth. Labels are provisional marker hints. Captures/sample proxies are analyzed separately; published breast labels are evaluation only. No donor-level differential expression, malignant-cell validation, or clinical claims.</p></header><section><h2>CID44971</h2><p>6,605 / 7,986 barcodes retained;
+            567 scDblFinder doublets; 19 clusters.
+            Seed stability ARI 0.871; tutorial reference ARI Not available.</p>
+            <div class="plots"><a href="CID44971/umap_leiden.png"><img alt="Leiden clusters" src="CID44971/umap_leiden.png"></a>
+            <a href="CID44971/umap_coarse_label_hint.png"><img alt="Provisional marker labels" src="CID44971/umap_coarse_label_hint.png"></a></div>
+            <img class="qc" alt="Observed QC distributions and selected thresholds" src="CID44971/qc_thresholds.png">
+            <details><summary>Calibration checks: needs_review</summary><ul><li>input_cells_match: pass</li><li>retention: pass</li><li>cluster_count: pass</li><li>finite_embedding: pass</li><li>seed_stability: pass</li><li>raw_counts_preserved: pass</li><li>doublets_called: pass</li><li>compartment_retention: NEEDS REVIEW</li><li>capture_metadata_resolved: NEEDS REVIEW</li><li>chemistry_metadata_resolved: NEEDS REVIEW</li></ul></details>
+            <p><a href="CID44971/calibration.json">Metrics</a> · <a href="CID44971/all_cells_qc.csv">All barcode decisions</a> ·
+            <a href="CID44971/markers.csv">Markers</a> · <a href="CID44971/analysis.h5ad">AnnData</a></p><h3>Breast cohort review</h3><p>Production ready: no. Coarse author-label balanced agreement:
+                0.971; unknown labels: 0.0%.
+                Published labels are a same-dataset comparison. Epithelial labels do not establish malignancy.</p>
+                <ul><li>Independent annotation/doublet truth is unavailable</li><li>Empty-droplet matrix unavailable: ambient RNA correction unvalidated</li><li>Technical capture map unresolved: scDblFinder used sample matrix as a proxy</li><li>Per-sample chemistry unresolved</li><li>At least one published compartment retained less than 70%; inspect loss before downstream use</li></ul><img alt="Breast QC review signals" src="CID44971/breast_qc_review.png">
+                <img alt="Loss by published compartment" src="CID44971/compartment_retention.png">
+                <p><a href="CID44971/compartment_retention.csv">Compartment losses</a> ·
+                <a href="CID44971/qc_sensitivity.csv">Threshold sensitivity</a> ·
+                <a href="CID44971/reference_compartment_overlap.csv">Coarse label overlap</a></p></section><section><h2>CID3941</h2><p>508 / 631 barcodes retained;
+            16 scDblFinder doublets; 6 clusters.
+            Seed stability ARI 0.910; tutorial reference ARI Not available.</p>
+            <div class="plots"><a href="CID3941/umap_leiden.png"><img alt="Leiden clusters" src="CID3941/umap_leiden.png"></a>
+            <a href="CID3941/umap_coarse_label_hint.png"><img alt="Provisional marker labels" src="CID3941/umap_coarse_label_hint.png"></a></div>
+            <img class="qc" alt="Observed QC distributions and selected thresholds" src="CID3941/qc_thresholds.png">
+            <details><summary>Calibration checks: needs_review</summary><ul><li>input_cells_match: pass</li><li>retention: pass</li><li>cluster_count: pass</li><li>finite_embedding: pass</li><li>seed_stability: pass</li><li>raw_counts_preserved: pass</li><li>doublets_called: pass</li><li>compartment_retention: NEEDS REVIEW</li><li>capture_metadata_resolved: NEEDS REVIEW</li><li>chemistry_metadata_resolved: NEEDS REVIEW</li></ul></details>
+            <p><a href="CID3941/calibration.json">Metrics</a> · <a href="CID3941/all_cells_qc.csv">All barcode decisions</a> ·
+            <a href="CID3941/markers.csv">Markers</a> · <a href="CID3941/analysis.h5ad">AnnData</a></p><h3>Breast cohort review</h3><p>Production ready: no. Coarse author-label balanced agreement:
+                0.571; unknown labels: 4.3%.
+                Published labels are a same-dataset comparison. Epithelial labels do not establish malignancy.</p>
+                <ul><li>Independent annotation/doublet truth is unavailable</li><li>Empty-droplet matrix unavailable: ambient RNA correction unvalidated</li><li>Technical capture map unresolved: scDblFinder used sample matrix as a proxy</li><li>Per-sample chemistry unresolved</li><li>At least one published compartment retained less than 70%; inspect loss before downstream use</li></ul><img alt="Breast QC review signals" src="CID3941/breast_qc_review.png">
+                <img alt="Loss by published compartment" src="CID3941/compartment_retention.png">
+                <p><a href="CID3941/compartment_retention.csv">Compartment losses</a> ·
+                <a href="CID3941/qc_sensitivity.csv">Threshold sensitivity</a> ·
+                <a href="CID3941/reference_compartment_overlap.csv">Coarse label overlap</a></p></section><section><h2>CID3838</h2><p>2,066 / 2,353 barcodes retained;
+            88 scDblFinder doublets; 10 clusters.
+            Seed stability ARI 0.955; tutorial reference ARI Not available.</p>
+            <div class="plots"><a href="CID3838/umap_leiden.png"><img alt="Leiden clusters" src="CID3838/umap_leiden.png"></a>
+            <a href="CID3838/umap_coarse_label_hint.png"><img alt="Provisional marker labels" src="CID3838/umap_coarse_label_hint.png"></a></div>
+            <img class="qc" alt="Observed QC distributions and selected thresholds" src="CID3838/qc_thresholds.png">
+            <details><summary>Calibration checks: needs_review</summary><ul><li>input_cells_match: pass</li><li>retention: pass</li><li>cluster_count: pass</li><li>finite_embedding: pass</li><li>seed_stability: pass</li><li>raw_counts_preserved: pass</li><li>doublets_called: pass</li><li>compartment_retention: NEEDS REVIEW</li><li>capture_metadata_resolved: NEEDS REVIEW</li><li>chemistry_metadata_resolved: NEEDS REVIEW</li></ul></details>
+            <p><a href="CID3838/calibration.json">Metrics</a> · <a href="CID3838/all_cells_qc.csv">All barcode decisions</a> ·
+            <a href="CID3838/markers.csv">Markers</a> · <a href="CID3838/analysis.h5ad">AnnData</a></p><h3>Breast cohort review</h3><p>Production ready: no. Coarse author-label balanced agreement:
+                0.992; unknown labels: 0.0%.
+                Published labels are a same-dataset comparison. Epithelial labels do not establish malignancy.</p>
+                <ul><li>Independent annotation/doublet truth is unavailable</li><li>Empty-droplet matrix unavailable: ambient RNA correction unvalidated</li><li>Technical capture map unresolved: scDblFinder used sample matrix as a proxy</li><li>Per-sample chemistry unresolved</li><li>At least one published compartment retained less than 70%; inspect loss before downstream use</li></ul><img alt="Breast QC review signals" src="CID3838/breast_qc_review.png">
+                <img alt="Loss by published compartment" src="CID3838/compartment_retention.png">
+                <p><a href="CID3838/compartment_retention.csv">Compartment losses</a> ·
+                <a href="CID3838/qc_sensitivity.csv">Threshold sensitivity</a> ·
+                <a href="CID3838/reference_compartment_overlap.csv">Coarse label overlap</a></p></section><footer><p>
+        <a href="input_manifest.json">Inputs and frozen criteria</a> · <a href="python_packages.json">Python versions</a> ·
+        <a href="conda-explicit.txt">R/Conda lock</a> · <a href="artifact_index.json">Artifact hashes</a></p></footer></html>

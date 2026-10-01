@@ -1,0 +1,152 @@
+{
+  "acceptance": {
+    "clusters_max": 25,
+    "clusters_min": 4,
+    "note": "Frozen before breast execution: engineering/plausibility screens plus >=70% retained in every published coarse compartment and resolved capture map. Already-filtered source permits 100% retention. Published labels are not independent truth. No threshold relaxation after a failed screen.",
+    "reference_ari_min": 0.55,
+    "reference_common_cells_min": 2000,
+    "repeat_coordinates_atol": 1e-06,
+    "retained_fraction_max": 1.0,
+    "retained_fraction_min": 0.7,
+    "seed_stability_ari_min": 0.85
+  },
+  "datasets": [
+    {
+      "assay": "whole-cell droplet RNA-seq",
+      "capture_id": "CID44971-sample-proxy",
+      "capture_metadata_note": "GEO exposes orig.ident sample ID, not verified capture channel or per-sample chemistry; proxy is not a verified capture",
+      "capture_scope": "sample_proxy_unresolved",
+      "chemistry": "10x Chromium v2 3-prime or 5-prime; per-sample chemistry unresolved in GEO",
+      "chemistry_status": "unresolved",
+      "clinical_subtype": "TNBC",
+      "dataset_id": "CID44971",
+      "donor_id": "CID44971",
+      "expected_cells": 7986,
+      "format": "geo_breast_mtx_tar",
+      "inputs": [
+        {
+          "bucket": "diana-omics-raw-inputs-172630973301-us-east-1",
+          "filename": "GSM5354531_CID44971.tar.gz",
+          "key": "public/scrna/inputs/CID44971/fdb4fb74f060644deda9865b118297553eba7a1069a8cdef03951c56498736f6/GSM5354531_CID44971.tar.gz",
+          "role": "counts",
+          "sha256": "fdb4fb74f060644deda9865b118297553eba7a1069a8cdef03951c56498736f6",
+          "size_bytes": 44964324,
+          "url": "https://ftp.ncbi.nlm.nih.gov/geo/samples/GSM5354nnn/GSM5354531/suppl/GSM5354531_CID44971.tar.gz",
+          "version_id": "Uk6hutBr1lYsHQdWdixF6EibUcRptIuE"
+        }
+      ],
+      "license": "Public GEO processed data; attribute Wu et al. Nature Genetics 2021; no claim about raw EGA access",
+      "material": "whole_cell",
+      "metadata_source": "https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSM5354531",
+      "publication": "https://pmc.ncbi.nlm.nih.gov/articles/PMC9044823/",
+      "qc_profile": "human_breast_tumor",
+      "reference": "GRCh38; author Cell Ranger 2.0 matrix",
+      "sample_id": "CID44971",
+      "source_page": "https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSM5354531",
+      "species": "Homo sapiens",
+      "study": "GSE176078",
+      "timepoint": "baseline primary tumor",
+      "tissue": "breast tumor",
+      "treatment_status": "pre-treatment primary tumor (study-level methods)",
+      "upstream_processing": "Author processed/filtered matrix: EmptyDrops, genes>200, UMIs>250, mt<20%; additional curated author cell labels. Cells removed upstream unavailable."
+    },
+    {
+      "assay": "whole-cell droplet RNA-seq",
+      "capture_id": "CID3941-sample-proxy",
+      "capture_metadata_note": "GEO exposes orig.ident sample ID, not verified capture channel or per-sample chemistry; proxy is not a verified capture",
+      "capture_scope": "sample_proxy_unresolved",
+      "chemistry": "10x Chromium v2 3-prime or 5-prime; per-sample chemistry unresolved in GEO",
+      "chemistry_status": "unresolved",
+      "clinical_subtype": "ER+",
+      "dataset_id": "CID3941",
+      "donor_id": "CID3941",
+      "expected_cells": 631,
+      "format": "geo_breast_mtx_tar",
+      "inputs": [
+        {
+          "bucket": "diana-omics-raw-inputs-172630973301-us-east-1",
+          "filename": "GSM5354516_CID3941.tar.gz",
+          "key": "public/scrna/inputs/CID3941/16b31ee0acb049c600c26e251a527444ca2de17593a4b6a3c2b082c3acf5bd83/GSM5354516_CID3941.tar.gz",
+          "role": "counts",
+          "sha256": "16b31ee0acb049c600c26e251a527444ca2de17593a4b6a3c2b082c3acf5bd83",
+          "size_bytes": 2396529,
+          "url": "https://ftp.ncbi.nlm.nih.gov/geo/samples/GSM5354nnn/GSM5354516/suppl/GSM5354516_CID3941.tar.gz",
+          "version_id": "bdBrtx8ji4AqVZ_zDbv0itZSVzt3_wu4"
+        }
+      ],
+      "license": "Public GEO processed data; attribute Wu et al. Nature Genetics 2021; no claim about raw EGA access",
+      "material": "whole_cell",
+      "metadata_source": "https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSM5354516",
+      "publication": "https://pmc.ncbi.nlm.nih.gov/articles/PMC9044823/",
+      "qc_profile": "human_breast_tumor",
+      "reference": "GRCh38; author Cell Ranger 2.0 matrix",
+      "sample_id": "CID3941",
+      "source_page": "https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSM5354516",
+      "species": "Homo sapiens",
+      "study": "GSE176078",
+      "timepoint": "baseline primary tumor",
+      "tissue": "breast tumor",
+      "treatment_status": "pre-treatment primary tumor (study-level methods)",
+      "upstream_processing": "Author processed/filtered matrix: EmptyDrops, genes>200, UMIs>250, mt<20%; additional curated author cell labels. Cells removed upstream unavailable."
+    },
+    {
+      "assay": "whole-cell droplet RNA-seq",
+      "capture_id": "CID3838-sample-proxy",
+      "capture_metadata_note": "GEO exposes orig.ident sample ID, not verified capture channel or per-sample chemistry; proxy is not a verified capture",
+      "capture_scope": "sample_proxy_unresolved",
+      "chemistry": "10x Chromium v2 3-prime or 5-prime; per-sample chemistry unresolved in GEO",
+      "chemistry_status": "unresolved",
+      "clinical_subtype": "HER2+",
+      "dataset_id": "CID3838",
+      "donor_id": "CID3838",
+      "expected_cells": 2353,
+      "format": "geo_breast_mtx_tar",
+      "inputs": [
+        {
+          "bucket": "diana-omics-raw-inputs-172630973301-us-east-1",
+          "filename": "GSM5354514_CID3838.tar.gz",
+          "key": "public/scrna/inputs/CID3838/33a7db06009b5d1177f566a4311fc51f12fdd707152426a68190f8dcb8ec97d5/GSM5354514_CID3838.tar.gz",
+          "role": "counts",
+          "sha256": "33a7db06009b5d1177f566a4311fc51f12fdd707152426a68190f8dcb8ec97d5",
+          "size_bytes": 22497691,
+          "url": "https://ftp.ncbi.nlm.nih.gov/geo/samples/GSM5354nnn/GSM5354514/suppl/GSM5354514_CID3838.tar.gz",
+          "version_id": "gQ_D9z8qY5VqhVqhTv85FIbp7jdfX9P7"
+        }
+      ],
+      "license": "Public GEO processed data; attribute Wu et al. Nature Genetics 2021; no claim about raw EGA access",
+      "material": "whole_cell",
+      "metadata_source": "https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSM5354514",
+      "publication": "https://pmc.ncbi.nlm.nih.gov/articles/PMC9044823/",
+      "qc_profile": "human_breast_tumor",
+      "reference": "GRCh38; author Cell Ranger 2.0 matrix",
+      "sample_id": "CID3838",
+      "source_page": "https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSM5354514",
+      "species": "Homo sapiens",
+      "study": "GSE176078",
+      "timepoint": "baseline primary tumor",
+      "tissue": "breast tumor",
+      "treatment_status": "pre-treatment primary tumor (study-level methods)",
+      "upstream_processing": "Author processed/filtered matrix: EmptyDrops, genes>200, UMIs>250, mt<20%; additional curated author cell labels. Cells removed upstream unavailable."
+    }
+  ],
+  "evidence_lane": "public_benchmark",
+  "parameters": {
+    "ambient_rna_policy": "Not assessed: upstream filtered author matrices lack empty droplets",
+    "annotation_policy": "Breast canonical coarse compartments; T/NK combined because cytotoxic programs overlap and author major T label contains NK; fine labels unreviewed. Same-dataset author labels used only for evaluation.",
+    "leiden_iterations": -1,
+    "leiden_resolution": 0.5,
+    "n_hvg": 2000,
+    "n_neighbors": 15,
+    "n_pcs": 40,
+    "qc_mad_multiplier": 3.0,
+    "qc_policy": "Breast mixed-tissue capture/sample MAD tails with lower tails capped at p05, no PBMC mt cap or upper-count exclusion",
+    "qc_sensitivity_multipliers": [
+      2,
+      3,
+      4
+    ],
+    "seed": 42
+  },
+  "recipe_version": 4,
+  "schema_version": 2
+}

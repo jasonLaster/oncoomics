@@ -1,0 +1,28 @@
+{
+  "run_id": "breast-qc-v4-20261001T214200Z",
+  "previous_run": "breast-qc-v3-20261001T213900Z",
+  "status": "pass",
+  "current_source_matches": {
+    "scrna.py": true,
+    "scrna_io.py": true,
+    "scrna_qc.py": true,
+    "modal_runner.py": true
+  },
+  "annotation_only_checks": {
+    "CID44971": {
+      "qc_and_doublet_decisions_exact": true,
+      "cluster_marker_table_exact": true,
+      "embedding_and_cluster_assignments_exact": true
+    },
+    "CID3941": {
+      "qc_and_doublet_decisions_exact": true,
+      "cluster_marker_table_exact": true,
+      "embedding_and_cluster_assignments_exact": true
+    },
+    "CID3838": {
+      "qc_and_doublet_decisions_exact": true,
+      "cluster_marker_table_exact": true,
+      "embedding_and_cluster_assignments_exact": true
+    }
+  }
+}

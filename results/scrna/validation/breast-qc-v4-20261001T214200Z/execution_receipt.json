@@ -1,0 +1,72 @@
+{
+  "run_id": "breast-qc-v4-20261001T214200Z",
+  "operational_status": "verified",
+  "calibration_status": "needs_review",
+  "production_ready": false,
+  "tests": "29 passed and 12 subtests passed",
+  "source_snapshot": "matches current modules and Modal runner",
+  "deployment_preflight": {
+    "scanpy": "1.11.1",
+    "scDblFinder": "1.20.2",
+    "s3_access": "verified",
+    "cpu": 4,
+    "memory_mib": 16384
+  },
+  "modal_apps": [
+    {
+      "app_id": "ap-KqmfovVydREqPs4ELo862Q",
+      "state": "deployed",
+      "tasks": "1"
+    },
+    {
+      "app_id": "ap-QGiIMCbpPucKoOioEPjMLL",
+      "state": "stopped",
+      "tasks": "0"
+    },
+    {
+      "app_id": "ap-J1yzWpqoo3sg2F4vg4bd79",
+      "state": "stopped",
+      "tasks": "0"
+    },
+    {
+      "app_id": "ap-PciumP9iF3XZF3PapXWCb4",
+      "state": "stopped",
+      "tasks": "0"
+    },
+    {
+      "app_id": "ap-nonGQS9elgao7kaBO0uvUk",
+      "state": "stopped",
+      "tasks": "0"
+    },
+    {
+      "app_id": "ap-W0m0hUfMiHi3JeTa7UwJnT",
+      "state": "stopped",
+      "tasks": "0"
+    },
+    {
+      "app_id": "ap-wdF48y2FKrrvfX69kbV3jS",
+      "state": "stopped",
+      "tasks": "0"
+    },
+    {
+      "app_id": "ap-5HCxijM1lD9VwKcd3wXDMX",
+      "state": "stopped",
+      "tasks": "0"
+    },
+    {
+      "app_id": "ap-pVpoPERCSNmtc8juto4y96",
+      "state": "stopped",
+      "tasks": "0"
+    },
+    {
+      "app_id": "ap-gWxW3VJL9nqUPUhXXvq9cG",
+      "state": "stopped",
+      "tasks": "0"
+    },
+    {
+      "app_id": "ap-1rrPugKCDBs2ZZvgViTRmp",
+      "state": "stopped",
+      "tasks": "0"
+    }
+  ]
+}

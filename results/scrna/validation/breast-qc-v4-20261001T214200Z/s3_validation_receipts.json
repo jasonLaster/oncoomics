@@ -1,0 +1,36 @@
+{
+  "bucket": "diana-omics-results-172630973301-us-east-1",
+  "status": "all_hashes_verified",
+  "objects": [
+    {
+      "key": "public/scrna/validations/breast-qc-v4-20261001T214200Z/deployment_preflight.json",
+      "sha256": "03706624b5054cbc498f4c0e683ab41dcb0a88fccd3fa7b051c2414f604d9ade",
+      "version_id": "hhESXonB5Us4fcuYLYQ6s1bio2XGPbHc"
+    },
+    {
+      "key": "public/scrna/validations/breast-qc-v4-20261001T214200Z/execution_receipt.json",
+      "sha256": "144949dab15cb5297a57213fdf5f4ea0ff1fe1c0f1d206321a12212dd0ca5a60",
+      "version_id": "696pimM7IFxIjcGnRcs520IF1A42EB4P"
+    },
+    {
+      "key": "public/scrna/validations/breast-qc-v4-20261001T214200Z/independent_review.json",
+      "sha256": "a47e8c08c8e02b14caa6a326c9185153131286a524401ebab78cbd79e93e6288",
+      "version_id": "DAmOJPCk2P16esOxaBH5EUAxQb6fMDLJ"
+    },
+    {
+      "key": "public/scrna/validations/breast-qc-v4-20261001T214200Z/recipe_comparison.json",
+      "sha256": "d7fdc25eacec6cfe745362af02b27dec1e67c53b717205e80e7c699807624e35",
+      "version_id": "MV4omadPUQBSmHMFrE_7jJM6Gis2xoLS"
+    },
+    {
+      "key": "public/scrna/validations/breast-qc-v3-20261001T213900Z/independent_review.json",
+      "sha256": "92704e912752cf86a5cdfebfb4535b977440203d8a9580431609fca6e3a125cb",
+      "version_id": "O9F4aNTaZ9tJ7SZaWR51DEgf1hJ.YZYH"
+    },
+    {
+      "key": "public/scrna/validations/pbmc3k-breast-qc-regression-20261001T213500Z/pbmc_regression.json",
+      "sha256": "89af7840168003945bf1048d85b4c9c33a50851818eefd63daa66fb8d2eedbee",
+      "version_id": "X6TynGyg9rnQc2quYztOnnlRQpBx4U2s"
+    }
+  ]
+}

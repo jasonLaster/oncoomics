@@ -1,0 +1,9 @@
+celltype_major,B cells,Endothelial,Epithelial,Fibroblast,Myeloid,NK cells,Perivascular,Plasma cells,T cells,Unknown / mixed
+B cells,329,0,0,0,0,0,0,0,0,0
+Endothelial,0,170,0,0,0,0,0,0,0,0
+Epithelial,0,0,1042,0,0,0,0,0,0,0
+Fibroblast,0,0,0,533,0,0,0,0,0,0
+Myeloid,1,0,0,0,508,0,0,67,4,0
+Perivascular,0,0,0,4,0,0,72,0,0,0
+Plasma cells,0,0,2,0,0,0,0,35,0,0
+T cells,0,1,0,0,0,285,0,0,2304,1248
