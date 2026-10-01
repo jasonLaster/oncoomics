@@ -1,0 +1,26 @@
+{
+  "checks": {
+    "CID3838": {
+      "all_active_qc_and_doublet_fields_exact": true,
+      "cluster_marker_scores.csv": true,
+      "markers.csv": true,
+      "umap.csv": true
+    },
+    "CID3941": {
+      "all_active_qc_and_doublet_fields_exact": true,
+      "cluster_marker_scores.csv": true,
+      "markers.csv": true,
+      "umap.csv": true
+    },
+    "CID44971": {
+      "all_active_qc_and_doublet_fields_exact": true,
+      "cluster_marker_scores.csv": true,
+      "markers.csv": true,
+      "umap.csv": true
+    }
+  },
+  "first_run": "breast-qc-v4-20261001T214200Z",
+  "scope": "All active barcode QC/doublet fields, UMAP/clusters, and markers match exactly. miQC adds diagnostics only.",
+  "second_run": "breast-readiness-v5-20261001T220500Z",
+  "status": "pass"
+}

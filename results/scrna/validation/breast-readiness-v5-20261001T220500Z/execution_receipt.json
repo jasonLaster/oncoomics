@@ -1,0 +1,8 @@
+{
+  "deployed_app": "diana-scrna-platform",
+  "promotion_command_exit_code": 2,
+  "release_prefix_empty": true,
+  "run_id": "breast-readiness-v5-20261001T220500Z",
+  "run_manifest_sha256": "e380571e8907357a7264e7804af2a55d5d1fef3b8456a5e2ab8abe67a350f468",
+  "scope": "Public benchmark research release controls; current cohort remains quarantined"
+}

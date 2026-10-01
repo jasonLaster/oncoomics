@@ -1,0 +1,516 @@
+{
+  "bucket": "diana-omics-results-172630973301-us-east-1",
+  "objects": {
+    "CID3838/all_cells_qc.csv": {
+      "sha256": "649c0db7294fc0bcd40069cf70a526f920a4eff05ef0475f68d9c3218bc6b18b",
+      "version_id": "Z07Br0U2wSbkayDqnWVzmxteaUotLXIo"
+    },
+    "CID3838/all_cells_qc.h5ad": {
+      "sha256": "c118d37ede4817ef05a9f4221841ccfbc0ca2d140e4a345eb2e5b238f63c9771",
+      "version_id": "aBKonibZo7AErRifzX3DYo1RUWuNeqgC"
+    },
+    "CID3838/analysis.h5ad": {
+      "sha256": "6271a5ccf2ffea0ebc1f8d1108ac4733335be8a467025bab5a335bd0377a652a",
+      "version_id": "1Wi9lAaWxB0OkOT26yH6_oR6KVwSNuhZ"
+    },
+    "CID3838/breast_qc_review.png": {
+      "sha256": "5b34b90537278ab414b8a83abec646f0b84e728b7536d733d66676b24a413ff4",
+      "version_id": "sBir8T5x2yO73wdcK2VcxpttWEW3phSs"
+    },
+    "CID3838/calibration.json": {
+      "sha256": "17e23af0ca77f1fa6713921aeb800335738acabf5a0310d17e9a511aab2cc7b2",
+      "version_id": "8N7651T.LwCAOHzJ30i1YbZdzhHg0FC3"
+    },
+    "CID3838/cluster_marker_scores.csv": {
+      "sha256": "6e23d0dde798855242f4898889d71f16898af828006c12c5b9708fc07f07a70a",
+      "version_id": "fnICD4v0Xs6FJpCcY34KvHluuDxqmnRW"
+    },
+    "CID3838/compartment_retention.csv": {
+      "sha256": "2d0ded71f7e993deacc4bbc270daa7ff41dcb1895cfafa6b16c061f98c625a3b",
+      "version_id": "xQYMeCUGojMxoVNH9MmQv1dmq7riyun5"
+    },
+    "CID3838/compartment_retention.png": {
+      "sha256": "a204b2efee4e1b02f35c88fb613523a6c9c5abf0020509385d82ff46ebfc193a",
+      "version_id": "uD4nWhiayF2X4KajRtJ35CA2moVAdZml"
+    },
+    "CID3838/doublets/barcodes.tsv": {
+      "sha256": "729dd0677e15e9fdbb68bcb3cbbcdd0b92b390e4e0b74ea96bf11581e640d485",
+      "version_id": "M0R7GLQD.aOvofYaCFNnrxqCSwKLgKDO"
+    },
+    "CID3838/doublets/call.R": {
+      "sha256": "2e694db6ed2f087868abfc5df4df660eb1d31c5469859973025ab95451b5b792",
+      "version_id": "NoWpFTXgn6viiEfrCywJNqsdej1mLZ9Q"
+    },
+    "CID3838/doublets/calls.csv": {
+      "sha256": "55cc1e8ea437419fd6032c275b49e0cd43403e2eb27a80f3d79ab6fd84614126",
+      "version_id": "0ORFQt6IwrU1zjYy2yN8hzoKlIS1eade"
+    },
+    "CID3838/doublets/r.log": {
+      "sha256": "98689f0f5324546670735f0ddaa697750489b7c35c5f42cfb84fddf802b7c3e1",
+      "version_id": "rG5tjAtkdQGh1aZ._ZUJ6p09ozaZA_FR"
+    },
+    "CID3838/doublets/r_session.txt": {
+      "sha256": "ecb676bea5328df71bb0e5ae0fb2fb075b6852177bb32c046b520267cc0b06a1",
+      "version_id": "U76QRQ8K_uQY20Dv4ilukJf9Nr42F4Qd"
+    },
+    "CID3838/markers.csv": {
+      "sha256": "d99176cb4d3acf4e34cd898eaf4576c21a7ace859bd20c49e4a513d1eabd05d4",
+      "version_id": "vhyvq8UqJl1Ven_uSh39IpDzT4QDwBOB"
+    },
+    "CID3838/miqc/R_session.txt": {
+      "sha256": "03a17c4973c5e79db47a7c40ea36759462fc50fbf3204cc61e07f744d644aa5e",
+      "version_id": "e8g_w5orHY3rjFTnbVTdNOnB.xK0gxoi"
+    },
+    "CID3838/miqc/assess.R": {
+      "sha256": "ef17fe57dae8042a6256325ca217370a32509705f4de6a10fb9516f9457be4ba",
+      "version_id": ".xzXW9W1t.T.8pVhY5xoes1f.EBGT1sV"
+    },
+    "CID3838/miqc/assessment.json": {
+      "sha256": "e8157cc4d55478c55cc3a5761f16a6e5cf9bc1fbaf11b3a0af4e50eed1b5d16d",
+      "version_id": "87tfAgZRr1ZK6eo4QP9G5gm23S9ZBkM7"
+    },
+    "CID3838/miqc/compartment_comparison.csv": {
+      "sha256": "43478f24a632560fd68861cfedd66808d88d8a2e58f115117178b8ba29f333b4",
+      "version_id": "4EHj8XN1qznzthfD75FjLgiIyKPaxowY"
+    },
+    "CID3838/miqc/execution.log": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "version_id": "rWtfmSTDYX74X_BaxM99qRl1Vqf.Rc7c"
+    },
+    "CID3838/miqc/filtering-42.png": {
+      "sha256": "256749bce68267fc79c3bd08bd92708514fec2f5b707cd0f02fa97096d442a28",
+      "version_id": "vMDR_Rs.wqECWK0gcjo6fz7OHAlgjZWm"
+    },
+    "CID3838/miqc/filtering-43.png": {
+      "sha256": "256749bce68267fc79c3bd08bd92708514fec2f5b707cd0f02fa97096d442a28",
+      "version_id": "siIDfSt84bXrQo20Ynu08HScF2Bdn_Eq"
+    },
+    "CID3838/miqc/metrics.tsv": {
+      "sha256": "ed4d5c2f9bce628d78d2c5ac273ae1bf838c077bec1cd78adc3c2a03b2d96949",
+      "version_id": "KvF_MruMF93QV3AF4uHLgbEzyYt6rj9P"
+    },
+    "CID3838/miqc/model-42.rds": {
+      "sha256": "e4b2e0398b3bda30c76b011966c310d0bdcfadd1592d693723c057bdeea5e068",
+      "version_id": "egIBuaPS_U5FahkjhP9W0aKmKfiK5M5s"
+    },
+    "CID3838/miqc/model-43.rds": {
+      "sha256": "cf66477ca9fb48ab459a0538c64ea22fdf650a3e7aeae9104d123ecf113db455",
+      "version_id": "dLrzypy8pXo85LpxDuit8Gnv7Gmp6uyk"
+    },
+    "CID3838/miqc/parameters-42.txt": {
+      "sha256": "b2924a8f2ae7ca6dbb0841da483d667b9c9600398a67a52de21469c8fe50cb5c",
+      "version_id": "g9MuaEuZwlljVcy7NJmdPZftnYyc14iU"
+    },
+    "CID3838/miqc/parameters-43.txt": {
+      "sha256": "bd0c6873a107a94e3f64c4182dd1b78b642a4b238beee965bf94f03fa9dd7d70",
+      "version_id": "KLtNsxRlYJHUu_GrwIWqGp.Smv7e.IkI"
+    },
+    "CID3838/miqc/seed-42.csv": {
+      "sha256": "9cf5715a3987f4afa8f81f933c8c5852ad178ad6dc346990fb07a1ea268bd590",
+      "version_id": "abkvy9trI45Yy94nomPW9IZDpUZQ2UyB"
+    },
+    "CID3838/miqc/seed-43.csv": {
+      "sha256": "796c41be2cfdd1a332605bf57bb728df2f2706622c935b9a7fd4905629c6fe85",
+      "version_id": "6SCBvPdV4jxmHEGPUqp8x34lD6gmpvrP"
+    },
+    "CID3838/miqc/status-42.txt": {
+      "sha256": "a920c7e211b801c97d906877458fc359a0d09d0bbe24412750808de5723c6785",
+      "version_id": "7xVLXCDZMTeby7Kpradq20nR3XFct8By"
+    },
+    "CID3838/miqc/status-43.txt": {
+      "sha256": "a920c7e211b801c97d906877458fc359a0d09d0bbe24412750808de5723c6785",
+      "version_id": "mWQH4ne61iMKfZy_617pARkeDT3wI8cQ"
+    },
+    "CID3838/parameters.json": {
+      "sha256": "bf3b1c7ad0897e9e7b094994c97f285a3783884e59519d82637549cbaae8710d",
+      "version_id": "V4j20r183pOzyaLqbcskVNWihJMqZoZZ"
+    },
+    "CID3838/qc_sensitivity.csv": {
+      "sha256": "ed7cab84a2af273de7081852fa0e18ebccb83e0dd1683b0dd242dbe4ed6e7060",
+      "version_id": "Kmnslq7TcVz5SZy0Gv8lsSGzDx3.zq1g"
+    },
+    "CID3838/qc_thresholds.png": {
+      "sha256": "7af79d5b5465da3ca027575e0483954b672f3f2558908344aede54537c2511ae",
+      "version_id": "b8V7hku1Vjgb0GxsbkpXiTZMrFi0rZ46"
+    },
+    "CID3838/reference_compartment_overlap.csv": {
+      "sha256": "91abefa6b06385555e65acbb8dc6562e57bf5b6d436ee1cf0b46d09e7f8cfe8d",
+      "version_id": "OwYLIwj8w_0zYBaOxamGuRvZPqZ4whwn"
+    },
+    "CID3838/umap.csv": {
+      "sha256": "f0416c03bf72e23c219e47407b814e2a1d529319e8a30508af3698f6f7683363",
+      "version_id": "mrgslIDItUdToYn_nZwxYY7p5Fk8VPB_"
+    },
+    "CID3838/umap_coarse_label_hint.png": {
+      "sha256": "9236295cf1c18762ea9ca1a5c8bdc690d7b4ea3f87ea00cf867f81b0cc6c3439",
+      "version_id": "ZrffqAscGBeiM_kXqY6Yz9HdI9Ee9egB"
+    },
+    "CID3838/umap_leiden.png": {
+      "sha256": "ae3ed171921fadc1e250824d79f560576c2579c24d8a299c35e2a0c6a3113896",
+      "version_id": "vSLyy0b3WK95_ytXNk7o59oipfgROCzU"
+    },
+    "CID3941/all_cells_qc.csv": {
+      "sha256": "a61c36dc7a95835fe7eb8033b391fefb360b9f9125371d31bcf58b7d3e9ea9fb",
+      "version_id": "0mo581kRj2NGxcxdwqwVME6NsdcVw7z1"
+    },
+    "CID3941/all_cells_qc.h5ad": {
+      "sha256": "ddc136c653a8cd9aac23a9703db2dde70e5dc0b8e95103264f5458981bef40b1",
+      "version_id": "j2HvvmlInmG0XmXcsKF4YjrSv9mlnYiV"
+    },
+    "CID3941/analysis.h5ad": {
+      "sha256": "92f132758cfb469099cf15a1eeec0558decd200c9986f0d4cb7fe78a832504ed",
+      "version_id": "hPLaM47PTFKiTALOCq3YkJkCKwWkBWjy"
+    },
+    "CID3941/breast_qc_review.png": {
+      "sha256": "113051d0ee5cdbbfcb1e467b3f1ce3d84ee91053eb31f0b1901900016bb4bf83",
+      "version_id": "y1u6R.5Ka0Xv18qZh4uYlMiB08P4Zi.e"
+    },
+    "CID3941/calibration.json": {
+      "sha256": "d3ca99285f2ab0d174dea8a6926c1c2988390a04c7d68fe72fe8dfbdff534ee4",
+      "version_id": "iRBt_8o9ZyFKYDHDs_eRaWhBipOPdM0B"
+    },
+    "CID3941/cluster_marker_scores.csv": {
+      "sha256": "4040670bd79b6541345c74760ead85869b48ce076b8518993a475dd547464dd1",
+      "version_id": "9XQk9rAeMhLZ1PXzHKzJJ6uB7nt0cz_S"
+    },
+    "CID3941/compartment_retention.csv": {
+      "sha256": "2e26e7b04acc315f83a8d41901e304bb2e31f3e10519fefb50b6690f5cf1c05f",
+      "version_id": "g2N5ChWOI1usxxrt2y.efco1C4ZlVE97"
+    },
+    "CID3941/compartment_retention.png": {
+      "sha256": "ace310430a31fcc24a986226e443c68e70685f6fd51f5c26d6e3462b74328194",
+      "version_id": "CUNAPyTR1G1ZH96m_Y_dOCQLvZMjnRxv"
+    },
+    "CID3941/doublets/barcodes.tsv": {
+      "sha256": "23de139c2e3e754274f0b10603ef063fd3d6a6a3cd627e0bff6da6506bddcc58",
+      "version_id": "FejKQ1UH9NYzS2sIQoz.nOuESGz5lx2z"
+    },
+    "CID3941/doublets/call.R": {
+      "sha256": "2e694db6ed2f087868abfc5df4df660eb1d31c5469859973025ab95451b5b792",
+      "version_id": "6xvRkI5C5mPYkEILyU68LQmNlsb0beDr"
+    },
+    "CID3941/doublets/calls.csv": {
+      "sha256": "ac8b19c970b0c5112c03868aaf41f91206e6b6e57a36d43efad646b302dadad3",
+      "version_id": "9368g.VRJf8O1lHwIltCWcxNF2Ga._nd"
+    },
+    "CID3941/doublets/r.log": {
+      "sha256": "5d0a44c5562062c35b33b2ce7c4fcb6b6f6fb73eecec8e0a710411f266a1e4bc",
+      "version_id": "DOl51ceQnuFvZ8AKiHiekTTiKMH_E0yp"
+    },
+    "CID3941/doublets/r_session.txt": {
+      "sha256": "ecb676bea5328df71bb0e5ae0fb2fb075b6852177bb32c046b520267cc0b06a1",
+      "version_id": "uz8ld8STVQP2lAMMpMM2OTs9YMjtMcav"
+    },
+    "CID3941/markers.csv": {
+      "sha256": "a14cb1d4b7ce2f691141231fc83155fbc4224edae9be9f43900f24b8a61f879e",
+      "version_id": "7Ol7cBvO67A79La4ZSbYMuzyISzoet90"
+    },
+    "CID3941/miqc/R_session.txt": {
+      "sha256": "03a17c4973c5e79db47a7c40ea36759462fc50fbf3204cc61e07f744d644aa5e",
+      "version_id": "tx0aLpFBgTu0M7Dfuiv1autz4hf5ZEIB"
+    },
+    "CID3941/miqc/assess.R": {
+      "sha256": "ef17fe57dae8042a6256325ca217370a32509705f4de6a10fb9516f9457be4ba",
+      "version_id": "fcw6N.Oft2gpB1QpglodjxBCRGLS.hiX"
+    },
+    "CID3941/miqc/assessment.json": {
+      "sha256": "b826be9a9f0e9792fa592bfad60adffe8a247cc303eed41178ed4b892dd86d73",
+      "version_id": "HzDLUDP8utEtOngUCxwjoDEgVKvZFJje"
+    },
+    "CID3941/miqc/compartment_comparison.csv": {
+      "sha256": "b4db103673acb5a033ab4119dc1af0e10d3288df17e23be42311e046cc320cc3",
+      "version_id": "wRiBAAwqWa_ixbSOuHIj33_pHRCeKUj8"
+    },
+    "CID3941/miqc/execution.log": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "version_id": "2JCABo.8UHfrGF3mG.D6q9Zgo7Ki7Ly."
+    },
+    "CID3941/miqc/filtering-42.png": {
+      "sha256": "583f59b653eb3603a2ba7fde9d9b355b75c648d47c1ab0509af8c5e9ddb0bff7",
+      "version_id": "Bm90DZS6Jnyp8c4VK_47pHeGaMRsgc7I"
+    },
+    "CID3941/miqc/filtering-43.png": {
+      "sha256": "583f59b653eb3603a2ba7fde9d9b355b75c648d47c1ab0509af8c5e9ddb0bff7",
+      "version_id": "Fi0XmjnrC3xPJG2A_t68g4FIIQRQsSF7"
+    },
+    "CID3941/miqc/metrics.tsv": {
+      "sha256": "7706a6808b846756f8736e39ecbfa8cdc45ad00ca632e35790fb1b9c9e54bea4",
+      "version_id": "blNunKATFmNmDHzN__JZcvI37rna4akb"
+    },
+    "CID3941/miqc/model-42.rds": {
+      "sha256": "83984ba7ae1fb2c4a46cdd9059fb85599ecb1823bc8b7fd88bbd77924647805a",
+      "version_id": "Q7Mk_yxkvJIUq9hiBD0zm.w050_5GaC6"
+    },
+    "CID3941/miqc/model-43.rds": {
+      "sha256": "bc06205148e64c523158b769ad088f4f0c22c4cb54b901ae03c6016c8d33e006",
+      "version_id": "ivCYEEY9MCy9IbYjUOnl6RzQvndT32Q7"
+    },
+    "CID3941/miqc/parameters-42.txt": {
+      "sha256": "082b8fb56e41b8808b2b680db20a3f82458defb644b1701ac78beb0fbc12edad",
+      "version_id": "pk92UUANrQ.KZdw77nrt.KB_7Ye273Lj"
+    },
+    "CID3941/miqc/parameters-43.txt": {
+      "sha256": "0db36f1f55c13724c5af53ae73c25f37e1656744f81dc54eef86766213f4b9ca",
+      "version_id": "PCplg39vMbXzNPJo2IFyMjQFLENcces5"
+    },
+    "CID3941/miqc/seed-42.csv": {
+      "sha256": "3270ff38176ab677d2467d766e1b3c19666dcf17a94ce81328e4870d415e3094",
+      "version_id": "8fEqhhH5QfefhnjAcHl7aiaHPjhR12SE"
+    },
+    "CID3941/miqc/seed-43.csv": {
+      "sha256": "05a5d489fa8a22720207f31e5046a1d95f5a2566f7b88114281da9a0049704d7",
+      "version_id": "rArc9RFjyFQcVDQ1WWOMssKtrl8Ibond"
+    },
+    "CID3941/miqc/status-42.txt": {
+      "sha256": "a920c7e211b801c97d906877458fc359a0d09d0bbe24412750808de5723c6785",
+      "version_id": "VuPszoNP.h0rkuuF1zQQYQltXeZiAe0I"
+    },
+    "CID3941/miqc/status-43.txt": {
+      "sha256": "a920c7e211b801c97d906877458fc359a0d09d0bbe24412750808de5723c6785",
+      "version_id": "XuOaqf.s.gXQYJoRqHgCa1QYTjXJYo2G"
+    },
+    "CID3941/parameters.json": {
+      "sha256": "b106046c8e907e9514236e88a6d551c3aca6f566897565ba7754e98290f757a6",
+      "version_id": "kyybZnQC7P2_sDHEHrhb33wzGCtozcE6"
+    },
+    "CID3941/qc_sensitivity.csv": {
+      "sha256": "01e68e4168e5ada37b691dedb768e5e52edd797c79bb35287f04fdab2e3fbc9a",
+      "version_id": ".XpV4RzC8u9Mi.Ocdjc8WQjOYuNXPnUM"
+    },
+    "CID3941/qc_thresholds.png": {
+      "sha256": "0ca2a486595c42cff17917b324fc659d495918c135741c40a54f8fb77ce8c599",
+      "version_id": "FCGcDFsoC6u3OZDUSbt.QtFJpuVoZf31"
+    },
+    "CID3941/reference_compartment_overlap.csv": {
+      "sha256": "38086d313a3a7d73b849b37af5e811ed91f56e95913afc2cfa6aac266debfada",
+      "version_id": "698J7O8Hlg326qRNfU9mfe.lk2r9ogPz"
+    },
+    "CID3941/umap.csv": {
+      "sha256": "54a2026843c622bd347f0bab44f7846ac8e6188b157d45cc7591cdb1740e5de2",
+      "version_id": "68jo_DlN.IgVNeF72ujwervb4lON_AtK"
+    },
+    "CID3941/umap_coarse_label_hint.png": {
+      "sha256": "30e9b123c8697a8a8a6b42599232b9cfd60cb1a34023f25bdd87a59663360a8a",
+      "version_id": "e0WZv4OackPjUmoTMm9wGhp.kBXhDhKt"
+    },
+    "CID3941/umap_leiden.png": {
+      "sha256": "1a5b7924ef04674933553ec8026be0cfa22361391ce5b084e1049ad82d1d0c39",
+      "version_id": "yx8L7pbKHp6kPjHANjcqE5.aAj.wUuGC"
+    },
+    "CID44971/all_cells_qc.csv": {
+      "sha256": "5a7d60c4e63244e4ead72d93be69a4e5ab54041393658647c3bd09e5c0a6b251",
+      "version_id": "0IJxS2ILVznM.nNou01bZJkK15xG42Cf"
+    },
+    "CID44971/all_cells_qc.h5ad": {
+      "sha256": "436267f6560319e729f7f57f7758e3f2f0e4e46f31cded98db55419a0a0a4b21",
+      "version_id": "oSsfXgJM0My1K1_Tcp2NZkxUPVgbwCZv"
+    },
+    "CID44971/analysis.h5ad": {
+      "sha256": "9b9ea8b0832237fd2c396e6f9cafbc9ff1dd45efe3781003ae728338185d7eaf",
+      "version_id": "5IDQrXSKTt.LFxWXovd51_VEpZj66q_k"
+    },
+    "CID44971/breast_qc_review.png": {
+      "sha256": "4dbe19c2bb4c51391143b08554653eb03d30555f5d3f41ec9bade7be091c2111",
+      "version_id": "zHFvoLqHlFzCJcVUoOMW.fmXS7KOtDTl"
+    },
+    "CID44971/calibration.json": {
+      "sha256": "4ad70f7cce6fbe2a24a3f181836b70b5d643025b0a34f33dfdf64e1f737257ee",
+      "version_id": "ZfIMkJI8YhwMPQy1P3sAQcaTHwxXZRvT"
+    },
+    "CID44971/cluster_marker_scores.csv": {
+      "sha256": "12fe293cbc1ee47cc7cf4b12212f65d35fb86a63985ffa34d7371395b5a0e63a",
+      "version_id": "nQnral4UQIWJ6YYk4upNACJjXx16fX.M"
+    },
+    "CID44971/compartment_retention.csv": {
+      "sha256": "b777dc98f0a2045032649810c3a380ac37be7833221d569ae20d121aaa63f9fa",
+      "version_id": "7X6fseY1SF9qjaFQyF9zhJcbnvO5GJ6c"
+    },
+    "CID44971/compartment_retention.png": {
+      "sha256": "c6ecdddc4cbbbde07a24eb90b9a598152f9c8694d1683a01244624062f460940",
+      "version_id": "BNxpunb1HNlv3aDMiOKFy0ytLNzRyRJY"
+    },
+    "CID44971/doublets/barcodes.tsv": {
+      "sha256": "fb1a2b1190b16c0f35163e332fb4308199d03beca5565e48cb20066a86eaa07e",
+      "version_id": "WiLa7fH1TG.ezp7Gu1qAWwojlvmALeCT"
+    },
+    "CID44971/doublets/call.R": {
+      "sha256": "2e694db6ed2f087868abfc5df4df660eb1d31c5469859973025ab95451b5b792",
+      "version_id": "t6QIp6JTWhY3uoa9.rm9npOQqTQ4iCT2"
+    },
+    "CID44971/doublets/calls.csv": {
+      "sha256": "b751d92b3c3cc6fb2ee0486c54009cb2a4adefdc0133d03e8f0102360cc32d6f",
+      "version_id": "ZYSpbps8kr1HwqGMHfua2tRT2zbLbhzd"
+    },
+    "CID44971/doublets/r.log": {
+      "sha256": "9de83902409b9ffbac0d7681777c8ba72b3872c8a6214989f3d3285bc965eb5a",
+      "version_id": "g9_zkMEtqHMAV2NOC_MM74Yvno26.W8b"
+    },
+    "CID44971/doublets/r_session.txt": {
+      "sha256": "ecb676bea5328df71bb0e5ae0fb2fb075b6852177bb32c046b520267cc0b06a1",
+      "version_id": "Nh0WempvvjhtCsP1t4Yg8IryQnJKcBUI"
+    },
+    "CID44971/markers.csv": {
+      "sha256": "62d9ea02dc6bb522086481b2216619ddb9f5ee2c49592e6f9589a020dad84811",
+      "version_id": "Cdv8AiP3GQLaAmGPMG89ww0cQcJD9Wrd"
+    },
+    "CID44971/miqc/R_session.txt": {
+      "sha256": "03a17c4973c5e79db47a7c40ea36759462fc50fbf3204cc61e07f744d644aa5e",
+      "version_id": "iVeh_5qPGVv3NT.SDhd5hmsOZkXttaLd"
+    },
+    "CID44971/miqc/assess.R": {
+      "sha256": "ef17fe57dae8042a6256325ca217370a32509705f4de6a10fb9516f9457be4ba",
+      "version_id": "aokr9zOxl5OPg1_kNU3674sF2XbotIJt"
+    },
+    "CID44971/miqc/assessment.json": {
+      "sha256": "49e4ce33aa0812b2dd1954bf6a578825373d1bffc1f51a5c308c9948c7cca33e",
+      "version_id": "Xhou7xzr3R_L_v6Q5LTKpp1DroH0qsDI"
+    },
+    "CID44971/miqc/compartment_comparison.csv": {
+      "sha256": "2146564ee8c348e4e0dcb29b251d218ab0d74496d1d2986c4508a18eccb2e1e6",
+      "version_id": "RnVlmSey2X0tsMERT_FjBodhzSjEbtvL"
+    },
+    "CID44971/miqc/execution.log": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "version_id": "phMG7mip_RWpJvnxHXJowChEIwTWvSsI"
+    },
+    "CID44971/miqc/filtering-42.png": {
+      "sha256": "394f1eae475249360cf493f601b8068f3dc65c25cb29c854536b5e88db65ec03",
+      "version_id": "G8KQR0uv3Qc3Gkz5nxm3pT3WyzZy2tQw"
+    },
+    "CID44971/miqc/filtering-43.png": {
+      "sha256": "394f1eae475249360cf493f601b8068f3dc65c25cb29c854536b5e88db65ec03",
+      "version_id": "l6_Zj7WbSjTACtbDVO_Lvcx.A9trQkoL"
+    },
+    "CID44971/miqc/metrics.tsv": {
+      "sha256": "6cb5e4b8c402e109ae7e4f99125d156126deed39e5ddafd25083c0439e99545e",
+      "version_id": "KHDh8BLuGUdf6vqQpPGvrMlS0hM7Hde8"
+    },
+    "CID44971/miqc/model-42.rds": {
+      "sha256": "1b22d89c734b924ec0b5ac974fb51cb91e0b98d4288044d67f07747361c52365",
+      "version_id": "kYL40N05mXlqynqtVZxiozXa0PVAwatJ"
+    },
+    "CID44971/miqc/model-43.rds": {
+      "sha256": "69396e17fd9f4e96dc5fdde8865d6df629f21dbe7106cb0fb3683e5d66f448c1",
+      "version_id": "2QSunCOhgbGCF06GuB3eF0Yw9aTWJDiY"
+    },
+    "CID44971/miqc/parameters-42.txt": {
+      "sha256": "2bf4e9a0630915413370275672c754500f31c14fb77307b02ce6200a920ebb14",
+      "version_id": "mnvvtyE5hnr8M27L2m_cNgmz7r2FjDgB"
+    },
+    "CID44971/miqc/parameters-43.txt": {
+      "sha256": "e3cc68fbdacfd663fc47d7d4c5ce206d4507c2c1bd2b9f77443ce42b75948a65",
+      "version_id": "iva.l.E_EU2UmEEgGifCTmKFutXQTeQm"
+    },
+    "CID44971/miqc/seed-42.csv": {
+      "sha256": "2db51cb8f0858db787ad8c2c05f42a3590bff5b31d3d3e32eda4ba63f1bdd691",
+      "version_id": "MBIBL9DSohof_f6KxKYGjB0sf3kNmGv9"
+    },
+    "CID44971/miqc/seed-43.csv": {
+      "sha256": "01540d202d04e0cb4f66b1eaa705b6fe196e1ac9fd4c90a2e49981a69ace416c",
+      "version_id": "uduouhWHsEQabWdJ3GmxRCH6j6ZOYQN6"
+    },
+    "CID44971/miqc/status-42.txt": {
+      "sha256": "a920c7e211b801c97d906877458fc359a0d09d0bbe24412750808de5723c6785",
+      "version_id": "5WRuJmby4NPjJPyWYahwK7FAu76deYTJ"
+    },
+    "CID44971/miqc/status-43.txt": {
+      "sha256": "a920c7e211b801c97d906877458fc359a0d09d0bbe24412750808de5723c6785",
+      "version_id": "9uExU9Mzdqd9kOb0a4n94YCC5zzg6fPK"
+    },
+    "CID44971/parameters.json": {
+      "sha256": "ae4e531ef50ca98ed74154c0570af70bea9809ecb4bbc4315ea8a53819a67ca4",
+      "version_id": "_Zqq8ntF3.aOMdB6BCidXoEKDPqkhenI"
+    },
+    "CID44971/qc_sensitivity.csv": {
+      "sha256": "28cee81331d4556f98ee9e3a7e869250524f48bca0607b8da3db990cad46b706",
+      "version_id": "9ft9SSa3lwdzxz9innvOWnsqfvf8_rz."
+    },
+    "CID44971/qc_thresholds.png": {
+      "sha256": "a0a0f217a9f345e525597443a147bbefee30e2fd74a0f350b8cceb718f191e6f",
+      "version_id": "s2KauKeRY8yVz4JS6ZJvBuFx5cIr7L3J"
+    },
+    "CID44971/reference_compartment_overlap.csv": {
+      "sha256": "03f7f5a094d9bb514c7992eb123ae0f937c4b2a841c8a0a7204436197a3aa1e3",
+      "version_id": "ZA.o8JhSJP5kUE9Tbl84ymjoFpWYMQ1J"
+    },
+    "CID44971/umap.csv": {
+      "sha256": "85a4b1d40c7870234ade0e7a38131f6eec277f3cce8dd304a1a448966a851adc",
+      "version_id": "S1iOxwYrRm2ONP4iGHWnJxK4Pjq.Lrsr"
+    },
+    "CID44971/umap_coarse_label_hint.png": {
+      "sha256": "ddad9099d31a3717253a84301a8ea6d1db7b86c740a7c3b533abb8491fa9f9ee",
+      "version_id": "00kjiIPl.fEnTlW0Z3qEhQ2ozB131dv3"
+    },
+    "CID44971/umap_leiden.png": {
+      "sha256": "691753dfbe2a83eb56577d8caff8cfec6f2d2f039923d20c107c3ae5321dedcb",
+      "version_id": "SbO.WbBU2JpI1QT1oOEeEx7eo8gxP737"
+    },
+    "artifact_index.json": {
+      "sha256": "adf1430edae09a7841bf6401f0cc322a3686acd4c38c21f5af63fdbecf894f7f",
+      "version_id": "81CjvoUy7SgAMKCvH6xekYRXs388dkRx"
+    },
+    "calibration_summary.json": {
+      "sha256": "0b66e6cac914e5559df66bf755c6ccffb30f0b434db98eaff8d83c634c48c5df",
+      "version_id": "_GsRDYtEo5NSXKwFoMJEeaNCdIRclf3o"
+    },
+    "cohort_qc.csv": {
+      "sha256": "620dc6ee9c327cf92f19dda089456212599bcf669654e74fc7f5cd167169f34d",
+      "version_id": "A7dByU7.uaDOskvXuOF8viuuZvEvHvg2"
+    },
+    "conda-explicit.txt": {
+      "sha256": "aabdf6be3730193c63b2540e196d1132077e562c18d971ab71c06c31238e9a75",
+      "version_id": "b4tvHj216dz13drq0VuhsZC6cS_vRXr9"
+    },
+    "input_manifest.json": {
+      "sha256": "f882bda9bf7e4d6c50eaa3c80244d61188b95cefc4bf4d7c3e8300dd1c33befb",
+      "version_id": "v9wdbTYRJjvcgjkqS1QzHBHZwNgMxwkW"
+    },
+    "python_packages.json": {
+      "sha256": "96c7eb5396d110fef84e523c5a020e641248811f92f6cb08dc81874679a814ed",
+      "version_id": "donrACl261F5Emm7qzfnfTZR7RKTBvXl"
+    },
+    "review.html": {
+      "sha256": "4f696d5edd21613d40a4f317705696ecb0a716c7d2d1d35bd70a3170102d9a7d",
+      "version_id": "pYh9ZuTX0pLfwHMacFjz0APM_pGck3ve"
+    },
+    "review.md": {
+      "sha256": "dfb3a593003bf8d08a9c0de5fa6eb6b937d303ce1da81c84e940c93b85154da8",
+      "version_id": "i.L1EE0PmIbdBZbHMRfca1oN9wHAN8hX"
+    },
+    "run_manifest.json": {
+      "sha256": "e380571e8907357a7264e7804af2a55d5d1fef3b8456a5e2ab8abe67a350f468",
+      "version_id": "Yr2ioN3jXjTv2ucpgvYWd6E.CWAM2qr6"
+    },
+    "source/modal_runner.py": {
+      "sha256": "491ffaf9996ee99272da00c43fd31c2c5dec7d2c4f587a1433055bd11666a2d9",
+      "version_id": "4vH423rSKYB61D2xs9PbPYOkF7RZIKHh"
+    },
+    "source/scrna.py": {
+      "sha256": "9fcca43c595d16c41785d14934c72c32a2effb1b97b86799d2360f6247b1cafb",
+      "version_id": "E0QYXY93QA6kKoigto3Sv..alRmOnUSb"
+    },
+    "source/scrna_io.py": {
+      "sha256": "5c5cd6d72df7f6371d30bf0c725fda48159df621497e39beb28c898243495edf",
+      "version_id": "F6G8bYr_k0c7dp2b3ctQvmorb4_6RKL2"
+    },
+    "source/scrna_miqc.py": {
+      "sha256": "c618c4ee6c86fad781c3d81e9d9d2f68da103a66313b5e3fdf1588f23faecf75",
+      "version_id": "vhRwCr.T1iK9dkHOD7YVg3iyCEIqDH9X"
+    },
+    "source/scrna_qc.py": {
+      "sha256": "802f37fb010cc5d9b7d6d10f69191176b5adaf5d7a24bf983f88c30dfd0ffbfe",
+      "version_id": "xKKpt9_albsCXSbvppkEbfDs.FKpyeUL"
+    },
+    "source/scrna_release.py": {
+      "sha256": "3f6d2f40e23d78711c604f7240dd5083fd0961f5f0613ce7038fe4c5f939f46c",
+      "version_id": "bKZr_B.TS7fmNtwGmwqeVIb_DWgvG_m8"
+    },
+    "source_hashes.json": {
+      "sha256": "17c999164fc9c5296338a6ace9b477bcaf67a78184a80b5bc146c963609b7cd9",
+      "version_id": "ZJtC1hJBH1LsZlFPzR_LtVQA4wcvQd0V"
+    }
+  },
+  "prefix": "public/scrna/runs/breast-readiness-v5-20261001T220500Z/",
+  "run_id": "breast-readiness-v5-20261001T220500Z",
+  "status": "all_hashes_verified"
+}

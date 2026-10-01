@@ -69,7 +69,8 @@ def audit(run_id: str, input_cache: Path) -> dict:
         }
         checks[dataset["dataset_id"]] = {key: bool(value) for key, value in result.items()}
         del raw, all_cells, analysis
-    report = {"run_id": run_id, "status": "pass" if all(all(row.values()) for row in checks.values()) else "failed",
+    report = {"run_id": run_id, "artifact_index_sha256": manifest["artifact_index_sha256"],
+              "status": "pass" if all(all(row.values()) for row in checks.values()) else "failed",
               "checks": checks, "scope": "Exact source-to-all-barcode and retained raw-count custody; not independent biological truth"}
     if report["status"] != "pass":
         raise ValueError(f"Independent source count audit failed: {report}")

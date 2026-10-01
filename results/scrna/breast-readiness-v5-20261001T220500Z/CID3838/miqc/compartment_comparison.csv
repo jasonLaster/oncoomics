@@ -1,0 +1,8 @@
+author_compartment,input_cells,active_core_cells,candidate_mt_kept,alternate_candidate_mt_kept
+B cells,47,31,29,29
+Endothelial,99,72,64,64
+Fibroblast,203,194,189,189
+Myeloid,444,412,404,404
+Perivascular,158,138,131,131
+Plasma cells,51,40,51,51
+T / NK,1351,1267,1187,1187

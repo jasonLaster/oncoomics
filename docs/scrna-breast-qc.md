@@ -1,6 +1,6 @@
 # Breast tumor single-cell QC
 
-Recipe 4 extends the public post-count platform with a breast tumor profile, explicit cohort metadata, tissue review signals, and loss audits against published compartments. It preserves the PBMC profile and its original acceptance screens. It remains a public research calibration lane.
+Recipe 5 extends the public post-count platform with a breast tumor profile, explicit cohort metadata, tissue review signals, loss audits, and a diagnostic miQC challenger. It preserves the PBMC profile and its original acceptance screens. It remains a public research calibration lane. [Research release controls and current evidence](scrna-production.md) describe admission, immutable promotion, run monitoring, and the unresolved blockers.
 
 ## Calibration design
 
@@ -35,7 +35,7 @@ Frozen engineering screens retain the original minimum 70% overall retention, 4â
 
 Published coarse-label accuracy, balanced accuracy, unknown-label fraction, and cross-tabs are diagnostic comparisons against the same dataset's author annotations. They do not measure independent annotation accuracy or malignant-cell sensitivity. No threshold is lowered after seeing a failure. Recipe 4 only aligns coarse T/NK reporting with the source taxonomy and leaves all recipe-3 QC rules and screens unchanged.
 
-`production_ready` stays false for this pilot. Required next evidence includes unfiltered droplets for an ambient lane, confirmed technical capture and chemistry metadata, independently reviewed annotations/doublet truth, and broader donor validation. No private Diana samples are staged or mounted.
+Calibration run manifests keep `production_ready=false`; a separate evidence-bound release assessment determines admission to the research production lane. This pilot remains quarantined. Required next evidence includes unfiltered droplets for an ambient lane, confirmed technical capture and chemistry metadata, independently reviewed annotations/doublet truth, and broader donor validation. No private Diana samples are staged or mounted.
 
 ## Execute and review
 

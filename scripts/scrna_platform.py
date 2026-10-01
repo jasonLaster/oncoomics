@@ -11,7 +11,15 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
-from diana_omics.scrna_io import safe_id, safe_key, sha256_file, validate_config, verify_file, write_json  # noqa: E402
+from diana_omics.scrna_io import (  # noqa: E402
+    safe_id,
+    safe_key,
+    sha256_file,
+    validate_artifact_index,
+    validate_config,
+    verify_file,
+    write_json,
+)
 
 RAW_BUCKET = "diana-omics-raw-inputs-172630973301-us-east-1"
 RESULTS_BUCKET = "diana-omics-results-172630973301-us-east-1"
@@ -64,6 +72,8 @@ def stage(s3, config_path: Path) -> None:
 def collect(s3, run_id: str) -> None:
     safe_id(run_id)
     root = ROOT / "results/scrna" / run_id
+    if root.is_symlink() or not root.resolve().is_relative_to((ROOT / "results/scrna").resolve()):
+        raise ValueError("Run directory escapes results root")
     root.mkdir(parents=True, exist_ok=True)
     prefix = f"public/scrna/runs/{run_id}/"
     receipt = {}
@@ -77,9 +87,12 @@ def collect(s3, run_id: str) -> None:
         raise ValueError("Run does not have a valid completion manifest")
     verify_file(root / "artifact_index.json", manifest["artifact_index_sha256"])
     index = json.loads((root / "artifact_index.json").read_text())
+    validate_artifact_index(index)
     for record in index:
         relative = safe_key(record["path"])
         target = root / relative
+        if target.is_symlink() or not target.resolve().is_relative_to(root.resolve()):
+            raise ValueError("Artifact escapes run directory")
         target.parent.mkdir(parents=True, exist_ok=True)
         obj = s3.get_object(Bucket=RESULTS_BUCKET, Key=prefix + relative)
         if obj["ContentLength"] != record["size_bytes"]:
@@ -119,6 +132,89 @@ def compare(first_run: str, second_run: str, dataset_id: str) -> None:
     print(json.dumps(report, indent=2))
 
 
+def status(s3, run_id: str) -> dict:
+    from diana_omics.scrna_release import run_state
+
+    safe_id(run_id)
+    markers = []
+    for filename in ("_STARTED.json", "_FAILED.json", "run_manifest.json"):
+        try:
+            obj = s3.get_object(Bucket=RESULTS_BUCKET, Key=f"public/scrna/runs/{run_id}/{filename}")
+            marker = json.loads(obj["Body"].read())
+            if marker.get("run_id") != run_id:
+                raise ValueError("Status marker run ID mismatch")
+            markers.append(marker)
+        except s3.exceptions.ClientError as error:
+            if error.response["Error"]["Code"] not in {"NoSuchKey", "404"}:
+                raise
+            markers.append(None)
+    report = {"run_id": run_id, **run_state(*markers)}
+    print(json.dumps(report, indent=2))
+    return report
+
+
+def assess(run_id: str, config_path: Path, evidence_path: Path | None) -> bool:
+    from html import escape
+
+    from diana_omics.scrna_release import assess_release
+
+    safe_id(run_id)
+    root = ROOT / "results/scrna" / run_id
+    config = json.loads(config_path.read_text())
+    validation = ROOT / "results/scrna/validation" / run_id
+    report = assess_release(root, config, validation / "independent_review.json", evidence_path)
+    write_json(validation / "release_decision.json", report)
+    blockers = "".join(f"<li>{escape(reason)}</li>" for reason in report["blockers"])
+    (validation / "release_review.html").write_text('''<!doctype html><html lang="en"><meta charset="utf-8">
+        <meta name="viewport" content="width=device-width,initial-scale=1"><title>Breast cohort release review</title>
+        <style>body{font:17px/1.6 system-ui;color:#182a39;background:#f6f8fa;max-width:1000px;margin:auto;padding:30px}
+        main{background:white;border:1px solid #dbe3ea;border-radius:10px;padding:25px}a{color:#17547c}li{margin:8px 0}</style>
+        <main><h1>Breast cohort release: ''' + escape(report["decision"]) + '''</h1><p>''' + escape(run_id) + '''</p>
+        <p>Allowed use: ''' + escape(report["allowed_use"]) + '''. Clinical use: no.</p><ul>''' + blockers + '''</ul>
+        <p><a href="release_decision.json">Machine-readable decision and custody</a> ·
+        <a href="../../''' + escape(run_id) + '''/review.html">QC plots and miQC challenger</a></p>
+        <p>Completion confirms artifact delivery. Admission additionally requires passing calibration, exact-source
+        count audits, source-backed capture/chemistry, matching raw-droplet assessment, and reviewed independent
+        validation. Missing evidence never becomes a pass.</p></main></html>''')
+    print(json.dumps(report, indent=2))
+    return report["production_ready"]
+
+
+def promote(s3, run_id: str, config_path: Path, evidence_path: Path | None) -> bool:
+    """Only admitted cohorts get a production release manifest; runs stay immutable."""
+    import hashlib
+
+    if not assess(run_id, config_path, evidence_path):
+        return False  # Do not make any S3 writes for a quarantined cohort.
+    root = ROOT / "results/scrna" / run_id
+    decision = json.loads((ROOT / "results/scrna/validation" / run_id / "release_decision.json").read_text())
+    controls = {}
+    for name in ("run_manifest.json", "artifact_index.json"):
+        obj = s3.get_object(Bucket=RESULTS_BUCKET, Key=f"public/scrna/runs/{run_id}/{name}")
+        digest = hashlib.sha256(obj["Body"].read()).hexdigest()
+        if digest != sha256_file(root / name) or not obj.get("VersionId"):
+            raise ValueError("Production release requires matching versioned S3 controls")
+        controls[name] = {"sha256": digest, "version_id": obj["VersionId"]}
+    release = {"schema_version": 1, "run_id": run_id, "decision": decision, "controls": controls,
+               "results_uri": f"s3://{RESULTS_BUCKET}/public/scrna/runs/{run_id}/"}
+    body = json.dumps(release, sort_keys=True, indent=2, allow_nan=False).encode()
+    key = f"public/scrna/releases/{run_id}/release_manifest.json"
+    try:
+        s3.put_object(Bucket=RESULTS_BUCKET, Key=key, Body=body, IfNoneMatch="*", ServerSideEncryption="AES256",
+                      Metadata={"sha256": hashlib.sha256(body).hexdigest()})
+    except s3.exceptions.ClientError as error:
+        if error.response["Error"]["Code"] != "PreconditionFailed":
+            raise
+        existing = s3.get_object(Bucket=RESULTS_BUCKET, Key=key)["Body"].read()
+        if existing != body:
+            raise ValueError("An immutable release already exists with different evidence") from error
+    obj = s3.get_object(Bucket=RESULTS_BUCKET, Key=key)
+    if obj["Body"].read() != body or not obj.get("VersionId"):
+        raise ValueError("Release upload verification failed")
+    print(f"Verified production research release: s3://{RESULTS_BUCKET}/{key}")
+    return True
+
+
 def main() -> None:
     import boto3
     parser = argparse.ArgumentParser(description=__doc__)
@@ -131,14 +227,31 @@ def main() -> None:
     repeated.add_argument("--first-run", required=True)
     repeated.add_argument("--second-run", required=True)
     repeated.add_argument("--dataset-id", default="pbmc3k")
+    inspect = commands.add_parser("status", help="Read completion/failure markers and detect stale runs")
+    inspect.add_argument("--run-id", required=True)
+    admission = commands.add_parser("assess-release", help="Verify artifacts and quarantine cohorts lacking readiness evidence")
+    admission.add_argument("--run-id", required=True)
+    admission.add_argument("--config", type=Path, default=ROOT / "manifests/scrna/breast/calibration.lock.json")
+    admission.add_argument("--evidence", type=Path)
+    publish = commands.add_parser("promote", help="Publish an immutable release manifest only for an admitted research cohort")
+    publish.add_argument("--run-id", required=True)
+    publish.add_argument("--config", type=Path, default=ROOT / "manifests/scrna/breast/calibration.lock.json")
+    publish.add_argument("--evidence", type=Path)
     args = parser.parse_args()
+    if args.command == "assess-release":
+        raise SystemExit(0 if assess(args.run_id, args.config, args.evidence) else 2)
     s3 = boto3.client("s3", region_name="us-east-1")
+    if args.command == "promote":
+        raise SystemExit(0 if promote(s3, args.run_id, args.config, args.evidence) else 2)
     if args.command == "stage":
         stage(s3, args.config)
     elif args.command == "collect":
         collect(s3, args.run_id)
-    else:
+    elif args.command == "compare":
         compare(args.first_run, args.second_run, args.dataset_id)
+    else:
+        report = status(s3, args.run_id)
+        raise SystemExit(2 if report["state"] in {"failed", "stale", "inconsistent"} else 0)
 
 
 if __name__ == "__main__":

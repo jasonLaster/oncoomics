@@ -1,0 +1,89 @@
+{
+  "embedding_policy": "Breast: exclude mt/hemoglobin/ribosomal/stress HVGs, preserve cycling genes; PBMC: existing HVGs",
+  "latent_method": "HVG PCA; captures/sample proxies analyzed separately; no cross-donor integration or DE",
+  "marker_panel": {
+    "B cells": [
+      "MS4A1",
+      "CD79A",
+      "CD79B"
+    ],
+    "Endothelial": [
+      "PECAM1",
+      "VWF",
+      "CLDN5"
+    ],
+    "Epithelial": [
+      "EPCAM",
+      "KRT8",
+      "KRT18",
+      "KRT19"
+    ],
+    "Fibroblast": [
+      "COL1A1",
+      "COL1A2",
+      "DCN",
+      "LUM"
+    ],
+    "Myeloid": [
+      "LYZ",
+      "LST1",
+      "TYROBP",
+      "FCER1G"
+    ],
+    "NK cells": [
+      "NKG7",
+      "GNLY",
+      "KLRD1"
+    ],
+    "Perivascular": [
+      "RGS5",
+      "PDGFRB",
+      "MCAM",
+      "CSPG4"
+    ],
+    "Plasma cells": [
+      "MZB1",
+      "JCHAIN",
+      "SDC1"
+    ],
+    "T cells": [
+      "CD3D",
+      "CD3E",
+      "TRAC"
+    ]
+  },
+  "parameters": {
+    "ambient_rna_policy": "Not assessed: upstream filtered author matrices lack empty droplets",
+    "annotation_policy": "Breast canonical coarse compartments; T/NK combined because cytotoxic programs overlap and author major T label contains NK; fine labels unreviewed. Same-dataset author labels used only for evaluation.",
+    "leiden_iterations": -1,
+    "leiden_resolution": 0.5,
+    "miqc_challenger": true,
+    "miqc_policy": "Pinned miQC 1.14.0 linear model, posterior default 0.75, seeds 42/43, agreement >=0.95 for a stable challenger. Diagnostic only: never replaces active QC or uses author labels. Unidentifiable fits produce no-call.",
+    "n_hvg": 2000,
+    "n_neighbors": 15,
+    "n_pcs": 40,
+    "qc_mad_multiplier": 3.0,
+    "qc_policy": "Breast mixed-tissue capture/sample MAD tails with lower tails capped at p05, no PBMC mt cap or upper-count exclusion",
+    "qc_sensitivity_multipliers": [
+      2,
+      3,
+      4
+    ],
+    "seed": 42
+  },
+  "review_only_cutoffs": {
+    "cycling": 0.009103322712790168,
+    "hemoglobin": 0.0,
+    "high_umis": 27966.172052399324,
+    "ribosomal": 23.17149741095305,
+    "stress": 4.801564440649585
+  },
+  "thresholds": {
+    "mad_multiplier": 3.0,
+    "max_pct_mt": 12.806623636380678,
+    "min_genes": 679,
+    "min_umis": 1624,
+    "profile": "human_breast_tumor",
+    "rationale": "Sample/capture log1p lower MAD tails capped at observed p05 for mixed tissue; mt upper MAD tail without PBMC 5-25% bounds. Zero MAD disables that tail; no upper-count exclusion. Review loss by compartment and sensitivity before use."
+  }
+}

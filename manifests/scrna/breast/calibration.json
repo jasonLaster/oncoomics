@@ -1,6 +1,6 @@
 {
   "schema_version": 2,
-  "recipe_version": 4,
+  "recipe_version": 5,
   "evidence_lane": "public_benchmark",
   "datasets": [
     {
@@ -124,7 +124,9 @@
       2,
       3,
       4
-    ]
+    ],
+    "miqc_challenger": true,
+    "miqc_policy": "Pinned miQC 1.14.0 linear model, posterior default 0.75, seeds 42/43, agreement >=0.95 for a stable challenger. Diagnostic only: never replaces active QC or uses author labels. Unidentifiable fits produce no-call."
   },
   "acceptance": {
     "retained_fraction_min": 0.7,

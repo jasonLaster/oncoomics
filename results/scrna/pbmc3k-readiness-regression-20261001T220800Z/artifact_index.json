@@ -1,0 +1,152 @@
+[
+  {
+    "path": "calibration_summary.json",
+    "sha256": "d1a19be45022654846595743ceda13c000df64877871643ce251602c9410b91c",
+    "size_bytes": 1842
+  },
+  {
+    "path": "conda-explicit.txt",
+    "sha256": "aabdf6be3730193c63b2540e196d1132077e562c18d971ab71c06c31238e9a75",
+    "size_bytes": 20309
+  },
+  {
+    "path": "input_manifest.json",
+    "sha256": "34fe3c2bb67490d2d86550b3bcbd8b7425936885d910e745502c13e2209962fb",
+    "size_bytes": 2989
+  },
+  {
+    "path": "pbmc3k/all_cells_qc.csv",
+    "sha256": "74d0d72836337cf6773f252014ced87ece8c3ddc772349518128d50a57f43c5b",
+    "size_bytes": 623703
+  },
+  {
+    "path": "pbmc3k/all_cells_qc.h5ad",
+    "sha256": "557cc0df803fd9a26332a171173d98b650b92f12353213cf20cfa8f5a90c9898",
+    "size_bytes": 8148022
+  },
+  {
+    "path": "pbmc3k/analysis.h5ad",
+    "sha256": "2275bb939df7da89560ec2374f35fa29df495cb3222e1c0b9eee4729475710c2",
+    "size_bytes": 22160619
+  },
+  {
+    "path": "pbmc3k/calibration.json",
+    "sha256": "9545ca5e96328fcbb701103e158d5e0c46fab0f8dc39bbb559db86cce82e545e",
+    "size_bytes": 1710
+  },
+  {
+    "path": "pbmc3k/cluster_marker_scores.csv",
+    "sha256": "2ee77b8ecd3d1cee6b6400238b1477b1603a08a7b28524bb387a587e70f9d468",
+    "size_bytes": 414
+  },
+  {
+    "path": "pbmc3k/doublets/barcodes.tsv",
+    "sha256": "d2612a7f04dd7479934304de161fdfeda177b19f48ff2508753bd42ad26d6539",
+    "size_bytes": 41480
+  },
+  {
+    "path": "pbmc3k/doublets/call.R",
+    "sha256": "2e694db6ed2f087868abfc5df4df660eb1d31c5469859973025ab95451b5b792",
+    "size_bytes": 689
+  },
+  {
+    "path": "pbmc3k/doublets/calls.csv",
+    "sha256": "c8a461a65891f25d356aba9def7b80ad57309b6fca59c0ffc4f710983c2299fb",
+    "size_bytes": 114849
+  },
+  {
+    "path": "pbmc3k/doublets/r.log",
+    "sha256": "8c39c516b80f8fb140b3b7df8a2d9e7b08bf7fa717173095fc85384b0085abe9",
+    "size_bytes": 1948
+  },
+  {
+    "path": "pbmc3k/doublets/r_session.txt",
+    "sha256": "ecb676bea5328df71bb0e5ae0fb2fb075b6852177bb32c046b520267cc0b06a1",
+    "size_bytes": 3064
+  },
+  {
+    "path": "pbmc3k/markers.csv",
+    "sha256": "abd9e48046106b2a2a1293c39eac01ee170d4b6c607c915d9e3cd075e9aa05a9",
+    "size_bytes": 26917
+  },
+  {
+    "path": "pbmc3k/parameters.json",
+    "sha256": "d0fb2740fe148063ca2f6c4367f8997d515c7e9d88cb027fbc42751b4cd8b01d",
+    "size_bytes": 1647
+  },
+  {
+    "path": "pbmc3k/qc_thresholds.png",
+    "sha256": "303def60fa906fe99fb9ec54dccce015f83397424bd09de7244ae82ecba17723",
+    "size_bytes": 52089
+  },
+  {
+    "path": "pbmc3k/reference_cluster_overlap.csv",
+    "sha256": "a9f96495f5b2b51426117180d651212831b1fae430cea78196d0b5d199055aca",
+    "size_bytes": 221
+  },
+  {
+    "path": "pbmc3k/umap.csv",
+    "sha256": "8dfe72f8d88070dd6516a1a262e2d4281fe80112dc8a6ae47f283a9d1181ff97",
+    "size_bytes": 194433
+  },
+  {
+    "path": "pbmc3k/umap_coarse_label_hint.png",
+    "sha256": "bd4630177b7d4d5360ef48b17aa846c8f0b1e64272c36948362a23476896d228",
+    "size_bytes": 53555
+  },
+  {
+    "path": "pbmc3k/umap_leiden.png",
+    "sha256": "c748ae3ce72951d323dbd6806001affc1a75f716a1ae681451d72d0a2cb84c9f",
+    "size_bytes": 42545
+  },
+  {
+    "path": "python_packages.json",
+    "sha256": "96c7eb5396d110fef84e523c5a020e641248811f92f6cb08dc81874679a814ed",
+    "size_bytes": 1815
+  },
+  {
+    "path": "review.html",
+    "sha256": "ee22312e76b023955b4a1ebdcc7d9f51932f7719ad5ebf3437259a2019c4c610",
+    "size_bytes": 2746
+  },
+  {
+    "path": "review.md",
+    "sha256": "2c634e85ee46ef4b9f3678fd3fe5fe1f75761481676c5f112b3d99489ad2d14c",
+    "size_bytes": 816
+  },
+  {
+    "path": "source/modal_runner.py",
+    "sha256": "491ffaf9996ee99272da00c43fd31c2c5dec7d2c4f587a1433055bd11666a2d9",
+    "size_bytes": 7018
+  },
+  {
+    "path": "source/scrna.py",
+    "sha256": "9fcca43c595d16c41785d14934c72c32a2effb1b97b86799d2360f6247b1cafb",
+    "size_bytes": 28697
+  },
+  {
+    "path": "source/scrna_io.py",
+    "sha256": "5c5cd6d72df7f6371d30bf0c725fda48159df621497e39beb28c898243495edf",
+    "size_bytes": 9786
+  },
+  {
+    "path": "source/scrna_miqc.py",
+    "sha256": "c618c4ee6c86fad781c3d81e9d9d2f68da103a66313b5e3fdf1588f23faecf75",
+    "size_bytes": 4946
+  },
+  {
+    "path": "source/scrna_qc.py",
+    "sha256": "802f37fb010cc5d9b7d6d10f69191176b5adaf5d7a24bf983f88c30dfd0ffbfe",
+    "size_bytes": 10072
+  },
+  {
+    "path": "source/scrna_release.py",
+    "sha256": "3f6d2f40e23d78711c604f7240dd5083fd0961f5f0613ce7038fe4c5f939f46c",
+    "size_bytes": 10206
+  },
+  {
+    "path": "source_hashes.json",
+    "sha256": "17c999164fc9c5296338a6ace9b477bcaf67a78184a80b5bc146c963609b7cd9",
+    "size_bytes": 432
+  }
+]

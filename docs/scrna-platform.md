@@ -2,7 +2,7 @@
 
 This platform runs bounded, reproducible public PBMC post-count analysis on Modal and stores source matrices and immutable results in the existing Diana S3 buckets. It is a separate single-cell analysis lane beside the DNA/HRD workflows.
 
-[Breast tumor QC recipe 4](scrna-breast-qc.md) adds a separate tissue profile, explicit sample/capture readiness, nuisance review signals, and compartment-loss/sensitivity audits. The PBMC recipe and its screens remain the baseline below.
+[Breast tumor QC recipe 5](scrna-breast-qc.md) adds a separate tissue profile, explicit sample/capture readiness, nuisance review signals, compartment-loss/sensitivity audits, and a diagnostic miQC challenger. [Research release controls](scrna-production.md) block promotion without passing QC and reviewed evidence. The PBMC recipe and its screens remain the baseline below.
 
 ## Scientific plan
 

@@ -1,0 +1,40 @@
+{
+  "allowed_use": "review and calibration only",
+  "artifact_index_sha256": "adf1430edae09a7841bf6401f0cc322a3686acd4c38c21f5af63fdbecf894f7f",
+  "audit_sha256": "1715f4ead2e0c9cfbe440a1a89d882d7b864984cb5d65955e10109a28c7df494",
+  "blockers": [
+    "CID44971: source-backed technical capture mapping required",
+    "CID44971: source-backed chemistry required",
+    "CID44971: calibration screen failed or missing: capture_metadata_resolved",
+    "CID44971: calibration screen failed or missing: chemistry_metadata_resolved",
+    "CID44971: calibration screen failed or missing: compartment_retention",
+    "CID44971: ambient assessment on matching raw droplets required",
+    "CID3941: source-backed technical capture mapping required",
+    "CID3941: source-backed chemistry required",
+    "CID3941: calibration screen failed or missing: capture_metadata_resolved",
+    "CID3941: calibration screen failed or missing: chemistry_metadata_resolved",
+    "CID3941: calibration screen failed or missing: compartment_retention",
+    "CID3941: coarse compartment balanced agreement below 0.80",
+    "CID3941: ambient assessment on matching raw droplets required",
+    "CID3838: source-backed technical capture mapping required",
+    "CID3838: source-backed chemistry required",
+    "CID3838: calibration screen failed or missing: capture_metadata_resolved",
+    "CID3838: calibration screen failed or missing: chemistry_metadata_resolved",
+    "CID3838: calibration screen failed or missing: compartment_retention",
+    "CID3838: ambient assessment on matching raw droplets required",
+    "Missing reviewed capture/chemistry, ambient, annotation, doublet, and held-out-donor validation packet"
+  ],
+  "clinical_use": false,
+  "config_sha256": "d51629c2ffb9758f167a1dbe4b8678d967f2125f1958c1fae0541da501f2e90d",
+  "decision": "quarantined",
+  "evidence_sha256": null,
+  "policy": {
+    "maximum_unknown_fraction": 0.1,
+    "minimum_balanced_agreement": 0.8
+  },
+  "production_ready": false,
+  "release_policy_sha256": "626bc41840a6166029963a392bb83bfac884cf24e5319f6b184652c4c2f7b127",
+  "run_id": "breast-readiness-v5-20261001T220500Z",
+  "schema_version": 1,
+  "scope": "breast_postcount_research_qc"
+}
