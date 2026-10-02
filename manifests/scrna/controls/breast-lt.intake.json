@@ -1,0 +1,43 @@
+{
+  "schema_version": 1,
+  "evidence_lane": "public_control",
+  "case_id": "public-breast-donor-001",
+  "species": "Homo sapiens",
+  "tissue": "breast tumor",
+  "material": "whole_cell",
+  "captures": [
+    {
+      "capture_id": "control-breast-lt",
+      "specimen_id": "control-breast-lt-specimen",
+      "chemistry": "3prime_v3.1_LT",
+      "assay": "10x_3prime_gex",
+      "reference": "GRCh38-vendor-CellRanger-6.0.0",
+      "reference_sha256": "unknown",
+      "pooled_donors": false,
+      "format": "10x_h5",
+      "expected_cells": 687,
+      "clinical_subtype": "unknown",
+      "treatment_status": "unknown",
+      "timepoint": "public_control",
+      "metadata": {
+        "status": "reviewed",
+        "path": "vendor-metadata.json",
+        "sha256": "4b69bb5b7b1b52c5ace8eba4794bd13d3e825f7273d79eaa603773d1f38d652a"
+      },
+      "files": [
+        {
+          "role": "filtered_h5",
+          "path": "Breast_Cancer_3p_LT_filtered_feature_bc_matrix.h5",
+          "size_bytes": 3489961,
+          "sha256": "143683b205cd478750cb24d2a49507b08144bdc087a4a7e88fde34feda7064cc"
+        },
+        {
+          "role": "raw_h5",
+          "path": "Breast_Cancer_3p_LT_raw_feature_bc_matrix.h5",
+          "size_bytes": 5916333,
+          "sha256": "5190d1334be373b1d9d2ff33e130e1bb59bbc1e5c4d373059a175929489b8311"
+        }
+      ]
+    }
+  ]
+}

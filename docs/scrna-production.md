@@ -16,7 +16,7 @@ Admission also requires a reviewed, content-bound packet covering capture/chemis
 
 `promote` reruns assessment before any S3 writes. Only an admitted cohort receives `public/scrna/releases/<run_id>/release_manifest.json`. It binds the decision to matching, versioned S3 run/index controls and verifies the encrypted upload. A repeat with identical evidence is idempotent; different evidence cannot replace the same release. Production consumers must require this release manifest and verify its referenced artifact hashes. A calibration completion marker alone does not admit a cohort.
 
-There is no clinical signoff, public API, new bucket, GPU service, private-data mount, or recurring monitoring job in this change. Monitoring is an explicit CLI operation. The ambient correction backend and general raw-droplet breast importer remain unimplemented; ingress continues to reject that unsupported role.
+This public GEO lane has no clinical signoff, public API, new bucket, GPU service, private-data mount, or recurring monitoring job. Monitoring is an explicit CLI operation. It remains frozen and rejects its unsupported raw-droplet role. A separate [private patient intake path](scrna-patient-intake.md) now supports modern 10x raw/filtered matrices, diagnostic SoupX and reference-locked STARsolo counting on the existing private bucket. Those outputs are provisional; they do not qualify this archived public cohort or establish clinical readiness.
 
 ## Runbook
 
@@ -66,6 +66,6 @@ For CID44971, CID3941, and CID3838, obtain a per-library capture/channel map cov
 
 Use [the three-sample intake table](../manifests/scrna/breast/readiness-intake.tsv) to supply locations and source custody. [The validation packet template](../manifests/scrna/breast/validation-packet.template.json) starts with every report unperformed; it asserts no approval and cannot pass admission as provided.
 
-Those inputs enable a separately implemented and calibrated ambient lane preserving original and corrected counts. A validated tissue-aware QC policy must address epithelial and rare immune/stromal loss without training on the pilot's evaluation labels. A matched reference and external held-out cohort must support annotation and doublet evaluation. Until that work is complete, use this cohort for calibration/review, not cell-proportion inference or automatic downstream biological conclusions.
+The private intake implementation preserves original counts and a diagnostic SoupX candidate; its public raw/filtered controls establish custody and execution, not method qualification. A validated tissue-aware QC policy must still address epithelial and rare immune/stromal loss without training on the pilot's evaluation labels. A matched reference and external held-out cohort must support annotation and doublet evaluation. Until that work is complete, use this cohort for calibration/review, not cell-proportion inference or automatic downstream biological conclusions.
 
 Rollback selects a previously admitted immutable release; it never edits historical run artifacts. There is presently no admitted breast release to roll back to. After a recipe or runtime change, rerun the frozen public controls, independent count audit, regression comparison, and release assessment before producing a new release manifest.

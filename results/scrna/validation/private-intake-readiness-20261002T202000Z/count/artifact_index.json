@@ -1,0 +1,117 @@
+[
+  {
+    "path": "conda-explicit.txt",
+    "sha256": "0678bc712a30e00ba901af6309a645cee2fe7fba20d0545d7d9055d6f1eb49d8",
+    "size_bytes": 28426
+  },
+  {
+    "path": "count-Log.final.out",
+    "sha256": "4e373ade3f022269d4528849fecae5be5b651e0f9b0fa3796476abc0f19fbd87",
+    "size_bytes": 1973
+  },
+  {
+    "path": "count-Log.out",
+    "sha256": "5116429d785d23b471ccd12fd746fd7d87eee3de19fa78e35ea6080cc7dcf8dd",
+    "size_bytes": 9455
+  },
+  {
+    "path": "count-Log.progress.out",
+    "sha256": "e4947209ba69b69769fb8568cb6d21e96484840ee598dc9001da720ecf866bd8",
+    "size_bytes": 246
+  },
+  {
+    "path": "count-SJ.out.tab",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "size_bytes": 0
+  },
+  {
+    "path": "count.log",
+    "sha256": "04f9b56ae6e751ad2b52127e44a8abab5671be819432640e07e9446f30176411",
+    "size_bytes": 1104
+  },
+  {
+    "path": "count_environment.json",
+    "sha256": "a822eeb18560d60f16416b92806988a39f50eb96e5618f9f4c08c434b25f35b2",
+    "size_bytes": 2026
+  },
+  {
+    "path": "count_receipt.json",
+    "sha256": "392d558f95ed55e0f9c4cd9a6d09d3d3238201c3c6a75c0a7aecb328f6d4a67e",
+    "size_bytes": 833
+  },
+  {
+    "path": "execution_plan.json",
+    "sha256": "b560c1559286c5ef02472e70f8b8d0b6e2ab798bf57c77eefba9f111ed73396b",
+    "size_bytes": 2352
+  },
+  {
+    "path": "filtered/barcodes.tsv",
+    "sha256": "46b0e82a0ad2a72008b34820380535f2c2d40edfd19d47c40b3f31689133a97a",
+    "size_bytes": 1900
+  },
+  {
+    "path": "filtered/features.tsv",
+    "sha256": "111430551f80446c0df53360d59efe3fc2bdbdc7d30d60afb99a3cecfd9d5655",
+    "size_bytes": 2955
+  },
+  {
+    "path": "filtered/matrix.mtx",
+    "sha256": "f213dc3e1fd6ae6f14b4cde8d0136f4603c0010a0600c0f8a37db72e422d950c",
+    "size_bytes": 62523
+  },
+  {
+    "path": "full_fastq_validation.json",
+    "sha256": "e9d4d2bd114b08bc3e7b0c716e6cb2077f46764399d5e9b46c286500e795880e",
+    "size_bytes": 211
+  },
+  {
+    "path": "index.log",
+    "sha256": "5937728cf335dd0fba2d0d8e9d530ffea0a2b58ec6bad6638c7f7d85bbed702c",
+    "size_bytes": 1203
+  },
+  {
+    "path": "intake_custody.json",
+    "sha256": "986d159c082d1a0713936359bb2d82588c6c2efbd80f2795aec7c4b796a9b635",
+    "size_bytes": 1770
+  },
+  {
+    "path": "raw/barcodes.tsv",
+    "sha256": "aa4cbde99ade3d0b1135fe887c7cf7b82c7b0c04839eb6fcb4abefcd81bae1ce",
+    "size_bytes": 4332
+  },
+  {
+    "path": "raw/features.tsv",
+    "sha256": "111430551f80446c0df53360d59efe3fc2bdbdc7d30d60afb99a3cecfd9d5655",
+    "size_bytes": 2955
+  },
+  {
+    "path": "raw/matrix.mtx",
+    "sha256": "d2cae6d219c6b9ad5dfc334b8bbd4e9adff4870c73af2397df838a443473d194",
+    "size_bytes": 70215
+  },
+  {
+    "path": "reference_lock.json",
+    "sha256": "56a407e98f8dc4aadb840157645b5906a27518250aa127a7d02940ac1d6e9e36",
+    "size_bytes": 846
+  },
+  {
+    "path": "source/modal_patient_runner.py",
+    "sha256": "80f7251fc03e3a320f087fa14a48a11dec68529039d2ba8673acd53aaea51806",
+    "size_bytes": 12070
+  },
+  {
+    "path": "source/scrna_count.py",
+    "sha256": "b54073a67087dcbae2f5e5754b601254aea0e54ce73bfd4132e60626ffb57a1b",
+    "size_bytes": 12512
+  },
+  {
+    "path": "source/scrna_intake.py",
+    "sha256": "2cb887957098b9dfbfec3a8e813a9301f42f04e6b0ec64b121b1a7777cc43728",
+    "size_bytes": 20720
+  },
+  {
+    "path": "source/scrna_private.py",
+    "sha256": "ea19300b8ef30ae86721d57712077163d355d6816fff41350d24b8031ea4b53d",
+    "size_bytes": 18077
+  }
+]

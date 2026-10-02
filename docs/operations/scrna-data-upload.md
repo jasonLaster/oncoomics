@@ -6,6 +6,12 @@ verify the delivery before analysis. This guide covers both single-cell RNA-seq
 (`scRNA-seq`) and single-nucleus RNA-seq (`snRNA-seq`); record which assay was
 actually performed.
 
+This guide describes the existing **public delivery route**. For a delivery that
+has not been approved for public sharing, use the [private single-cell arrival
+runbook](../scrna-patient-intake.md) and the existing KMS-encrypted private
+bucket. The private analysis path does not publish patient inputs or outputs to
+the browser below.
+
 [data.diana-tnbc.com](https://data.diana-tnbc.com/) is the file browser and
 download site. Upload files to its backing S3 inbox using the AWS CLI. The
 existing Personalis delivery is browsable at
@@ -204,9 +210,12 @@ Single-cell matrices need a separate analysis handoff. Start with the
 [breast tumor QC workflow](../scrna-breast-qc.md), and
 [breast research release controls](../scrna-production.md). These document
 public post-count calibration and research-readiness gates; they do not make
-this vendor delivery automatically eligible for analysis. Vendor FASTQ-to-count
-processing and a validated nuclei workflow require a separate plan. Calibration
-commands are not an intake command for this delivery. The
+this vendor delivery automatically eligible for analysis. The [private arrival
+runbook](../scrna-patient-intake.md) now provides reviewed 10x matrix intake,
+reference-locked STARsolo counting, diagnostic ambient assessment, independent
+count audits and separate method/case review gates. Counting and QC outputs
+remain provisional; nuclei and unsupported protocols still need their own
+validated recipe. Calibration commands are not an intake command for this delivery. The
 [Diana raw intake contract](diana-raw-inputs.md) describes the existing DNA/bulk
 RNA path, while the
 [TROP-2 workflow](../rosalind/trop2-adc-workflow.md#intake) describes the proposed

@@ -1,0 +1,13 @@
+{
+  "clinical_ready": false,
+  "count_origin": {
+    "artifact_index_sha256": "fa1717bd388dd1ffbd5de8e00198cd4476702aa9aca6de433859257820fc1763",
+    "backend": "STARsolo",
+    "count_receipt_sha256": "392d558f95ed55e0f9c4cd9a6d09d3d3238201c3c6a75c0a7aecb328f6d4a67e",
+    "qualified_for_patient": false,
+    "run_id": "starsolo-known-umis-locked-20261002T202000Z",
+    "version": "2.7.11b"
+  },
+  "filtered_barcodes": 100,
+  "status": "counted_handoff_provisional"
+}

@@ -1,0 +1,24 @@
+{
+  "schema_version": 1,
+  "status": "counts_integrity_pass",
+  "evidence_level": "mechanical_smoke",
+  "intake_id": "80c199368b7363a85448f9c7b7d6a4e2ead07f4678d8e6bc5c1ae92ce0dc3e62",
+  "artifact_index_sha256": "5e3a779d418c88829113733d4565ab085cf3d73b4e5a34ca346c96265b166e97",
+  "audit_source_sha256": "1966f3546ee6f6b58c5a52a0cbfb8b2897f1b33acf84e5b470abb3e568d2c985",
+  "captures": {
+    "control-pbmc1k": {
+      "source_to_all_cells_exact": true,
+      "retained_counts_exact": true,
+      "all_vendor_barcodes_preserved": true,
+      "retained_selection_exact": true,
+      "qc_csv_matches_checkpoint": true,
+      "core_failures_excluded": true,
+      "doublets_excluded": true,
+      "candidate_correction_monotone": true,
+      "malignancy_not_assessed": true,
+      "summary_matches_barcodes": true
+    }
+  },
+  "biological_accuracy_established": false,
+  "clinical_ready": false
+}

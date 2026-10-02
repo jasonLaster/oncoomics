@@ -1,0 +1,15 @@
+{
+  "evidence_level": "mechanical_smoke",
+  "checks": {
+    "selected_input_version_read": true,
+    "scoped_output_write": true,
+    "kms_and_version_verified": true,
+    "anonymous_read_denied": true,
+    "outside_output_prefix_denied": true,
+    "encryption_change_denied": true,
+    "input_version_change_denied": true
+  },
+  "aws_credentials_in_worker": false,
+  "signed_capabilities_saved": false,
+  "expiry_seconds": 7200
+}

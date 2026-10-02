@@ -1,0 +1,18 @@
+{
+  "capture_id": "control-pbmc1k",
+  "specimen_id": "control-pbmc1k-specimen",
+  "species": "Homo sapiens",
+  "tissue": "PBMC",
+  "material": "whole_cell",
+  "chemistry": "3prime_v3",
+  "assay": "10x_3prime_gex",
+  "reference": "GRCh38-vendor-CellRanger-3.0.0",
+  "reference_sha256": "unknown",
+  "pooled_donors": false,
+  "complete_capture": true,
+  "reviewer": "public-control-operator",
+  "source": "https://www.10xgenomics.com/datasets/1-k-pbm-cs-from-a-healthy-donor-v-3-chemistry-3-standard-3-0-0",
+  "source_sha256": "068438ce4022dc67f4a4559c5cc8f3135b5724f7b3e82d4563341fdc9f9fbf2c",
+  "source_snapshot": "source_metadata.html",
+  "review_scope": "Public vendor sample description and complete original paired matrices; no independent biological truth or TNBC subtype claim"
+}

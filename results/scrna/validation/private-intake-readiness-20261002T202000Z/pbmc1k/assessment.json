@@ -1,0 +1,18 @@
+{
+  "schema_version": 1,
+  "decision": "provisional_hold",
+  "method_qualified": false,
+  "clinical_ready": false,
+  "blockers": [
+    "No independently reviewed method qualification certificate",
+    "Patient identity, QC losses and annotation uncertainty await human review"
+  ],
+  "claim": "postcount_qc_and_coarse_marker_hints",
+  "method_sha256": "8ed4fffc886278a00763e3545f908078705851d63d2b332e314bc54deb3849e7",
+  "artifact_index_sha256": "5e3a779d418c88829113733d4565ab085cf3d73b4e5a34ca346c96265b166e97",
+  "assessment_policy_sha256": "e7482c90e23f4c56b5c53c3bc1d37edc64cb87f6e7bc832f02a095758bcf7748",
+  "qualification_certificate_sha256": null,
+  "patient_review_sha256": null,
+  "source_audit_sha256": "c615bf6de874ce11cc12ec882b9ca4af3cbb88c28bcedc280bd7e60e0dda52f7",
+  "reviewer_authentication": "Operator must verify reviewer authority and approved certificate digest outside this tool"
+}

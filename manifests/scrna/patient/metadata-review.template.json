@@ -1,0 +1,16 @@
+{
+  "capture_id": "capture-001",
+  "specimen_id": "specimen-001",
+  "chemistry": "unknown",
+  "assay": "unknown",
+  "reference": "unknown",
+  "reference_sha256": "unknown",
+  "pooled_donors": false,
+  "species": "Homo sapiens",
+  "tissue": "breast tumor",
+  "material": "unknown",
+  "complete_capture": false,
+  "reviewer": "",
+  "source": "",
+  "source_sha256": "REPLACE-source-document-SHA256"
+}

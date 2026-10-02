@@ -1,0 +1,22 @@
+{
+  "backend": "STARsolo",
+  "cell_calling_qualified_for_patient": false,
+  "clinical_ready": false,
+  "full_records_checked": 32384,
+  "reference_lock_sha256": "5c3f398d12f4479b0f48c6aa47d49048fcf836e63ebc1240219ba5e63503e930",
+  "source_sha256": "b54073a67087dcbae2f5e5754b601254aea0e54ce73bfd4132e60626ffb57a1b",
+  "status": "count_generation_provisional",
+  "transformations": [
+    {
+      "barcode_policy": "Single declared capture; append -1 only when STAR omits channel suffix",
+      "feature_type": "Explicit Gene Expression from STARsolo Gene output",
+      "state": "raw"
+    },
+    {
+      "barcode_policy": "Single declared capture; append -1 only when STAR omits channel suffix",
+      "feature_type": "Explicit Gene Expression from STARsolo Gene output",
+      "state": "filtered"
+    }
+  ],
+  "version": "2.7.11b"
+}

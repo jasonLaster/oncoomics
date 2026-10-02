@@ -38,6 +38,7 @@ For command, evidence, and domain vocabulary, see [terms.md](terms.md).
 | [clinical/validation-packet-template.md](clinical/validation-packet-template.md) | Draft or review the clinical validation packet structure. |
 | [operations/diana-raw-inputs.md](operations/diana-raw-inputs.md) | Prepare Diana's real raw files for validation and staging. |
 | [operations/scrna-data-upload.md](operations/scrna-data-upload.md) | Deliver single-cell or single-nucleus RNA-seq files using the Personalis-style S3 manifest/checksum handoff. |
+| [scrna-patient-intake.md](scrna-patient-intake.md) | Inventory a private single-cell delivery, run reference-locked counting/provisional QC on Modal, audit original counts and review admission holds. |
 | [operations/diana-public-data-download.md](operations/diana-public-data-download.md) | Retrieve or transfer the private Diana dataset with explicitly scoped credentials (legacy filename). |
 | [rosalind/README.md](rosalind/README.md) | Understand how GPT-Rosalind, NGS Analysis, and Life Science Research would integrate with this project. |
 | [rosalind/hrd-workflow.md](rosalind/hrd-workflow.md) | Review the GPT-Rosalind workflow for HRD evidence and score readiness from WGS/WES. |

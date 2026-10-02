@@ -1,0 +1,43 @@
+{
+  "schema_version": 1,
+  "evidence_lane": "public_control",
+  "case_id": "control-pbmc1k",
+  "species": "Homo sapiens",
+  "tissue": "PBMC",
+  "material": "whole_cell",
+  "captures": [
+    {
+      "capture_id": "control-pbmc1k",
+      "specimen_id": "control-pbmc1k-specimen",
+      "chemistry": "3prime_v3",
+      "assay": "10x_3prime_gex",
+      "reference": "GRCh38-vendor-CellRanger-3.0.0",
+      "reference_sha256": "unknown",
+      "pooled_donors": false,
+      "format": "10x_h5",
+      "expected_cells": 1222,
+      "clinical_subtype": "not_applicable",
+      "treatment_status": "not_applicable",
+      "timepoint": "public_control",
+      "metadata": {
+        "status": "reviewed",
+        "path": "vendor-metadata.json",
+        "sha256": "6c329a746f6c0360ab86603645958450ab70cc5f733708f880f29b9d8c0b779b"
+      },
+      "files": [
+        {
+          "role": "raw_h5",
+          "path": "pbmc_1k_v3_raw_feature_bc_matrix.h5",
+          "size_bytes": 130275942,
+          "sha256": "ed17bec5896a8208acfd6202e035fc36c65da14b3605aa577e93496b5d1ebd81"
+        },
+        {
+          "role": "filtered_h5",
+          "path": "pbmc_1k_v3_filtered_feature_bc_matrix.h5",
+          "size_bytes": 5360171,
+          "sha256": "8191f576550c1b449d03441b9eb098ee9f73fa82513d171ba87d31d551e3ffda"
+        }
+      ]
+    }
+  ]
+}

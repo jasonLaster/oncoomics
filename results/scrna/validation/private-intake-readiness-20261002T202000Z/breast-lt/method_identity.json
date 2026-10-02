@@ -1,0 +1,37 @@
+{
+  "ambient_policy": "SoupX-1.6.2-diagnostic-only",
+  "annotation_policy": "tissue-marker-hints-no-calibrated-probability",
+  "conda_explicit_sha256": "b36cfb6ead5ac07bfa2085a8c58ccde8b195ca97d7f2fda6629e11843a11a327",
+  "method_sha256": "e92e5b556640a7e336049e049e19241c5c209e22604369230e1ab4809784c173",
+  "parameters": {
+    "leiden_iterations": -1,
+    "leiden_resolution": 0.5,
+    "miqc_challenger": false,
+    "n_hvg": 2000,
+    "n_neighbors": 15,
+    "n_pcs": 40,
+    "qc_mad_multiplier": 3,
+    "seed": 42
+  },
+  "python_versions": {
+    "anndata": "0.11.4",
+    "igraph": "0.11.8",
+    "leidenalg": "0.10.2",
+    "numpy": "1.26.4",
+    "pandas": "2.2.3",
+    "scanpy": "1.11.1",
+    "scikit-learn": "1.5.2",
+    "scipy": "1.15.2",
+    "umap-learn": "0.5.7"
+  },
+  "schema_version": 1,
+  "scientific_sources": {
+    "scrna.py": "33cbe9158c282583e8f20473bd3474380bdc8145f86ecb6b9bb7539c5cc29fa5",
+    "scrna_ambient.py": "316a80ef8cad26fc8145e006ff7864e9af55bea4ab6c3f55d57d531ac7f4375b",
+    "scrna_intake.py": "61da2e0e7032ba3620937bd4b4b24ac746b539e9a802a5fc76d66c2c0381d944",
+    "scrna_io.py": "5c5cd6d72df7f6371d30bf0c725fda48159df621497e39beb28c898243495edf",
+    "scrna_miqc.py": "c618c4ee6c86fad781c3d81e9d9d2f68da103a66313b5e3fdf1588f23faecf75",
+    "scrna_patient.py": "4db33e438975dd5993e7f02233ef9d74c8727e04333eabfe4524cf5bcef31bda",
+    "scrna_qc.py": "802f37fb010cc5d9b7d6d10f69191176b5adaf5d7a24bf983f88c30dfd0ffbfe"
+  }
+}

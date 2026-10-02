@@ -1,0 +1,78 @@
+{
+  "control-pbmc1k": {
+    "ambient_assessment": {
+      "candidate_removed_fraction": 0.00999193948681255,
+      "correction_applied_to_analysis": false,
+      "evidence_level": "internal_qc",
+      "lineage": {
+        "exact_count_lineage": true,
+        "feature_reordered": false,
+        "filtered_cells": 1222,
+        "low_count_noncell_droplets": 233233,
+        "noncell_barcodes": 6793658,
+        "raw_barcodes": 6794880
+      },
+      "method": "SoupX",
+      "original_counts_preserved": true,
+      "policy": "Diagnostic challenger; no automatic selection or forceAccept; low-count non-cell droplets 1..99 UMIs",
+      "rho_max": 0.01,
+      "rho_min": 0.01,
+      "seed": 42,
+      "status": "estimated_review_required",
+      "version": "1.6.2"
+    },
+    "ambient_rna_status": "estimated_review_required",
+    "calibration_status": "patient_qc_provisional",
+    "clusters": 7,
+    "coarse_label_hint_counts": {
+      "B cells": 113,
+      "Monocytes": 325,
+      "NK cells": 105,
+      "T cells": 327,
+      "Unknown / mixed": 142
+    },
+    "core_qc_cells": 1040,
+    "doublet_method": "scDblFinder",
+    "doublet_validation": "no_independent_truth_labels",
+    "doublets_flagged": 28,
+    "elapsed_seconds": 42.58,
+    "finite_embedding": true,
+    "gates": {
+      "cluster_count": true,
+      "doublets_called": true,
+      "finite_embedding": true,
+      "input_cells_match": true,
+      "raw_counts_preserved": true,
+      "retention": true,
+      "seed_stability": true
+    },
+    "input_cells": 1222,
+    "input_genes": 33538,
+    "low_genes_flagged": 112,
+    "low_umis_flagged": 124,
+    "miqc_challenger": {},
+    "mt_flagged": 152,
+    "production_ready": false,
+    "qc_profile": "human_pbmc",
+    "raw_counts_preserved": true,
+    "retained_cells": 1012,
+    "retained_fraction": 0.8281505728314239,
+    "review_only_flags": {
+      "review_high_cycling": 353,
+      "review_high_hemoglobin": 16,
+      "review_high_ribosomal": 0,
+      "review_high_stress": 154,
+      "review_high_umis": 56
+    },
+    "seed_stability_ari": 0.8586848304486384,
+    "thresholds": {
+      "mad_multiplier": 3,
+      "max_pct_mt": 15.863120787202863,
+      "min_genes": 953,
+      "min_umis": 2685,
+      "profile": "human_pbmc",
+      "rationale": "Capture-level MAD robust tails; PBMC guardrails retain low-RNA lymphocytes and bound the mt tail."
+    },
+    "unknown_label_fraction": 0.14031620553359683
+  }
+}

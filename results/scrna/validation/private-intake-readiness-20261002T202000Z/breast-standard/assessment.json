@@ -1,0 +1,19 @@
+{
+  "schema_version": 1,
+  "decision": "provisional_hold",
+  "method_qualified": false,
+  "clinical_ready": false,
+  "blockers": [
+    "No independently reviewed method qualification certificate",
+    "Patient QC screen needs review: control-breast-standard",
+    "Patient identity, QC losses and annotation uncertainty await human review"
+  ],
+  "claim": "postcount_qc_and_coarse_marker_hints",
+  "method_sha256": "8ed4fffc886278a00763e3545f908078705851d63d2b332e314bc54deb3849e7",
+  "artifact_index_sha256": "693e201541feebae109f30961276843b9e66fba039fb5a5f99d01728c1eeeff5",
+  "assessment_policy_sha256": "e7482c90e23f4c56b5c53c3bc1d37edc64cb87f6e7bc832f02a095758bcf7748",
+  "qualification_certificate_sha256": null,
+  "patient_review_sha256": null,
+  "source_audit_sha256": "a4abac21d216b0e533117acb82e57e5ed8a04a862d01662d986896ddd30c9faf",
+  "reviewer_authentication": "Operator must verify reviewer authority and approved certificate digest outside this tool"
+}

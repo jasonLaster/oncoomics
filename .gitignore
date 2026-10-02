@@ -15,6 +15,8 @@ results/full_wes_benchmark/logs/
 results/phase3_wgs_smoke/logs/
 
 .venv/
+.venv-scrna/
+*.egg-info/
 __pycache__/
 .pytest_cache/
 .ipynb_checkpoints/
@@ -57,3 +59,7 @@ results/diana_wgs_hrd/**/MANIFEST.tsv.sha256
 # Reproducible public scRNA checkpoints live in S3; keep small review artifacts in Git.
 results/scrna/**/*.h5ad
 results/scrna/**/miqc/model-*.rds
+
+# Patient intake, identity documents and derived outputs must stay outside Git.
+private/
+results/scrna/patient/

@@ -107,6 +107,42 @@ def marker_hints(adata, directory: Path, panel=None):
     return {k: list(v) for k, v in panels.items()}
 
 
+def all_barcode_marker_review(adata, directory: Path, breast: bool) -> None:
+    """Review compartment loss on every vendor barcode; hints never enter filtering decisions."""
+    import numpy as np
+    import pandas as pd
+
+    panels = BREAST_MARKERS if breast else MARKERS
+    library = np.maximum(np.asarray(adata.X.sum(axis=1)).ravel(), 1)
+    scores = {}
+    for name, geneset in panels.items():
+        genes = [gene for gene in geneset if gene in adata.var_names]
+        if len(genes) < 2:
+            continue
+        # Only this small marker panel is dense. Original count matrices remain sparse and unchanged.
+        expression = np.log1p(adata[:, genes].X.toarray() * (10000 / library[:, None]))
+        standardized = (expression - expression.mean(axis=0)) / np.maximum(expression.std(axis=0), 0.1)
+        scores[name] = standardized.mean(axis=1)
+    if len(scores) < 2:
+        adata.obs["review_marker_hint_all_barcodes"] = "Unknown / mixed"
+        adata.obs["review_marker_margin"] = 0.0
+    else:
+        frame = coarse_marker_scores(pd.DataFrame(scores, index=adata.obs_names), breast=breast)
+        values = frame.to_numpy()
+        ordered = np.sort(values, axis=1)
+        margin = ordered[:, -1] - ordered[:, -2]
+        labels = np.asarray(frame.columns)[np.argmax(values, axis=1)].astype(object)
+        labels[(ordered[:, -1] < 0.25) | (margin < 0.15)] = "Unknown / mixed"
+        adata.obs["review_marker_hint_all_barcodes"] = pd.Categorical(labels)
+        adata.obs["review_marker_margin"] = margin
+    adata.uns["all_barcode_marker_review"] = "Uncalibrated per-cell tissue-marker hints from original counts; review only, no filtering or malignancy inference."
+    loss = adata.obs.groupby("review_marker_hint_all_barcodes", observed=True).agg(
+        input_cells=("passes_QC", "size"), retained_cells=("passes_QC", "sum"), low_genes=("fails_low_genes", "sum"),
+        low_umis=("fails_low_umis", "sum"), mt_flagged=("fails_mt", "sum"), doublet_flagged=("doublet_class", lambda s: s.eq("doublet").sum()))
+    loss["retained_fraction"] = loss.retained_cells / loss.input_cells
+    loss.to_csv(directory / "provisional_compartment_losses.csv")
+
+
 def breast_qc_plots(obs, policy, dataset_id, directory):
     import matplotlib.pyplot as plt
     import numpy as np
@@ -125,6 +161,8 @@ def breast_qc_plots(obs, policy, dataset_id, directory):
     fig.tight_layout()
     fig.savefig(directory / "breast_qc_review.png", dpi=150)
     plt.close(fig)
+    if "author_compartment" not in obs:
+        return
     grouped = obs.groupby("author_compartment", observed=True).passes_QC.agg(["sum", "count"])
     fig, ax = plt.subplots(figsize=(8, 4))
     (grouped["sum"] / grouped["count"]).sort_values().plot.barh(ax=ax, color="#527a99")
@@ -135,7 +173,8 @@ def breast_qc_plots(obs, policy, dataset_id, directory):
     plt.close(fig)
 
 
-def analyze(dataset: dict, parameters: dict, acceptance: dict, input_paths: dict[str, Path], directory: Path) -> dict:
+def analyze(dataset: dict, parameters: dict, acceptance: dict, input_paths: dict[str, Path], directory: Path,
+            *, supplied_counts=None, ambient_assessment=None) -> dict:
     import matplotlib.pyplot as plt
     import numpy as np
     import pandas as pd
@@ -148,10 +187,12 @@ def analyze(dataset: dict, parameters: dict, acceptance: dict, input_paths: dict
     seed = parameters["seed"]
     np.random.seed(seed)
     sc.settings.n_jobs = 4
-    counts_path = input_paths["counts"]
+    counts_path = input_paths.get("counts")
     profile = dataset.get("qc_profile", "human_pbmc")
     author_metadata = None
-    if dataset["format"] == "geo_breast_mtx_tar":
+    if supplied_counts is not None:
+        adata = supplied_counts
+    elif dataset["format"] == "geo_breast_mtx_tar":
         matrix_dir = extract_matrix(counts_path, directory / "input_matrix", "count_matrix_sparse.mtx")
         adata, author_metadata = read_geo_matrix(matrix_dir, dataset)
     elif dataset["format"] == "10x_mtx_tar":
@@ -229,7 +270,10 @@ def analyze(dataset: dict, parameters: dict, acceptance: dict, input_paths: dict
                 candidate_mt_kept=("miqc_candidate_keep", "sum"),
                 alternate_candidate_mt_kept=("miqc_alternate_candidate_keep", "sum"),
             ).to_csv(directory / "miqc" / "compartment_comparison.csv")
-    adata.uns["ambient_rna_status"] = "not_assessed_no_empty_droplet_matrix"
+    if supplied_counts is not None:
+        all_barcode_marker_review(adata, directory, breast=profile == "human_breast_tumor")
+    ambient_status = ambient_assessment["status"] if ambient_assessment else "not_assessed_no_empty_droplet_matrix"
+    adata.uns["ambient_rna_status"] = ambient_status
     adata.write_h5ad(directory / "all_cells_qc.h5ad", compression="gzip")
     adata.obs.to_csv(directory / "all_cells_qc.csv")
     fig, axes = plt.subplots(1, 3, figsize=(12, 3.5))
@@ -302,7 +346,7 @@ def analyze(dataset: dict, parameters: dict, acceptance: dict, input_paths: dict
         "clusters": int(filtered.obs.leiden.nunique()),
         "seed_stability_ari": float(adjusted_rand_score(filtered.obs.leiden, filtered.obs.leiden_alternate_seed)),
         "finite_embedding": bool(np.isfinite(filtered.obsm["X_umap"]).all()), "raw_counts_preserved": bool(raw_preserved),
-        "ambient_rna_status": "not_assessed_no_empty_droplet_matrix",
+        "ambient_rna_status": ambient_status,
         "coarse_label_hint_counts": {str(k): int(v) for k, v in filtered.obs.coarse_label_hint.value_counts().items()},
         "thresholds": thresholds,
         "review_only_flags": {key: int(all_metrics[key].sum()) for key in all_metrics if key.startswith("review_high_")},
@@ -330,11 +374,17 @@ def analyze(dataset: dict, parameters: dict, acceptance: dict, input_paths: dict
                         "reference_status": "same-dataset tutorial annotations; not independent truth"})
         pd.crosstab(reference_labels, observed_labels).to_csv(directory / "reference_cluster_overlap.csv")
     metrics["gates"] = calibration_gates(metrics, dataset["expected_cells"], acceptance, "reference_labels" in input_paths)
-    if profile == "human_breast_tumor":
+    if author_metadata is not None:
         metrics["gates"]["compartment_retention"] = metrics["minimum_compartment_retention"] >= 0.7
+    if profile == "human_breast_tumor":
         metrics["gates"]["capture_metadata_resolved"] = dataset["capture_scope"] == "verified_single_capture"
         metrics["gates"]["chemistry_metadata_resolved"] = dataset["chemistry_status"] == "verified"
     metrics["calibration_status"] = "pass" if all(metrics["gates"].values()) else "needs_review"
+    if supplied_counts is not None:
+        metrics["calibration_status"] = "patient_qc_provisional"
+        metrics["production_ready"] = False
+        metrics["unknown_label_fraction"] = float(filtered.obs.coarse_label_hint.astype(str).eq("Unknown / mixed").mean())
+        metrics["ambient_assessment"] = ambient_assessment or {"status": ambient_status}
     metrics["elapsed_seconds"] = round(time.monotonic() - started, 2)
     write_json(directory / "calibration.json", metrics)
     write_json(directory / "parameters.json", {"parameters": parameters, "thresholds": thresholds, "marker_panel": panel,
