@@ -106,6 +106,7 @@ Start here:
 - [docs/scrna-breast-qc.md](docs/scrna-breast-qc.md): breast tumor QC, capture/chemistry readiness, compartment-loss audits, and a public TNBC/ER+/HER2+ pilot.
 - [docs/scrna-production.md](docs/scrna-production.md): breast research release admission, immutable S3 promotion, run monitoring, miQC comparison, and outstanding qualification inputs.
 - [docs/scrna-patient-intake.md](docs/scrna-patient-intake.md): private delivery intake, reference-locked FASTQ counting, provisional QC, independent count audits, and patient/method review gates.
+- [docs/scrna-shadow-run.md](docs/scrna-shadow-run.md): hash-locked public samples rehearsed through the patient intake path, with source audits, QC losses, and admission holds.
 - [docs/operations/diana-public-data-download.md](docs/operations/diana-public-data-download.md): access-controlled Diana dataset retrieval and transfer guide (legacy filename).
 - [apps/data/README.md](apps/data/README.md): reviewed public-validation results landing page and S3 file browser.
 - [apps/jobs/README.md](apps/jobs/README.md): private viewer for live AWS Batch progress and CloudWatch logs.
