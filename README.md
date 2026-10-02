@@ -102,6 +102,7 @@ Start here:
 - [docs/data/source-map.md](docs/data/source-map.md): provenance for datasets, tools, truth sets, and vendor context.
 - [docs/operations/running-the-pipeline.md](docs/operations/running-the-pipeline.md): local, Docker, Nextflow, and AWS commands.
 - [docs/scrna-platform.md](docs/scrna-platform.md): public single-cell RNA-seq calibration, Modal workers, S3 custody, and verified review artifacts.
+- [docs/operations/scrna-data-upload.md](docs/operations/scrna-data-upload.md): single-cell/nucleus RNA-seq upload instructions using the Personalis-style S3 delivery pattern.
 - [docs/scrna-breast-qc.md](docs/scrna-breast-qc.md): breast tumor QC, capture/chemistry readiness, compartment-loss audits, and a public TNBC/ER+/HER2+ pilot.
 - [docs/scrna-production.md](docs/scrna-production.md): breast research release admission, immutable S3 promotion, run monitoring, miQC comparison, and outstanding qualification inputs.
 - [docs/operations/diana-public-data-download.md](docs/operations/diana-public-data-download.md): access-controlled Diana dataset retrieval and transfer guide (legacy filename).
