@@ -1,0 +1,11 @@
+{
+  "runs": {
+    "tnbc": "tnbc-tnbc-20261003T030435Z",
+    "brca1": "tnbc-brca1-20261003T030435Z"
+  },
+  "assessments": {
+    "tnbc": "provisional_hold",
+    "brca1": "provisional_hold"
+  },
+  "source_lock": "manifests/scrna/controls/gse161529-tnbc.sources.lock.json"
+}

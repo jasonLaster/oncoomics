@@ -1,0 +1,9 @@
+capture,case,input_cells,retained_cells,retained_fraction,mt_ceiling_pct,doublets_flagged,clusters,selected_resolution,seed_ari_median,seed_ari_min,unknown_label_fraction,failed_screens
+tn-mh0114,tnbc,2015,1481,0.735,9.2,59,11,0.4,0.902,0.731,0.0,capture_metadata_resolved;chemistry_metadata_resolved
+tn-mh0126,tnbc,3666,3106,0.847,6.7,160,5,0.2,0.995,0.922,0.0,capture_metadata_resolved;chemistry_metadata_resolved
+tn-mh0135,tnbc,15870,11840,0.746,9.3,1979,7,0.3,0.745,0.293,0.936,capture_metadata_resolved;chemistry_metadata_resolved;seed_stability
+tn-sh0106,tnbc,1065,848,0.796,6.0,23,12,0.6,0.966,0.903,0.021,capture_metadata_resolved;chemistry_metadata_resolved
+tn-b1-mh0131,brca1,6456,4988,0.773,22.8,376,5,0.2,0.599,0.319,0.884,capture_metadata_resolved;chemistry_metadata_resolved;seed_stability
+tn-b1-mh0177,brca1,21130,15203,0.719,17.3,3163,14,0.3,0.873,0.58,0.0,capture_metadata_resolved;chemistry_metadata_resolved
+tn-b1-mh4031,brca1,5581,4571,0.819,3.6,359,6,0.3,0.793,0.685,0.813,capture_metadata_resolved;chemistry_metadata_resolved;seed_stability
+tn-b1-tum0554,brca1,9593,7767,0.81,35.0,752,14,0.3,0.928,0.768,0.02,capture_metadata_resolved;chemistry_metadata_resolved
