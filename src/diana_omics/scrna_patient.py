@@ -12,7 +12,9 @@ from .scrna_io import sha256_file, write_json
 from .scrna_private import digest_json
 
 PARAMETERS = {"seed": 42, "n_hvg": 2000, "n_pcs": 40, "n_neighbors": 15, "qc_mad_multiplier": 3,
-              "leiden_resolution": 0.5, "leiden_iterations": -1, "miqc_challenger": False}
+              "leiden_resolution": 0.5, "leiden_iterations": -1, "miqc_challenger": False,
+              # Resolution is chosen per capture by multi-seed reproducibility, never by labels or QC outcomes.
+              "leiden_resolution_grid": [0.2, 0.3, 0.4, 0.5, 0.6, 0.8, 1.0], "stability_seeds": 10}
 ACCEPTANCE = {"retained_fraction_min": 0.7, "retained_fraction_max": 1, "clusters_min": 4, "clusters_max": 25,
               "seed_stability_ari_min": 0.85}
 SCIENTIFIC_FILES = ("scrna.py", "scrna_io.py", "scrna_qc.py", "scrna_miqc.py", "scrna_intake.py", "scrna_ambient.py", "scrna_patient.py")
@@ -83,7 +85,7 @@ def write_patient_review(output: Path, contract: dict, summaries: dict) -> None:
         ambient = metrics["ambient_assessment"]
         sections.append(f'''<section><h2>{name}</h2>
           <p>{metrics['retained_cells']:,} / {metrics['input_cells']:,} filtered vendor barcodes in provisional analysis;
-          {metrics['doublets_flagged']:,} scDblFinder calls; seed ARI {metrics['seed_stability_ari']:.3f}.</p>
+          {metrics['doublets_flagged']:,} scDblFinder calls; seed ARI {metrics['seed_stability_ari']:.3f} (median of {metrics['clustering_stability']['pairs_per_resolution']} seed pairs at selected resolution {metrics['clustering_stability']['selected_resolution']}).</p>
           <p>Review screens requiring attention: {escape(', '.join(failed) or 'none; method qualification and human review still required')}.</p>
           <p>Ambient status: {escape(ambient['status'])}. Correction is diagnostic only; analysis uses original counts.</p>
           <p>Unknown/mixed marker hints: {metrics['unknown_label_fraction']:.1%}. Marker margins are not probabilities.
@@ -93,7 +95,7 @@ def write_patient_review(output: Path, contract: dict, summaries: dict) -> None:
           <p><a href="{name}/all_cells_qc.csv">Every vendor barcode, including excluded cells</a> ·
           <a href="{name}/provisional_compartment_losses.csv">Loss by review-only tissue marker hint</a> ·
           <a href="{name}/all_cells_qc.h5ad">Original counts and correction challenger</a> ·
-          <a href="{name}/analysis.h5ad">Provisional analysis</a> · <a href="{name}/calibration.json">QC metrics</a></p></section>''')
+          <a href="{name}/analysis.h5ad">Provisional analysis</a> · <a href="{name}/cluster_stability.csv">Resolution stability sweep</a> · <a href="{name}/calibration.json">QC metrics</a></p></section>''')
     (output / "review.html").write_text('''<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
       <title>Single-cell intake and provisional QC</title><style>body{font:16px/1.5 system-ui;background:#f6f8fa;color:#182a39;margin:auto;padding:24px;max-width:1100px}
       section{background:white;border:1px solid #dbe3ea;border-radius:10px;padding:20px;margin:20px 0}.plots{display:grid;grid-template-columns:1fr 1fr;gap:10px}img{width:100%;height:auto}a{color:#17547c}

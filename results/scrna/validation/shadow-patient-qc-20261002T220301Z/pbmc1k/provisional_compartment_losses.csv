@@ -1,0 +1,8 @@
+review_marker_hint_all_barcodes,input_cells,retained_cells,low_genes,low_umis,mt_flagged,doublet_flagged,retained_fraction
+B cells,189,169,7,7,16,3,0.8941798941798942
+Dendritic cells,47,38,4,5,4,1,0.8085106382978723
+Monocytes,319,289,10,13,22,3,0.9059561128526645
+NK cells,122,102,6,11,11,4,0.8360655737704918
+Platelets,19,9,9,9,1,1,0.47368421052631576
+T cells,412,367,9,11,27,14,0.8907766990291263
+Unknown / mixed,114,38,67,68,71,2,0.3333333333333333

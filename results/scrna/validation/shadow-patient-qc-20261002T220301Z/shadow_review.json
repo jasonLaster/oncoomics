@@ -1,0 +1,1570 @@
+{
+  "ambient_published_defaults": {
+    "contamination_range": [
+      0.01,
+      0.8
+    ],
+    "package": "SoupX",
+    "source": "https://cran.r-project.org/src/contrib/SoupX_1.6.2.tar.gz",
+    "source_file": "SoupX/R/autoEstCont.R",
+    "source_sha256": "9b6226cd7c0691498a874d5c029f8ff81fd2060295c298985397521c1f7ee3a5",
+    "version": "1.6.2",
+    "wrapper_overrides_range": false
+  },
+  "biological_accuracy_established": false,
+  "captures": {
+    "breast-lt": {
+      "ambient_review": {
+        "estimate_at_published_lower_bound": true,
+        "interpretation": "The 1% fit is at the published default search boundary. Inspect the ambient model; this does not establish contamination is truly 1% or absent."
+      },
+      "capture_id": "shadow-breast-lt-001",
+      "comparison": {
+        "all_cells_qc.csv": {
+          "columns_compared": [
+            "capture_scope",
+            "chemistry_status",
+            "clinical_subtype",
+            "doublet_class",
+            "doublet_score",
+            "fails_low_genes",
+            "fails_low_umis",
+            "fails_mt",
+            "malignancy_status",
+            "n_genes_by_counts",
+            "passes_QC",
+            "passes_core_qc",
+            "pct_counts_cycling",
+            "pct_counts_hemoglobin",
+            "pct_counts_mt",
+            "pct_counts_ribosomal",
+            "pct_counts_stress",
+            "qc_failure_reasons",
+            "review_high_cycling",
+            "review_high_hemoglobin",
+            "review_high_ribosomal",
+            "review_high_stress",
+            "review_high_umis",
+            "soupx_rho",
+            "soupx_umis_removed_candidate",
+            "total_counts",
+            "total_counts_cycling",
+            "total_counts_hemoglobin",
+            "total_counts_mt",
+            "total_counts_ribosomal",
+            "total_counts_stress",
+            "treatment_status"
+          ],
+          "new_columns": [
+            "review_marker_hint_all_barcodes",
+            "review_marker_margin"
+          ],
+          "shared_non_alias_columns_exact": true
+        },
+        "baseline": "intake-breast-lt-v3-20261002T193000Z",
+        "cluster_marker_scores.csv": {
+          "columns_compared": [
+            "B cells",
+            "Endothelial",
+            "Epithelial",
+            "Fibroblast",
+            "Myeloid",
+            "Perivascular",
+            "Plasma cells",
+            "T / NK"
+          ],
+          "new_columns": [],
+          "shared_non_alias_columns_exact": false
+        },
+        "markers.csv": {
+          "columns_compared": [
+            "group",
+            "logfoldchanges",
+            "names",
+            "pct_nz_group",
+            "pct_nz_reference",
+            "pvals",
+            "pvals_adj",
+            "scores"
+          ],
+          "new_columns": [],
+          "shared_non_alias_columns_exact": false
+        },
+        "same_method_identity": false,
+        "umap.csv": {
+          "columns_compared": [
+            "coarse_label_hint",
+            "leiden",
+            "marker_score_margin",
+            "umap_1",
+            "umap_2"
+          ],
+          "new_columns": [],
+          "shared_non_alias_columns_exact": false
+        }
+      },
+      "compartment_losses": [
+        {
+          "doublet_flagged": 0,
+          "input_cells": 1,
+          "low_genes": 0,
+          "low_umis": 0,
+          "mt_flagged": 1,
+          "retained_cells": 0,
+          "retained_fraction": 0.0,
+          "review_marker_hint_all_barcodes": "B cells"
+        },
+        {
+          "doublet_flagged": 0,
+          "input_cells": 7,
+          "low_genes": 0,
+          "low_umis": 0,
+          "mt_flagged": 0,
+          "retained_cells": 7,
+          "retained_fraction": 1.0,
+          "review_marker_hint_all_barcodes": "Endothelial"
+        },
+        {
+          "doublet_flagged": 13,
+          "input_cells": 234,
+          "low_genes": 0,
+          "low_umis": 4,
+          "mt_flagged": 1,
+          "retained_cells": 216,
+          "retained_fraction": 0.9230769230769232,
+          "review_marker_hint_all_barcodes": "Epithelial"
+        },
+        {
+          "doublet_flagged": 0,
+          "input_cells": 15,
+          "low_genes": 0,
+          "low_umis": 0,
+          "mt_flagged": 4,
+          "retained_cells": 11,
+          "retained_fraction": 0.7333333333333333,
+          "review_marker_hint_all_barcodes": "Fibroblast"
+        },
+        {
+          "doublet_flagged": 0,
+          "input_cells": 34,
+          "low_genes": 0,
+          "low_umis": 0,
+          "mt_flagged": 4,
+          "retained_cells": 30,
+          "retained_fraction": 0.8823529411764706,
+          "review_marker_hint_all_barcodes": "Myeloid"
+        },
+        {
+          "doublet_flagged": 0,
+          "input_cells": 30,
+          "low_genes": 0,
+          "low_umis": 3,
+          "mt_flagged": 6,
+          "retained_cells": 21,
+          "retained_fraction": 0.7,
+          "review_marker_hint_all_barcodes": "Perivascular"
+        },
+        {
+          "doublet_flagged": 0,
+          "input_cells": 24,
+          "low_genes": 0,
+          "low_umis": 1,
+          "mt_flagged": 5,
+          "retained_cells": 18,
+          "retained_fraction": 0.75,
+          "review_marker_hint_all_barcodes": "Plasma cells"
+        },
+        {
+          "doublet_flagged": 0,
+          "input_cells": 30,
+          "low_genes": 0,
+          "low_umis": 0,
+          "mt_flagged": 0,
+          "retained_cells": 30,
+          "retained_fraction": 1.0,
+          "review_marker_hint_all_barcodes": "T / NK"
+        },
+        {
+          "doublet_flagged": 1,
+          "input_cells": 312,
+          "low_genes": 32,
+          "low_umis": 6,
+          "mt_flagged": 198,
+          "retained_cells": 107,
+          "retained_fraction": 0.3429487179487179,
+          "review_marker_hint_all_barcodes": "Unknown / mixed"
+        }
+      ],
+      "diagnostics": {
+        "exclusive_exclusion_partition": {
+          "doublets_after_core": 14,
+          "low_genes_first": 32,
+          "low_umis_after_genes": 14,
+          "mt_after_genes_and_umis": 187,
+          "retained": 440
+        },
+        "mt_sensitivity_review_only": [
+          {
+            "core_eligible_barcodes": 369,
+            "is_active_policy": false,
+            "mt_ceiling_percent": 20.0,
+            "newly_eligible_without_doublet_call": 0
+          },
+          {
+            "core_eligible_barcodes": 393,
+            "is_active_policy": false,
+            "mt_ceiling_percent": 30.0,
+            "newly_eligible_without_doublet_call": 0
+          },
+          {
+            "core_eligible_barcodes": 433,
+            "is_active_policy": false,
+            "mt_ceiling_percent": 40.0,
+            "newly_eligible_without_doublet_call": 0
+          },
+          {
+            "core_eligible_barcodes": 454,
+            "is_active_policy": true,
+            "mt_ceiling_percent": 45.369434713659345,
+            "newly_eligible_without_doublet_call": 0
+          },
+          {
+            "core_eligible_barcodes": 480,
+            "is_active_policy": false,
+            "mt_ceiling_percent": 50.0,
+            "newly_eligible_without_doublet_call": 26
+          },
+          {
+            "core_eligible_barcodes": 508,
+            "is_active_policy": false,
+            "mt_ceiling_percent": 60.0,
+            "newly_eligible_without_doublet_call": 54
+          },
+          {
+            "core_eligible_barcodes": 542,
+            "is_active_policy": false,
+            "mt_ceiling_percent": 80.0,
+            "newly_eligible_without_doublet_call": 88
+          },
+          {
+            "core_eligible_barcodes": 641,
+            "is_active_policy": false,
+            "mt_ceiling_percent": 100.0,
+            "newly_eligible_without_doublet_call": 187
+          }
+        ],
+        "overlapping_failure_combinations": {
+          "fails_low_genes;fails_mt": 32,
+          "fails_low_umis": 14,
+          "fails_mt": 187,
+          "retained": 440,
+          "scDblFinder_doublet": 14
+        },
+        "sensitivity_limit": "Changing the MT ceiling requires a separate method run and new doublet calls; these are core eligibility counts, not rescued cells or a recommendation."
+      },
+      "metrics": {
+        "ambient_assessment": {
+          "candidate_removed_fraction": 0.009987980597743917,
+          "correction_applied_to_analysis": false,
+          "evidence_level": "internal_qc",
+          "lineage": {
+            "exact_count_lineage": true,
+            "feature_reordered": false,
+            "filtered_cells": 687,
+            "low_count_noncell_droplets": 2549,
+            "noncell_barcodes": 11409,
+            "raw_barcodes": 12096
+          },
+          "method": "SoupX",
+          "original_counts_preserved": true,
+          "policy": "Diagnostic challenger; no automatic selection or forceAccept; low-count non-cell droplets 1..99 UMIs",
+          "rho_max": 0.01,
+          "rho_min": 0.01,
+          "seed": 42,
+          "status": "estimated_review_required",
+          "version": "1.6.2"
+        },
+        "ambient_rna_status": "estimated_review_required",
+        "calibration_status": "patient_qc_provisional",
+        "clustering_stability": {
+          "eligible_resolutions": 5,
+          "median_pairwise_ari": 0.824972,
+          "min_pairwise_ari": 0.7087829863019682,
+          "pairs_per_resolution": 45,
+          "policy": "max median pairwise ARI over frozen grid; in-bounds cluster counts; ties to finer resolution; medoid seed reported",
+          "reported_seed": 51,
+          "seeds": [
+            42,
+            43,
+            44,
+            45,
+            46,
+            47,
+            48,
+            49,
+            50,
+            51
+          ],
+          "selected_resolution": 1.0
+        },
+        "clusters": 7,
+        "coarse_label_hint_counts": {
+          "Epithelial": 235,
+          "Myeloid": 34,
+          "Unknown / mixed": 171
+        },
+        "core_qc_cells": 454,
+        "doublet_method": "scDblFinder",
+        "doublet_validation": "no_independent_truth_labels",
+        "doublets_flagged": 14,
+        "elapsed_seconds": 29.72,
+        "finite_embedding": true,
+        "gates": {
+          "capture_metadata_resolved": true,
+          "chemistry_metadata_resolved": true,
+          "cluster_count": true,
+          "doublets_called": true,
+          "finite_embedding": true,
+          "input_cells_match": true,
+          "raw_counts_preserved": true,
+          "retention": false,
+          "seed_stability": false
+        },
+        "input_cells": 687,
+        "input_genes": 36601,
+        "low_genes_flagged": 32,
+        "low_umis_flagged": 14,
+        "miqc_challenger": {},
+        "mt_flagged": 219,
+        "production_ready": false,
+        "qc_profile": "human_breast_tumor",
+        "raw_counts_preserved": true,
+        "retained_cells": 440,
+        "retained_fraction": 0.6404657933042213,
+        "review_only_flags": {
+          "review_high_cycling": 251,
+          "review_high_hemoglobin": 25,
+          "review_high_ribosomal": 14,
+          "review_high_stress": 73,
+          "review_high_umis": 0
+        },
+        "seed_stability_ari": 0.824972,
+        "thresholds": {
+          "mad_multiplier": 3,
+          "max_pct_mt": 45.369434713659345,
+          "min_genes": 210,
+          "min_umis": 1145,
+          "profile": "human_breast_tumor",
+          "rationale": "Sample/capture log1p lower MAD tails capped at observed p05 for mixed tissue; mt upper MAD tail without PBMC 5-25% bounds. Zero MAD disables that tail; no upper-count exclusion. Review loss by compartment and sensitivity before use."
+        },
+        "unknown_label_fraction": 0.3886363636363636
+      }
+    },
+    "breast-standard": {
+      "ambient_review": {
+        "estimate_at_published_lower_bound": true,
+        "interpretation": "The 1% fit is at the published default search boundary. Inspect the ambient model; this does not establish contamination is truly 1% or absent."
+      },
+      "capture_id": "shadow-breast-standard-001",
+      "comparison": {
+        "all_cells_qc.csv": {
+          "columns_compared": [
+            "capture_scope",
+            "chemistry_status",
+            "clinical_subtype",
+            "doublet_class",
+            "doublet_score",
+            "fails_low_genes",
+            "fails_low_umis",
+            "fails_mt",
+            "malignancy_status",
+            "n_genes_by_counts",
+            "passes_QC",
+            "passes_core_qc",
+            "pct_counts_cycling",
+            "pct_counts_hemoglobin",
+            "pct_counts_mt",
+            "pct_counts_ribosomal",
+            "pct_counts_stress",
+            "qc_failure_reasons",
+            "review_high_cycling",
+            "review_high_hemoglobin",
+            "review_high_ribosomal",
+            "review_high_stress",
+            "review_high_umis",
+            "review_marker_hint_all_barcodes",
+            "review_marker_margin",
+            "soupx_rho",
+            "soupx_umis_removed_candidate",
+            "total_counts",
+            "total_counts_cycling",
+            "total_counts_hemoglobin",
+            "total_counts_mt",
+            "total_counts_ribosomal",
+            "total_counts_stress",
+            "treatment_status"
+          ],
+          "new_columns": [],
+          "shared_non_alias_columns_exact": true
+        },
+        "baseline": "intake-breast-standard-final-20261002T201500Z",
+        "cluster_marker_scores.csv": {
+          "columns_compared": [
+            "B cells",
+            "Endothelial",
+            "Epithelial",
+            "Fibroblast",
+            "Myeloid",
+            "Perivascular",
+            "Plasma cells",
+            "T / NK"
+          ],
+          "new_columns": [],
+          "shared_non_alias_columns_exact": false
+        },
+        "markers.csv": {
+          "columns_compared": [
+            "group",
+            "logfoldchanges",
+            "names",
+            "pct_nz_group",
+            "pct_nz_reference",
+            "pvals",
+            "pvals_adj",
+            "scores"
+          ],
+          "new_columns": [],
+          "shared_non_alias_columns_exact": false
+        },
+        "same_method_identity": false,
+        "umap.csv": {
+          "columns_compared": [
+            "coarse_label_hint",
+            "leiden",
+            "marker_score_margin",
+            "umap_1",
+            "umap_2"
+          ],
+          "new_columns": [],
+          "shared_non_alias_columns_exact": false
+        }
+      },
+      "compartment_losses": [
+        {
+          "doublet_flagged": 1,
+          "input_cells": 8,
+          "low_genes": 0,
+          "low_umis": 0,
+          "mt_flagged": 2,
+          "retained_cells": 5,
+          "retained_fraction": 0.625,
+          "review_marker_hint_all_barcodes": "B cells"
+        },
+        {
+          "doublet_flagged": 4,
+          "input_cells": 59,
+          "low_genes": 1,
+          "low_umis": 0,
+          "mt_flagged": 5,
+          "retained_cells": 50,
+          "retained_fraction": 0.847457627118644,
+          "review_marker_hint_all_barcodes": "Endothelial"
+        },
+        {
+          "doublet_flagged": 127,
+          "input_cells": 2021,
+          "low_genes": 0,
+          "low_umis": 0,
+          "mt_flagged": 26,
+          "retained_cells": 1868,
+          "retained_fraction": 0.9242949035131124,
+          "review_marker_hint_all_barcodes": "Epithelial"
+        },
+        {
+          "doublet_flagged": 8,
+          "input_cells": 132,
+          "low_genes": 4,
+          "low_umis": 0,
+          "mt_flagged": 52,
+          "retained_cells": 72,
+          "retained_fraction": 0.5454545454545454,
+          "review_marker_hint_all_barcodes": "Fibroblast"
+        },
+        {
+          "doublet_flagged": 8,
+          "input_cells": 239,
+          "low_genes": 2,
+          "low_umis": 0,
+          "mt_flagged": 16,
+          "retained_cells": 215,
+          "retained_fraction": 0.899581589958159,
+          "review_marker_hint_all_barcodes": "Myeloid"
+        },
+        {
+          "doublet_flagged": 2,
+          "input_cells": 222,
+          "low_genes": 12,
+          "low_umis": 0,
+          "mt_flagged": 61,
+          "retained_cells": 159,
+          "retained_fraction": 0.7162162162162162,
+          "review_marker_hint_all_barcodes": "Perivascular"
+        },
+        {
+          "doublet_flagged": 1,
+          "input_cells": 189,
+          "low_genes": 1,
+          "low_umis": 0,
+          "mt_flagged": 35,
+          "retained_cells": 153,
+          "retained_fraction": 0.8095238095238095,
+          "review_marker_hint_all_barcodes": "Plasma cells"
+        },
+        {
+          "doublet_flagged": 5,
+          "input_cells": 165,
+          "low_genes": 0,
+          "low_umis": 0,
+          "mt_flagged": 8,
+          "retained_cells": 152,
+          "retained_fraction": 0.9212121212121211,
+          "review_marker_hint_all_barcodes": "T / NK"
+        },
+        {
+          "doublet_flagged": 27,
+          "input_cells": 2645,
+          "low_genes": 259,
+          "low_umis": 0,
+          "mt_flagged": 1756,
+          "retained_cells": 862,
+          "retained_fraction": 0.3258979206049149,
+          "review_marker_hint_all_barcodes": "Unknown / mixed"
+        }
+      ],
+      "diagnostics": {
+        "exclusive_exclusion_partition": {
+          "doublets_after_core": 183,
+          "low_genes_first": 279,
+          "low_umis_after_genes": 0,
+          "mt_after_genes_and_umis": 1682,
+          "retained": 3536
+        },
+        "mt_sensitivity_review_only": [
+          {
+            "core_eligible_barcodes": 3148,
+            "is_active_policy": false,
+            "mt_ceiling_percent": 20.0,
+            "newly_eligible_without_doublet_call": 0
+          },
+          {
+            "core_eligible_barcodes": 3385,
+            "is_active_policy": false,
+            "mt_ceiling_percent": 30.0,
+            "newly_eligible_without_doublet_call": 0
+          },
+          {
+            "core_eligible_barcodes": 3674,
+            "is_active_policy": false,
+            "mt_ceiling_percent": 40.0,
+            "newly_eligible_without_doublet_call": 0
+          },
+          {
+            "core_eligible_barcodes": 3719,
+            "is_active_policy": true,
+            "mt_ceiling_percent": 41.405153352382975,
+            "newly_eligible_without_doublet_call": 0
+          },
+          {
+            "core_eligible_barcodes": 3923,
+            "is_active_policy": false,
+            "mt_ceiling_percent": 50.0,
+            "newly_eligible_without_doublet_call": 204
+          },
+          {
+            "core_eligible_barcodes": 4129,
+            "is_active_policy": false,
+            "mt_ceiling_percent": 60.0,
+            "newly_eligible_without_doublet_call": 410
+          },
+          {
+            "core_eligible_barcodes": 4568,
+            "is_active_policy": false,
+            "mt_ceiling_percent": 80.0,
+            "newly_eligible_without_doublet_call": 849
+          },
+          {
+            "core_eligible_barcodes": 5401,
+            "is_active_policy": false,
+            "mt_ceiling_percent": 100.0,
+            "newly_eligible_without_doublet_call": 1682
+          }
+        ],
+        "overlapping_failure_combinations": {
+          "fails_low_genes;fails_mt": 279,
+          "fails_mt": 1682,
+          "retained": 3536,
+          "scDblFinder_doublet": 183
+        },
+        "sensitivity_limit": "Changing the MT ceiling requires a separate method run and new doublet calls; these are core eligibility counts, not rescued cells or a recommendation."
+      },
+      "metrics": {
+        "ambient_assessment": {
+          "candidate_removed_fraction": 0.010006262850082739,
+          "correction_applied_to_analysis": false,
+          "evidence_level": "internal_qc",
+          "lineage": {
+            "exact_count_lineage": true,
+            "feature_reordered": false,
+            "filtered_cells": 5680,
+            "low_count_noncell_droplets": 1456017,
+            "noncell_barcodes": 2043813,
+            "raw_barcodes": 2049493
+          },
+          "method": "SoupX",
+          "original_counts_preserved": true,
+          "policy": "Diagnostic challenger; no automatic selection or forceAccept; low-count non-cell droplets 1..99 UMIs",
+          "rho_max": 0.01,
+          "rho_min": 0.01,
+          "seed": 42,
+          "status": "estimated_review_required",
+          "version": "1.6.2"
+        },
+        "ambient_rna_status": "estimated_review_required",
+        "calibration_status": "patient_qc_provisional",
+        "clustering_stability": {
+          "eligible_resolutions": 7,
+          "median_pairwise_ari": 0.885084,
+          "min_pairwise_ari": 0.6956805410320812,
+          "pairs_per_resolution": 45,
+          "policy": "max median pairwise ARI over frozen grid; in-bounds cluster counts; ties to finer resolution; medoid seed reported",
+          "reported_seed": 43,
+          "seeds": [
+            42,
+            43,
+            44,
+            45,
+            46,
+            47,
+            48,
+            49,
+            50,
+            51
+          ],
+          "selected_resolution": 0.3
+        },
+        "clusters": 8,
+        "coarse_label_hint_counts": {
+          "Endothelial": 79,
+          "Epithelial": 2084,
+          "Fibroblast": 46,
+          "Myeloid": 237,
+          "Unknown / mixed": 1090
+        },
+        "core_qc_cells": 3719,
+        "doublet_method": "scDblFinder",
+        "doublet_validation": "no_independent_truth_labels",
+        "doublets_flagged": 183,
+        "elapsed_seconds": 88.54,
+        "finite_embedding": true,
+        "gates": {
+          "capture_metadata_resolved": true,
+          "chemistry_metadata_resolved": true,
+          "cluster_count": true,
+          "doublets_called": true,
+          "finite_embedding": true,
+          "input_cells_match": true,
+          "raw_counts_preserved": true,
+          "retention": false,
+          "seed_stability": true
+        },
+        "input_cells": 5680,
+        "input_genes": 36601,
+        "low_genes_flagged": 279,
+        "low_umis_flagged": 0,
+        "miqc_challenger": {},
+        "mt_flagged": 1961,
+        "production_ready": false,
+        "qc_profile": "human_breast_tumor",
+        "raw_counts_preserved": true,
+        "retained_cells": 3536,
+        "retained_fraction": 0.6225352112676056,
+        "review_only_flags": {
+          "review_high_cycling": 1840,
+          "review_high_hemoglobin": 158,
+          "review_high_ribosomal": 159,
+          "review_high_stress": 702,
+          "review_high_umis": 0
+        },
+        "seed_stability_ari": 0.885084,
+        "thresholds": {
+          "mad_multiplier": 3,
+          "max_pct_mt": 41.405153352382975,
+          "min_genes": 133,
+          "min_umis": 489,
+          "profile": "human_breast_tumor",
+          "rationale": "Sample/capture log1p lower MAD tails capped at observed p05 for mixed tissue; mt upper MAD tail without PBMC 5-25% bounds. Zero MAD disables that tail; no upper-count exclusion. Review loss by compartment and sensitivity before use."
+        },
+        "unknown_label_fraction": 0.3082579185520362
+      }
+    },
+    "pbmc1k": {
+      "ambient_review": {
+        "estimate_at_published_lower_bound": true,
+        "interpretation": "The 1% fit is at the published default search boundary. Inspect the ambient model; this does not establish contamination is truly 1% or absent."
+      },
+      "capture_id": "shadow-pbmc1k-001",
+      "comparison": {
+        "all_cells_qc.csv": {
+          "columns_compared": [
+            "doublet_class",
+            "doublet_score",
+            "fails_low_genes",
+            "fails_low_umis",
+            "fails_mt",
+            "n_genes_by_counts",
+            "passes_QC",
+            "passes_core_qc",
+            "pct_counts_cycling",
+            "pct_counts_hemoglobin",
+            "pct_counts_mt",
+            "pct_counts_ribosomal",
+            "pct_counts_stress",
+            "qc_failure_reasons",
+            "review_high_cycling",
+            "review_high_hemoglobin",
+            "review_high_ribosomal",
+            "review_high_stress",
+            "review_high_umis",
+            "review_marker_hint_all_barcodes",
+            "review_marker_margin",
+            "soupx_rho",
+            "soupx_umis_removed_candidate",
+            "total_counts",
+            "total_counts_cycling",
+            "total_counts_hemoglobin",
+            "total_counts_mt",
+            "total_counts_ribosomal",
+            "total_counts_stress"
+          ],
+          "new_columns": [],
+          "shared_non_alias_columns_exact": true
+        },
+        "baseline": "intake-pbmc1k-final-20261002T201500Z",
+        "cluster_marker_scores.csv": {
+          "columns_compared": [
+            "B cells",
+            "Dendritic cells",
+            "Monocytes",
+            "NK cells",
+            "Platelets",
+            "T cells"
+          ],
+          "new_columns": [],
+          "shared_non_alias_columns_exact": false
+        },
+        "markers.csv": {
+          "columns_compared": [
+            "group",
+            "logfoldchanges",
+            "names",
+            "pct_nz_group",
+            "pct_nz_reference",
+            "pvals",
+            "pvals_adj",
+            "scores"
+          ],
+          "new_columns": [],
+          "shared_non_alias_columns_exact": false
+        },
+        "same_method_identity": false,
+        "umap.csv": {
+          "columns_compared": [
+            "coarse_label_hint",
+            "leiden",
+            "marker_score_margin",
+            "umap_1",
+            "umap_2"
+          ],
+          "new_columns": [],
+          "shared_non_alias_columns_exact": false
+        }
+      },
+      "compartment_losses": [
+        {
+          "doublet_flagged": 3,
+          "input_cells": 189,
+          "low_genes": 7,
+          "low_umis": 7,
+          "mt_flagged": 16,
+          "retained_cells": 169,
+          "retained_fraction": 0.8941798941798942,
+          "review_marker_hint_all_barcodes": "B cells"
+        },
+        {
+          "doublet_flagged": 1,
+          "input_cells": 47,
+          "low_genes": 4,
+          "low_umis": 5,
+          "mt_flagged": 4,
+          "retained_cells": 38,
+          "retained_fraction": 0.8085106382978723,
+          "review_marker_hint_all_barcodes": "Dendritic cells"
+        },
+        {
+          "doublet_flagged": 3,
+          "input_cells": 319,
+          "low_genes": 10,
+          "low_umis": 13,
+          "mt_flagged": 22,
+          "retained_cells": 289,
+          "retained_fraction": 0.9059561128526644,
+          "review_marker_hint_all_barcodes": "Monocytes"
+        },
+        {
+          "doublet_flagged": 4,
+          "input_cells": 122,
+          "low_genes": 6,
+          "low_umis": 11,
+          "mt_flagged": 11,
+          "retained_cells": 102,
+          "retained_fraction": 0.8360655737704918,
+          "review_marker_hint_all_barcodes": "NK cells"
+        },
+        {
+          "doublet_flagged": 1,
+          "input_cells": 19,
+          "low_genes": 9,
+          "low_umis": 9,
+          "mt_flagged": 1,
+          "retained_cells": 9,
+          "retained_fraction": 0.4736842105263157,
+          "review_marker_hint_all_barcodes": "Platelets"
+        },
+        {
+          "doublet_flagged": 14,
+          "input_cells": 412,
+          "low_genes": 9,
+          "low_umis": 11,
+          "mt_flagged": 27,
+          "retained_cells": 367,
+          "retained_fraction": 0.8907766990291263,
+          "review_marker_hint_all_barcodes": "T cells"
+        },
+        {
+          "doublet_flagged": 2,
+          "input_cells": 114,
+          "low_genes": 67,
+          "low_umis": 68,
+          "mt_flagged": 71,
+          "retained_cells": 38,
+          "retained_fraction": 0.3333333333333333,
+          "review_marker_hint_all_barcodes": "Unknown / mixed"
+        }
+      ],
+      "diagnostics": {
+        "exclusive_exclusion_partition": {
+          "doublets_after_core": 28,
+          "low_genes_first": 112,
+          "low_umis_after_genes": 16,
+          "mt_after_genes_and_umis": 54,
+          "retained": 1012
+        },
+        "mt_sensitivity_review_only": [
+          {
+            "core_eligible_barcodes": 1040,
+            "is_active_policy": true,
+            "mt_ceiling_percent": 15.863120787202863,
+            "newly_eligible_without_doublet_call": 0
+          },
+          {
+            "core_eligible_barcodes": 1074,
+            "is_active_policy": false,
+            "mt_ceiling_percent": 20.0,
+            "newly_eligible_without_doublet_call": 34
+          },
+          {
+            "core_eligible_barcodes": 1090,
+            "is_active_policy": false,
+            "mt_ceiling_percent": 30.0,
+            "newly_eligible_without_doublet_call": 50
+          },
+          {
+            "core_eligible_barcodes": 1092,
+            "is_active_policy": false,
+            "mt_ceiling_percent": 40.0,
+            "newly_eligible_without_doublet_call": 52
+          },
+          {
+            "core_eligible_barcodes": 1093,
+            "is_active_policy": false,
+            "mt_ceiling_percent": 50.0,
+            "newly_eligible_without_doublet_call": 53
+          },
+          {
+            "core_eligible_barcodes": 1094,
+            "is_active_policy": false,
+            "mt_ceiling_percent": 60.0,
+            "newly_eligible_without_doublet_call": 54
+          },
+          {
+            "core_eligible_barcodes": 1094,
+            "is_active_policy": false,
+            "mt_ceiling_percent": 80.0,
+            "newly_eligible_without_doublet_call": 54
+          },
+          {
+            "core_eligible_barcodes": 1094,
+            "is_active_policy": false,
+            "mt_ceiling_percent": 100.0,
+            "newly_eligible_without_doublet_call": 54
+          }
+        ],
+        "overlapping_failure_combinations": {
+          "fails_low_genes": 1,
+          "fails_low_genes;fails_low_umis": 20,
+          "fails_low_genes;fails_low_umis;fails_mt": 88,
+          "fails_low_genes;fails_mt": 3,
+          "fails_low_umis": 9,
+          "fails_low_umis;fails_mt": 7,
+          "fails_mt": 54,
+          "retained": 1012,
+          "scDblFinder_doublet": 28
+        },
+        "sensitivity_limit": "Changing the MT ceiling requires a separate method run and new doublet calls; these are core eligibility counts, not rescued cells or a recommendation."
+      },
+      "metrics": {
+        "ambient_assessment": {
+          "candidate_removed_fraction": 0.00999193948681255,
+          "correction_applied_to_analysis": false,
+          "evidence_level": "internal_qc",
+          "lineage": {
+            "exact_count_lineage": true,
+            "feature_reordered": false,
+            "filtered_cells": 1222,
+            "low_count_noncell_droplets": 233233,
+            "noncell_barcodes": 6793658,
+            "raw_barcodes": 6794880
+          },
+          "method": "SoupX",
+          "original_counts_preserved": true,
+          "policy": "Diagnostic challenger; no automatic selection or forceAccept; low-count non-cell droplets 1..99 UMIs",
+          "rho_max": 0.01,
+          "rho_min": 0.01,
+          "seed": 42,
+          "status": "estimated_review_required",
+          "version": "1.6.2"
+        },
+        "ambient_rna_status": "estimated_review_required",
+        "calibration_status": "patient_qc_provisional",
+        "clustering_stability": {
+          "eligible_resolutions": 7,
+          "median_pairwise_ari": 0.997587,
+          "min_pairwise_ari": 0.9880247595014292,
+          "pairs_per_resolution": 45,
+          "policy": "max median pairwise ARI over frozen grid; in-bounds cluster counts; ties to finer resolution; medoid seed reported",
+          "reported_seed": 42,
+          "seeds": [
+            42,
+            43,
+            44,
+            45,
+            46,
+            47,
+            48,
+            49,
+            50,
+            51
+          ],
+          "selected_resolution": 0.2
+        },
+        "clusters": 4,
+        "coarse_label_hint_counts": {
+          "B cells": 199,
+          "Monocytes": 325,
+          "NK cells": 161,
+          "T cells": 327
+        },
+        "core_qc_cells": 1040,
+        "doublet_method": "scDblFinder",
+        "doublet_validation": "no_independent_truth_labels",
+        "doublets_flagged": 28,
+        "elapsed_seconds": 42.98,
+        "finite_embedding": true,
+        "gates": {
+          "cluster_count": true,
+          "doublets_called": true,
+          "finite_embedding": true,
+          "input_cells_match": true,
+          "raw_counts_preserved": true,
+          "retention": true,
+          "seed_stability": true
+        },
+        "input_cells": 1222,
+        "input_genes": 33538,
+        "low_genes_flagged": 112,
+        "low_umis_flagged": 124,
+        "miqc_challenger": {},
+        "mt_flagged": 152,
+        "production_ready": false,
+        "qc_profile": "human_pbmc",
+        "raw_counts_preserved": true,
+        "retained_cells": 1012,
+        "retained_fraction": 0.8281505728314239,
+        "review_only_flags": {
+          "review_high_cycling": 353,
+          "review_high_hemoglobin": 16,
+          "review_high_ribosomal": 0,
+          "review_high_stress": 154,
+          "review_high_umis": 56
+        },
+        "seed_stability_ari": 0.997587,
+        "thresholds": {
+          "mad_multiplier": 3,
+          "max_pct_mt": 15.863120787202863,
+          "min_genes": 953,
+          "min_umis": 2685,
+          "profile": "human_pbmc",
+          "rationale": "Capture-level MAD robust tails; PBMC guardrails retain low-RNA lymphocytes and bound the mt tail."
+        },
+        "unknown_label_fraction": 0.0
+      }
+    }
+  },
+  "cases": {
+    "breast": {
+      "assessment": {
+        "artifact_index_sha256": "74db203c634484923f2558b9be0d30700ce4ac14e77030557721f85afdad524f",
+        "assessment_policy_sha256": "e7482c90e23f4c56b5c53c3bc1d37edc64cb87f6e7bc832f02a095758bcf7748",
+        "blockers": [
+          "No independently reviewed method qualification certificate",
+          "Patient QC screen needs review: shadow-breast-lt-001",
+          "Patient QC screen needs review: shadow-breast-standard-001",
+          "Patient identity, QC losses and annotation uncertainty await human review"
+        ],
+        "claim": "postcount_qc_and_coarse_marker_hints",
+        "clinical_ready": false,
+        "decision": "provisional_hold",
+        "method_qualified": false,
+        "method_sha256": "88b792f505b8ff5fd2b5350c5c5ae9433117e0268154599bf7bc21ee9dd7d48c",
+        "patient_review_sha256": null,
+        "qualification_certificate_sha256": null,
+        "reviewer_authentication": "Operator must verify reviewer authority and approved certificate digest outside this tool",
+        "schema_version": 1,
+        "source_audit_sha256": "65c008c2db6f802382465202ab5f3392e449a03f872c97cdcb66fe33766d1f16"
+      },
+      "manifest": {
+        "artifact_index_sha256": "74db203c634484923f2558b9be0d30700ce4ac14e77030557721f85afdad524f",
+        "artifact_versions": {
+          "artifact_index.json": "Qc1.GoQ.oEqCcjbpGLO5e6REYI2zce7O",
+          "conda-explicit.txt": "hIlBdoc5YUTQL4pgc37QWQJQn4EW7NR7",
+          "input_contract.json": "0BLPw7H15pw7vYbiT4tuln_amF4zbCP2",
+          "intake_custody.json": "Td.nBe6IfjRsMtleccdps89Ns_.s3d_r",
+          "intake_inspection.json": "YGFPZWgVb9au9dmgQ700KCgLeV.cRJ8g",
+          "method_identity.json": "a6Et7v7z8WByeKWFIaLBDgC8hpnx_YDZ",
+          "python_packages.json": "Ot3MJGyKRud2S2ZqF2vTEasMgg9sybYO",
+          "qc_summary.json": "VtJC5F5YPJHuctpGlZfbGKWehmUlXMHm",
+          "review.html": "kvR236hQGGoECY3G9sqHE3shLoVQovGl",
+          "shadow-breast-lt-001-ambient/assess.R": "3SJRjUsQ.kwF8QIr1rQZTCV7Jh6EzYQ6",
+          "shadow-breast-lt-001-ambient/assessment.json": "60BV..fCs_og7.4l_Qa4wLPuouCneiKT",
+          "shadow-breast-lt-001-ambient/cells.tsv": "eyvkUKdQSxznQ_mEdb8LS5GEeHX.ktRZ",
+          "shadow-breast-lt-001-ambient/contamination.csv": "IlS86rRcdMpk0ZbO68szrocngCODCYjA",
+          "shadow-breast-lt-001-ambient/droplets.tsv": "RjGvgSy167tXZTY4jG6uWMLCf9wb5u7v",
+          "shadow-breast-lt-001-ambient/fit.json": "NNiB5_AELwLNKXB4RjfQt15qRfLcfQ5l",
+          "shadow-breast-lt-001-ambient/genes.tsv": "n7_ceNbUkmlC7286HnP5URmgb5TRlytc",
+          "shadow-breast-lt-001-ambient/initial_clusters.csv": "LxK6w6ZeRQlyn2Nl6w7W.D0J18ngjjQx",
+          "shadow-breast-lt-001-ambient/r.log": "U.NzvLJXsLW_anK9Wbr76R3E2vwUOj9W",
+          "shadow-breast-lt-001-ambient/r_session.txt": "EwUw1YFrYqLtM3eY5s0Sc3VCFJXvTxvB",
+          "shadow-breast-lt-001/all_cells_qc.csv": "YFyJSpwnlZ0f8m2ZJ3qfP0Zb8QrRnEQq",
+          "shadow-breast-lt-001/all_cells_qc.h5ad": "AIeLcqrYVgw19..O29L5PMsF23zcu2_1",
+          "shadow-breast-lt-001/analysis.h5ad": "YLJIQ.zHPlHNrj.6MxQTNAvywkcJFHyB",
+          "shadow-breast-lt-001/breast_qc_review.png": "uNI2yh7g3CU2iVyyWV716iV9Fst5KSoJ",
+          "shadow-breast-lt-001/calibration.json": "0keWBgKoM46mnhD_xqLy89DBwUnk5Zto",
+          "shadow-breast-lt-001/cluster_marker_scores.csv": "rIZ9OAMJTOJjU1GmOhtB4_Y5lTqMnkAp",
+          "shadow-breast-lt-001/cluster_stability.csv": "fsLsn5QQyC6gwhCs_zdJUbxJGZGw6UV9",
+          "shadow-breast-lt-001/doublets/barcodes.tsv": "V297fF56XkjhzUMqFqZjLnx26tGpW7Rb",
+          "shadow-breast-lt-001/doublets/call.R": "Kj0Ili5RjZU8z4whRlsQ63y1C9rdgDic",
+          "shadow-breast-lt-001/doublets/calls.csv": "fNoJ.zZZTvNQx1w9scKUgxU5sy9CpbBI",
+          "shadow-breast-lt-001/doublets/r.log": "HHjL.pCd7pOhLfAt4gSzHFcXt1.5B8CQ",
+          "shadow-breast-lt-001/doublets/r_session.txt": "8X9KT2Kx8bDTV3cre2v.aVQsmERvbmSe",
+          "shadow-breast-lt-001/markers.csv": "Xws3DenhhbfVAyIOieS10GDusZhxFsaj",
+          "shadow-breast-lt-001/parameters.json": "IzngmfUlcVbFiDmsqE8LFK7YjQBc55AE",
+          "shadow-breast-lt-001/provisional_compartment_losses.csv": "hSQo0plZvybO8Fa7uydvnwvODKNIKn5o",
+          "shadow-breast-lt-001/qc_thresholds.png": "L0NijNGdl4wk5AsHARnYodRq5wgsVUhc",
+          "shadow-breast-lt-001/umap.csv": "XDB6e4WfUgbWyZmzR1WpVcHoaxABvJMG",
+          "shadow-breast-lt-001/umap_coarse_label_hint.png": "p7.G2Mb3IGNR.UnXneY8M65v_jCeqM_i",
+          "shadow-breast-lt-001/umap_leiden.png": "oftJqw4nCUxvtBdNjoyTT3yWpjYqHspj",
+          "shadow-breast-standard-001-ambient/assess.R": "Ap3xXZQZ8kmuknYfTTpnd2.gvk0zOSdW",
+          "shadow-breast-standard-001-ambient/assessment.json": "aKtUCh1jqUSh3bqnT.bTohOOB32fbyB9",
+          "shadow-breast-standard-001-ambient/cells.tsv": "wCT8jwllUgIlt0nEyWgyfzHBK9KIgEKH",
+          "shadow-breast-standard-001-ambient/contamination.csv": "l84QCuFU2Xn9cXaS_klPmal.LrPq9Aws",
+          "shadow-breast-standard-001-ambient/droplets.tsv": "Kb.JO5Ih7N7trUjCn9uRyNzrZvep_zEn",
+          "shadow-breast-standard-001-ambient/fit.json": "MsMQ5KweoNwEVijFZ3K7NWW0zGzdolkr",
+          "shadow-breast-standard-001-ambient/genes.tsv": "tsav3KmiqFwOI3YsHnjB3fTLEqh1gnHv",
+          "shadow-breast-standard-001-ambient/initial_clusters.csv": "ww09pHnvWc8nnaoTJUU9CyqB_hi_xRqr",
+          "shadow-breast-standard-001-ambient/r.log": "LjIMRTqz4pmFCa4ET7g0vazZuUk72FXm",
+          "shadow-breast-standard-001-ambient/r_session.txt": "GngsUCttNX9ZimVNyhAQL5yz3eI9TkkE",
+          "shadow-breast-standard-001/all_cells_qc.csv": "cOkMWDUqEhDMPni7xRtdjHQUIzennYW2",
+          "shadow-breast-standard-001/all_cells_qc.h5ad": "c1q3zik4JtdV0DUXYBpf36grlF4wRjlQ",
+          "shadow-breast-standard-001/analysis.h5ad": ".FZo0kSBq_0QoS3YxLeiGmob9aaKbc5V",
+          "shadow-breast-standard-001/breast_qc_review.png": "qSvDyJuXgPJ5Pt.SpsCbmD_v0Iii_vAJ",
+          "shadow-breast-standard-001/calibration.json": ".LsO72os7klLyAUP8BsWkva.tWklJPkj",
+          "shadow-breast-standard-001/cluster_marker_scores.csv": "_pAgU7.bnq73C7Ff9VZPzT_jzjHy7F.h",
+          "shadow-breast-standard-001/cluster_stability.csv": "AqTEj2gfeDoOXrS20.TH9KIM0Wo4ymFt",
+          "shadow-breast-standard-001/doublets/barcodes.tsv": "T79Wt.Lk5LcaA8iyElvq9uM96mVuCtkf",
+          "shadow-breast-standard-001/doublets/call.R": "vJBQfAM_y6tRhxhUuPA7ORZrohgug8DB",
+          "shadow-breast-standard-001/doublets/calls.csv": "Qj.vEaUSSEk99GO8..WnbB5jWdCUMSVQ",
+          "shadow-breast-standard-001/doublets/r.log": "sapc6KRtpZrjM1hleDqP0Z.mgBsLVEum",
+          "shadow-breast-standard-001/doublets/r_session.txt": ".Qan66gkNtQ5JfUyda0GOLeG1gCfCUZN",
+          "shadow-breast-standard-001/markers.csv": "fOfjYyhDTUGjbjCLNib05guru1xE1m2t",
+          "shadow-breast-standard-001/parameters.json": "KQhbNE3k13JaoddXkmv8kt4j.E5U4Vgr",
+          "shadow-breast-standard-001/provisional_compartment_losses.csv": "98pfOowbnzKTre2t5PmVALrf77jhF8IC",
+          "shadow-breast-standard-001/qc_thresholds.png": "UzLShThTQ_iii0pDztiXSFyzcxdSoesQ",
+          "shadow-breast-standard-001/umap.csv": "ofbQ86hyJNVgH.EhMlCYGyOe8VcwUp1u",
+          "shadow-breast-standard-001/umap_coarse_label_hint.png": "YAWCH5eOJ1yb_qusJy7PwQCB8jxfyuk5",
+          "shadow-breast-standard-001/umap_leiden.png": "TELULRBnQRkdYc5SJZxazOj3xuo5jlpW",
+          "source/modal_patient_runner.py": "Ria8sna_11yOVkyTmF4M.jfC.kULZNHg",
+          "source/scrna.py": "7L7Wo8EELaZ8OUaaYv.rZm4VAGN9CouB",
+          "source/scrna_ambient.py": "CowrHXy0R_Z_ZDIwRvU5JNXHnFosLsu3",
+          "source/scrna_intake.py": "nqIXUmW.9Ymn82cOydkwz8MBlV_RhQ39",
+          "source/scrna_io.py": "MIv0p_7ELxMlPl6Qlja_5rdetkmnsAZ7",
+          "source/scrna_miqc.py": "7kd_gWMX3Wb3RPNW4.oNojNjLbE_ycdc",
+          "source/scrna_patient.py": "XF.0peRU2HYxaX4wIKAHaX51tK6C6R1L",
+          "source/scrna_private.py": "FRQ.KffxZ1ylrSIhypgTbCed89WcM6oY",
+          "source/scrna_qc.py": "0bmD4Nfy.vyBiKGxAPfO4O6fZSMj5nR9",
+          "source/scrna_trust.py": "vGNDh0ZpPinZMBHvAIo1ScvZCuwDMmtL",
+          "source_hashes.json": "oUITcUoifNbehn6doFM_y3l9Ofy.9xWF"
+        },
+        "clinical_ready": false,
+        "completed_at": "2026-10-02T22:09:55.019592+00:00",
+        "compute": {
+          "cpu": 4,
+          "max_containers": 1,
+          "memory_mib": 16384,
+          "timeout_seconds": 3600
+        },
+        "evidence_lane": "patient_research",
+        "intake_id": "96bf093072e41f7f10449accab68a9932afb8567243cdb51cae0f6b1b5f3d0a9",
+        "method_sha256": "88b792f505b8ff5fd2b5350c5c5ae9433117e0268154599bf7bc21ee9dd7d48c",
+        "production_ready": false,
+        "run_id": "shadow-breast-20261002T220301Z",
+        "runner_sha256": "80f7251fc03e3a320f087fa14a48a11dec68529039d2ba8673acd53aaea51806",
+        "schema_version": 1,
+        "scientific_status": "qc_provisional",
+        "started_at": "2026-10-02T22:05:26.035182+00:00",
+        "status": "complete"
+      },
+      "method": {
+        "ambient_policy": "SoupX-1.6.2-diagnostic-only",
+        "annotation_policy": "tissue-marker-hints-no-calibrated-probability",
+        "conda_explicit_sha256": "b36cfb6ead5ac07bfa2085a8c58ccde8b195ca97d7f2fda6629e11843a11a327",
+        "method_sha256": "88b792f505b8ff5fd2b5350c5c5ae9433117e0268154599bf7bc21ee9dd7d48c",
+        "parameters": {
+          "leiden_iterations": -1,
+          "leiden_resolution": 0.5,
+          "leiden_resolution_grid": [
+            0.2,
+            0.3,
+            0.4,
+            0.5,
+            0.6,
+            0.8,
+            1.0
+          ],
+          "miqc_challenger": false,
+          "n_hvg": 2000,
+          "n_neighbors": 15,
+          "n_pcs": 40,
+          "qc_mad_multiplier": 3,
+          "seed": 42,
+          "stability_seeds": 10
+        },
+        "python_versions": {
+          "anndata": "0.11.4",
+          "igraph": "0.11.8",
+          "leidenalg": "0.10.2",
+          "numpy": "1.26.4",
+          "pandas": "2.2.3",
+          "scanpy": "1.11.1",
+          "scikit-learn": "1.5.2",
+          "scipy": "1.15.2",
+          "umap-learn": "0.5.7"
+        },
+        "runner_sha256": "80f7251fc03e3a320f087fa14a48a11dec68529039d2ba8673acd53aaea51806",
+        "schema_version": 1,
+        "scientific_sources": {
+          "scrna.py": "27d62967b4c4d1ee5f3de1c62c980b619618deea8f228363c6a841d5e7c131ca",
+          "scrna_ambient.py": "316a80ef8cad26fc8145e006ff7864e9af55bea4ab6c3f55d57d531ac7f4375b",
+          "scrna_intake.py": "2cb887957098b9dfbfec3a8e813a9301f42f04e6b0ec64b121b1a7777cc43728",
+          "scrna_io.py": "5c5cd6d72df7f6371d30bf0c725fda48159df621497e39beb28c898243495edf",
+          "scrna_miqc.py": "c618c4ee6c86fad781c3d81e9d9d2f68da103a66313b5e3fdf1588f23faecf75",
+          "scrna_patient.py": "70a30a63080d06a45d9f3caceb1fd00b0b3ecff65095fe0960fd75d4f5c3378f",
+          "scrna_qc.py": "802f37fb010cc5d9b7d6d10f69191176b5adaf5d7a24bf983f88c30dfd0ffbfe"
+        },
+        "storage_source_sha256": "ea19300b8ef30ae86721d57712077163d355d6816fff41350d24b8031ea4b53d"
+      },
+      "run_id": "shadow-breast-20261002T220301Z",
+      "source_audit": {
+        "artifact_index_sha256": "74db203c634484923f2558b9be0d30700ce4ac14e77030557721f85afdad524f",
+        "audit_source_sha256": "1966f3546ee6f6b58c5a52a0cbfb8b2897f1b33acf84e5b470abb3e568d2c985",
+        "biological_accuracy_established": false,
+        "captures": {
+          "shadow-breast-lt-001": {
+            "all_vendor_barcodes_preserved": true,
+            "candidate_correction_monotone": true,
+            "core_failures_excluded": true,
+            "doublets_excluded": true,
+            "malignancy_not_assessed": true,
+            "qc_csv_matches_checkpoint": true,
+            "retained_counts_exact": true,
+            "retained_selection_exact": true,
+            "source_to_all_cells_exact": true,
+            "summary_matches_barcodes": true
+          },
+          "shadow-breast-standard-001": {
+            "all_vendor_barcodes_preserved": true,
+            "candidate_correction_monotone": true,
+            "core_failures_excluded": true,
+            "doublets_excluded": true,
+            "malignancy_not_assessed": true,
+            "qc_csv_matches_checkpoint": true,
+            "retained_counts_exact": true,
+            "retained_selection_exact": true,
+            "source_to_all_cells_exact": true,
+            "summary_matches_barcodes": true
+          }
+        },
+        "clinical_ready": false,
+        "evidence_level": "mechanical_smoke",
+        "intake_id": "96bf093072e41f7f10449accab68a9932afb8567243cdb51cae0f6b1b5f3d0a9",
+        "schema_version": 1,
+        "status": "counts_integrity_pass"
+      }
+    },
+    "pbmc": {
+      "assessment": {
+        "artifact_index_sha256": "b5d8be4d59e19af6db51916372df5460ee72b9c047641755f71e0ae3e231a54f",
+        "assessment_policy_sha256": "e7482c90e23f4c56b5c53c3bc1d37edc64cb87f6e7bc832f02a095758bcf7748",
+        "blockers": [
+          "No independently reviewed method qualification certificate",
+          "Patient identity, QC losses and annotation uncertainty await human review"
+        ],
+        "claim": "postcount_qc_and_coarse_marker_hints",
+        "clinical_ready": false,
+        "decision": "provisional_hold",
+        "method_qualified": false,
+        "method_sha256": "88b792f505b8ff5fd2b5350c5c5ae9433117e0268154599bf7bc21ee9dd7d48c",
+        "patient_review_sha256": null,
+        "qualification_certificate_sha256": null,
+        "reviewer_authentication": "Operator must verify reviewer authority and approved certificate digest outside this tool",
+        "schema_version": 1,
+        "source_audit_sha256": "2e0d2f1d13f40c7d756020adf9d144b071c63b131dd2c53f1f5be4b4ba44fb62"
+      },
+      "manifest": {
+        "artifact_index_sha256": "b5d8be4d59e19af6db51916372df5460ee72b9c047641755f71e0ae3e231a54f",
+        "artifact_versions": {
+          "artifact_index.json": "8ZEHT73BN_Tpd9TTCGn.CD5VvbNSX6KR",
+          "conda-explicit.txt": "5dOzJ2eIhb8cJ2YcYlvyvK37IgdCrXb9",
+          "input_contract.json": "RAKLLSN6csSyxKWiRYM8jdG1iuQzc8KV",
+          "intake_custody.json": "pkKktCt1qxW7whxCJbx2Bzg560cKou67",
+          "intake_inspection.json": ".HVl.27VqB7u9lJgtLmNKr9Q9L1PO8_8",
+          "method_identity.json": "3ULo6kR.3T0HbxKEWiNZVD5RRusNs1zQ",
+          "python_packages.json": "kk8tRBT0sFgiwBt7ecFG8AM_T2TLN1lf",
+          "qc_summary.json": "_3ubvqYq6mPZtb38AthfcriUIExJYXyR",
+          "review.html": "uthVP3BvIQNUVbGhc1GOJlBeCDj6vSJw",
+          "shadow-pbmc1k-001-ambient/assess.R": "eu_.PLyPbuKmCo1AjGE.LQQGff6DoEvb",
+          "shadow-pbmc1k-001-ambient/assessment.json": "r7nBAspxSSptmE4bq5SsnGXEpoMHAPok",
+          "shadow-pbmc1k-001-ambient/cells.tsv": "FFkCR8dNkiA.Q06xyyEkTjFdLQUVjOxO",
+          "shadow-pbmc1k-001-ambient/contamination.csv": "DdJ1kqj8wroSyJi5oldUW4xa2d7b5KbD",
+          "shadow-pbmc1k-001-ambient/droplets.tsv": "YeikEC9IdcKXP7LQlITJaEnLZI_hxmPn",
+          "shadow-pbmc1k-001-ambient/fit.json": "mbV8wXdIsIP54IYX7HZFq0bUNf7rywy9",
+          "shadow-pbmc1k-001-ambient/genes.tsv": "uYa934xF7DJz.QdQ7dUE46YGFXGCcjrC",
+          "shadow-pbmc1k-001-ambient/initial_clusters.csv": "rqfSQ8oZe0ULqjGR6i_OkK0kHU2VftoU",
+          "shadow-pbmc1k-001-ambient/r.log": "YYnqH0cqQvLQw7b4NhxlsS.YWoEPNEzN",
+          "shadow-pbmc1k-001-ambient/r_session.txt": "bxle0KAiZN17Vu3YXKfEtt3EKdp.iu_N",
+          "shadow-pbmc1k-001/all_cells_qc.csv": "OFxOAqXZG7Yg3S0psb0fCSYM2fLGgKYd",
+          "shadow-pbmc1k-001/all_cells_qc.h5ad": "_3H5b4ZzvrdLz1dU8fD0Cu6kwcmnF6PJ",
+          "shadow-pbmc1k-001/analysis.h5ad": "4pTjE79p.j31wcRhalfN3WB2wVHZVQRk",
+          "shadow-pbmc1k-001/calibration.json": "2d930e.FXB_WH7V5SGQ4zS2oaeJaWMUj",
+          "shadow-pbmc1k-001/cluster_marker_scores.csv": "Y7A27jiCI4P8A.jieGpzgn8sWvM1Sb.P",
+          "shadow-pbmc1k-001/cluster_stability.csv": "Ba0fDiZCBorSCmJK0SkLKDHgqFIhlnu1",
+          "shadow-pbmc1k-001/doublets/barcodes.tsv": "cVmQr.gkPzdx.2y7nIMc1.YKOHOfVl.E",
+          "shadow-pbmc1k-001/doublets/call.R": "xbWFkUkqv0Y1pxlrRzSJJrWJNmMJfjUD",
+          "shadow-pbmc1k-001/doublets/calls.csv": "IFYIYCmzg3mXPtYq_f8tJLyRb4PXQXYn",
+          "shadow-pbmc1k-001/doublets/r.log": "2LGxQJSaSlvxaIZ4UZY6TsXYKFltW465",
+          "shadow-pbmc1k-001/doublets/r_session.txt": "WulkFSf0BcOW283gJL5kWJvwIC36qsqA",
+          "shadow-pbmc1k-001/markers.csv": "Lu3aHAzHzVdnuPOsvb4XfRFOetwFoali",
+          "shadow-pbmc1k-001/parameters.json": "x8tIG7Uju5ukhMhWx0rBRtv31TMIr6yv",
+          "shadow-pbmc1k-001/provisional_compartment_losses.csv": "ZFCawqIsEmEowp3Io5E.TWjK0tMfnBd2",
+          "shadow-pbmc1k-001/qc_thresholds.png": "EThyqglBFP3RN_jOGcMtJmNHgqgKEUA5",
+          "shadow-pbmc1k-001/umap.csv": "IIZ82z6FwLKlxy5.YSh5Z.ZAiQLPmp4n",
+          "shadow-pbmc1k-001/umap_coarse_label_hint.png": "vdjOBVfc7u7a4o9eAd2PVl2UW884tlIq",
+          "shadow-pbmc1k-001/umap_leiden.png": "eW8bqVaW0ZLOUPlp5ltQI6ckB9c1a_Hs",
+          "source/modal_patient_runner.py": "DW_fbdoYXapIkjLzCVLELwLKbRHzHPge",
+          "source/scrna.py": "HKxzM1sOmlZppRKYQB17MKfxniJb1KQE",
+          "source/scrna_ambient.py": "3XsbNBqOkL.iZXds2L2cG4RQUkMBz7J5",
+          "source/scrna_intake.py": "07ks0FFmE0XN_NHyo1OSu73AShQ29ymp",
+          "source/scrna_io.py": "fCbB3LB_mB0833LsfA4pBxktYWhnAuyM",
+          "source/scrna_miqc.py": "veC6l6yXVfEX8qVU6cVcFwk3k2QGSZp3",
+          "source/scrna_patient.py": "QGctvmwjPxuu7lvYGu8rEk9whPyFEMaZ",
+          "source/scrna_private.py": "wXNBFmzn_UXciVpIcHtcLf8fF.ZyjHJA",
+          "source/scrna_qc.py": "FuxEf66KW8saoIm7uvuvk__qM70hqe6e",
+          "source/scrna_trust.py": "Lwl2T4TcWYfY.4qEY3zaUZGqFR57RlkJ",
+          "source_hashes.json": "9iz7ZPsGgxPGB0ntpVHAe5m5wGgbOMNt"
+        },
+        "clinical_ready": false,
+        "completed_at": "2026-10-02T22:07:27.125725+00:00",
+        "compute": {
+          "cpu": 4,
+          "max_containers": 1,
+          "memory_mib": 16384,
+          "timeout_seconds": 3600
+        },
+        "evidence_lane": "patient_research",
+        "intake_id": "2a3bc42bfde0eed19467a24252856f749805797b1df3e08d36a741e88aa7bdc9",
+        "method_sha256": "88b792f505b8ff5fd2b5350c5c5ae9433117e0268154599bf7bc21ee9dd7d48c",
+        "production_ready": false,
+        "run_id": "shadow-pbmc-20261002T220301Z",
+        "runner_sha256": "80f7251fc03e3a320f087fa14a48a11dec68529039d2ba8673acd53aaea51806",
+        "schema_version": 1,
+        "scientific_status": "qc_provisional",
+        "started_at": "2026-10-02T22:05:26.361448+00:00",
+        "status": "complete"
+      },
+      "method": {
+        "ambient_policy": "SoupX-1.6.2-diagnostic-only",
+        "annotation_policy": "tissue-marker-hints-no-calibrated-probability",
+        "conda_explicit_sha256": "b36cfb6ead5ac07bfa2085a8c58ccde8b195ca97d7f2fda6629e11843a11a327",
+        "method_sha256": "88b792f505b8ff5fd2b5350c5c5ae9433117e0268154599bf7bc21ee9dd7d48c",
+        "parameters": {
+          "leiden_iterations": -1,
+          "leiden_resolution": 0.5,
+          "leiden_resolution_grid": [
+            0.2,
+            0.3,
+            0.4,
+            0.5,
+            0.6,
+            0.8,
+            1.0
+          ],
+          "miqc_challenger": false,
+          "n_hvg": 2000,
+          "n_neighbors": 15,
+          "n_pcs": 40,
+          "qc_mad_multiplier": 3,
+          "seed": 42,
+          "stability_seeds": 10
+        },
+        "python_versions": {
+          "anndata": "0.11.4",
+          "igraph": "0.11.8",
+          "leidenalg": "0.10.2",
+          "numpy": "1.26.4",
+          "pandas": "2.2.3",
+          "scanpy": "1.11.1",
+          "scikit-learn": "1.5.2",
+          "scipy": "1.15.2",
+          "umap-learn": "0.5.7"
+        },
+        "runner_sha256": "80f7251fc03e3a320f087fa14a48a11dec68529039d2ba8673acd53aaea51806",
+        "schema_version": 1,
+        "scientific_sources": {
+          "scrna.py": "27d62967b4c4d1ee5f3de1c62c980b619618deea8f228363c6a841d5e7c131ca",
+          "scrna_ambient.py": "316a80ef8cad26fc8145e006ff7864e9af55bea4ab6c3f55d57d531ac7f4375b",
+          "scrna_intake.py": "2cb887957098b9dfbfec3a8e813a9301f42f04e6b0ec64b121b1a7777cc43728",
+          "scrna_io.py": "5c5cd6d72df7f6371d30bf0c725fda48159df621497e39beb28c898243495edf",
+          "scrna_miqc.py": "c618c4ee6c86fad781c3d81e9d9d2f68da103a66313b5e3fdf1588f23faecf75",
+          "scrna_patient.py": "70a30a63080d06a45d9f3caceb1fd00b0b3ecff65095fe0960fd75d4f5c3378f",
+          "scrna_qc.py": "802f37fb010cc5d9b7d6d10f69191176b5adaf5d7a24bf983f88c30dfd0ffbfe"
+        },
+        "storage_source_sha256": "ea19300b8ef30ae86721d57712077163d355d6816fff41350d24b8031ea4b53d"
+      },
+      "run_id": "shadow-pbmc-20261002T220301Z",
+      "source_audit": {
+        "artifact_index_sha256": "b5d8be4d59e19af6db51916372df5460ee72b9c047641755f71e0ae3e231a54f",
+        "audit_source_sha256": "1966f3546ee6f6b58c5a52a0cbfb8b2897f1b33acf84e5b470abb3e568d2c985",
+        "biological_accuracy_established": false,
+        "captures": {
+          "shadow-pbmc1k-001": {
+            "all_vendor_barcodes_preserved": true,
+            "candidate_correction_monotone": true,
+            "core_failures_excluded": true,
+            "doublets_excluded": true,
+            "malignancy_not_assessed": true,
+            "qc_csv_matches_checkpoint": true,
+            "retained_counts_exact": true,
+            "retained_selection_exact": true,
+            "source_to_all_cells_exact": true,
+            "summary_matches_barcodes": true
+          }
+        },
+        "clinical_ready": false,
+        "evidence_level": "mechanical_smoke",
+        "intake_id": "2a3bc42bfde0eed19467a24252856f749805797b1df3e08d36a741e88aa7bdc9",
+        "schema_version": 1,
+        "status": "counts_integrity_pass"
+      }
+    }
+  },
+  "clinical_ready": false,
+  "execution_lane": "patient_research",
+  "exported_artifacts": [
+    {
+      "path": "breast-standard/qc_thresholds.png",
+      "sha256": "23bb8d241af3cb910143c63c35b2308eb2fbf633c54e86f90541e1295487bae3",
+      "size_bytes": 57367
+    },
+    {
+      "path": "breast-standard/umap_leiden.png",
+      "sha256": "91da9152982cd80127cbf5a84fdfcaf7ac2ac9f5308da66a60408f631cee5e82",
+      "size_bytes": 132527
+    },
+    {
+      "path": "breast-standard/umap_coarse_label_hint.png",
+      "sha256": "825964409c4155b8fe2ff4271d800b8346d00c3b31789a1e2b0f7b0cd32b1bb9",
+      "size_bytes": 129413
+    },
+    {
+      "path": "breast-standard/provisional_compartment_losses.csv",
+      "sha256": "adce84b7696c97fa999d9be208db54c451c91fb22c25c645f97a779d55754d3b",
+      "size_bytes": 533
+    },
+    {
+      "path": "breast-standard/cluster_stability.csv",
+      "sha256": "0026eeb37fb80ae6b0e8d726c76033a0d236f954d802d43fb149a681532d5986",
+      "size_bytes": 459
+    },
+    {
+      "path": "breast-lt/qc_thresholds.png",
+      "sha256": "97deb6090ff5680e13eb753cf71a41bdb9a8af3a2ce01f2ce716173ad7c2ea10",
+      "size_bytes": 52627
+    },
+    {
+      "path": "breast-lt/umap_leiden.png",
+      "sha256": "902da995760735ab09bd4b8e554f703ad23fde03aee2153adf4c61c03fe32212",
+      "size_bytes": 99935
+    },
+    {
+      "path": "breast-lt/umap_coarse_label_hint.png",
+      "sha256": "b25f40dc87ed624306d1b55dd7dc2414cc65ca15fc6e334b549baa4363c5ceac",
+      "size_bytes": 108914
+    },
+    {
+      "path": "breast-lt/provisional_compartment_losses.csv",
+      "sha256": "94677819759ea40a4aded654921d2d4dd9a5e07470872d8cdcd21c04b70ce67d",
+      "size_bytes": 450
+    },
+    {
+      "path": "breast-lt/cluster_stability.csv",
+      "sha256": "1f3bfc88aa21ec6fb93e577186ee4b8f34309a5600e5ddbb3f8c8bc97db9b6f2",
+      "size_bytes": 455
+    },
+    {
+      "path": "pbmc1k/qc_thresholds.png",
+      "sha256": "82a46209ee899ecec8c7425252d76833a4f03e2e8027a95791637a682573b402",
+      "size_bytes": 57018
+    },
+    {
+      "path": "pbmc1k/umap_leiden.png",
+      "sha256": "a85e78f048aa049ffd353a2d2b9b400ddd90129622f62b191796ac48298aad8e",
+      "size_bytes": 32456
+    },
+    {
+      "path": "pbmc1k/umap_coarse_label_hint.png",
+      "sha256": "b0cbdc2f1d36fb51169e3956d5ca07f2bf68bff9c0f0dde15af6af595626a319",
+      "size_bytes": 39443
+    },
+    {
+      "path": "pbmc1k/provisional_compartment_losses.csv",
+      "sha256": "a409e018b4566cd89f80e931fc679eced71ef22c66e4271a82e7ed3ffeaec5d6",
+      "size_bytes": 452
+    },
+    {
+      "path": "pbmc1k/cluster_stability.csv",
+      "sha256": "c78e969d375666d80212ac0f92f2f924371d1779601418954634283652079639",
+      "size_bytes": 455
+    }
+  ],
+  "intake_fault_rehearsal": {
+    "checks": {
+      "count_checksum_mismatch": {
+        "expected_behavior": true,
+        "observed": "rejected"
+      },
+      "duplicate_capture_counts": {
+        "expected_behavior": true,
+        "observed": "rejected"
+      },
+      "filtered_only_ambient_gap": {
+        "expected_behavior": true,
+        "observed": "provisional QC permitted; ambient assessment unavailable"
+      },
+      "metadata_checksum_mismatch": {
+        "expected_behavior": true,
+        "observed": "rejected"
+      },
+      "nuclei_outside_current_qc_scope": {
+        "expected_behavior": true,
+        "observed": "post-count QC blocked"
+      },
+      "unexpected_identifying_field": {
+        "expected_behavior": true,
+        "observed": "rejected"
+      },
+      "unresolved_pooled_capture": {
+        "expected_behavior": true,
+        "observed": "post-count QC blocked"
+      }
+    },
+    "cloud_runs_for_faults": false,
+    "source_files_mutated": false
+  },
+  "provenance": {
+    "cases": {
+      "breast": {
+        "captures": [
+          {
+            "capture_id": "shadow-breast-standard-001",
+            "control": "breast-standard",
+            "public_donor_group": "public-breast-donor-001",
+            "source_page": "https://www.10xgenomics.com/datasets/7-5-k-sorted-cells-from-human-invasive-ductal-carcinoma-3-v-3-1-3-1-standard-6-0-0"
+          },
+          {
+            "capture_id": "shadow-breast-lt-001",
+            "control": "breast-lt",
+            "public_donor_group": "public-breast-donor-001",
+            "source_page": "https://www.10xgenomics.com/datasets/750-sorted-cells-from-human-invasive-ductal-carcinoma-3-lt-v-3-1-3-1-low-6-0-0"
+          }
+        ],
+        "case_id": "shadow-public-breast-001"
+      },
+      "pbmc": {
+        "captures": [
+          {
+            "capture_id": "shadow-pbmc1k-001",
+            "control": "pbmc1k",
+            "public_donor_group": "healthy-control-donor-001",
+            "source_page": "https://www.10xgenomics.com/datasets/1-k-pbm-cs-from-a-healthy-donor-v-3-chemistry-3-standard-3-0-0"
+          }
+        ],
+        "case_id": "shadow-public-pbmc-001"
+      }
+    },
+    "execution_lane": "patient_research",
+    "limitations": [
+      "Both breast libraries are sorted-cell controls from the same donor; not two independent donors.",
+      "Breast subtype/treatment unknown; these do not establish TNBC performance.",
+      "Reference content fingerprints unknown; no biological method qualification."
+    ],
+    "purpose": "Public-data rehearsal of the patient intake and post-count QC path",
+    "schema_version": 1,
+    "source_classification": "public_control",
+    "source_lock_sha256": "48d3d5d4197d8b643e44fc6c7a586cd1b6a0f2bf08e365919af039b84bcec765"
+  },
+  "report_source_hashes": {
+    "prepare_scrna_shadow.py": "64f977bf59d0ad9e8b48e46adec08070ef8834b4e9f542ce57f5d0fe7803f79e",
+    "review_scrna_shadow.py": "e98a4f3477fff8c6cc252bfd666557e89bb5b0d0e08b6287aa7107283c64a40b"
+  },
+  "schema_version": 1,
+  "source_classification": "public_control"
+}

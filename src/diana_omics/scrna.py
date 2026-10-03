@@ -70,6 +70,56 @@ writeLines(capture.output(sessionInfo()), file.path(args[1], "r_session.txt"))
     return calls
 
 
+def stable_leiden(adata, parameters: dict, acceptance: dict, directory: Path) -> dict:
+    """Choose a resolution from a frozen grid by multi-seed reproducibility alone; labels never enter.
+
+    Each grid resolution is clustered once per seed on the fixed neighbor graph. Stability is the median
+    pairwise ARI. Only resolutions whose every seed yields an in-bounds cluster count are eligible; the most
+    stable wins, ties going to the finer resolution. The reported partition is the medoid seed run.
+    """
+    import itertools
+
+    import numpy as np
+    import pandas as pd
+    import scanpy as sc
+    from sklearn.metrics import adjusted_rand_score
+
+    seeds = [parameters["seed"] + offset for offset in range(parameters["stability_seeds"])]
+    rows, runs = [], {}
+    for resolution in parameters["leiden_resolution_grid"]:
+        labels = []
+        for seed in seeds:
+            sc.tl.leiden(adata, resolution=resolution, random_state=seed, key_added="_stability", flavor="igraph",
+                         n_iterations=parameters["leiden_iterations"], directed=False)
+            labels.append(adata.obs["_stability"].astype(str).to_numpy())
+        pairs = {(i, j): adjusted_rand_score(labels[i], labels[j]) for i, j in itertools.combinations(range(len(seeds)), 2)}
+        agreement = [np.mean([value for key, value in pairs.items() if i in key]) for i in range(len(seeds))]
+        counts = [len(set(run)) for run in labels]
+        rows.append({"resolution": resolution, "median_pairwise_ari": round(float(np.median(list(pairs.values()))), 6),
+                     "min_pairwise_ari": float(min(pairs.values())), "min_clusters": min(counts), "max_clusters": max(counts),
+                     "eligible": acceptance["clusters_min"] <= min(counts) and max(counts) <= acceptance["clusters_max"],
+                     "medoid_seed": seeds[int(np.argmax(agreement))]})
+        runs[resolution] = labels
+    del adata.obs["_stability"]
+    table = pd.DataFrame(rows)
+    eligible = table[table.eligible]
+    if eligible.empty:
+        # No reproducible in-bounds partition: report the frozen default and let the gates fail visibly.
+        chosen = table.loc[(table.resolution - parameters["leiden_resolution"]).abs().idxmin()]
+    else:
+        chosen = eligible.sort_values(["median_pairwise_ari", "resolution"], ascending=False).iloc[0]
+    table["selected"] = table.resolution == chosen.resolution
+    table.to_csv(directory / "cluster_stability.csv", index=False)
+    labels = runs[chosen.resolution]
+    medoid = seeds.index(int(chosen.medoid_seed))
+    adata.obs["leiden"] = pd.Categorical(labels[medoid])
+    adata.obs["leiden_alternate_seed"] = pd.Categorical(labels[(medoid + 1) % len(seeds)])
+    return {"policy": "max median pairwise ARI over frozen grid; in-bounds cluster counts; ties to finer resolution; medoid seed reported",
+            "selected_resolution": float(chosen.resolution), "eligible_resolutions": int(len(eligible)),
+            "seeds": seeds, "reported_seed": int(chosen.medoid_seed), "median_pairwise_ari": float(chosen.median_pairwise_ari),
+            "min_pairwise_ari": float(chosen.min_pairwise_ari), "pairs_per_resolution": len(seeds) * (len(seeds) - 1) // 2}
+
+
 def qc_thresholds(obs, multiplier: float, profile: str = "human_pbmc") -> dict:
     return thresholds(obs, multiplier, profile)
 
@@ -313,9 +363,13 @@ def analyze(dataset: dict, parameters: dict, acceptance: dict, input_paths: dict
     del latent
     sc.pp.neighbors(filtered, n_neighbors=parameters["n_neighbors"], n_pcs=n_pcs, random_state=seed)
     sc.tl.umap(filtered, random_state=seed)
-    for clustering_seed, key in ((seed, "leiden"), (seed + 1, "leiden_alternate_seed")):
-        sc.tl.leiden(filtered, resolution=parameters["leiden_resolution"], random_state=clustering_seed,
-                     key_added=key, flavor="igraph", n_iterations=parameters["leiden_iterations"], directed=False)
+    clustering = None
+    if "leiden_resolution_grid" in parameters:
+        clustering = stable_leiden(filtered, parameters, acceptance, directory)
+    else:
+        for clustering_seed, key in ((seed, "leiden"), (seed + 1, "leiden_alternate_seed")):
+            sc.tl.leiden(filtered, resolution=parameters["leiden_resolution"], random_state=clustering_seed,
+                         key_added=key, flavor="igraph", n_iterations=parameters["leiden_iterations"], directed=False)
     panel = marker_hints(filtered, directory, BREAST_MARKERS if profile == "human_breast_tumor" else None)
     sc.tl.rank_genes_groups(filtered, "leiden", method="wilcoxon", use_raw=False, pts=True)
     sc.get.rank_genes_groups_df(filtered, group=None).groupby("group", observed=True).head(50).to_csv(directory / "markers.csv", index=False)
@@ -344,7 +398,8 @@ def analyze(dataset: dict, parameters: dict, acceptance: dict, input_paths: dict
         "mt_flagged": int(all_metrics.fails_mt.sum()), "doublets_flagged": int((all_metrics.doublet_class == "doublet").sum()),
         "doublet_method": "scDblFinder", "doublet_validation": "no_independent_truth_labels",
         "clusters": int(filtered.obs.leiden.nunique()),
-        "seed_stability_ari": float(adjusted_rand_score(filtered.obs.leiden, filtered.obs.leiden_alternate_seed)),
+        "seed_stability_ari": clustering["median_pairwise_ari"] if clustering else float(adjusted_rand_score(filtered.obs.leiden, filtered.obs.leiden_alternate_seed)),
+        **({"clustering_stability": clustering} if clustering else {}),
         "finite_embedding": bool(np.isfinite(filtered.obsm["X_umap"]).all()), "raw_counts_preserved": bool(raw_preserved),
         "ambient_rna_status": ambient_status,
         "coarse_label_hint_counts": {str(k): int(v) for k, v in filtered.obs.coarse_label_hint.value_counts().items()},

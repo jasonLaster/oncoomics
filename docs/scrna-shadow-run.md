@@ -105,11 +105,21 @@ or clusters. An epithelial marker hint does not establish malignancy.
 This is a **post-count QC rehearsal**. It does not qualify upstream FASTQ counting,
 cell calling, nuclei, integration, differential expression, or clinical use.
 
-Completed evidence: [2026-10-02 shadow review](../results/scrna/validation/shadow-patient-qc-20261002T203500Z/README.md).
+Completed evidence: [2026-10-02 shadow review](../results/scrna/validation/shadow-patient-qc-20261002T220301Z/README.md)
+(superseding the [fixed-resolution run](../results/scrna/validation/shadow-patient-qc-20261002T203500Z/README.md)).
 
-The completed shadow run preserved every source count and vendor barcode, and
-reproduced the prior shared QC, marker, and embedding outputs exactly. Both breast
-captures still fail retention (62.3% and 64.0% versus the 70% screen) and seed
-stability (ARI 0.635 and 0.656 versus 0.85). PBMC passes its QC screens. All cases
-remain held for independent method qualification and human review. Do not relax
-the screens to turn the rehearsal into a pass.
+The earlier run's seed screen compared one seed pair at a fixed resolution of 0.5, where large
+populations split arbitrarily (ARI 0.635 and 0.656; PBMC's 0.859 was a favorable pair). The
+patient path now selects resolution by multi-seed reproducibility alone (see the
+[intake runbook](scrna-patient-intake.md)). This rule was adopted after observing that failure,
+so this rehearsal is development evidence, not independent qualification of it.
+
+With barcode QC, doublet and selection outputs unchanged (exact match), seed stability is
+0.885 for breast-standard (resolution 0.3) and 0.998 for PBMC (0.2). Breast LT still fails at
+0.825 (best eligible resolution 1.0 on 440 cells). Both breast captures still fail retention
+(62.3% and 64.0% versus 70%): about a quarter of breast-standard vendor barcodes exceed 70%
+mitochondrial counts with a median of 285 genes, a damaged-cell mode rather than over-filtering.
+That is a sample-quality finding, and composition from these captures is biased (fibroblast and
+unknown/mixed losses). PBMC passes every QC screen. All cases remain held for independent method
+qualification and human review. Do not relax the screens or tune parameters to turn the
+rehearsal into a pass.
