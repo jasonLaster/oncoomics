@@ -1,8 +1,15 @@
 # EVEE report recomputation plan
 
-Status: scoring pipeline implemented; bounded public lookup completed; all nine
-Evo 2 reference windows validated; full patient DNA/RNA recomputation requires
-upstream cloud execution.
+Historical status (September 4): scoring pipeline implemented; bounded public
+lookup completed; all nine Evo 2 reference windows validated. Missing-input
+statements below describe that date and must be checked against current receipts.
+
+October 3 method update: use [EVEE hypothesis validation](evee-hypothesis-review.md)
+and the [metadata-held diagnostic lane](../scrna-exploratory.md) for bounded
+read-level and cross-assay review. Inventory existing quantification and frozen
+tumor/normal BAMs before repeating alignment or launching model scoring. Keep
+current patient findings and their source receipts private; a successful diagnostic
+run does not complete the biological or clinical gates in this historical plan.
 
 ## Decision and scientific objective
 
