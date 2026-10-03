@@ -86,6 +86,30 @@ def test_unresolved_capture_metadata_cannot_run(delivery, field, value):
     assert not inspect_delivery(contract, root)["ready_for_postcount_qc"]
 
 
+@pytest.mark.parametrize("field,value", [("chemistry", "unknown"), ("reference", "unknown")])
+def test_public_control_may_run_unresolved_identity_but_never_pooled_or_nuclei(delivery, field, value):
+    root, contract, _, _ = delivery
+    contract["evidence_lane"] = "public_control"
+    contract["captures"][0][field] = value
+    contract["captures"][0]["metadata"] = {"status": "unresolved"}
+    report = inspect_delivery(contract, root)
+    assert report["ready_for_postcount_qc"]
+    assert report["captures"][0]["details"]["capture_identity_status"] == "unresolved_public_control_exploratory"
+    contract["captures"][0]["pooled_donors"] = True
+    assert not inspect_delivery(contract, root)["ready_for_postcount_qc"]
+    contract["captures"][0]["pooled_donors"] = False
+    contract["material"] = "nuclei"
+    assert not inspect_delivery(contract, root)["ready_for_postcount_qc"]
+
+
+def test_patient_lane_still_blocks_unresolved_identity_with_reviewed_status_unchanged(delivery):
+    root, contract, _, _ = delivery
+    assert contract["evidence_lane"] == "patient_research"
+    contract["captures"][0]["chemistry"] = "unknown"
+    contract["captures"][0]["metadata"] = {"status": "unresolved"}
+    assert not inspect_delivery(contract, root)["ready_for_postcount_qc"]
+
+
 def test_filtered_only_input_has_explicit_ambient_gap(delivery):
     root, contract, _, _ = delivery
     contract["captures"][0]["files"].pop()

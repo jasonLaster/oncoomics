@@ -1,0 +1,135 @@
+{
+  "evidence_lane": "public_control",
+  "files": {
+    "GSE161529_features.tsv.gz": {
+      "role": "features",
+      "sha256": "d8b21cc094b58a3bdcd6c2b3cc7699399c4f14ff8f8611231a2c6da04791a354",
+      "size_bytes": 270380,
+      "url": "https://ftp.ncbi.nlm.nih.gov/geo/series/GSE161nnn/GSE161529/suppl/GSE161529_features.tsv.gz"
+    },
+    "GSM4909281_TN-MH0126-barcodes.tsv.gz": {
+      "gsm": "GSM4909281",
+      "role": "barcodes",
+      "sha256": "9b313512ff034b4f05b94dc349c8df9ec579d0627c8ebbbf64772e5d5c0ada86",
+      "size_bytes": 19226,
+      "url": "https://ftp.ncbi.nlm.nih.gov/geo/samples/GSM4909nnn/GSM4909281/suppl/GSM4909281_TN-MH0126-barcodes.tsv.gz"
+    },
+    "GSM4909281_TN-MH0126-matrix.mtx.gz": {
+      "gsm": "GSM4909281",
+      "role": "matrix",
+      "sha256": "f83508c84f51b3976d55afdb42582bdc1a56127eb3735501680aa37e7d904a09",
+      "size_bytes": 22544572,
+      "url": "https://ftp.ncbi.nlm.nih.gov/geo/samples/GSM4909nnn/GSM4909281/suppl/GSM4909281_TN-MH0126-matrix.mtx.gz"
+    },
+    "GSM4909282_TN-MH0135-barcodes.tsv.gz": {
+      "gsm": "GSM4909282",
+      "role": "barcodes",
+      "sha256": "4d4a7c7f6550d9ada0f5e19a5c995d25a621b233417011bb5b73f3c807d92dc7",
+      "size_bytes": 74960,
+      "url": "https://ftp.ncbi.nlm.nih.gov/geo/samples/GSM4909nnn/GSM4909282/suppl/GSM4909282_TN-MH0135-barcodes.tsv.gz"
+    },
+    "GSM4909282_TN-MH0135-matrix.mtx.gz": {
+      "gsm": "GSM4909282",
+      "role": "matrix",
+      "sha256": "eb5822e7097a53ac8c8f78818bba1a35ab8655cac894e77e040cca1175fcae7e",
+      "size_bytes": 111792602,
+      "url": "https://ftp.ncbi.nlm.nih.gov/geo/samples/GSM4909nnn/GSM4909282/suppl/GSM4909282_TN-MH0135-matrix.mtx.gz"
+    },
+    "GSM4909283_TN-SH0106-barcodes.tsv.gz": {
+      "gsm": "GSM4909283",
+      "role": "barcodes",
+      "sha256": "a3575403a8271931a59a49e87000a88817898e29c990c6e6d74e0127c9ce602a",
+      "size_bytes": 6046,
+      "url": "https://ftp.ncbi.nlm.nih.gov/geo/samples/GSM4909nnn/GSM4909283/suppl/GSM4909283_TN-SH0106-barcodes.tsv.gz"
+    },
+    "GSM4909283_TN-SH0106-matrix.mtx.gz": {
+      "gsm": "GSM4909283",
+      "role": "matrix",
+      "sha256": "92b875a24771310b09cdad54007e2d1fb2b00cf0de42436c5ae9c92e75f19670",
+      "size_bytes": 6654326,
+      "url": "https://ftp.ncbi.nlm.nih.gov/geo/samples/GSM4909nnn/GSM4909283/suppl/GSM4909283_TN-SH0106-matrix.mtx.gz"
+    },
+    "GSM4909284_TN-MH0114-T2-barcodes.tsv.gz": {
+      "gsm": "GSM4909284",
+      "role": "barcodes",
+      "sha256": "02b26ea675169e518409e1f6e36fc040c23a0bfd06563f1c58f02e9fb63171e8",
+      "size_bytes": 10955,
+      "url": "https://ftp.ncbi.nlm.nih.gov/geo/samples/GSM4909nnn/GSM4909284/suppl/GSM4909284_TN-MH0114-T2-barcodes.tsv.gz"
+    },
+    "GSM4909284_TN-MH0114-T2-matrix.mtx.gz": {
+      "gsm": "GSM4909284",
+      "role": "matrix",
+      "sha256": "a5574914691ea858e0a9022b85babb80a630566772222d499a574cfd41091cfd",
+      "size_bytes": 10573951,
+      "url": "https://ftp.ncbi.nlm.nih.gov/geo/samples/GSM4909nnn/GSM4909284/suppl/GSM4909284_TN-MH0114-T2-matrix.mtx.gz"
+    },
+    "GSM4909285_TN-B1-MH4031-barcodes.tsv.gz": {
+      "gsm": "GSM4909285",
+      "role": "barcodes",
+      "sha256": "5602f4b57313b8b7b961cb7fad67f02f6de5466348f2e8d33526de59e73e7dd6",
+      "size_bytes": 28363,
+      "url": "https://ftp.ncbi.nlm.nih.gov/geo/samples/GSM4909nnn/GSM4909285/suppl/GSM4909285_TN-B1-MH4031-barcodes.tsv.gz"
+    },
+    "GSM4909285_TN-B1-MH4031-matrix.mtx.gz": {
+      "gsm": "GSM4909285",
+      "role": "matrix",
+      "sha256": "f029f2a7edcc373c474197a8ed87b63e579b969af22cd96e8e2bf4f01e843d59",
+      "size_bytes": 57648085,
+      "url": "https://ftp.ncbi.nlm.nih.gov/geo/samples/GSM4909nnn/GSM4909285/suppl/GSM4909285_TN-B1-MH4031-matrix.mtx.gz"
+    },
+    "GSM4909286_TN-B1-MH0131-barcodes.tsv.gz": {
+      "gsm": "GSM4909286",
+      "role": "barcodes",
+      "sha256": "d9e33d99f78e03798cd610ae07c8af8c39f280bc1da0e99609c3a1d076a7bcbb",
+      "size_bytes": 32486,
+      "url": "https://ftp.ncbi.nlm.nih.gov/geo/samples/GSM4909nnn/GSM4909286/suppl/GSM4909286_TN-B1-MH0131-barcodes.tsv.gz"
+    },
+    "GSM4909286_TN-B1-MH0131-matrix.mtx.gz": {
+      "gsm": "GSM4909286",
+      "role": "matrix",
+      "sha256": "12b0ba266e9cc0c71c67340cb7ed4848b429475c7ff97673da8f8385562d1984",
+      "size_bytes": 48367353,
+      "url": "https://ftp.ncbi.nlm.nih.gov/geo/samples/GSM4909nnn/GSM4909286/suppl/GSM4909286_TN-B1-MH0131-matrix.mtx.gz"
+    },
+    "GSM4909287_TN-B1-Tum0554-barcodes.tsv.gz": {
+      "gsm": "GSM4909287",
+      "role": "barcodes",
+      "sha256": "970535df81f9a5e1fc86708fb2ba51e23ac35ce469808efac60ac78d21dfee11",
+      "size_bytes": 48857,
+      "url": "https://ftp.ncbi.nlm.nih.gov/geo/samples/GSM4909nnn/GSM4909287/suppl/GSM4909287_TN-B1-Tum0554-barcodes.tsv.gz"
+    },
+    "GSM4909287_TN-B1-Tum0554-matrix.mtx.gz": {
+      "gsm": "GSM4909287",
+      "role": "matrix",
+      "sha256": "67d2a0afadcaf34069b6bac78adf4900de2eeef3ebe8e9d5216ee3f86d470f13",
+      "size_bytes": 57730402,
+      "url": "https://ftp.ncbi.nlm.nih.gov/geo/samples/GSM4909nnn/GSM4909287/suppl/GSM4909287_TN-B1-Tum0554-matrix.mtx.gz"
+    },
+    "GSM4909288_TN-B1-MH0177-barcodes.tsv.gz": {
+      "gsm": "GSM4909288",
+      "role": "barcodes",
+      "sha256": "ec3099b7d44ead3a845cf7f194a7b764684b7252d384f02cd1b93c86963d8415",
+      "size_bytes": 102117,
+      "url": "https://ftp.ncbi.nlm.nih.gov/geo/samples/GSM4909nnn/GSM4909288/suppl/GSM4909288_TN-B1-MH0177-barcodes.tsv.gz"
+    },
+    "GSM4909288_TN-B1-MH0177-matrix.mtx.gz": {
+      "gsm": "GSM4909288",
+      "role": "matrix",
+      "sha256": "e69123dcb21cc4261c15f93d8f1dc9daa871f0b5f7d987758603540684844a7f",
+      "size_bytes": 90135351,
+      "url": "https://ftp.ncbi.nlm.nih.gov/geo/samples/GSM4909nnn/GSM4909288/suppl/GSM4909288_TN-B1-MH0177-matrix.mtx.gz"
+    }
+  },
+  "limitations": [
+    "Public series GSE161529 (Pal et al. 2021, EMBO J); no Diana data",
+    "Filtered matrices only: no raw droplet matrix, so ambient RNA is not assessable",
+    "Chemistry (3' v2 vs v3) and reference are not stated per sample by the source; Cell Ranger 3.0.2 per the paper",
+    "Capture identity is unreviewed; each GEO sample is treated as one complete capture",
+    "Treatment-naive per the publication summary; tissue dissociation and viability handling differ from clinical specimens",
+    "Post-count QC only; no independent cell-type, doublet or malignancy truth"
+  ],
+  "publication": "https://pmc.ncbi.nlm.nih.gov/articles/PMC8167363",
+  "schema_version": 1,
+  "series": "GSE161529",
+  "source_page": "https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE161529"
+}

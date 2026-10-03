@@ -292,13 +292,17 @@ def inspect_delivery(contract: dict, root: Path) -> dict:
         blockers = []
         if contract["material"] != "whole_cell":
             blockers.append("Whole-cell profile cannot be used for nuclei/unknown material")
-        if metadata["status"] != "reviewed" or capture["chemistry"] == "unknown" or capture["reference"] == "unknown":
+        identity_unresolved = metadata["status"] != "reviewed" or capture["chemistry"] == "unknown" or capture["reference"] == "unknown"
+        # Public controls (never patient data) may be QC'd with unresolved identity so their QC behavior can be
+        # studied; the metadata screens then fail visibly and the run can never be admitted.
+        if identity_unresolved and contract["evidence_lane"] != "public_control":
             blockers.append("Capture identity, chemistry and reference require reviewed vendor evidence")
         if capture["assay"] == "unknown" or (capture["chemistry"].startswith("3prime") and capture["assay"] != "10x_3prime_gex") or (capture["chemistry"].startswith("5prime") and capture["assay"] != "10x_5prime_gex"):
             blockers.append("Assay and chemistry are unresolved/inconsistent")
         if capture["pooled_donors"]:
             blockers.append("Pooled captures need donor demultiplexing and separate qualification")
         details = {}
+        details["capture_identity_status"] = "unresolved_public_control_exploratory" if identity_unresolved else "reviewed"
         details["reference_fingerprint_status"] = "unresolved" if capture["reference_sha256"] == "unknown" else "declared_source_bound"
         if capture["format"] == "fastq":
             pairs = {}

@@ -62,10 +62,12 @@ def execute_patient(contract: dict, source: Path, output: Path, runner_source: s
             ambient = assess_ambient(counts, raw, output / (capture["capture_id"] + "-ambient"))
             del raw
         breast = contract["tissue"] == "breast tumor"
+        resolved = capture["metadata"]["status"] == "reviewed" and "unknown" not in (capture["chemistry"], capture["reference"])
         dataset = {"dataset_id": capture["capture_id"], "format": capture["format"], "expected_cells": capture["expected_cells"],
                    "capture_id": capture["capture_id"], "donor_id": contract["case_id"], "sample_id": capture["specimen_id"],
-                   "qc_profile": "human_breast_tumor" if breast else "human_pbmc", "capture_scope": "verified_single_capture",
-                   "chemistry_status": "verified", "clinical_subtype": capture["clinical_subtype"],
+                   "qc_profile": "human_breast_tumor" if breast else "human_pbmc",
+                   "capture_scope": "verified_single_capture" if resolved else "sample_proxy_unresolved",
+                   "chemistry_status": "verified" if resolved else "unresolved", "clinical_subtype": capture["clinical_subtype"],
                    "treatment_status": capture["treatment_status"], "timepoint": capture["timepoint"],
                    "upstream_processing": "Vendor filtered, uncorrected UMI matrix; raw lineage checked when available"}
         summaries[capture["capture_id"]] = analyze(dataset, PARAMETERS, ACCEPTANCE, {}, directory,
