@@ -1,0 +1,8 @@
+celltype_major,B cells,Endothelial,Epithelial,T / NK,Unknown / mixed
+B cells,48,0,0,0,0
+Endothelial,0,40,0,0,0
+Epithelial,0,0,131,0,0
+Fibroblast,0,0,0,0,4
+Myeloid,15,0,0,1,0
+Perivascular,0,1,0,0,18
+T / NK,0,0,0,250,0

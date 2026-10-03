@@ -1,0 +1,27 @@
+{
+  "chemistry": "3prime_v3",
+  "files": {
+    "fasta": {
+      "path": "genome.fa",
+      "sha256": "7c34a8bb091a785cb1bd5f2f14801a9094ed2101bf014fe6f77c1a2edea631a7",
+      "size_bytes": 81009
+    },
+    "gtf": {
+      "path": "genes.gtf",
+      "sha256": "3f86aac09667d9bcf55446010ef3ecf553c221aae94deafacbaf55c362dcea92",
+      "size_bytes": 9001
+    },
+    "whitelist": {
+      "path": "whitelist.txt",
+      "sha256": "513f09dc8e9c1f536d809a4cffa0f251605673b994ea24333d8b97b3ed5ecfb3",
+      "size_bytes": 3876
+    }
+  },
+  "reference_class": "synthetic_mechanical",
+  "reference_id": "synthetic-known-UMIs-v1",
+  "review_status": "reviewed",
+  "reviewer": "synthetic-fixture-operator",
+  "schema_version": 1,
+  "source": "Deterministically generated engineering fixture; no biological or patient validation",
+  "star_version": "2.7.11b"
+}

@@ -1,0 +1,7 @@
+{
+  "scanpy": "1.11.1",
+  "scDblFinder": "1.20.2",
+  "s3_access": "verified",
+  "cpu": 4,
+  "memory_mib": 16384
+}

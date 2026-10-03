@@ -1,2 +1,2 @@
 status,samplesheet,row_count,dna_row_count,tumor_dna_rows,normal_dna_rows,rna_rows,matched_pair_ids,ready_to_stage,error_count,warning_count
-waiting_for_diana_raw_data,manifests/diana_raw_inputs.csv,0,0,0,0,0,,no,0,1
+passed,manifests/diana_raw_inputs.csv,11,10,5,5,1,DIANA_WES_immunoid;DIANA_WGS_wgs,yes,0,0

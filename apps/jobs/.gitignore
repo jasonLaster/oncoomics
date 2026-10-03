@@ -9,3 +9,4 @@ test-results/
 tsconfig.tsbuildinfo
 artifacts/screenshots/dark-audit/pass-0/
 artifacts/screenshots/dark-audit/pass-1/
+.vercel

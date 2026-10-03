@@ -1,0 +1,38 @@
+target_id,gene_symbol,callability_status,copy_number_status,variant_effect,hla_loss_status,dna_status,candidate_class,detail
+trop2,TACSTD2,missing,no_call,no_call,no_call,no_call,blocked,Surface protein abundance and malignant-cell heterogeneity are not confirmed.
+her2,ERBB2,missing,no_call,no_call,no_call,no_call,blocked,Surface protein abundance and malignant-cell heterogeneity are not confirmed.
+her3,ERBB3,missing,no_call,no_call,no_call,no_call,blocked,Surface protein abundance and malignant-cell heterogeneity are not confirmed.
+liv1,SLC39A6,missing,no_call,no_call,no_call,no_call,blocked,Surface protein abundance and malignant-cell heterogeneity are not confirmed.
+nectin4,NECTIN4,missing,no_call,no_call,no_call,no_call,blocked,Surface protein abundance and malignant-cell heterogeneity are not confirmed.
+b7h3,CD276,missing,no_call,no_call,no_call,no_call,blocked,Surface protein abundance and malignant-cell heterogeneity are not confirmed.
+folr1,FOLR1,missing,no_call,no_call,no_call,no_call,blocked,Surface protein abundance and malignant-cell heterogeneity are not confirmed.
+egfr,EGFR,missing,no_call,no_call,no_call,no_call,blocked,Surface protein abundance and malignant-cell heterogeneity are not confirmed.
+tissue_factor,F3,missing,no_call,no_call,no_call,no_call,blocked,Surface protein abundance and malignant-cell heterogeneity are not confirmed.
+hla_a,HLA-A,missing,no_call,no_call,no_call,no_call,blocked,Immune-cell expression and protein context are not confirmed.
+hla_b,HLA-B,missing,no_call,no_call,no_call,no_call,blocked,Immune-cell expression and protein context are not confirmed.
+hla_c,HLA-C,missing,no_call,no_call,no_call,no_call,blocked,Immune-cell expression and protein context are not confirmed.
+b2m,B2M,missing,no_call,no_call,no_call,no_call,blocked,Surface protein abundance and malignant-cell heterogeneity are not confirmed.
+pdl1,CD274,missing,no_call,no_call,no_call,no_call,blocked,Immune-cell expression and protein context are not confirmed.
+pd1,PDCD1,missing,no_call,no_call,no_call,no_call,blocked,Immune-cell expression and protein context are not confirmed.
+4_1bb,TNFRSF9,missing,no_call,no_call,no_call,no_call,blocked,Immune-cell expression and protein context are not confirmed.
+cd3e,CD3E,missing,no_call,no_call,no_call,no_call,blocked,Surface protein abundance and malignant-cell heterogeneity are not confirmed.
+cdk12,CDK12,missing,no_call,no_call,no_call,no_call,blocked,CDK12/13 dependency and DDR transcriptional context are not validated.
+cdk13,CDK13,missing,no_call,no_call,no_call,no_call,blocked,CDK12/13 dependency and DDR transcriptional context are not validated.
+ccnk,CCNK,missing,no_call,no_call,no_call,no_call,blocked,CDK12/13 dependency and DDR transcriptional context are not validated.
+rb1,RB1,missing,no_call,no_call,no_call,no_call,blocked,CDK-pathway dependence and resistance context are not clinically locked.
+ccne1,CCNE1,missing,no_call,no_call,no_call,no_call,blocked,CDK-pathway dependence and resistance context are not clinically locked.
+cdk4,CDK4,missing,no_call,no_call,no_call,no_call,blocked,CDK-pathway dependence and resistance context are not clinically locked.
+cdk6,CDK6,missing,no_call,no_call,no_call,no_call,blocked,CDK-pathway dependence and resistance context are not clinically locked.
+ccnd1,CCND1,missing,no_call,no_call,no_call,no_call,blocked,CDK-pathway dependence and resistance context are not clinically locked.
+cdkn2a,CDKN2A,missing,no_call,no_call,no_call,no_call,blocked,CDK-pathway dependence and resistance context are not clinically locked.
+cdkn2b,CDKN2B,missing,no_call,no_call,no_call,no_call,blocked,CDK-pathway dependence and resistance context are not clinically locked.
+pik3ca,PIK3CA,missing,no_call,no_call,no_call,no_call,blocked,CDK-pathway dependence and resistance context are not clinically locked.
+akt1,AKT1,missing,no_call,no_call,no_call,no_call,blocked,CDK-pathway dependence and resistance context are not clinically locked.
+pten,PTEN,missing,no_call,no_call,no_call,no_call,blocked,CDK-pathway dependence and resistance context are not clinically locked.
+fgfr1,FGFR1,missing,no_call,no_call,no_call,no_call,blocked,CDK-pathway dependence and resistance context are not clinically locked.
+fgfr2,FGFR2,missing,no_call,no_call,no_call,no_call,blocked,CDK-pathway dependence and resistance context are not clinically locked.
+esr1,ESR1,missing,no_call,no_call,no_call,no_call,blocked,CDK-pathway dependence and resistance context are not clinically locked.
+top1,TOP1,missing,no_call,no_call,no_call,no_call,blocked,Payload-specific sensitivity context is not validated.
+slfn11,SLFN11,missing,no_call,no_call,no_call,no_call,blocked,Payload-specific sensitivity context is not validated.
+abcb1,ABCB1,missing,no_call,no_call,no_call,no_call,blocked,Payload-specific sensitivity context is not validated.
+ugt1a1,UGT1A1,missing,no_call,no_call,no_call,no_call,blocked,Payload-specific sensitivity context is not validated.

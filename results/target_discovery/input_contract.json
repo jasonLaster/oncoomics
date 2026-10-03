@@ -1,0 +1,8 @@
+{
+  "generatedAt": "2026-07-22T04:20:36.650Z",
+  "status": "template_ready",
+  "candidateManifest": "manifests/target_discovery_candidates.csv",
+  "inputTemplate": "manifests/target_discovery_inputs.template.csv",
+  "targetCount": 37,
+  "boundary": "WES/WGS is first-pass support or blocker evidence only; expression, protein abundance, and drug context stay no_call until their own evidence lanes pass."
+}

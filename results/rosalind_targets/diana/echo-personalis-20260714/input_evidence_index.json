@@ -1,0 +1,36 @@
+{
+  "generatedAt": "2026-07-22T04:49:15.167Z",
+  "status": "passed",
+  "rows": [
+    {
+      "path": "manifests/target_discovery_candidates.csv",
+      "bytes": 10229,
+      "sha256": "bfb76ffdbd93294edf5f25d57451427905e55c3e9010bc992c198fc9d730caae"
+    },
+    {
+      "path": "manifests/target_dna_evidence.csv",
+      "bytes": 8506,
+      "sha256": "725ad32c77710d0e7d2f22fca530c99f5fa288d3bcb0220ef845dc08169d5100"
+    },
+    {
+      "path": "results/target_discovery/candidate_target_board.csv",
+      "bytes": 14504,
+      "sha256": "5d0ebc718f37eb27b2d60cd0dc8c42ece3bf89a0d65de18d48fa8ecfab34d13b"
+    },
+    {
+      "path": "results/target_discovery/dna_target_locus_summary.csv",
+      "bytes": 10587,
+      "sha256": "7180529311b260f77b944345fd2cb07adb882809b2d6be000a3d05bab8eea67f"
+    },
+    {
+      "path": "results/target_discovery/dna_target_locus_summary.json",
+      "bytes": 428,
+      "sha256": "7f79d369c313f52e8aca7ccff11e160203ef96c126b2f645040a5855450e6ba6"
+    },
+    {
+      "path": "results/target_discovery/input_validation_summary.json",
+      "bytes": 695,
+      "sha256": "6afeb9304ffb1ae106cef45e1675b58d2aa9c4c061ca199957658210223eeb21"
+    }
+  ]
+}

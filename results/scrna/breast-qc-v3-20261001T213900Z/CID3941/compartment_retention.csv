@@ -1,0 +1,8 @@
+compartment,input_cells,core_qc_cells,retained_cells,retained_fraction,low_genes,low_umis,mt,doublets
+B cells,55,48,48,0.8727272727272727,3,1,4,0
+Endothelial,44,40,40,0.9090909090909091,0,0,4,0
+Epithelial,196,131,131,0.6683673469387755,0,0,65,0
+Fibroblast,8,4,4,0.5,4,4,0,0
+Myeloid,37,24,16,0.43243243243243246,12,11,0,8
+Perivascular,25,19,19,0.76,0,2,5,0
+T cells,266,258,250,0.9398496240601504,3,4,4,8

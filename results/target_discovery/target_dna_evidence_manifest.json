@@ -1,0 +1,14 @@
+{
+  "status": "partial_evidence",
+  "output": "manifests/target_dna_evidence.csv",
+  "loci": "manifests/target_gene_loci_hs37d5.csv",
+  "tumorBam": "s3://diana-omics-raw-inputs-172630973301-us-east-1/diana/inbox/2026-07-14-echo-personalis/data/immunoid/E019_S01/DNA_Pipeline/Alignments/DNA_E019_S01_tumor_dna_aligned_recal.sorted.bam",
+  "normalBam": "s3://diana-omics-raw-inputs-172630973301-us-east-1/diana/inbox/2026-07-14-echo-personalis/data/immunoid/E019_S01/DNA_Pipeline/Alignments/DNA_E019_S05_Vial1_normal_dna_aligned_recal.sorted.bam",
+  "minimumReads": 10,
+  "samtoolsTimeoutSeconds": 15,
+  "samtoolsWorkers": 8,
+  "rowCount": 37,
+  "callableCount": 37,
+  "timeoutCount": 0,
+  "boundary": "Indexed BAM range counts are a locus-callability screen; they do not call SNVs, CNVs, HLA loss, RNA expression, surface protein abundance, or drug sensitivity."
+}

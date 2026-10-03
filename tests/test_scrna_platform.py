@@ -39,7 +39,7 @@ def test_corrupt_source_hash_stops_analysis(tmp_path):
         verify_file(source, "a" * 64)
 
 
-def test_config_rejects_non_pbmc_and_duplicate_ids():
+def test_config_rejects_tissue_profile_mismatch_and_duplicate_ids():
     config = json.loads((Path(__file__).parents[1] / "manifests/scrna/calibration.json").read_text())
     validate_config(config)
     config["datasets"][0]["tissue"] = "breast tumor"

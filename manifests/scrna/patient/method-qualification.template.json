@@ -1,0 +1,58 @@
+{
+  "schema_version": 1,
+  "status": "unperformed",
+  "reviewer": "",
+  "claim": "postcount_qc_and_coarse_marker_hints",
+  "method_sha256": "REPLACE-executed-method-SHA256",
+  "expires_at": "REPLACE-UTC-expiration",
+  "scope": {
+    "species": "Homo sapiens",
+    "tissue": "breast tumor",
+    "material": "whole_cell",
+    "chemistries": [],
+    "references": [],
+    "reference_sha256": [],
+    "clinical_subtypes": []
+  },
+  "reports": {
+    "matched_external_validation": {
+      "status": "unperformed",
+      "reviewer": "",
+      "source": "",
+      "path": "REPLACE-matched_external_validation.md",
+      "sha256": "REPLACE-reviewed-report-SHA256",
+      "training_donors": [],
+      "evaluation_donors": [],
+      "training_studies": [],
+      "evaluation_studies": []
+    },
+    "compartment_loss": {
+      "status": "unperformed",
+      "reviewer": "",
+      "source": "",
+      "path": "REPLACE-compartment_loss.md",
+      "sha256": "REPLACE-reviewed-report-SHA256"
+    },
+    "ambient": {
+      "status": "unperformed",
+      "reviewer": "",
+      "source": "",
+      "path": "REPLACE-ambient.md",
+      "sha256": "REPLACE-reviewed-report-SHA256"
+    },
+    "doublets": {
+      "status": "unperformed",
+      "reviewer": "",
+      "source": "",
+      "path": "REPLACE-doublets.md",
+      "sha256": "REPLACE-reviewed-report-SHA256"
+    },
+    "annotation": {
+      "status": "unperformed",
+      "reviewer": "",
+      "source": "",
+      "path": "REPLACE-annotation.md",
+      "sha256": "REPLACE-reviewed-report-SHA256"
+    }
+  }
+}

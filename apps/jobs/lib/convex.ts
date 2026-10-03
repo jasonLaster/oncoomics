@@ -10,6 +10,7 @@ import {
   type ViewerLogStream,
 } from "./aws";
 import { syncForwardPages } from "./forward-sync";
+import { mergeViewerJobs } from "./job-inventory";
 
 type ViewerPayload = Awaited<ReturnType<typeof listViewerJobs>>;
 type LogEventInput = {
@@ -459,19 +460,14 @@ export async function persistAndMergeViewerSnapshot(
       await advanceDurableBackfills(client);
     }
 
+    const durableJobs = await client.query(api.jobProgress.listJobs, {});
     const aggregates = await client.query(api.jobProgress.getAggregates, {
-      jobIds: snapshot.jobs.map((job) => job.jobId),
+      jobIds: durableJobs.map((job) => job.jobId),
     });
-    const byJobId = new Map(
-      aggregates.map((aggregate) => [aggregate.jobId, aggregate]),
-    );
 
     return {
       ...payload,
-      jobs: payload.jobs.map((job) => ({
-        ...job,
-        progress: job.id ? byJobId.get(job.id) || job.progress : job.progress,
-      })),
+      jobs: mergeViewerJobs(payload.jobs, durableJobs, aggregates),
     };
   } catch (error) {
     console.warn("[convex] snapshot persistence unavailable", {

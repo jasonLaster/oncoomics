@@ -1,0 +1,46 @@
+{
+  "schema": "diana_rosalind_trop2_research_context.v1",
+  "retrievedAt": "2026-09-04T01:51:48Z",
+  "target": {
+    "geneSymbol": "TACSTD2",
+    "proteinName": "TROP-2",
+    "ensemblGeneId": "ENSG00000184292",
+    "uniprotAccession": "P09758"
+  },
+  "sources": [
+    {
+      "source": "Ensembl GRCh37 REST",
+      "url": "https://grch37.rest.ensembl.org/lookup/symbol/homo_sapiens/TACSTD2?expand=1",
+      "factsUsed": [
+        "TACSTD2 is ENSG00000184292 on GRCh37 chromosome 1, positions 59041099-59043166, negative strand.",
+        "Canonical transcript ENST00000371225.2 has one exon and a 972-bp coding span at 59041857-59042828 encoding a 323-aa protein."
+      ]
+    },
+    {
+      "source": "UniProtKB",
+      "url": "https://www.uniprot.org/uniprotkb/P09758/entry",
+      "factsUsed": [
+        "P09758 is the reviewed human Tumor-associated calcium signal transducer 2 entry.",
+        "The protein is 323 amino acids and has extracellular, transmembrane, and cytoplasmic topology."
+      ]
+    },
+    {
+      "source": "Human Protein Atlas",
+      "url": "https://www.proteinatlas.org/ENSG00000184292-TACSTD2/cancer",
+      "factsUsed": [
+        "The TCGA cancer RNA category is low cancer specificity and detected in many cancers.",
+        "Normal tissue protein context includes abundant cytoplasmic and membranous expression in respiratory and squamous epithelial cells.",
+        "The page describes medium consistency between antibody staining and RNA expression data."
+      ]
+    },
+    {
+      "source": "Human Protein Atlas breast cancer view",
+      "url": "https://www.proteinatlas.org/ENSG00000184292-TACSTD2/cancer/breast+cancer",
+      "factsUsed": [
+        "The displayed TCGA breast invasive carcinoma cohort has 1022 RNA samples and average TACSTD2 expression of 291.5 pTPM.",
+        "This mixed breast-cancer cohort is external context only and is not a TNBC-specific or cross-platform calibration set."
+      ]
+    }
+  ],
+  "boundary": "Public database context is interpretive only. It does not rescue failed sample QC and is not proof of Diana tumor-cell surface TROP-2 or treatment benefit."
+}

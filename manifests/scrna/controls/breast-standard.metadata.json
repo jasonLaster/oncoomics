@@ -1,0 +1,18 @@
+{
+  "capture_id": "control-breast-standard",
+  "specimen_id": "control-breast-standard-specimen",
+  "species": "Homo sapiens",
+  "tissue": "breast tumor",
+  "material": "whole_cell",
+  "chemistry": "3prime_v3.1",
+  "assay": "10x_3prime_gex",
+  "reference": "GRCh38-vendor-CellRanger-6.0.0",
+  "reference_sha256": "unknown",
+  "pooled_donors": false,
+  "complete_capture": true,
+  "reviewer": "public-control-operator",
+  "source": "https://www.10xgenomics.com/datasets/7-5-k-sorted-cells-from-human-invasive-ductal-carcinoma-3-v-3-1-3-1-standard-6-0-0",
+  "source_sha256": "8a47dbccaaaca29146908f4560aa3355bfbe8b6f25a220f4226d3d3642d8defe",
+  "source_snapshot": "source_metadata.html",
+  "review_scope": "Public vendor sample description and complete original paired matrices; no independent biological truth or TNBC subtype claim"
+}

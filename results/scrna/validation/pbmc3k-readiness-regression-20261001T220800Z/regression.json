@@ -1,0 +1,11 @@
+{
+  "baseline": "pbmc3k-breast-qc-regression-20261001T213500Z",
+  "exact_hash_checks": {
+    "all_cells_qc.csv": true,
+    "cluster_marker_scores.csv": true,
+    "markers.csv": true,
+    "umap.csv": true
+  },
+  "run_id": "pbmc3k-readiness-regression-20261001T220800Z",
+  "status": "pass"
+}

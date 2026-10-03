@@ -1,0 +1,41 @@
+{
+  "schema_version": 1,
+  "evidence_lane": "patient_research",
+  "case_id": "case-001",
+  "species": "Homo sapiens",
+  "tissue": "breast tumor",
+  "material": "unknown",
+  "captures": [
+    {
+      "capture_id": "capture-001",
+      "specimen_id": "specimen-001",
+      "chemistry": "unknown",
+      "assay": "unknown",
+      "reference": "unknown",
+      "reference_sha256": "unknown",
+      "format": "10x_h5",
+      "expected_cells": null,
+      "pooled_donors": false,
+      "clinical_subtype": "unknown",
+      "treatment_status": "unknown",
+      "timepoint": "unknown",
+      "metadata": {
+        "status": "unresolved"
+      },
+      "files": [
+        {
+          "role": "filtered_h5",
+          "path": "REPLACE-filtered.h5",
+          "sha256": "REPLACE-source-SHA256",
+          "size_bytes": 0
+        },
+        {
+          "role": "raw_h5",
+          "path": "REPLACE-raw.h5",
+          "sha256": "REPLACE-source-SHA256",
+          "size_bytes": 0
+        }
+      ]
+    }
+  ]
+}

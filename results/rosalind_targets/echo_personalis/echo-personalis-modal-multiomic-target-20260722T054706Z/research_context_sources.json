@@ -1,0 +1,28 @@
+{
+  "boundary": "External research context is recorded after sample evidence and cannot rescue failed or missing sample lanes.",
+  "generatedAt": "2026-07-22T05:48:39.471693Z",
+  "rows": [
+    {
+      "applies_to": "adc_antigen;bispecific_antigen;cell_cycle_resistance;ddr_transcription_cdk;immune_context;payload_context",
+      "boundary": "Normalize identity and function after sample evidence exists.",
+      "skills": "UniProt;Ensembl;Reactome;STRING;GO",
+      "source_family": "target_identity_pathway",
+      "status": "no_call"
+    },
+    {
+      "applies_to": "adc_antigen;bispecific_antigen;immune_context",
+      "boundary": "Normal expression cannot prove sample surface abundance.",
+      "skills": "Human Protein Atlas;Bgee;GTEx;cellxgene",
+      "source_family": "expression_normal_tissue",
+      "status": "no_call"
+    },
+    {
+      "applies_to": "adc_antigen;bispecific_antigen;cell_cycle_resistance;ddr_transcription_cdk;immune_context;payload_context",
+      "boundary": "Clinical or public tumor evidence cannot override sample no_call gates.",
+      "skills": "cBioPortal;CIViC;ClinicalTrials.gov;PubMed;PMC",
+      "source_family": "cancer_clinical_context",
+      "status": "no_call"
+    }
+  ],
+  "status": "no_call"
+}

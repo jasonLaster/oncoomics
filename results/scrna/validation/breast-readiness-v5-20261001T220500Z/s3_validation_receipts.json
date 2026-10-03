@@ -1,0 +1,59 @@
+{
+  "objects": [
+    {
+      "key": "public/scrna/validations/breast-readiness-v5-20261001T220500Z/active_qc_regression.json",
+      "path": "results/scrna/validation/breast-readiness-v5-20261001T220500Z/active_qc_regression.json",
+      "sha256": "c3055aa255ea20ad4ffa8b6cbb55836f57ebab9250f187529c469b74414a21d7",
+      "version_id": "8B7j6G9Ikhohcre.zQN3oQNs1f42fW4G"
+    },
+    {
+      "key": "public/scrna/validations/breast-readiness-v5-20261001T220500Z/release_decision.json",
+      "path": "results/scrna/validation/breast-readiness-v5-20261001T220500Z/release_decision.json",
+      "sha256": "c0417f1e279bfefc366a393b50ee40340a4fce790c5cb3e39039873bed62656e",
+      "version_id": "uwXmlVbe1baHF9FD1HME0yY.F9MwadAR"
+    },
+    {
+      "key": "public/scrna/validations/breast-readiness-v5-20261001T220500Z/execution_receipt.json",
+      "path": "results/scrna/validation/breast-readiness-v5-20261001T220500Z/execution_receipt.json",
+      "sha256": "284610f776a8b84e07f3c4825a3b22331cb9cf0aa435f836ca73fa95a8bc6c2a",
+      "version_id": "WVjAWBCpqJYMR4i3eg_5vgfuTaVM5Edx"
+    },
+    {
+      "key": "public/scrna/validations/breast-readiness-v5-20261001T220500Z/deployment_preflight.json",
+      "path": "results/scrna/validation/breast-readiness-v5-20261001T220500Z/deployment_preflight.json",
+      "sha256": "5f437de502f778154493a4c7bdf16298bf7ee45995cbf532275a65936c0aad91",
+      "version_id": "RRzol0qYU1EUtVnsYyv2mFEgNba1s8Br"
+    },
+    {
+      "key": "public/scrna/validations/breast-readiness-v5-20261001T220500Z/independent_review.json",
+      "path": "results/scrna/validation/breast-readiness-v5-20261001T220500Z/independent_review.json",
+      "sha256": "1715f4ead2e0c9cfbe440a1a89d882d7b864984cb5d65955e10109a28c7df494",
+      "version_id": "DZAWofYRaZakZhFZasBGe2WHGN5PzIR_"
+    },
+    {
+      "key": "public/scrna/validations/breast-readiness-v5-20261001T220500Z/run_status.json",
+      "path": "results/scrna/validation/breast-readiness-v5-20261001T220500Z/run_status.json",
+      "sha256": "78bfdd479fa75210e43370bab2e665d2dc241023c89580b2a4f784aa173b5c0f",
+      "version_id": "EfAYd22vBbfEkz5D8FbSTirQ9jgTy3z2"
+    },
+    {
+      "key": "public/scrna/validations/breast-readiness-v5-20261001T220500Z/release_review.html",
+      "path": "results/scrna/validation/breast-readiness-v5-20261001T220500Z/release_review.html",
+      "sha256": "ef1c8e8511df56b0019716c0d9f9276ddb59d64297c1817488e99420cc2edc28",
+      "version_id": "f6P0g60KZhv0uPnuqgz6iJu.VYk_9Jf6"
+    },
+    {
+      "key": "public/scrna/validations/pbmc3k-readiness-regression-20261001T220800Z/regression.json",
+      "path": "results/scrna/validation/pbmc3k-readiness-regression-20261001T220800Z/regression.json",
+      "sha256": "effce61847c03e746468c00bd233963e6115e43ae9ce783e0173a46883a1ea22",
+      "version_id": "uFnExKvY6g.IKXXqMfuWhwalHz_rJZSi"
+    },
+    {
+      "key": "public/scrna/validations/breast-readiness-v5-20261001T220500Z/runtime_status.json",
+      "path": "results/scrna/validation/breast-readiness-v5-20261001T220500Z/runtime_status.json",
+      "sha256": "928622998b17790212e48a6c4933522e249f84ceb45e69b4bbf83785a08ad106",
+      "version_id": "RLoPLuXhbUnMvM2BlH1mdCj0AxnjOl91"
+    }
+  ],
+  "status": "all_hashes_verified"
+}

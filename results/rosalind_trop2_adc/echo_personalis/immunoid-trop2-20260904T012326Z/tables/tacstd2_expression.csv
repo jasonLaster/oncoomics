@@ -1,0 +1,3 @@
+gene_symbol,protein_name,bam_form,reference,region,gene_length_bp,primary_region_reads,hq_nonduplicate_region_reads,total_index_mapped_alignments,alignment_reads_per_million,unique_hq_templates,approximate_fragment_rpkm,evidence_status
+TACSTD2,TROP-2,recalibrated,GRCh37/hs37d5,1:59041099-59043166,2068,53132,30856,426675049,124.52567855684478,15521,35.180492351387386,partial_evidence
+TACSTD2,TROP-2,pre_bqsr,GRCh37/hs37d5,1:59041099-59043166,2068,53491,53424,276873071,193.19683133792378,not_computed,not_computed,partial_evidence

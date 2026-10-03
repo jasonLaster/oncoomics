@@ -1,0 +1,10 @@
+review_marker_hint_all_barcodes,input_cells,retained_cells,low_genes,low_umis,mt_flagged,doublet_flagged,retained_fraction
+B cells,8,5,0,0,2,1,0.625
+Endothelial,59,50,1,0,5,4,0.847457627118644
+Epithelial,2021,1868,0,0,26,127,0.9242949035131123
+Fibroblast,132,72,4,0,52,8,0.5454545454545454
+Myeloid,239,215,2,0,16,8,0.899581589958159
+Perivascular,222,159,12,0,61,2,0.7162162162162162
+Plasma cells,189,153,1,0,35,1,0.8095238095238095
+T / NK,165,152,0,0,8,5,0.9212121212121213
+Unknown / mixed,2645,862,259,0,1756,27,0.32589792060491496

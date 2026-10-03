@@ -1,0 +1,13 @@
+{
+  "evidence_level": "mechanical_regression",
+  "baseline": "pbmc3k-readiness-regression-20261001T220800Z",
+  "run_id": "pbmc3k-private-intake-regression-20261002T202000Z",
+  "checks": {
+    "all_cells_qc.csv": true,
+    "umap.csv": true,
+    "markers.csv": true,
+    "cluster_marker_scores.csv": true,
+    "reference_cluster_overlap.csv": true
+  },
+  "clinical_ready": false
+}

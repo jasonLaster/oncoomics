@@ -1,0 +1,84 @@
+{
+  "alignmentLineage": {
+    "alignedOnlyBams": true,
+    "fastqReads": 300007398,
+    "interpretation": "FASTQ read counts, pre-BQSR aligned-read records, and post-SplitNCigarReads recalibrated alignment records are different accounting spaces and must not be compared as equivalent totals.",
+    "oneToOneReadIdentityVerified": false,
+    "preBqsrPrimaryAlignments": 251685736,
+    "preBqsrPrimaryFractionOfFastqReads": 0.8389317652760017,
+    "recalibratedPrimaryAlignmentDifferenceFromFastqReads": 91238161,
+    "recalibratedPrimaryAlignments": 391245559,
+    "splitNCigarReadsDetected": true,
+    "status": "documented_non_equivalent_alignment_record_space"
+  },
+  "bamHqCountProcessingStateComparison": {
+    "first": 30856,
+    "relativeDifference": 0.4224318658280922,
+    "second": 53424,
+    "status": "discordant_review_required"
+  },
+  "bamPrimaryCountComparison": {
+    "first": 53132,
+    "relativeDifference": 0.006711409395973154,
+    "second": 53491,
+    "status": "concordant"
+  },
+  "bamQuickcheck": {
+    "preBqsr": "passed",
+    "recalibrated": "passed"
+  },
+  "depth": {
+    "canonicalCodingRegion": {
+      "bases": 972,
+      "coefficientOfVariation": 0.38771717872516226,
+      "fractionAtLeast100x": 1.0,
+      "fractionAtLeast10x": 1.0,
+      "fractionAtLeast1x": 1.0,
+      "maxDepth": 4687,
+      "meanDepth": 2878.1213991769546,
+      "medianDepth": 3149.5
+    },
+    "filters": {
+      "excludedFlags": "UNMAP|SECONDARY|QCFAIL|DUP|SUPPLEMENTARY",
+      "excludedFlagsMask": "0xF04",
+      "minimumBaseQuality": 20,
+      "minimumMappingQuality": 20,
+      "pairedOverlapHandling": "count_first_read_only"
+    },
+    "wholeAnnotatedLocus": {
+      "bases": 2068,
+      "coefficientOfVariation": 1.0799592902642532,
+      "fractionAtLeast100x": 0.5735009671179884,
+      "fractionAtLeast10x": 0.7171179883945842,
+      "fractionAtLeast1x": 0.7872340425531915,
+      "maxDepth": 4687,
+      "meanDepth": 1467.968085106383,
+      "medianDepth": 515.0
+    }
+  },
+  "expression": {
+    "hqNonduplicateRegionReads": 30856,
+    "normalizationCaveat": "Within-BAM alignment diagnostic only. It is not transcript-aware TPM/RPKM, does not use a stranded gene model, and is not suitable for cross-sample or cross-study comparison.",
+    "primaryNonduplicateMappedAlignments": 242474518,
+    "primaryNonduplicateRegionReads": 30904,
+    "primaryNonduplicateRegionReadsPerMillion": 127.45256802613791,
+    "primaryRegionReads": 53132,
+    "uniqueHqTemplates": 15521
+  },
+  "fastqPairCountStatus": "matched",
+  "fastqcFailedModules": [
+    "Adapter Content",
+    "Per base sequence content",
+    "Per tile sequence quality",
+    "Sequence Duplication Levels"
+  ],
+  "fastqcWarningModules": [
+    "Overrepresented sequences",
+    "Per base sequence content",
+    "Per sequence GC content",
+    "Per tile sequence quality"
+  ],
+  "referenceCheck": "passed_hs37d5_chr1_length",
+  "schema": "diana_rosalind_rnaseq_trop2_qa.v1",
+  "status": "passed_for_narrow_transcript_presence_with_source_qc_warnings"
+}

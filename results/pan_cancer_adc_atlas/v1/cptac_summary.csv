@@ -1,0 +1,203 @@
+target_id,gene_symbol,cancer,adjusted_p_value,log2_fold_change,evidence_status
+bcma,TNFRSF17,Lung SQCC,1.00E0,0.250078,public_reference_proteomics
+her3,ERBB3,Colon AC,1.00E0,-0.0676652,public_reference_proteomics
+her3,ERBB3,Endometrioid AC,8.98E-1,0.305881,public_reference_proteomics
+her3,ERBB3,Glioblastoma,1.00E0,-1.00008,public_reference_proteomics
+her3,ERBB3,Head and Neck SQCC,1.00E0,-0.0728124,public_reference_proteomics
+her3,ERBB3,Renal cell carcinoma,6.25E-2,0.202643,public_reference_proteomics
+her3,ERBB3,Liver HC,3.72E-4,0.239785,public_reference_proteomics
+her3,ERBB3,Lung AC,1.00E0,-0.0624049,public_reference_proteomics
+her3,ERBB3,Lung SQCC,1.56E-14,-0.525786,public_reference_proteomics
+her3,ERBB3,Ovary SC,1.00E0,-0.0762039,public_reference_proteomics
+her3,ERBB3,Pancreatic DAC,1.00E0,0.0382758,public_reference_proteomics
+her3,ERBB3,Uterine CEC,1.00E0,0.0831155,public_reference_proteomics
+cldn18,CLDN18,Colon AC,1.00E0,0.16228,public_reference_proteomics
+cldn18,CLDN18,Liver HC,1.00E0,0.24611,public_reference_proteomics
+cldn18,CLDN18,Lung AC,1.52E-27,-1.97871,public_reference_proteomics
+cldn18,CLDN18,Lung SQCC,1.01E-30,-2.37887,public_reference_proteomics
+cldn18,CLDN18,Pancreatic DAC,6.99E-3,1.3138,public_reference_proteomics
+folh1,FOLH1,Endometrioid AC,1.63E-3,0.577859,public_reference_proteomics
+folh1,FOLH1,Glioblastoma,2.33E-1,-1.27311,public_reference_proteomics
+folh1,FOLH1,Head and Neck SQCC,1.00E0,-0.346864,public_reference_proteomics
+folh1,FOLH1,Renal cell carcinoma,1.00E0,-0.270021,public_reference_proteomics
+folh1,FOLH1,Liver HC,8.72E-8,-0.309613,public_reference_proteomics
+folh1,FOLH1,Lung AC,3.70E-3,-0.36499,public_reference_proteomics
+folh1,FOLH1,Lung SQCC,1.00E0,0.208454,public_reference_proteomics
+folh1,FOLH1,Ovary SC,1.00E0,0.840217,public_reference_proteomics
+folh1,FOLH1,Pancreatic DAC,1.00E0,-0.0933501,public_reference_proteomics
+folh1,FOLH1,Uterine CEC,3.32E-1,0.627954,public_reference_proteomics
+dll3,DLL3,Glioblastoma,1.00E0,0.481293,public_reference_proteomics
+mesothelin,MSLN,Colon AC,1.00E0,-0.0714635,public_reference_proteomics
+mesothelin,MSLN,Endometrioid AC,1.00E0,0.553104,public_reference_proteomics
+mesothelin,MSLN,Head and Neck SQCC,2.25E-4,-0.727388,public_reference_proteomics
+mesothelin,MSLN,Renal cell carcinoma,1.00E0,0.713675,public_reference_proteomics
+mesothelin,MSLN,Lung AC,1.00E0,-0.3222,public_reference_proteomics
+mesothelin,MSLN,Lung SQCC,5.04E-25,-1.54561,public_reference_proteomics
+mesothelin,MSLN,Ovary SC,1.00E0,0.00949779,public_reference_proteomics
+mesothelin,MSLN,Pancreatic DAC,2.00E-21,1.36498,public_reference_proteomics
+mesothelin,MSLN,Uterine CEC,1.00E0,0.203801,public_reference_proteomics
+b7h3,CD276,Colon AC,1.00E0,0.128964,public_reference_proteomics
+b7h3,CD276,Endometrioid AC,1.00E0,0.110602,public_reference_proteomics
+b7h3,CD276,Glioblastoma,8.68E-3,1.07994,public_reference_proteomics
+b7h3,CD276,Head and Neck SQCC,1.52E-15,0.785602,public_reference_proteomics
+b7h3,CD276,Renal cell carcinoma,1.08E-25,0.82418,public_reference_proteomics
+b7h3,CD276,Liver HC,1.00E0,-0.0615749,public_reference_proteomics
+b7h3,CD276,Lung AC,5.93E-5,0.215539,public_reference_proteomics
+b7h3,CD276,Lung SQCC,2.72E-16,0.449834,public_reference_proteomics
+b7h3,CD276,Ovary SC,1.00E0,0.0465262,public_reference_proteomics
+b7h3,CD276,Pancreatic DAC,2.52E-14,0.614975,public_reference_proteomics
+b7h3,CD276,Uterine CEC,1.00E0,-0.164842,public_reference_proteomics
+ceacam5,CEACAM5,Colon AC,8.26E-15,1.03628,public_reference_proteomics
+ceacam5,CEACAM5,Endometrioid AC,1.00E0,0.893789,public_reference_proteomics
+ceacam5,CEACAM5,Head and Neck SQCC,2.21E-2,-0.726367,public_reference_proteomics
+ceacam5,CEACAM5,Lung AC,1.71E-2,0.684313,public_reference_proteomics
+ceacam5,CEACAM5,Lung SQCC,1.00E0,0.38087,public_reference_proteomics
+ceacam5,CEACAM5,Pancreatic DAC,1.34E-11,1.21883,public_reference_proteomics
+ceacam5,CEACAM5,Uterine CEC,1.00E0,0.871098,public_reference_proteomics
+met,MET,Colon AC,3.09E-13,0.556287,public_reference_proteomics
+met,MET,Endometrioid AC,1.00E0,0.326288,public_reference_proteomics
+met,MET,Glioblastoma,1.00E0,-0.500114,public_reference_proteomics
+met,MET,Head and Neck SQCC,2.77E-12,0.618764,public_reference_proteomics
+met,MET,Renal cell carcinoma,9.31E-26,1.02893,public_reference_proteomics
+met,MET,Liver HC,1.00E0,0.0270821,public_reference_proteomics
+met,MET,Lung AC,6.79E-5,0.455946,public_reference_proteomics
+met,MET,Lung SQCC,1.00E0,0.160998,public_reference_proteomics
+met,MET,Ovary SC,1.00E0,-0.381321,public_reference_proteomics
+met,MET,Pancreatic DAC,9.97E-20,0.854523,public_reference_proteomics
+met,MET,Uterine CEC,1.00E0,-0.169787,public_reference_proteomics
+folr1,FOLR1,Endometrioid AC,1.46E-3,0.83292,public_reference_proteomics
+folr1,FOLR1,Glioblastoma,1.00E0,0.580498,public_reference_proteomics
+folr1,FOLR1,Head and Neck SQCC,1.00E0,-0.734435,public_reference_proteomics
+folr1,FOLR1,Renal cell carcinoma,5.66E-14,-0.847952,public_reference_proteomics
+folr1,FOLR1,Lung AC,4.80E-1,-0.340269,public_reference_proteomics
+folr1,FOLR1,Lung SQCC,1.04E-30,-2.04237,public_reference_proteomics
+folr1,FOLR1,Ovary SC,1.00E0,0.146727,public_reference_proteomics
+folr1,FOLR1,Pancreatic DAC,1.00E0,0.160604,public_reference_proteomics
+folr1,FOLR1,Uterine CEC,1.00E0,0.632695,public_reference_proteomics
+ptk7,PTK7,Colon AC,4.93E-9,0.420411,public_reference_proteomics
+ptk7,PTK7,Endometrioid AC,1.00E0,-0.171251,public_reference_proteomics
+ptk7,PTK7,Glioblastoma,2.35E-3,1.05832,public_reference_proteomics
+ptk7,PTK7,Head and Neck SQCC,2.33E-21,0.876651,public_reference_proteomics
+ptk7,PTK7,Renal cell carcinoma,2.39E-10,-0.583032,public_reference_proteomics
+ptk7,PTK7,Liver HC,1.00E0,0.228232,public_reference_proteomics
+ptk7,PTK7,Lung AC,8.49E-12,0.36606,public_reference_proteomics
+ptk7,PTK7,Lung SQCC,6.99E-15,0.503805,public_reference_proteomics
+ptk7,PTK7,Ovary SC,1.00E0,0.0622571,public_reference_proteomics
+ptk7,PTK7,Pancreatic DAC,2.78E-19,0.79561,public_reference_proteomics
+ptk7,PTK7,Uterine CEC,4.49E-6,-0.725613,public_reference_proteomics
+tissue-factor,F3,Colon AC,1.00E0,-0.186489,public_reference_proteomics
+tissue-factor,F3,Endometrioid AC,1.00E0,0.256236,public_reference_proteomics
+tissue-factor,F3,Glioblastoma,1.00E0,-0.281152,public_reference_proteomics
+tissue-factor,F3,Head and Neck SQCC,1.00E0,-0.0168732,public_reference_proteomics
+tissue-factor,F3,Renal cell carcinoma,1.05E-1,-0.550327,public_reference_proteomics
+tissue-factor,F3,Lung AC,1.00E0,-0.14153,public_reference_proteomics
+tissue-factor,F3,Lung SQCC,1.00E0,0.255727,public_reference_proteomics
+tissue-factor,F3,Pancreatic DAC,1.89E-9,0.959942,public_reference_proteomics
+tissue-factor,F3,Uterine CEC,1.00E0,-0.335602,public_reference_proteomics
+gpnmb,GPNMB,Colon AC,2.22E-10,-0.58974,public_reference_proteomics
+gpnmb,GPNMB,Endometrioid AC,1.00E0,-0.222418,public_reference_proteomics
+gpnmb,GPNMB,Glioblastoma,1.00E0,0.643764,public_reference_proteomics
+gpnmb,GPNMB,Head and Neck SQCC,1.00E0,0.221434,public_reference_proteomics
+gpnmb,GPNMB,Renal cell carcinoma,3.19E-11,0.852575,public_reference_proteomics
+gpnmb,GPNMB,Liver HC,1.00E0,-0.0774387,public_reference_proteomics
+gpnmb,GPNMB,Lung AC,1.37E-8,-0.459554,public_reference_proteomics
+gpnmb,GPNMB,Lung SQCC,1.00E0,-0.109407,public_reference_proteomics
+gpnmb,GPNMB,Ovary SC,1.00E0,-0.32073,public_reference_proteomics
+gpnmb,GPNMB,Pancreatic DAC,3.36E-6,0.536155,public_reference_proteomics
+gpnmb,GPNMB,Uterine CEC,1.00E0,-0.168603,public_reference_proteomics
+liv1,SLC39A6,Endometrioid AC,7.98E-1,0.32309,public_reference_proteomics
+liv1,SLC39A6,Glioblastoma,3.27E-3,-0.968249,public_reference_proteomics
+liv1,SLC39A6,Head and Neck SQCC,1.00E0,0.155305,public_reference_proteomics
+liv1,SLC39A6,Renal cell carcinoma,1.00E0,0.0811514,public_reference_proteomics
+liv1,SLC39A6,Liver HC,1.00E0,-0.0135504,public_reference_proteomics
+liv1,SLC39A6,Lung AC,1.00E0,-0.228558,public_reference_proteomics
+liv1,SLC39A6,Lung SQCC,9.89E-17,0.725741,public_reference_proteomics
+liv1,SLC39A6,Ovary SC,1.00E0,0.0615719,public_reference_proteomics
+liv1,SLC39A6,Pancreatic DAC,1.00E0,-0.173087,public_reference_proteomics
+liv1,SLC39A6,Uterine CEC,1.00E0,0.0709303,public_reference_proteomics
+her2,ERBB2,Colon AC,1.00E0,-0.0685275,public_reference_proteomics
+her2,ERBB2,Endometrioid AC,2.57E-7,0.633636,public_reference_proteomics
+her2,ERBB2,Glioblastoma,1.00E0,0.517413,public_reference_proteomics
+her2,ERBB2,Head and Neck SQCC,2.18E-2,-0.241516,public_reference_proteomics
+her2,ERBB2,Renal cell carcinoma,2.85E-26,-0.890014,public_reference_proteomics
+her2,ERBB2,Liver HC,5.92E-9,-0.295452,public_reference_proteomics
+her2,ERBB2,Lung AC,4.48E-14,0.472703,public_reference_proteomics
+her2,ERBB2,Lung SQCC,1.00E0,0.170996,public_reference_proteomics
+her2,ERBB2,Ovary SC,2.78E-1,-0.352589,public_reference_proteomics
+her2,ERBB2,Pancreatic DAC,3.92E-13,0.511779,public_reference_proteomics
+her2,ERBB2,Uterine CEC,1.00E0,0.215293,public_reference_proteomics
+nectin4,NECTIN4,Endometrioid AC,4.02E-13,0.792041,public_reference_proteomics
+nectin4,NECTIN4,Head and Neck SQCC,1.00E-1,-0.370516,public_reference_proteomics
+nectin4,NECTIN4,Lung AC,1.52E-13,0.584542,public_reference_proteomics
+nectin4,NECTIN4,Lung SQCC,6.94E-16,0.871851,public_reference_proteomics
+nectin4,NECTIN4,Ovary SC,1.00E0,-0.233744,public_reference_proteomics
+nectin4,NECTIN4,Pancreatic DAC,4.50E-3,0.423832,public_reference_proteomics
+nectin4,NECTIN4,Uterine CEC,2.01E-3,0.675676,public_reference_proteomics
+egfr,EGFR,Colon AC,1.03E-15,-0.416558,public_reference_proteomics
+egfr,EGFR,Endometrioid AC,1.00E0,-0.24316,public_reference_proteomics
+egfr,EGFR,Glioblastoma,1.00E0,0.845923,public_reference_proteomics
+egfr,EGFR,Head and Neck SQCC,1.19E-3,0.540359,public_reference_proteomics
+egfr,EGFR,Renal cell carcinoma,4.19E-26,0.920732,public_reference_proteomics
+egfr,EGFR,Liver HC,2.58E-3,-0.207661,public_reference_proteomics
+egfr,EGFR,Lung AC,1.00E0,0.171472,public_reference_proteomics
+egfr,EGFR,Lung SQCC,1.51E-7,0.630795,public_reference_proteomics
+egfr,EGFR,Ovary SC,6.88E-5,-0.64591,public_reference_proteomics
+egfr,EGFR,Pancreatic DAC,1.00E0,0.187727,public_reference_proteomics
+egfr,EGFR,Uterine CEC,4.75E-3,-0.529553,public_reference_proteomics
+gpc3,GPC3,Endometrioid AC,1.00E0,-0.464123,public_reference_proteomics
+gpc3,GPC3,Head and Neck SQCC,7.83E-1,-0.478729,public_reference_proteomics
+gpc3,GPC3,Renal cell carcinoma,1.00E0,-0.154888,public_reference_proteomics
+gpc3,GPC3,Liver HC,1.54E-15,1.35696,public_reference_proteomics
+gpc3,GPC3,Lung AC,1.18E-1,-0.471823,public_reference_proteomics
+gpc3,GPC3,Lung SQCC,1.00E0,0.108602,public_reference_proteomics
+gpc3,GPC3,Ovary SC,1.00E0,0.134061,public_reference_proteomics
+gpc3,GPC3,Pancreatic DAC,1.00E0,-0.440463,public_reference_proteomics
+gpc3,GPC3,Uterine CEC,1.00E0,-0.204543,public_reference_proteomics
+napi2b,SLC34A2,Endometrioid AC,6.04E-3,0.811572,public_reference_proteomics
+napi2b,SLC34A2,Head and Neck SQCC,1.00E0,-0.0696705,public_reference_proteomics
+napi2b,SLC34A2,Renal cell carcinoma,1.00E0,0.28522,public_reference_proteomics
+napi2b,SLC34A2,Liver HC,1.00E0,0.274318,public_reference_proteomics
+napi2b,SLC34A2,Lung AC,1.00E0,0.132031,public_reference_proteomics
+napi2b,SLC34A2,Lung SQCC,2.47E-28,-1.71663,public_reference_proteomics
+napi2b,SLC34A2,Ovary SC,1.00E0,-0.0309579,public_reference_proteomics
+napi2b,SLC34A2,Pancreatic DAC,1.00E0,0.137618,public_reference_proteomics
+napi2b,SLC34A2,Uterine CEC,1.00E0,0.00542234,public_reference_proteomics
+ror2,ROR2,Colon AC,1.92E-13,-0.802156,public_reference_proteomics
+ror2,ROR2,Endometrioid AC,1.74E-3,-0.573229,public_reference_proteomics
+ror2,ROR2,Glioblastoma,1.00E0,-0.563162,public_reference_proteomics
+ror2,ROR2,Head and Neck SQCC,1.00E0,0.331445,public_reference_proteomics
+ror2,ROR2,Liver HC,1.00E0,-0.135063,public_reference_proteomics
+ror2,ROR2,Lung AC,1.00E0,-0.0171808,public_reference_proteomics
+ror2,ROR2,Lung SQCC,1.00E0,0.217972,public_reference_proteomics
+ror2,ROR2,Ovary SC,1.00E0,-0.471395,public_reference_proteomics
+ror2,ROR2,Pancreatic DAC,5.92E-1,0.284795,public_reference_proteomics
+ror2,ROR2,Uterine CEC,4.20E-6,-1.09795,public_reference_proteomics
+trop2,TACSTD2,Colon AC,1.00E0,0.831082,public_reference_proteomics
+trop2,TACSTD2,Endometrioid AC,2.99E-12,0.984468,public_reference_proteomics
+trop2,TACSTD2,Head and Neck SQCC,7.30E-2,-0.500562,public_reference_proteomics
+trop2,TACSTD2,Renal cell carcinoma,2.36E-23,-1.60329,public_reference_proteomics
+trop2,TACSTD2,Liver HC,2.61E-14,-0.96996,public_reference_proteomics
+trop2,TACSTD2,Lung AC,1.72E-4,-0.302233,public_reference_proteomics
+trop2,TACSTD2,Lung SQCC,1.00E0,0.254722,public_reference_proteomics
+trop2,TACSTD2,Ovary SC,1.00E0,-0.221837,public_reference_proteomics
+trop2,TACSTD2,Pancreatic DAC,1.00E0,-0.0353396,public_reference_proteomics
+trop2,TACSTD2,Uterine CEC,6.23E-3,0.763079,public_reference_proteomics
+ror1,ROR1,Endometrioid AC,1.00E0,-0.125483,public_reference_proteomics
+ror1,ROR1,Glioblastoma,1.00E0,-0.131446,public_reference_proteomics
+ror1,ROR1,Head and Neck SQCC,1.00E0,0.0557369,public_reference_proteomics
+ror1,ROR1,Renal cell carcinoma,1.00E0,-0.0337748,public_reference_proteomics
+ror1,ROR1,Lung AC,4.95E-8,-0.324277,public_reference_proteomics
+ror1,ROR1,Lung SQCC,5.50E-22,-0.967685,public_reference_proteomics
+ror1,ROR1,Pancreatic DAC,1.00E0,0.0812109,public_reference_proteomics
+ror1,ROR1,Uterine CEC,1.00E0,-0.305984,public_reference_proteomics
+muc1,MUC1,Colon AC,1.00E0,0.152685,public_reference_proteomics
+muc1,MUC1,Endometrioid AC,1.27E-6,0.826115,public_reference_proteomics
+muc1,MUC1,Glioblastoma,1.00E0,0.180264,public_reference_proteomics
+muc1,MUC1,Head and Neck SQCC,1.67E-3,-0.888519,public_reference_proteomics
+muc1,MUC1,Renal cell carcinoma,3.45E-13,-0.927884,public_reference_proteomics
+muc1,MUC1,Liver HC,1.00E0,-0.0538949,public_reference_proteomics
+muc1,MUC1,Lung AC,1.23E-3,0.44215,public_reference_proteomics
+muc1,MUC1,Lung SQCC,3.62E-23,-1.16483,public_reference_proteomics
+muc1,MUC1,Ovary SC,1.00E0,-0.165252,public_reference_proteomics
+muc1,MUC1,Pancreatic DAC,1.79E-7,0.644731,public_reference_proteomics
+muc1,MUC1,Uterine CEC,1.13E-1,0.617653,public_reference_proteomics

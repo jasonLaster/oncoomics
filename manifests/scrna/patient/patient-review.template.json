@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "status": "unperformed",
+  "reviewer": "",
+  "method_sha256": "REPLACE-executed-method-SHA256",
+  "artifact_index_sha256": "REPLACE-run-artifact-index-SHA256",
+  "checks": {
+    "identity": false,
+    "capture_metadata": false,
+    "qc_losses": false,
+    "ambient": false,
+    "annotation_uncertainty": false
+  }
+}

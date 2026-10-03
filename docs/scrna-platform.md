@@ -2,6 +2,8 @@
 
 This platform runs bounded, reproducible public PBMC post-count analysis on Modal and stores source matrices and immutable results in the existing Diana S3 buckets. It is a separate single-cell analysis lane beside the DNA/HRD workflows.
 
+[Breast tumor QC recipe 5](scrna-breast-qc.md) adds a separate tissue profile, explicit sample/capture readiness, nuisance review signals, compartment-loss/sensitivity audits, and a diagnostic miQC challenger. [Research release controls](scrna-production.md) block promotion without passing QC and reviewed evidence. The PBMC recipe and its screens remain the baseline below.
+
 ## Scientific plan
 
 The first decision is whether the post-count pipeline preserves counts and custody, performs capture-aware QC/doublet assessment, returns plausible cell compartments, and recovers published PBMC structure. This is matrix-level calibration, not validation of FASTQ counting, ambient removal, tumor annotation, or clinical interpretation.

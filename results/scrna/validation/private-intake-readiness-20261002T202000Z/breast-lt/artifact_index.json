@@ -1,0 +1,232 @@
+[
+  {
+    "path": "conda-explicit.txt",
+    "sha256": "b36cfb6ead5ac07bfa2085a8c58ccde8b195ca97d7f2fda6629e11843a11a327",
+    "size_bytes": 28277
+  },
+  {
+    "path": "control-breast-lt/all_cells_qc.csv",
+    "sha256": "606214dd2da02efc2d0c15a65be861b9facd4d1bcc046cbc5024638bf3d1c43c",
+    "size_bytes": 259847
+  },
+  {
+    "path": "control-breast-lt/all_cells_qc.h5ad",
+    "sha256": "7d6563627889258bdfe007c08fdd9e3ce7087cb2d00b9f3d1a1684567d90fcc1",
+    "size_bytes": 14607293
+  },
+  {
+    "path": "control-breast-lt/analysis.h5ad",
+    "sha256": "8e304a1d84fe459a7e7d9a5f666a2090d25308d7e581f94dda86ccc8f2dcba6e",
+    "size_bytes": 28279053
+  },
+  {
+    "path": "control-breast-lt/breast_qc_review.png",
+    "sha256": "15dcd5962a29f22dc27d1e3d73684a31005be2221777253117997bcf14a23861",
+    "size_bytes": 269257
+  },
+  {
+    "path": "control-breast-lt/calibration.json",
+    "sha256": "3871e56a123b7c870356d8444eda1c064df0637e028cec6b876c4c8a8c36e957",
+    "size_bytes": 2413
+  },
+  {
+    "path": "control-breast-lt/cluster_marker_scores.csv",
+    "sha256": "b185a84959f6413e85fb8aad9eddd44ce985e4f2d8c6df955917aa4f7b4bab30",
+    "size_bytes": 919
+  },
+  {
+    "path": "control-breast-lt/doublets/barcodes.tsv",
+    "sha256": "35a63a503add69e7cedbbd07d88020b29fd021f0763aa895a1e62706120a385c",
+    "size_bytes": 8626
+  },
+  {
+    "path": "control-breast-lt/doublets/call.R",
+    "sha256": "2e694db6ed2f087868abfc5df4df660eb1d31c5469859973025ab95451b5b792",
+    "size_bytes": 689
+  },
+  {
+    "path": "control-breast-lt/doublets/calls.csv",
+    "sha256": "3b8dc02de968821bdccd0e4b9f71047f95e881119307895ca24b6eb360506f8a",
+    "size_bytes": 22206
+  },
+  {
+    "path": "control-breast-lt/doublets/r.log",
+    "sha256": "4e6c5d26bd78fbec030e1976a479cfd31ebb53499f9aa45443cf438e8378562a",
+    "size_bytes": 1944
+  },
+  {
+    "path": "control-breast-lt/doublets/r_session.txt",
+    "sha256": "c558dac8d8e111691c35e77b6cc53778a19eaf097963771b3fd0822b51d290f6",
+    "size_bytes": 3194
+  },
+  {
+    "path": "control-breast-lt/markers.csv",
+    "sha256": "8efd39f58c6bee868c5d39c1fd53bf9cc8c8582706d65d476117ea39c1f68ced",
+    "size_bytes": 26208
+  },
+  {
+    "path": "control-breast-lt/parameters.json",
+    "sha256": "2f2d990035458a3342f847078587e900c1c5ec8208f0ebb27b5ac84c48533a9a",
+    "size_bytes": 1754
+  },
+  {
+    "path": "control-breast-lt/qc_thresholds.png",
+    "sha256": "d44da37a8cf5faa8ea0c37a58fb4d3f4adbd2f29d13f1248997798c2b4525b8d",
+    "size_bytes": 50999
+  },
+  {
+    "path": "control-breast-lt/umap.csv",
+    "sha256": "b745a16fe671613d8b2d55a3db1037be08d4776b83ead5ee899f3ee09c6be43a",
+    "size_bytes": 40462
+  },
+  {
+    "path": "control-breast-lt/umap_coarse_label_hint.png",
+    "sha256": "2110169c68f40f5f23174513975e57bc2c42192bf603161083efdd4f1e8e395d",
+    "size_bytes": 95878
+  },
+  {
+    "path": "control-breast-lt/umap_leiden.png",
+    "sha256": "969d4414d9347b1e3488929782a736c1e43ca6573b26b10f235b666f79d35508",
+    "size_bytes": 95344
+  },
+  {
+    "path": "control-breast-lt-ambient/assess.R",
+    "sha256": "7524727e79f7f4398838a1a4a601b026ae1e5e45c689e7da511be78ad90bdbda",
+    "size_bytes": 1551
+  },
+  {
+    "path": "control-breast-lt-ambient/assessment.json",
+    "sha256": "55a0794d35d188dee08b1392b4024ed2a5fda23c79c6fc1e706f5bf88f9cfc8a",
+    "size_bytes": 633
+  },
+  {
+    "path": "control-breast-lt-ambient/cells.tsv",
+    "sha256": "6540c8b5e143cbbfb87914cf4e031970bbeb19b511a10083afb929ed6622ad19",
+    "size_bytes": 13053
+  },
+  {
+    "path": "control-breast-lt-ambient/contamination.csv",
+    "sha256": "ebe6320ddfb106ac40c9394fc3f92796ec8fc521092471362d2316bc6355faf2",
+    "size_bytes": 17878
+  },
+  {
+    "path": "control-breast-lt-ambient/droplets.tsv",
+    "sha256": "7eeda03f350524b9b623f5a915862edfeac18c73e1fa9e65768e21148cc8a210",
+    "size_bytes": 61484
+  },
+  {
+    "path": "control-breast-lt-ambient/fit.json",
+    "sha256": "bc7fbc59c69e5f7e34552df7069258cd7016eac25a517bdbee42553489313377",
+    "size_bytes": 34
+  },
+  {
+    "path": "control-breast-lt-ambient/genes.tsv",
+    "sha256": "0cc93e6a3a32e02834d8942635ae769d1a5a839fd4d78e802bc98db8b08bd460",
+    "size_bytes": 585616
+  },
+  {
+    "path": "control-breast-lt-ambient/initial_clusters.csv",
+    "sha256": "091611c59971be9568413fe909f339e31db488da283d4d03f3e3341ecdbc1475",
+    "size_bytes": 14443
+  },
+  {
+    "path": "control-breast-lt-ambient/r.log",
+    "sha256": "69856aec95fa3fbc8f3e8d477d8911aa8dd29f3a5cf751aef3570c74cf2deab9",
+    "size_bytes": 339
+  },
+  {
+    "path": "control-breast-lt-ambient/r_session.txt",
+    "sha256": "8ab4fdfe07c7b954218d58da1d35657a2446fa01930cf56d72c39e42200f811c",
+    "size_bytes": 3333
+  },
+  {
+    "path": "input_contract.json",
+    "sha256": "374a68f3e8560ea495e924e9a50ce15f1d088115a5b082b84cc9568285d7c34d",
+    "size_bytes": 1344
+  },
+  {
+    "path": "intake_custody.json",
+    "sha256": "9c40f45c0a5619c3772282b9fe61720db256f24c1bdc185d30ee5616656e0e39",
+    "size_bytes": 1786
+  },
+  {
+    "path": "intake_inspection.json",
+    "sha256": "c43c796bdb709748106a81bc30721e14351f291342b2599d9e8dd8c23c8a00e8",
+    "size_bytes": 726
+  },
+  {
+    "path": "method_identity.json",
+    "sha256": "c6da47cb8fda90c315ed20e7a05fba965b52816f7d905891bd0c887a72f2f4ca",
+    "size_bytes": 1449
+  },
+  {
+    "path": "python_packages.json",
+    "sha256": "538c847167fab2b226a62a69ccfb3c4d1edf558c5afb07a2970d259bcba87d74",
+    "size_bytes": 1910
+  },
+  {
+    "path": "qc_summary.json",
+    "sha256": "60042fde32cea22e94410c54c1f5b8c867366f52059cb15e8d334c5ac08d2c8c",
+    "size_bytes": 2588
+  },
+  {
+    "path": "review.html",
+    "sha256": "38ef3d511a63db163aaad16a9bd0b1889d5b4635110d13997768c686bdbb400e",
+    "size_bytes": 2528
+  },
+  {
+    "path": "source/modal_patient_runner.py",
+    "sha256": "8732ba4358dd8dcc6f63fc2cab891da11febb1d7ad9a41db970781f3874f04e1",
+    "size_bytes": 9743
+  },
+  {
+    "path": "source/scrna.py",
+    "sha256": "33cbe9158c282583e8f20473bd3474380bdc8145f86ecb6b9bb7539c5cc29fa5",
+    "size_bytes": 29349
+  },
+  {
+    "path": "source/scrna_ambient.py",
+    "sha256": "316a80ef8cad26fc8145e006ff7864e9af55bea4ab6c3f55d57d531ac7f4375b",
+    "size_bytes": 6619
+  },
+  {
+    "path": "source/scrna_intake.py",
+    "sha256": "61da2e0e7032ba3620937bd4b4b24ac746b539e9a802a5fc76d66c2c0381d944",
+    "size_bytes": 19837
+  },
+  {
+    "path": "source/scrna_io.py",
+    "sha256": "5c5cd6d72df7f6371d30bf0c725fda48159df621497e39beb28c898243495edf",
+    "size_bytes": 9786
+  },
+  {
+    "path": "source/scrna_miqc.py",
+    "sha256": "c618c4ee6c86fad781c3d81e9d9d2f68da103a66313b5e3fdf1588f23faecf75",
+    "size_bytes": 4946
+  },
+  {
+    "path": "source/scrna_patient.py",
+    "sha256": "4db33e438975dd5993e7f02233ef9d74c8727e04333eabfe4524cf5bcef31bda",
+    "size_bytes": 7777
+  },
+  {
+    "path": "source/scrna_private.py",
+    "sha256": "65c3e2fbd08c3b692414da57267dc16015a150ab8021be6fff856885ffe48bdf",
+    "size_bytes": 15216
+  },
+  {
+    "path": "source/scrna_qc.py",
+    "sha256": "802f37fb010cc5d9b7d6d10f69191176b5adaf5d7a24bf983f88c30dfd0ffbfe",
+    "size_bytes": 10072
+  },
+  {
+    "path": "source/scrna_trust.py",
+    "sha256": "c933cf06a6c48db05721c68f5b7ac49d3e7a46e79df0167230b89eecb4951572",
+    "size_bytes": 8903
+  },
+  {
+    "path": "source_hashes.json",
+    "sha256": "50a14c386ecf13e7e59eca542a755f60d2471965eab7608bd92731746a188c66",
+    "size_bytes": 886
+  }
+]

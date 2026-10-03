@@ -1,0 +1,67 @@
+{
+  "acceptance": {
+    "clusters_max": 25,
+    "clusters_min": 4,
+    "note": "Engineering and biological plausibility screens frozen before execution; tutorial labels are not independent ground truth. Doublet precision/recall and ambient correction are uncalibrated.",
+    "reference_ari_min": 0.55,
+    "reference_common_cells_min": 2000,
+    "repeat_coordinates_atol": 1e-06,
+    "retained_fraction_max": 0.99,
+    "retained_fraction_min": 0.7,
+    "seed_stability_ari_min": 0.85
+  },
+  "datasets": [
+    {
+      "assay": "whole-cell droplet RNA-seq",
+      "capture_id": "pbmc3k-capture1",
+      "chemistry": "10x Chromium 3-prime legacy",
+      "dataset_id": "pbmc3k",
+      "donor_id": "pbmc3k-public-donor",
+      "expected_cells": 2700,
+      "format": "10x_mtx_tar",
+      "inputs": [
+        {
+          "bucket": "diana-omics-raw-inputs-172630973301-us-east-1",
+          "filename": "pbmc3k_filtered_gene_bc_matrices.tar.gz",
+          "key": "public/scrna/inputs/pbmc3k/847d6ebd9a1ec9a768f2be7e40ca42cbfe75ebeb6d76a4c24167041699dc28b5/pbmc3k_filtered_gene_bc_matrices.tar.gz",
+          "role": "counts",
+          "sha256": "847d6ebd9a1ec9a768f2be7e40ca42cbfe75ebeb6d76a4c24167041699dc28b5",
+          "size_bytes": 7621991,
+          "url": "https://cf.10xgenomics.com/samples/cell-exp/1.1.0/pbmc3k/pbmc3k_filtered_gene_bc_matrices.tar.gz",
+          "version_id": ".7StDf4AaLMmTfFsn9bag1mlq8v4tmQA"
+        },
+        {
+          "bucket": "diana-omics-raw-inputs-172630973301-us-east-1",
+          "filename": "pbmc3k_processed.h5ad",
+          "key": "public/scrna/inputs/pbmc3k/0db367b991dd95809732b218539ede489bea99113807f62ebd7ccc970025fe38/pbmc3k_processed.h5ad",
+          "role": "reference_labels",
+          "sha256": "0db367b991dd95809732b218539ede489bea99113807f62ebd7ccc970025fe38",
+          "size_bytes": 24653425,
+          "url": "https://raw.githubusercontent.com/chanzuckerberg/cellxgene/main/example-dataset/pbmc3k.h5ad",
+          "version_id": "7qaDsp0IOzZ1DO7MszJ0QvQRp0JqrHof"
+        }
+      ],
+      "license": "10x public dataset; attribute 10x Genomics",
+      "reference": "hg19 (vendor count matrix)",
+      "reference_label_column": "louvain",
+      "source_page": "https://www.10xgenomics.com/datasets/3-k-pbm-cs-from-a-healthy-donor-1-standard-1-1-0",
+      "species": "Homo sapiens",
+      "tissue": "PBMC"
+    }
+  ],
+  "evidence_lane": "public_benchmark",
+  "parameters": {
+    "ambient_rna_policy": "not_assessed: filtered matrices lack empty droplets; do not claim correction",
+    "annotation_policy": "provisional PBMC cluster marker scores; reference labels reserved for evaluation only",
+    "leiden_iterations": -1,
+    "leiden_resolution": 0.5,
+    "n_hvg": 2000,
+    "n_neighbors": 15,
+    "n_pcs": 40,
+    "qc_mad_multiplier": 3.0,
+    "qc_policy": "PBMC pilot: log1p genes/UMIs lower 3-MAD; mt upper 3-MAD with 5-25 percent bounds; no upper-count exclusion",
+    "seed": 42
+  },
+  "recipe_version": 2,
+  "schema_version": 1
+}

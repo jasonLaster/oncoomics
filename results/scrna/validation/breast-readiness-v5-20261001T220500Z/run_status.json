@@ -1,0 +1,6 @@
+{
+  "run_id": "breast-readiness-v5-20261001T220500Z",
+  "state": "complete",
+  "calibration_status": "needs_review",
+  "action": "Collect, independently audit, then assess release"
+}

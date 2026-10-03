@@ -1,0 +1,65 @@
+{
+  "date": "2026-10-02",
+  "evidence_lane": "public_controls_and_synthetic_mechanics",
+  "private_intake_exercised": true,
+  "Diana_data_processed": false,
+  "clinical_ready": false,
+  "method_qualified": false,
+  "tests": {
+    "passed": 106,
+    "subtests_passed": 12,
+    "warning": "Expected duplicate gene-symbol fixture warning"
+  },
+  "ruff": "pass",
+  "bytecode_compile": "pass",
+  "controls": [
+    {
+      "control": "pbmc1k",
+      "run_id": "intake-pbmc1k-final-20261002T201500Z",
+      "method_sha256": "8ed4fffc886278a00763e3545f908078705851d63d2b332e314bc54deb3849e7",
+      "artifact_index_sha256": "5e3a779d418c88829113733d4565ab085cf3d73b4e5a34ca346c96265b166e97",
+      "input_cells": 1222,
+      "retained_cells": 1012,
+      "failed_QC_screens": [],
+      "source_audit": "counts_integrity_pass",
+      "decision": "provisional_hold"
+    },
+    {
+      "control": "breast-standard",
+      "run_id": "intake-breast-standard-final-20261002T201500Z",
+      "method_sha256": "8ed4fffc886278a00763e3545f908078705851d63d2b332e314bc54deb3849e7",
+      "artifact_index_sha256": "693e201541feebae109f30961276843b9e66fba039fb5a5f99d01728c1eeeff5",
+      "input_cells": 5680,
+      "retained_cells": 3536,
+      "failed_QC_screens": [
+        "retention",
+        "seed_stability"
+      ],
+      "source_audit": "counts_integrity_pass",
+      "decision": "provisional_hold"
+    },
+    {
+      "control": "breast-lt",
+      "run_id": "intake-breast-lt-v3-20261002T193000Z",
+      "method_sha256": "e92e5b556640a7e336049e049e19241c5c209e22604369230e1ab4809784c173",
+      "artifact_index_sha256": "07af6d73c1676a6f884816c8aeefac0ecc7efe53fb339ec9b194a6eb77c5455a",
+      "input_cells": 687,
+      "retained_cells": 440,
+      "failed_QC_screens": [
+        "retention",
+        "seed_stability"
+      ],
+      "source_audit": "counts_integrity_pass",
+      "decision": "provisional_hold"
+    }
+  ],
+  "count_run_id": "starsolo-known-umis-locked-20261002T202000Z",
+  "public_regression_run_id": "pbmc3k-private-intake-regression-20261002T202000Z",
+  "limits": [
+    "The two breast libraries are from one sorted IDC donor, not independent TNBC validation.",
+    "Breast retention and clustering stability screens fail.",
+    "Reference fingerprints unresolved for vendor matrix controls.",
+    "Ambient correction is diagnostic only; doublet and annotation accuracy lack independent truth.",
+    "Human reviewer authentication and approved method certificates are external governance steps."
+  ]
+}

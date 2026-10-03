@@ -1,0 +1,40 @@
+{
+  "checks": {
+    "CID3838": {
+      "all_raw_counts_exact": true,
+      "doublet_exclusion_exact": true,
+      "input_barcode_order_exact": true,
+      "input_gene_order_exact": true,
+      "malignancy_uncalled": true,
+      "retained_barcode_order_exact": true,
+      "retained_gene_order_exact": true,
+      "retained_raw_counts_exact": true,
+      "source_sha256_verified": true
+    },
+    "CID3941": {
+      "all_raw_counts_exact": true,
+      "doublet_exclusion_exact": true,
+      "input_barcode_order_exact": true,
+      "input_gene_order_exact": true,
+      "malignancy_uncalled": true,
+      "retained_barcode_order_exact": true,
+      "retained_gene_order_exact": true,
+      "retained_raw_counts_exact": true,
+      "source_sha256_verified": true
+    },
+    "CID44971": {
+      "all_raw_counts_exact": true,
+      "doublet_exclusion_exact": true,
+      "input_barcode_order_exact": true,
+      "input_gene_order_exact": true,
+      "malignancy_uncalled": true,
+      "retained_barcode_order_exact": true,
+      "retained_gene_order_exact": true,
+      "retained_raw_counts_exact": true,
+      "source_sha256_verified": true
+    }
+  },
+  "run_id": "breast-qc-v3-20261001T213900Z",
+  "scope": "Exact source-to-all-barcode and retained raw-count custody; not independent biological truth",
+  "status": "pass"
+}

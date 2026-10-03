@@ -11,6 +11,7 @@ dependencies = []
 
 [project.optional-dependencies]
 dev = ["mypy>=1.19", "pytest>=8.0", "ruff>=0.14"]
+scrna-qc-test = ["anndata==0.11.4", "numpy==1.26.4", "pandas==2.2.3", "scipy==1.15.2", "boto3==1.40.45", "requests==2.32.3", "requests-toolbelt==1.0.0"]
 native = ["pysam>=0.22", "pyfaidx>=0.8", "polars>=1.0"]
 sv = ["truvari>=4.0"]
 hrd = [

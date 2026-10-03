@@ -1,0 +1,39 @@
+{
+  "aggregation": {
+    "gatePassed": true,
+    "gene_count": 59939,
+    "gene_tpm_sum": 999999.999917,
+    "mapped_transcripts": 197671,
+    "minimumTranscriptMappingFraction": 0.999,
+    "quantified_transcripts": 197671,
+    "transcript_mapping_fraction": 1.0,
+    "unmapped_transcripts": 0
+  },
+  "comparisonStatus": "directionally_comparable",
+  "evidenceStatus": "partial_evidence",
+  "salmon": {
+    "decoyFragments": 10727275,
+    "libraryTypes": [
+      "ISR"
+    ],
+    "mappingGatePassed": true,
+    "minimumPercentMapped": 50.0,
+    "numMappedFragments": 108676737,
+    "numProcessedFragments": 150003699,
+    "percentMapped": 72.44937139850131
+  },
+  "schema": "diana_adc_atlas_patient_bridge_qa.v1",
+  "status": "passed_for_directional_comparison_with_cross_pipeline_caveat",
+  "targetCoverage": {
+    "directionallyComparable": 23,
+    "expected": 23,
+    "passed": true
+  },
+  "tpmSumGate": {
+    "expectedRange": [
+      999000.0,
+      1001000.0
+    ],
+    "passed": true
+  }
+}

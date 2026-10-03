@@ -1,0 +1,80 @@
+{
+  "schema_version": 1,
+  "evidence_lane": "public_control",
+  "controls": [
+    {
+      "control": "pbmc1k",
+      "donor_group": "healthy-control-donor-001",
+      "source_page": "https://www.10xgenomics.com/datasets/1-k-pbm-cs-from-a-healthy-donor-v-3-chemistry-3-standard-3-0-0",
+      "reference_fingerprint": "unknown",
+      "files": [
+        {
+          "role": "raw_h5",
+          "path": "pbmc_1k_v3_raw_feature_bc_matrix.h5",
+          "size_bytes": 130275942,
+          "sha256": "ed17bec5896a8208acfd6202e035fc36c65da14b3605aa577e93496b5d1ebd81",
+          "url": "https://cf.10xgenomics.com/samples/cell-exp/3.0.0/pbmc_1k_v3/pbmc_1k_v3_raw_feature_bc_matrix.h5"
+        },
+        {
+          "role": "filtered_h5",
+          "path": "pbmc_1k_v3_filtered_feature_bc_matrix.h5",
+          "size_bytes": 5360171,
+          "sha256": "8191f576550c1b449d03441b9eb098ee9f73fa82513d171ba87d31d551e3ffda",
+          "url": "https://cf.10xgenomics.com/samples/cell-exp/3.0.0/pbmc_1k_v3/pbmc_1k_v3_filtered_feature_bc_matrix.h5"
+        }
+      ],
+      "metadata_sha256": "6c329a746f6c0360ab86603645958450ab70cc5f733708f880f29b9d8c0b779b"
+    },
+    {
+      "control": "breast-standard",
+      "donor_group": "public-breast-donor-001",
+      "source_page": "https://www.10xgenomics.com/datasets/7-5-k-sorted-cells-from-human-invasive-ductal-carcinoma-3-v-3-1-3-1-standard-6-0-0",
+      "reference_fingerprint": "unknown",
+      "files": [
+        {
+          "role": "filtered_h5",
+          "path": "Breast_Cancer_3p_filtered_feature_bc_matrix.h5",
+          "size_bytes": 24670103,
+          "sha256": "87edbb067a025c899b541a1d79fd77ebc43e998b395f7c29bc23c890598ffa97",
+          "url": "https://cf.10xgenomics.com/samples/cell-exp/6.0.0/Breast_Cancer_3p/Breast_Cancer_3p_filtered_feature_bc_matrix.h5"
+        },
+        {
+          "role": "raw_h5",
+          "path": "Breast_Cancer_3p_raw_feature_bc_matrix.h5",
+          "size_bytes": 49374787,
+          "sha256": "f0ee5f4ca584e44c8fd82e46b377710eb9b50ff773dc5ea69ba19a6543d1c1af",
+          "url": "https://cf.10xgenomics.com/samples/cell-exp/6.0.0/Breast_Cancer_3p/Breast_Cancer_3p_raw_feature_bc_matrix.h5"
+        }
+      ],
+      "metadata_sha256": "bc1dcaf63a333bf2c6af2ebb80b29747da4c8b14a3a5c9ffc64ea1774ca3bb2c"
+    },
+    {
+      "control": "breast-lt",
+      "donor_group": "public-breast-donor-001",
+      "source_page": "https://www.10xgenomics.com/datasets/750-sorted-cells-from-human-invasive-ductal-carcinoma-3-lt-v-3-1-3-1-low-6-0-0",
+      "reference_fingerprint": "unknown",
+      "files": [
+        {
+          "role": "filtered_h5",
+          "path": "Breast_Cancer_3p_LT_filtered_feature_bc_matrix.h5",
+          "size_bytes": 3489961,
+          "sha256": "143683b205cd478750cb24d2a49507b08144bdc087a4a7e88fde34feda7064cc",
+          "url": "https://cf.10xgenomics.com/samples/cell-exp/6.0.0/Breast_Cancer_3p_LT/Breast_Cancer_3p_LT_filtered_feature_bc_matrix.h5"
+        },
+        {
+          "role": "raw_h5",
+          "path": "Breast_Cancer_3p_LT_raw_feature_bc_matrix.h5",
+          "size_bytes": 5916333,
+          "sha256": "5190d1334be373b1d9d2ff33e130e1bb59bbc1e5c4d373059a175929489b8311",
+          "url": "https://cf.10xgenomics.com/samples/cell-exp/6.0.0/Breast_Cancer_3p_LT/Breast_Cancer_3p_LT_raw_feature_bc_matrix.h5"
+        }
+      ],
+      "metadata_sha256": "4b69bb5b7b1b52c5ace8eba4794bd13d3e825f7273d79eaa603773d1f38d652a"
+    }
+  ],
+  "limitations": [
+    "Both breast libraries are sorted-cell controls from the same donor; not two independent donors.",
+    "Breast subtype/treatment unknown; these do not establish TNBC performance.",
+    "Reference content fingerprints unknown; no biological method qualification."
+  ]
+}

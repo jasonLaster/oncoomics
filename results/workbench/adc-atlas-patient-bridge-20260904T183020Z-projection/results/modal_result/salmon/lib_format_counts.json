@@ -1,0 +1,22 @@
+{
+    "read_files": "[ /s3/raw/E019_S01/RNA_Pipeline/FASTQ/RNA_E019_S01_tumor_rna_reads1.fastq.gz, /s3/raw/E019_S01/RNA_Pipeline/FASTQ/RNA_E019_S01_tumor_rna_reads2.fastq.gz]",
+    "expected_format": "ISR",
+    "compatible_fragment_ratio": 1.0,
+    "num_compatible_fragments": 108676737,
+    "num_assigned_fragments": 108676737,
+    "num_frags_with_concordant_consistent_mappings": 83036802,
+    "num_frags_with_inconsistent_or_orphan_mappings": 26193068,
+    "strand_mapping_bias": 0.000006177945421284395,
+    "MSF": 0,
+    "OSF": 0,
+    "ISF": 513,
+    "MSR": 0,
+    "OSR": 0,
+    "ISR": 83036802,
+    "SF": 14918387,
+    "SR": 11274168,
+    "MU": 0,
+    "OU": 0,
+    "IU": 0,
+    "U": 0
+}

@@ -1,0 +1,19 @@
+{
+  "active_mt_discordant_cells": 3349,
+  "candidate_kept_cells": 3869,
+  "changes_active_qc": false,
+  "fit_statuses": [
+    "fit_complete",
+    "fit_complete"
+  ],
+  "independent_quality_truth": "unavailable",
+  "method": "miQC",
+  "posterior_cutoff": 0.75,
+  "role": "challenger_review_only",
+  "seed_decision_agreement": 1.0,
+  "seeds": [
+    42,
+    43
+  ],
+  "status": "stable_challenger"
+}

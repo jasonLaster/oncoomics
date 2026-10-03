@@ -1,0 +1,14 @@
+[
+  {
+    "read_lengths": {
+      "R1": [
+        28
+      ],
+      "R2": [
+        90
+      ]
+    },
+    "sampled_records": 32384,
+    "validation_scope": "all records, gzip stream and paired identities"
+  }
+]

@@ -1,0 +1,27 @@
+{
+  "schema_version": 1,
+  "run_id": "pbmc3k-readiness-regression-20261001T220800Z",
+  "status": "complete",
+  "evidence_lane": "public_benchmark",
+  "started_at": "2026-10-01T22:02:19.116833+00:00",
+  "completed_at": "2026-10-01T22:03:31.531404+00:00",
+  "results_uri": "s3://diana-omics-results-172630973301-us-east-1/public/scrna/runs/pbmc3k-readiness-regression-20261001T220800Z/",
+  "artifact_index_sha256": "6802e08b1c0298bd285814cf41f9a03d1923d4d5cd4336b090f8358ed74ca6a5",
+  "compute": {
+    "platform": "Modal",
+    "cpu": 4,
+    "memory_mib": 16384,
+    "timeout_seconds": 1800,
+    "gpu": null
+  },
+  "calibration_status": "pass",
+  "production_ready": false,
+  "limitations": [
+    "Post-count matrix calibration only; upstream filtered cells cannot be recovered",
+    "Ambient RNA unassessed without empty droplets",
+    "Doublet caller executed; precision/recall unvalidated",
+    "Tutorial annotations are not independent truth",
+    "Breast sample proxies with unresolved capture maps remain needs_review",
+    "No donor-level DE, cross-dataset integration, malignant-cell validation, or clinical claims"
+  ]
+}

@@ -1,0 +1,7 @@
+{
+  "chain": "tumor RNA FASTQs and indexed BAM -> FASTQ/BAM QA -> locus counts and depth -> narrow expression evidence -> orthogonal protein review",
+  "claimBoundary": "Bulk RNA cannot identify the expressing cell compartment or establish surface-protein abundance or ADC benefit.",
+  "decision": "Does this tumor RNA dataset contain reproducible TACSTD2 transcript evidence worth protein-level follow-up?",
+  "smallestNextEvidence": "TROP-2 membrane IHC with malignant-cell percent positive, intensity, H-score, heterogeneity, and controls.",
+  "verdict": "promising_with_gaps"
+}

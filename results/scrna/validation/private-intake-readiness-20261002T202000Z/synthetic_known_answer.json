@@ -1,0 +1,20 @@
+{
+  "artifact_index_sha256": "fa1717bd388dd1ffbd5de8e00198cd4476702aa9aca6de433859257820fc1763",
+  "audit_source_sha256": "06e5f91206a3a052a3a53d981c3b869ddc1789d33f682f9bfb1c00143870d2d7",
+  "biological_cell_calling_validated": false,
+  "checks": {
+    "filtered_UMI_sum": true,
+    "filtered_UMIs_exact": true,
+    "filtered_barcodes_match": true,
+    "full_fastq_records_checked": true,
+    "raw_UMI_sum": true,
+    "raw_UMIs_exact": true,
+    "raw_barcodes_match": true
+  },
+  "clinical_ready": false,
+  "evidence_level": "synthetic_mechanical_known_answer",
+  "expected_counts_sha256": "5e0d19f37b25a8baff9837d54c484ffe0373cb74d5c45a90941636302ad1c474",
+  "filtered_UMIs": 16000,
+  "paired_records": 32384,
+  "raw_UMIs": 16384
+}

@@ -1,0 +1,51 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Corrective TROP-2 Modal run parameters",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "repo_root",
+    "runner_path",
+    "runner_sha256",
+    "helper_path",
+    "helper_sha256",
+    "run_id"
+  ],
+  "properties": {
+    "repo_root": {
+      "type": "string",
+      "format": "directory-path",
+      "description": "Absolute path to the diana-omics checkout"
+    },
+    "runner_path": {
+      "type": "string",
+      "format": "file-path",
+      "description": "Absolute path to the corrected Modal runner"
+    },
+    "runner_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$",
+      "description": "Approval-bound SHA-256 of the corrected Modal runner"
+    },
+    "helper_path": {
+      "type": "string",
+      "format": "file-path",
+      "description": "Absolute path to the TROP-2 helper module bundled into the Modal image"
+    },
+    "helper_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$",
+      "description": "Approval-bound SHA-256 of the TROP-2 helper module"
+    },
+    "run_id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$",
+      "description": "New immutable Modal/S3 run identifier"
+    },
+    "recover_existing_run": {
+      "type": "boolean",
+      "default": false,
+      "description": "Recover bounded outputs from an already completed immutable S3 run without recomputation"
+    }
+  }
+}

@@ -38,10 +38,15 @@ For command, evidence, and domain vocabulary, see [terms.md](terms.md).
 | [clinical/validation-packet-template.md](clinical/validation-packet-template.md) | Draft or review the clinical validation packet structure. |
 | [operations/diana-raw-inputs.md](operations/diana-raw-inputs.md) | Prepare Diana's real raw files for validation and staging. |
 | [operations/scrna-data-upload.md](operations/scrna-data-upload.md) | Deliver single-cell or single-nucleus RNA-seq files using the Personalis-style S3 manifest/checksum handoff. |
+| [scrna-patient-intake.md](scrna-patient-intake.md) | Inventory a private single-cell delivery, run reference-locked counting/provisional QC on Modal, audit original counts and review admission holds. |
+| [scrna-shadow-run.md](scrna-shadow-run.md) | Rehearse the patient path with public controls and review reproducibility, exclusion losses, and default admission holds. |
 | [operations/diana-public-data-download.md](operations/diana-public-data-download.md) | Retrieve or transfer the private Diana dataset with explicitly scoped credentials (legacy filename). |
 | [rosalind/README.md](rosalind/README.md) | Understand how GPT-Rosalind, NGS Analysis, and Life Science Research would integrate with this project. |
 | [rosalind/hrd-workflow.md](rosalind/hrd-workflow.md) | Review the GPT-Rosalind workflow for HRD evidence and score readiness from WGS/WES. |
 | [rosalind/trop2-adc-workflow.md](rosalind/trop2-adc-workflow.md) | Review the GPT-Rosalind workflow for TROP-2 ADC target assessment from bulk WES and scRNA-seq. |
+| [rosalind/pan-cancer-adc-atlas-v1.md](rosalind/pan-cancer-adc-atlas-v1.md) | Review the public pan-cancer RNA/protein-context atlas and its directional Diana patient bridge. |
+| [rosalind/modal-s3-ngs-plugin-replication.md](rosalind/modal-s3-ngs-plugin-replication.md) | Reproduce or extend the custody-bound Modal, S3, NGS Analysis, and Workbench pattern used for the TROP-2 RNA run. |
+| [rosalind/modal-s3-ngs-plugin-prompts.md](rosalind/modal-s3-ngs-plugin-prompts.md) | Copy prompts for intake, planning, execution, recovery, correction, new targets, cohort comparison, optimization, visualization, and analyst handoff. |
 | [operations/running-the-pipeline.md](operations/running-the-pipeline.md) | Run local, Docker, Nextflow, and AWS workflows. |
 | [operations/fast-rerun-performance-cost-summary.md](operations/fast-rerun-performance-cost-summary.md) | Compare today's run with the projected CPU and GPU fast-rerun performance and cost. |
 | [operations/next-generation-fast-rerun.md](operations/next-generation-fast-rerun.md) | Review the measured bottlenecks and selected `us-east-2` P5/Parabricks fast-rerun design. |

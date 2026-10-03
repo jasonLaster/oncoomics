@@ -1,0 +1,128 @@
+{
+  "schema": "diana_rosalind_trop2_modal_s3_receipt.v1",
+  "status": "passed_with_review_required",
+  "validatedAt": "2026-09-04T01:51:48Z",
+  "runId": "immunoid-trop2-20260904T012326Z",
+  "evidenceClass": "private_human_tumor_bulk_rna_internal_qc",
+  "sourceCode": {
+    "gitHead": "5df25905034a4580902d3980f51278657800afba",
+    "runner": {
+      "path": "scripts/modal/modal_s3_bulk_rna_trop2.py",
+      "sha256": "96ee3f1ddd7640d7a57802252cbb78ef794d800979ad36775bc6139889e6c5f8"
+    },
+    "helper": {
+      "path": "src/diana_omics/trop2_rna.py",
+      "sha256": "bb3f1ff7d5463f4d48c864250b73d8b428b91c8b690ddf51a40a71eacba1775e"
+    },
+    "tests": {
+      "path": "tests/test_trop2_rna.py",
+      "sha256": "6000bdfbece8d43d58906493511c443426638ac41c485aacf3c8f9fe75959d39"
+    },
+    "inputManifest": {
+      "path": "manifests/rosalind_trop2_rna_inputs.csv",
+      "sha256": "b07abd3955b18ff0576036a011a2e3af46795e49e73b1349d8922de595e8f583"
+    }
+  },
+  "modal": {
+    "app": "diana-rosalind-rnaseq-trop2",
+    "profile": "jason-laster-11",
+    "successfulRunUrl": "https://modal.com/apps/jason-laster-11/main/ap-b0sdSQqWbThqqq26iuDRM2",
+    "successfulPreflightUrl": "https://modal.com/apps/jason-laster-11/main/ap-i3VXLchYwOp4WIvgCYghsO",
+    "awsCredentialSource": "modal_named_secret",
+    "credentialValuesStoredInRepository": false,
+    "region": "us-east"
+  },
+  "input": {
+    "s3Prefix": "s3://diana-omics-raw-inputs-172630973301-us-east-1/diana/inbox/2026-07-14-echo-personalis/data/immunoid/",
+    "objectsChecked": 6,
+    "sourceVersionIdsUnchangedAfterRun": "passed_6_of_6",
+    "vendorMd5Ledger": "matched_6_of_6",
+    "parentManifestSha256Records": "bound_6_of_6",
+    "sourceEncryption": "AES256",
+    "mountPolicy": "read_only_exact_prefix"
+  },
+  "output": {
+    "s3Prefix": "s3://diana-omics-private-results-172630973301-us-east-1/modal/rosalind-rnaseq-trop2/runs/immunoid-trop2-20260904T012326Z/",
+    "objectCount": 48,
+    "totalBytes": 9992135,
+    "serverSideEncryption": "aws:kms",
+    "bucketVersioning": "enabled",
+    "runManifest": {
+      "versionId": "2Qcf4Re3r5sZa6T10R8lwEedhldvyYtQ",
+      "bytes": 2142,
+      "sha256": "5f07adccc8465e4001df4d08b813d6244eecedf1c4c0f72883aa1fc7e0385dab"
+    },
+    "artifactIndex": {
+      "versionId": "d4oqc69qq1oSYdIe3sn3UeccFpICs3KM",
+      "bytes": 8153,
+      "sha256": "ef01e584685994783a531aea13abe1a529037226758afd4787b522b7c4515464"
+    }
+  },
+  "review": {
+    "disposition": "validated_for_narrower_claim_with_qc_warnings",
+    "s3Prefix": "s3://diana-omics-private-results-172630973301-us-east-1/modal/rosalind-rnaseq-trop2/reviews/immunoid-trop2-20260904T012326Z/",
+    "objectCount": 5,
+    "totalBytes": 13110,
+    "reviewManifest": {
+      "versionId": "SWSCNoj1KJZdHSH9DeOwjofJ.EmbCTjN",
+      "bytes": 1759,
+      "sha256": "82391477dea4bf6570a9e72ba97e348b20e810c143012aa7e0cdbca0df98b7e1"
+    }
+  },
+  "runSummary": {
+    "pairedReads": 150003699,
+    "recalibratedPrimaryTacstd2Reads": 53132,
+    "preBqsrPrimaryTacstd2Reads": 53491,
+    "primaryCountRelativeDifference": 0.006711409395973154,
+    "recalibratedHqNonduplicateTacstd2Reads": 30856,
+    "uniqueHqTacstd2Templates": 15521,
+    "wholeTranscriptFractionAtLeast10x": 0.718568665377176,
+    "codingRegion": {
+      "grch37Region": "1:59041857-59042828",
+      "bases": 972,
+      "minimumDepth": 155,
+      "medianDepth": 4439,
+      "meanDepth": 4104.561,
+      "fractionAtLeast100x": 1.0
+    },
+    "diagnosticAlignmentReadsPerMillion": 124.52567855684478,
+    "diagnosticApproximateFragmentRpkm": 35.180492351387386,
+    "automatedQaStatus": "review_required",
+    "differentialExpressionStatus": "blocked"
+  },
+  "validation": {
+    "artifactIndexSha256Checks": "passed_46_of_46",
+    "runManifestCompletionMarker": "passed",
+    "reviewArtifactSha256Checks": "passed_4_of_4",
+    "reviewManifestCompletionMarker": "passed",
+    "inputVersionRecheck": "passed_6_of_6",
+    "bamQuickcheck": "passed_2_of_2",
+    "referenceContigCheck": "passed_hs37d5",
+    "depthPlotVisualInspection": "passed",
+    "focusedUnitTests": "passed_9_of_9",
+    "ruff": "passed",
+    "gitDiffCheck": "passed"
+  },
+  "priorFailedAttempts": [
+    {
+      "runUrl": "https://modal.com/apps/jason-laster-11/main/ap-OPmSCR5FwTd3XLJWpXovIr",
+      "stage": "resource_validation",
+      "reason": "unsupported explicit 64-GiB ephemeral disk request",
+      "inputProcessingStarted": false,
+      "outputObjects": 0
+    },
+    {
+      "runUrl": "https://modal.com/apps/jason-laster-11/main/ap-weziDrXH8kgGBXA4T3cSxJ",
+      "stage": "plot_packaging",
+      "reason": "plot output directory was not created",
+      "outputObjects": 0
+    },
+    {
+      "runUrl": "https://modal.com/apps/jason-laster-11/main/ap-Lbv8trXvJESiryC8KlIH3s",
+      "stage": "software_provenance_packaging",
+      "reason": "strict UTF-8 decoding rejected Debian samtools version metadata",
+      "outputObjects": 0
+    }
+  ],
+  "boundary": "Strong TACSTD2 transcript evidence with source-QC warnings only. No differential expression, malignant-cell specificity, surface-protein abundance, ADC eligibility, response prediction, or treatment recommendation."
+}

@@ -1,0 +1,80 @@
+{
+  "control-breast-standard": {
+    "ambient_assessment": {
+      "candidate_removed_fraction": 0.010006262850082739,
+      "correction_applied_to_analysis": false,
+      "evidence_level": "internal_qc",
+      "lineage": {
+        "exact_count_lineage": true,
+        "feature_reordered": false,
+        "filtered_cells": 5680,
+        "low_count_noncell_droplets": 1456017,
+        "noncell_barcodes": 2043813,
+        "raw_barcodes": 2049493
+      },
+      "method": "SoupX",
+      "original_counts_preserved": true,
+      "policy": "Diagnostic challenger; no automatic selection or forceAccept; low-count non-cell droplets 1..99 UMIs",
+      "rho_max": 0.01,
+      "rho_min": 0.01,
+      "seed": 42,
+      "status": "estimated_review_required",
+      "version": "1.6.2"
+    },
+    "ambient_rna_status": "estimated_review_required",
+    "calibration_status": "patient_qc_provisional",
+    "clusters": 9,
+    "coarse_label_hint_counts": {
+      "Endothelial": 80,
+      "Epithelial": 1324,
+      "Fibroblast": 46,
+      "Myeloid": 239,
+      "Unknown / mixed": 1847
+    },
+    "core_qc_cells": 3719,
+    "doublet_method": "scDblFinder",
+    "doublet_validation": "no_independent_truth_labels",
+    "doublets_flagged": 183,
+    "elapsed_seconds": 77.55,
+    "finite_embedding": true,
+    "gates": {
+      "capture_metadata_resolved": true,
+      "chemistry_metadata_resolved": true,
+      "cluster_count": true,
+      "doublets_called": true,
+      "finite_embedding": true,
+      "input_cells_match": true,
+      "raw_counts_preserved": true,
+      "retention": false,
+      "seed_stability": false
+    },
+    "input_cells": 5680,
+    "input_genes": 36601,
+    "low_genes_flagged": 279,
+    "low_umis_flagged": 0,
+    "miqc_challenger": {},
+    "mt_flagged": 1961,
+    "production_ready": false,
+    "qc_profile": "human_breast_tumor",
+    "raw_counts_preserved": true,
+    "retained_cells": 3536,
+    "retained_fraction": 0.6225352112676056,
+    "review_only_flags": {
+      "review_high_cycling": 1840,
+      "review_high_hemoglobin": 158,
+      "review_high_ribosomal": 159,
+      "review_high_stress": 702,
+      "review_high_umis": 0
+    },
+    "seed_stability_ari": 0.6351499911206158,
+    "thresholds": {
+      "mad_multiplier": 3,
+      "max_pct_mt": 41.405153352382975,
+      "min_genes": 133,
+      "min_umis": 489,
+      "profile": "human_breast_tumor",
+      "rationale": "Sample/capture log1p lower MAD tails capped at observed p05 for mixed tissue; mt upper MAD tail without PBMC 5-25% bounds. Zero MAD disables that tail; no upper-count exclusion. Review loss by compartment and sensitivity before use."
+    },
+    "unknown_label_fraction": 0.522341628959276
+  }
+}

@@ -1,0 +1,28 @@
+{
+  "generatedAt": "2026-07-22T04:48:56.754Z",
+  "status": "passed",
+  "samplesheet": "manifests/target_discovery_inputs.csv",
+  "summary": {
+    "rowCount": 3,
+    "dnaRowCount": 1,
+    "rnaRows": 1,
+    "proteinRows": 1,
+    "phosphoProteinRows": 0,
+    "reportRows": 0,
+    "layerCounts": {
+      "clinical_context": 0,
+      "dna": 1,
+      "pathology": 0,
+      "phospho_protein": 0,
+      "protein": 1,
+      "report": 0,
+      "rna": 1
+    },
+    "referenceIds": [
+      "ucsc_hg38_analysis_set_full"
+    ]
+  },
+  "errors": [],
+  "warnings": [],
+  "interpretationBoundary": "Input validation stages evidence lanes only and never scores ADC, bispecific, CDK12/13, or CDK4/6 hypotheses."
+}

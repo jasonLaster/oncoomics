@@ -1,0 +1,49 @@
+{
+  "clinical_ready": false,
+  "compileall": "passed",
+  "execution_lane": "patient_research",
+  "export_checksums": "passed",
+  "html_browser_rendering_verified": false,
+  "independent_count_audit": {
+    "all_passed": true,
+    "captures": 3,
+    "checks_per_capture": 10
+  },
+  "intake_fault_checks": {
+    "all_expected_behavior": true,
+    "scenarios": 7,
+    "source_files_mutated": false
+  },
+  "local_html_links": "passed",
+  "review_html_sha256": "f4edf6b9975f7077bd31e043e007fb154332b5c30e9eb693dee76c2aec007510",
+  "ruff": "passed",
+  "runs": {
+    "breast": {
+      "artifacts_verified": 75,
+      "modal_url": "https://modal.com/apps/jason-laster-11/main/ap-Q5eUpdBuK8G5EUvW59L8fp",
+      "run_id": "shadow-breast-20261002T203500Z"
+    },
+    "pbmc": {
+      "artifacts_verified": 46,
+      "modal_url": "https://modal.com/apps/jason-laster-11/main/ap-hRIRI7JGgWfnTTR7hyWSdJ",
+      "run_id": "shadow-pbmc-20261002T203500Z"
+    }
+  },
+  "scientific_engine_changed": false,
+  "shadow_review_sha256": "5a1ee535aa99a6a3c7dd07039d581e79c9fbe2a4163a9763c7b05ae88711c4cf",
+  "source_classification": "public_control",
+  "source_code_base_commit": "def617c00558bac67555b0cf4c8c70220c067be9",
+  "storage_guard": {
+    "encryption": "aws:kms",
+    "policy_public": false,
+    "public_access_block": "all_enabled",
+    "versioning": "Enabled"
+  },
+  "tests": {
+    "command": "pytest -q tests/test_scrna_*.py",
+    "passed": 114,
+    "subtests_passed": 12,
+    "warning": "Deliberate duplicate-symbol fixture",
+    "warnings": 1
+  }
+}

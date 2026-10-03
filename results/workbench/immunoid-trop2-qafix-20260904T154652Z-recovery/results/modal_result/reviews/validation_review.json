@@ -1,0 +1,20 @@
+{
+  "claim": "TACSTD2-aligned RNA reads are reproducibly present in this indexed bulk tumor RNA dataset.",
+  "controls": [
+    "paired FASTQ count check",
+    "FastQC/MultiQC",
+    "two BAM-form primary-count concordance",
+    "explicit BAM processing-state accounting",
+    "MAPQ/base-quality/full-flag filtering",
+    "paired-overlap-adjusted basewise depth"
+  ],
+  "evidenceLevel": "internal_qc",
+  "notValidated": [
+    "TPM",
+    "differential expression",
+    "tumor-cell specificity",
+    "surface protein",
+    "drug response"
+  ],
+  "verdict": "validated_for_narrower_claim"
+}

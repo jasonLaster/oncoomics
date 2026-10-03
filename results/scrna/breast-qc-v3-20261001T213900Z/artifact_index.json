@@ -1,0 +1,377 @@
+[
+  {
+    "path": "CID3838/all_cells_qc.csv",
+    "sha256": "f61cd7b5c5e9532e19b7f5cfce70e0b59b18d13bd82a6a59dde5383579c3b151",
+    "size_bytes": 950735
+  },
+  {
+    "path": "CID3838/all_cells_qc.h5ad",
+    "sha256": "1800c4ac417b8e3858b4c940f3d8269790842451e8e1f5a2f6f53be46e004df0",
+    "size_bytes": 18531733
+  },
+  {
+    "path": "CID3838/analysis.h5ad",
+    "sha256": "4f7ad667ab79760d6509cd692137506ff8f7982b6473f8e84d2b3fba6159762b",
+    "size_bytes": 49133738
+  },
+  {
+    "path": "CID3838/breast_qc_review.png",
+    "sha256": "5b34b90537278ab414b8a83abec646f0b84e728b7536d733d66676b24a413ff4",
+    "size_bytes": 408799
+  },
+  {
+    "path": "CID3838/calibration.json",
+    "sha256": "aa8a76a58b46bb7bd42a6efafdf580eea2987e78b3d82bbba4ce41806e025699",
+    "size_bytes": 2629
+  },
+  {
+    "path": "CID3838/cluster_marker_scores.csv",
+    "sha256": "124daa7cf36eb4a356a85e49b82978caf1dc599a2884dbf9d589ee23311473a7",
+    "size_bytes": 1931
+  },
+  {
+    "path": "CID3838/compartment_retention.csv",
+    "sha256": "df4a62f4d7a6397deffcdefcd9ea03c2e849f4316e03b64db9809bdf60e15a20",
+    "size_bytes": 450
+  },
+  {
+    "path": "CID3838/compartment_retention.png",
+    "sha256": "250b9bd47cb073e7a5ba95930d2bde18e85bacd3b705560675e2444106ef0c6c",
+    "size_bytes": 44931
+  },
+  {
+    "path": "CID3838/doublets/barcodes.tsv",
+    "sha256": "729dd0677e15e9fdbb68bcb3cbbcdd0b92b390e4e0b74ea96bf11581e640d485",
+    "size_bytes": 53850
+  },
+  {
+    "path": "CID3838/doublets/call.R",
+    "sha256": "2e694db6ed2f087868abfc5df4df660eb1d31c5469859973025ab95451b5b792",
+    "size_bytes": 689
+  },
+  {
+    "path": "CID3838/doublets/calls.csv",
+    "sha256": "55cc1e8ea437419fd6032c275b49e0cd43403e2eb27a80f3d79ab6fd84614126",
+    "size_bytes": 118972
+  },
+  {
+    "path": "CID3838/doublets/r.log",
+    "sha256": "98689f0f5324546670735f0ddaa697750489b7c35c5f42cfb84fddf802b7c3e1",
+    "size_bytes": 1947
+  },
+  {
+    "path": "CID3838/doublets/r_session.txt",
+    "sha256": "ecb676bea5328df71bb0e5ae0fb2fb075b6852177bb32c046b520267cc0b06a1",
+    "size_bytes": 3064
+  },
+  {
+    "path": "CID3838/markers.csv",
+    "sha256": "d99176cb4d3acf4e34cd898eaf4576c21a7ace859bd20c49e4a513d1eabd05d4",
+    "size_bytes": 53403
+  },
+  {
+    "path": "CID3838/parameters.json",
+    "sha256": "c674ee2da72c6ef81b6d518daba11c06cd2329ad7509c589db9e2eef401ca9c4",
+    "size_bytes": 2184
+  },
+  {
+    "path": "CID3838/qc_sensitivity.csv",
+    "sha256": "3f21cf3158a3b00ea839a42eb2df585368d8703fae70e57f4211e6a4850f93ab",
+    "size_bytes": 1094
+  },
+  {
+    "path": "CID3838/qc_thresholds.png",
+    "sha256": "7af79d5b5465da3ca027575e0483954b672f3f2558908344aede54537c2511ae",
+    "size_bytes": 53026
+  },
+  {
+    "path": "CID3838/reference_compartment_overlap.csv",
+    "sha256": "931442443581a0f589ea37d55ac969c428e67c4396f5f96b4eb75f4e19f9854f",
+    "size_bytes": 295
+  },
+  {
+    "path": "CID3838/umap.csv",
+    "sha256": "8319021124f99a4ecce22a3e7fe32c8dba2556aa84350ea17fb5dfcd9f940fd7",
+    "size_bytes": 197261
+  },
+  {
+    "path": "CID3838/umap_coarse_label_hint.png",
+    "sha256": "15d858de6c11b6911391f29a2782fc8f44293a0ad0e994d482a1fa5cc99a57d4",
+    "size_bytes": 57570
+  },
+  {
+    "path": "CID3838/umap_leiden.png",
+    "sha256": "ae3ed171921fadc1e250824d79f560576c2579c24d8a299c35e2a0c6a3113896",
+    "size_bytes": 45209
+  },
+  {
+    "path": "CID3941/all_cells_qc.csv",
+    "sha256": "32c07aa83e8425725ed0c147dc2f6432ad79ccc5680e56a0d2dbb8298339decd",
+    "size_bytes": 249515
+  },
+  {
+    "path": "CID3941/all_cells_qc.h5ad",
+    "sha256": "bcaf8e9010dea82389cf46435283252275df9ca2842243d85c054d2a84db6430",
+    "size_bytes": 3070240
+  },
+  {
+    "path": "CID3941/analysis.h5ad",
+    "sha256": "91b71f883d6c5a3fd313f0b6d5e9b234a6a700672ae746e52a24dff4f8e6277e",
+    "size_bytes": 12748443
+  },
+  {
+    "path": "CID3941/breast_qc_review.png",
+    "sha256": "113051d0ee5cdbbfcb1e467b3f1ce3d84ee91053eb31f0b1901900016bb4bf83",
+    "size_bytes": 259988
+  },
+  {
+    "path": "CID3941/calibration.json",
+    "sha256": "7a74cfc4105424f904fffd5e499132e65312334539f21076a04787e00e2e16db",
+    "size_bytes": 2579
+  },
+  {
+    "path": "CID3941/cluster_marker_scores.csv",
+    "sha256": "2c325f20b7b2d6a9b648d004d78f7081fd82a6f84adf5123de2b3e85372ade4d",
+    "size_bytes": 1206
+  },
+  {
+    "path": "CID3941/compartment_retention.csv",
+    "sha256": "53699c8f3957611ee3ad12ac02be90a37d76ee6a30f74baafacf75c16f3ca018",
+    "size_bytes": 403
+  },
+  {
+    "path": "CID3941/compartment_retention.png",
+    "sha256": "a3718e8206d5a1499aad1d45b3006c7f58d23fe67bbbf2d42906c7eeb38645fa",
+    "size_bytes": 43495
+  },
+  {
+    "path": "CID3941/doublets/barcodes.tsv",
+    "sha256": "23de139c2e3e754274f0b10603ef063fd3d6a6a3cd627e0bff6da6506bddcc58",
+    "size_bytes": 13100
+  },
+  {
+    "path": "CID3941/doublets/call.R",
+    "sha256": "2e694db6ed2f087868abfc5df4df660eb1d31c5469859973025ab95451b5b792",
+    "size_bytes": 689
+  },
+  {
+    "path": "CID3941/doublets/calls.csv",
+    "sha256": "ac8b19c970b0c5112c03868aaf41f91206e6b6e57a36d43efad646b302dadad3",
+    "size_bytes": 28781
+  },
+  {
+    "path": "CID3941/doublets/r.log",
+    "sha256": "5d0a44c5562062c35b33b2ce7c4fcb6b6f6fb73eecec8e0a710411f266a1e4bc",
+    "size_bytes": 1944
+  },
+  {
+    "path": "CID3941/doublets/r_session.txt",
+    "sha256": "ecb676bea5328df71bb0e5ae0fb2fb075b6852177bb32c046b520267cc0b06a1",
+    "size_bytes": 3064
+  },
+  {
+    "path": "CID3941/markers.csv",
+    "sha256": "a14cb1d4b7ce2f691141231fc83155fbc4224edae9be9f43900f24b8a61f879e",
+    "size_bytes": 32029
+  },
+  {
+    "path": "CID3941/parameters.json",
+    "sha256": "c00b4625c819509976e3bc6ae4fa0940272576bef6a034acafba8048f5cd6019",
+    "size_bytes": 2164
+  },
+  {
+    "path": "CID3941/qc_sensitivity.csv",
+    "sha256": "bd2b8bd8c0930b4f76aaab3c828c742c29369ae97df8f1db039bd52245fe865d",
+    "size_bytes": 1022
+  },
+  {
+    "path": "CID3941/qc_thresholds.png",
+    "sha256": "0ca2a486595c42cff17917b324fc659d495918c135741c40a54f8fb77ce8c599",
+    "size_bytes": 47721
+  },
+  {
+    "path": "CID3941/reference_compartment_overlap.csv",
+    "sha256": "7f131622e20bf907aa973ec8cc963f2c94b5e669525743a08ed627a29fdddace",
+    "size_bytes": 244
+  },
+  {
+    "path": "CID3941/umap.csv",
+    "sha256": "60de14db52f9b35bc2f22c5e8385f57b752865c46d8bad30be3c6f9294b897a5",
+    "size_bytes": 49259
+  },
+  {
+    "path": "CID3941/umap_coarse_label_hint.png",
+    "sha256": "6ac70437384d775154d868fdf73ac25e9510cf3d29ee8d59a03e6081bb2928fa",
+    "size_bytes": 35846
+  },
+  {
+    "path": "CID3941/umap_leiden.png",
+    "sha256": "1a5b7924ef04674933553ec8026be0cfa22361391ce5b084e1049ad82d1d0c39",
+    "size_bytes": 24422
+  },
+  {
+    "path": "CID44971/all_cells_qc.csv",
+    "sha256": "eef4cce4960fb3d18b25c93f65cf1a730328f7fefdf892276b9943e373480313",
+    "size_bytes": 3229786
+  },
+  {
+    "path": "CID44971/all_cells_qc.h5ad",
+    "sha256": "5bfb100cbc215e248bc52c9622c75bdceb17ecd1c06757ce693f47e7fe65aa16",
+    "size_bytes": 36386277
+  },
+  {
+    "path": "CID44971/analysis.h5ad",
+    "sha256": "0d4493db914b0b2c0f876b93b8f309e4533d8a6065b3c2aac61068fd805f4ce2",
+    "size_bytes": 85221738
+  },
+  {
+    "path": "CID44971/breast_qc_review.png",
+    "sha256": "4dbe19c2bb4c51391143b08554653eb03d30555f5d3f41ec9bade7be091c2111",
+    "size_bytes": 536529
+  },
+  {
+    "path": "CID44971/calibration.json",
+    "sha256": "3f3db5cae914a220240adbc1bdeb1690bd9b9a70f379676062b7d70fb3b0d4f6",
+    "size_bytes": 2706
+  },
+  {
+    "path": "CID44971/cluster_marker_scores.csv",
+    "sha256": "8be30a387cd1348379c2e26a258652f61fc300d5432d40f6934649461efe886d",
+    "size_bytes": 3603
+  },
+  {
+    "path": "CID44971/compartment_retention.csv",
+    "sha256": "8710defa71487e511a4a532d284e25ade46783009afa86b2e8ed0394a839d33c",
+    "size_bytes": 513
+  },
+  {
+    "path": "CID44971/compartment_retention.png",
+    "sha256": "2cf7aaf3605eabec25fa3cc067ed55ab04d5b4e575e50d1aaefd0e5d36b2ee63",
+    "size_bytes": 46067
+  },
+  {
+    "path": "CID44971/doublets/barcodes.tsv",
+    "sha256": "fb1a2b1190b16c0f35163e332fb4308199d03beca5565e48cb20066a86eaa07e",
+    "size_bytes": 186472
+  },
+  {
+    "path": "CID44971/doublets/call.R",
+    "sha256": "2e694db6ed2f087868abfc5df4df660eb1d31c5469859973025ab95451b5b792",
+    "size_bytes": 689
+  },
+  {
+    "path": "CID44971/doublets/calls.csv",
+    "sha256": "b751d92b3c3cc6fb2ee0486c54009cb2a4adefdc0133d03e8f0102360cc32d6f",
+    "size_bytes": 404245
+  },
+  {
+    "path": "CID44971/doublets/r.log",
+    "sha256": "9de83902409b9ffbac0d7681777c8ba72b3872c8a6214989f3d3285bc965eb5a",
+    "size_bytes": 1948
+  },
+  {
+    "path": "CID44971/doublets/r_session.txt",
+    "sha256": "ecb676bea5328df71bb0e5ae0fb2fb075b6852177bb32c046b520267cc0b06a1",
+    "size_bytes": 3064
+  },
+  {
+    "path": "CID44971/markers.csv",
+    "sha256": "62d9ea02dc6bb522086481b2216619ddb9f5ee2c49592e6f9589a020dad84811",
+    "size_bytes": 103237
+  },
+  {
+    "path": "CID44971/parameters.json",
+    "sha256": "0932a2a15b456296c645bde2e04e16d0d9cc6baff9da7dc0c883b041a36b586e",
+    "size_bytes": 2166
+  },
+  {
+    "path": "CID44971/qc_sensitivity.csv",
+    "sha256": "ef798f756ba59f94796ed44a3c6fed73aa7be885ffc70824dd1e3910d31c260a",
+    "size_bytes": 1228
+  },
+  {
+    "path": "CID44971/qc_thresholds.png",
+    "sha256": "a0a0f217a9f345e525597443a147bbefee30e2fd74a0f350b8cceb718f191e6f",
+    "size_bytes": 55620
+  },
+  {
+    "path": "CID44971/reference_compartment_overlap.csv",
+    "sha256": "c2965768cd511e2918e0450bab99c235f8acf443a0cde13641e6e5e3b1e99802",
+    "size_bytes": 390
+  },
+  {
+    "path": "CID44971/umap.csv",
+    "sha256": "fb62c9510425c43bc4eb5ad769a08522f4bc42ad6b90ec8f023f40758aa4ed13",
+    "size_bytes": 660081
+  },
+  {
+    "path": "CID44971/umap_coarse_label_hint.png",
+    "sha256": "87bd1d7f6e24cecb3011e371c575e81154362e74fcddf8a11ea71dabda1d36bd",
+    "size_bytes": 78066
+  },
+  {
+    "path": "CID44971/umap_leiden.png",
+    "sha256": "691753dfbe2a83eb56577d8caff8cfec6f2d2f039923d20c107c3ae5321dedcb",
+    "size_bytes": 66257
+  },
+  {
+    "path": "calibration_summary.json",
+    "sha256": "1797e2b96471829630d596debad248d3c16a9b145ec1561d33fee510745b3439",
+    "size_bytes": 8392
+  },
+  {
+    "path": "cohort_qc.csv",
+    "sha256": "620dc6ee9c327cf92f19dda089456212599bcf669654e74fc7f5cd167169f34d",
+    "size_bytes": 1949
+  },
+  {
+    "path": "conda-explicit.txt",
+    "sha256": "4c220bb3d895f45dd699de34e93d49ea143edc902d707c818f5d60d20598c87e",
+    "size_bytes": 19968
+  },
+  {
+    "path": "input_manifest.json",
+    "sha256": "65eb05d2367fe450c61a5d0e23afa425a2b5cdec6c370d0fcbb20bbcc4050a98",
+    "size_bytes": 7824
+  },
+  {
+    "path": "python_packages.json",
+    "sha256": "96c7eb5396d110fef84e523c5a020e641248811f92f6cb08dc81874679a814ed",
+    "size_bytes": 1815
+  },
+  {
+    "path": "review.html",
+    "sha256": "7df3c2ed384ea3f0995da59de1a939472bcbc9e14e2b1f9fcb2e05f2606d2f1a",
+    "size_bytes": 8631
+  },
+  {
+    "path": "review.md",
+    "sha256": "2eb156cd79c059de189d1d2e08640299bd5b775a0497ab256f14c751d912ee55",
+    "size_bytes": 2294
+  },
+  {
+    "path": "source/modal_runner.py",
+    "sha256": "9a495a1f84f0f0438e0664ff26eb1662cd566edb48f9e17b1639871c289873df",
+    "size_bytes": 6692
+  },
+  {
+    "path": "source/scrna.py",
+    "sha256": "bd937bccfb36e784021fddf0e475fb2ebae6dc86b773d7087367a4f4c4cdebb5",
+    "size_bytes": 27121
+  },
+  {
+    "path": "source/scrna_io.py",
+    "sha256": "b0903f9d9b2fc6ede112761feb1f0cc21d2428058e49a2079236e7563d9ad56a",
+    "size_bytes": 7283
+  },
+  {
+    "path": "source/scrna_qc.py",
+    "sha256": "9682594096b69355a7e3a8ea721ebfebc7b05e942e59072545423f014a3586bf",
+    "size_bytes": 9649
+  },
+  {
+    "path": "source_hashes.json",
+    "sha256": "fe1e6a0f182efa4d55a4f899ba65010fbf79e9c1e944150eb9796a8c14eb3faf",
+    "size_bytes": 255
+  }
+]

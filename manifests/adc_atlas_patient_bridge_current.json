@@ -1,0 +1,16 @@
+{
+  "sample_label": "Diana E019_S01 tumor RNA",
+  "public_result_path": "results/workbench/adc-atlas-patient-bridge-20260904T183020Z-projection",
+  "comparison_table": {
+    "path": "results/workbench/adc-atlas-patient-bridge-20260904T183020Z-projection/results/modal_result/tables/adc_target_breast_comparison.csv",
+    "sha256": "a297eee02ecb1b812c87d16f81a810d06a3b04208ff546f0963b739ac38d7f4a"
+  },
+  "qa_summary": {
+    "path": "results/workbench/adc-atlas-patient-bridge-20260904T183020Z-projection/results/modal_result/qa_summary.json",
+    "sha256": "eb881e290e8717e4f21af6ba243f269e19a361ec1b1c5375c7c202a84f8a22e3"
+  },
+  "run_manifest": {
+    "path": "results/workbench/adc-atlas-patient-bridge-20260904T183020Z-projection/results/modal_result/run_manifest.json",
+    "sha256": "adbf3f1747ed09f2dd31b477a092f727b89a25940750b187b770505e23396901"
+  }
+}

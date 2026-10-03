@@ -1,0 +1,38 @@
+{
+  "schema": "diana_rosalind_trop2_review.v1",
+  "status": "completed_expert_review",
+  "generatedAt": "2026-09-04T01:51:48Z",
+  "runId": "immunoid-trop2-20260904T012326Z",
+  "sourceRun": {
+    "s3Prefix": "s3://diana-omics-private-results-172630973301-us-east-1/modal/rosalind-rnaseq-trop2/runs/immunoid-trop2-20260904T012326Z/",
+    "runManifestSha256": "5f07adccc8465e4001df4d08b813d6244eecedf1c4c0f72883aa1fc7e0385dab",
+    "runManifestVersionId": "2Qcf4Re3r5sZa6T10R8lwEedhldvyYtQ",
+    "artifactIndexSha256": "ef01e584685994783a531aea13abe1a529037226758afd4787b522b7c4515464",
+    "artifactIndexVersionId": "d4oqc69qq1oSYdIe3sn3UeccFpICs3KM"
+  },
+  "reviewerDisposition": "validated_for_narrower_claim_with_qc_warnings",
+  "allowedClaim": "Strong, reproducible TACSTD2-aligned transcript evidence is present in this bulk tumor RNA dataset and warrants controlled protein-level follow-up.",
+  "artifacts": [
+    {
+      "path": "reviewer_packet.md",
+      "bytes": 5574,
+      "sha256": "5b1cdf6fd644b3e678ab69663adb1f313ad39412dbe33f983d3ebcbd890a78c1"
+    },
+    {
+      "path": "research_context_sources.json",
+      "bytes": 2133,
+      "sha256": "0cad22679df35a4a0a90f02d0083359ac1c89d02fafd7e671bbbaf9ecfd3d42a"
+    },
+    {
+      "path": "next_actions.md",
+      "bytes": 1823,
+      "sha256": "a2e852878d5b7c1c68922ec8a4e301d615a570a98edc5e6af2ce961529aa88a6"
+    },
+    {
+      "path": "workbench_handoff.md",
+      "bytes": 1821,
+      "sha256": "ebb9ae8623a2ff68872eddef1a1e526238f3c74e02cc5c985e2ffa34a21b2dc6"
+    }
+  ],
+  "evidenceBoundary": "Research-only single-sample bulk RNA evidence. No differential expression, tumor-cell specificity, surface-protein abundance, ADC eligibility, response prediction, or treatment recommendation."
+}

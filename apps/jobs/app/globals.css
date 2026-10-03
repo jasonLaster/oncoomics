@@ -106,6 +106,25 @@ button { color: inherit; }
 .topbar-meta { gap: 10px; color: var(--muted-strong); font-size: 10px; }
 .brand-lockup { gap: 10px; }
 
+.section-link {
+  min-height: 32px;
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 10px;
+  border: 1px solid var(--line-strong);
+  border-radius: 6px;
+  background: var(--surface-raised);
+  color: var(--muted-strong);
+  text-decoration: none;
+  transition: border-color 140ms ease, background-color 140ms ease, color 140ms ease;
+}
+
+.section-link:hover {
+  border-color: #435162;
+  background: var(--surface-hover);
+  color: var(--text);
+}
+
 .brand-mark {
   width: 34px;
   height: 34px;
@@ -991,6 +1010,7 @@ button { color: inherit; }
   .refresh-button > span { font-size: 16px; }
   .refresh-button { font-size: 0; }
   .rail-toggle { width: 36px; height: 36px; font-size: 20px; }
+  .section-link { min-width: 44px; min-height: 44px; justify-content: center; padding: 0 8px; }
 
   .workspace,
   .workspace[data-left-collapsed="true"],

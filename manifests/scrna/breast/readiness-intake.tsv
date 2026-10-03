@@ -1,0 +1,4 @@
+sample_id	donor_id	clinical_subtype	technical_capture_id	barcode_capture_map_uri	chemistry	metadata_source_uri	metadata_source_sha256	metadata_sample_locator	unfiltered_droplets_uri	unfiltered_droplets_sha256	reference_identity	material	state
+CID44971	CID44971	TNBC										whole_cell	required_not_available_in_public_archive
+CID3941	CID3941	ER+										whole_cell	required_not_available_in_public_archive
+CID3838	CID3838	HER2+										whole_cell	required_not_available_in_public_archive

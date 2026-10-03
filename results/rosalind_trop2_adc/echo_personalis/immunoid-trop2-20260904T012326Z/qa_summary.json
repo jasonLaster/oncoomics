@@ -1,0 +1,48 @@
+{
+  "bamFormCountComparison": {
+    "first": 30856,
+    "relativeDifference": 0.4224318658280922,
+    "second": 53424,
+    "status": "discordant_review_required"
+  },
+  "bamQuickcheck": {
+    "preBqsr": "passed",
+    "recalibrated": "passed"
+  },
+  "depth": {
+    "bases": 2068,
+    "coefficientOfVariation": 1.0941150903890717,
+    "fractionAtLeast100x": 0.5797872340425532,
+    "fractionAtLeast10x": 0.718568665377176,
+    "fractionAtLeast1x": 0.7872340425531915,
+    "maxDepth": 6781,
+    "meanDepth": 2083.2596711798838,
+    "medianDepth": 590.5
+  },
+  "expression": {
+    "alignmentReadsPerMillion": 124.52567855684478,
+    "approximateFragmentRpkm": 35.180492351387386,
+    "hqNonduplicateRegionReads": 30856,
+    "hqRetentionFraction": 0.5807423021907702,
+    "normalizationCaveat": "RPKM is an approximate single-gene diagnostic based on index-level mapped-alignments/2; it is not Salmon/tximport TPM and is not suitable for cross-study differential expression.",
+    "primaryRegionReads": 53132,
+    "totalIndexMappedAlignments": 426675049,
+    "uniqueHqTemplates": 15521
+  },
+  "fastqPairCountStatus": "matched",
+  "fastqcFailedModules": [
+    "Adapter Content",
+    "Per base sequence content",
+    "Per tile sequence quality",
+    "Sequence Duplication Levels"
+  ],
+  "fastqcWarningModules": [
+    "Overrepresented sequences",
+    "Per base sequence content",
+    "Per sequence GC content",
+    "Per tile sequence quality"
+  ],
+  "referenceCheck": "passed_hs37d5_chr1_length",
+  "schema": "diana_rosalind_rnaseq_trop2_qa.v1",
+  "status": "review_required"
+}

@@ -1,0 +1,29 @@
+{
+  "apps": [
+    {
+      "app_id": "ap-KqmfovVydREqPs4ELo862Q",
+      "description": "diana-scrna-platform",
+      "state": "deployed",
+      "tasks": "0"
+    },
+    {
+      "app_id": "ap-pYGzN74PeA9DGv7HfTmArc",
+      "description": "diana-scrna-platform",
+      "state": "stopped",
+      "tasks": "0"
+    },
+    {
+      "app_id": "ap-ZSU2KYZpeSjamr4NZdPAm4",
+      "description": "diana-scrna-platform",
+      "state": "stopped",
+      "tasks": "0"
+    },
+    {
+      "app_id": "ap-w8P7P7X46D39qaAmG2nLkv",
+      "description": "diana-scrna-platform",
+      "state": "stopped",
+      "tasks": "0"
+    }
+  ],
+  "scope": "Owned scRNA deployment, preflight, breast calibration, and PBMC regression only"
+}

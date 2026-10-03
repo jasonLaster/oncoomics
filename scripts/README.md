@@ -4,6 +4,15 @@ Most workflows should use `PYTHONPATH=src /usr/bin/python3 -m diana_omics ...` r
 
 Current shell utilities:
 
+- `modal/modal_s3_scrna_kickoff.py`: run the public PBMC3k Rosalind scRNA-seq
+  kickoff through read-only raw and write-enabled results S3 mounts on Modal,
+  producing a processed H5AD plus checksummed QC, cluster, marker, UMAP, and
+  provenance artifacts.
+- `modal/modal_s3_bulk_rna_trop2.py`: run the private Personalis ImmunoID
+  single-sample bulk-RNA TROP-2 exploration through a read-only exact-prefix
+  S3 mount, producing FastQC/MultiQC, BAM integrity and concordance checks,
+  focused `TACSTD2` counts/depth, four Rosalind review verdicts, and a
+  checksummed immutable result envelope.
 - `build_ai_review_bundle.py`: build a de-identified, hash-bound model review
   bundle from the frozen seven-source HRD report inventory without invoking a
   model.

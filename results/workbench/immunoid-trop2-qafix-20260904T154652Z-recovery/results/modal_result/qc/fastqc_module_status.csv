@@ -1,0 +1,23 @@
+sample,module,status
+RNA_E019_S01_tumor_rna_reads1,Basic Statistics,pass
+RNA_E019_S01_tumor_rna_reads1,Per base sequence quality,pass
+RNA_E019_S01_tumor_rna_reads1,Per tile sequence quality,warn
+RNA_E019_S01_tumor_rna_reads1,Per sequence quality scores,pass
+RNA_E019_S01_tumor_rna_reads1,Per base sequence content,fail
+RNA_E019_S01_tumor_rna_reads1,Per sequence GC content,warn
+RNA_E019_S01_tumor_rna_reads1,Per base N content,pass
+RNA_E019_S01_tumor_rna_reads1,Sequence Length Distribution,pass
+RNA_E019_S01_tumor_rna_reads1,Sequence Duplication Levels,fail
+RNA_E019_S01_tumor_rna_reads1,Overrepresented sequences,pass
+RNA_E019_S01_tumor_rna_reads1,Adapter Content,fail
+RNA_E019_S01_tumor_rna_reads2,Basic Statistics,pass
+RNA_E019_S01_tumor_rna_reads2,Per base sequence quality,pass
+RNA_E019_S01_tumor_rna_reads2,Per tile sequence quality,fail
+RNA_E019_S01_tumor_rna_reads2,Per sequence quality scores,pass
+RNA_E019_S01_tumor_rna_reads2,Per base sequence content,warn
+RNA_E019_S01_tumor_rna_reads2,Per sequence GC content,warn
+RNA_E019_S01_tumor_rna_reads2,Per base N content,pass
+RNA_E019_S01_tumor_rna_reads2,Sequence Length Distribution,pass
+RNA_E019_S01_tumor_rna_reads2,Sequence Duplication Levels,fail
+RNA_E019_S01_tumor_rna_reads2,Overrepresented sequences,warn
+RNA_E019_S01_tumor_rna_reads2,Adapter Content,fail

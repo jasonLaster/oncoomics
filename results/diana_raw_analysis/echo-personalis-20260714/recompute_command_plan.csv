@@ -1,0 +1,6 @@
+step,name,command,purpose
+1,validate_public_reference_ladder,PYTHONPATH=src /usr/bin/python3 -m diana_omics run:all,Recompute the public validation ladder alongside Diana-specific staging.
+2,validate_diana_inputs,DIANA_RAW_SAMPLESHEET=manifests/diana_raw_inputs.csv DIANA_RAW_REQUIRE_DATA=1 PYTHONPATH=src /usr/bin/python3 -m diana_omics verify:diana-raw,"Fail fast if Diana raw paths, pair roles, or reference metadata are incomplete."
+3,stage_diana_analysis_packet,DIANA_RAW_SAMPLESHEET=manifests/diana_raw_inputs.csv DIANA_RAW_REQUIRE_DATA=1 DIANA_RAW_ANALYSIS_ID=echo-personalis-20260714 PYTHONPATH=src /usr/bin/python3 -m diana_omics stage:diana-raw,"Write the Diana-specific run packet, input manifest, and reviewer boundary."
+4,refresh_rosalind_intake_packet,ROSALIND_HRD_SAMPLE_SET=diana_raw_intake ROSALIND_HRD_RUN_ID=diana-raw-echo-personalis-20260714 PYTHONPATH=src /usr/bin/python3 -m diana_omics build:rosalind-hrd-packet,Refresh the Rosalind-style raw-intake packet after strict validation and staging.
+5,run_wgs_feature_lanes,"Use the staged DNA rows with the Phase 3 WGS runner settings: alignment, Mutect2, coverage-CNV bins, SBS96 matrix, and SV evidence. For full WGS, set final interval/scatter policy before launch.",Recompute DNA HRD feature inputs from Diana WGS once compute policy is approved.

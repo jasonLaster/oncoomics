@@ -1,0 +1,45 @@
+{
+  "artifactIndex": {
+    "bytes": 4652,
+    "path": "artifact_index.json",
+    "sha256": "731586ff91dfb5e7abee2249ec7072e62b5eaa4fc623a87c26e48f71dd0339cc"
+  },
+  "dataClassification": "private_human_tumor_rna",
+  "evidenceBoundary": "Directional RNA target comparison only; no exact cohort percentile, differential expression, malignant-cell localization, membrane protein, ADC response, eligibility, or treatment recommendation.",
+  "evidenceStatus": "partial_evidence",
+  "execution": {
+    "app": "diana-adc-atlas-patient-bridge",
+    "cpu": 16,
+    "inputMount": "read_only_exact_s3_prefix",
+    "memoryMiB": 65536,
+    "outputMount": "private_versioned_s3_prefix",
+    "region": "us-east",
+    "runtime": "modal"
+  },
+  "generatedAt": "2026-09-04T18:43:18.599466Z",
+  "outputPrefix": "s3://diana-omics-private-results-172630973301-us-east-1/modal/pan-cancer-adc-atlas/patient-bridge/runs/adc-atlas-patient-bridge-20260904T183020Z/",
+  "publicComparator": {
+    "cohort": "Breast Invasive Carcinoma",
+    "comparisonStatus": "directionally_comparable",
+    "method": "UCSC Toil/RSEM GENCODE v23 log2(TPM+0.001) inverted to TPM",
+    "sampleCount": 1092
+  },
+  "qaStatus": "passed_for_directional_comparison_with_cross_pipeline_caveat",
+  "quantification": {
+    "geneAggregation": "sum transcript TPM and estimated NumReads by GENCODE v23 gene_id",
+    "method": "Salmon selective alignment with full-genome decoys, automatic library inference, sequence bias correction, and GC bias correction"
+  },
+  "question": "How do Diana E019 bulk-RNA ADC-target measurements compare directionally with the public Pan-cancer ADC Atlas v1?",
+  "reference": {
+    "manifestSha256": "7218c47a72f96fab7a9b2287887b2eff88a3178dd9fc9f5695747554b3cd35f1",
+    "referenceId": "gencode-v23-grch38-primary-full-decoy-salmon-1.10.3"
+  },
+  "runId": "adc-atlas-patient-bridge-20260904T183020Z",
+  "schema": "diana_adc_atlas_patient_bridge_run.v1",
+  "software": {
+    "modal": "runtime-managed-no-distribution-metadata",
+    "python": "3.12.11",
+    "salmon": "salmon 1.10.3"
+  },
+  "status": "completed_research_analysis"
+}

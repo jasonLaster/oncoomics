@@ -1,0 +1,19 @@
+{
+  "status": "pass",
+  "baseline": "pbmc-calibration-v2-20261001T210600Z",
+  "new_run": "pbmc3k-breast-qc-regression-20261001T213500Z",
+  "checks": {
+    "core_qc_cells": true,
+    "retained_cells": true,
+    "doublets_flagged": true,
+    "clusters": true,
+    "seed_stability_ari": true,
+    "reference_ari": true,
+    "gates": true,
+    "umap.csv": true,
+    "markers.csv": true,
+    "cluster_marker_scores.csv": true,
+    "barcode_core_qc_doublet_and_final_decisions": true
+  },
+  "note": "GEO importer repair after this regression is isolated to breast archives; PBMC analysis path unchanged."
+}

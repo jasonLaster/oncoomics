@@ -1,0 +1,45 @@
+{
+  "schema_version": 1,
+  "scope": "breast_postcount_research_qc",
+  "config_sha256": null,
+  "artifact_index_sha256": null,
+  "reports": {
+    "capture_chemistry": {
+      "status": "not_performed",
+      "reviewer": null,
+      "source": null
+    },
+    "ambient_rna": {
+      "status": "not_performed",
+      "reviewer": null,
+      "source": null
+    },
+    "annotation": {
+      "status": "not_performed",
+      "reviewer": null,
+      "source": null
+    },
+    "doublet": {
+      "status": "not_performed",
+      "reviewer": null,
+      "source": null
+    },
+    "held_out_donors": {
+      "status": "not_performed",
+      "reviewer": null,
+      "source": null,
+      "training_donors": [
+        "CID44971",
+        "CID3941",
+        "CID3838"
+      ],
+      "evaluation_donors": [],
+      "training_studies": [
+        "GSE176078"
+      ],
+      "evaluation_studies": [],
+      "subtypes": []
+    }
+  },
+  "note": "Intake template only. No validation or reviewer approval is asserted. Add report paths and exact SHA-256 only after work is complete."
+}
