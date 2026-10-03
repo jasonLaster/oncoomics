@@ -1,0 +1,11 @@
+{
+  "claim_boundary": "Values are lookups from the public EVEE ClinVar service. They do not recreate the proprietary EVEE probe for variants absent from that service, and they do not establish oncogenicity or actionability.",
+  "found_count": 1,
+  "highest_pathogenicity": 0.4003,
+  "input_variant_count": 9,
+  "not_found_is_not_benign": true,
+  "status_counts": {
+    "found": 1,
+    "not_found": 8
+  }
+}

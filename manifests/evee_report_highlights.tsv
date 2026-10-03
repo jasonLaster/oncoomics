@@ -1,0 +1,10 @@
+gene	variant	chrom	pos	ref	alt	protein_change	report_claim
+MTOR	chr1:11257145C>T	1	11257145	C	T	p.Gly98Ser	high disruption
+SCAP	chr3:47419370C>T	3	47419370	C	T	p.Trp633Ter	LoF confirmed
+RXRA	chr9:134408156C>A	9	134408156	C	A	p.Ser96Ter	LoF confirmed
+CUL3	chr2:224506102G>A	2	224506102	G	A	p.Arg354Cys	high disruption
+DLL4	chr15:40936533C>T	15	40936533	C	T	p.Arg516Cys	high disruption
+ATG4B	chr2:241655311G>A	2	241655311	G	A	p.Trp142Ter	LoF confirmed
+ATG13	chr11:46657565A>G	11	46657565	A	G	p.Asp213Gly	high disruption
+FGFR4	chr5:177090615C>T	5	177090615	C	T	p.Ser106Phe	moderate-high disruption
+BRD3	chr9:134034740T>C	9	134034740	T	C	p.Ser676Gly	moderate disruption

@@ -1,0 +1,47 @@
+{
+  "sampleSet": "diana_raw_intake",
+  "artifacts": [
+    {
+      "path": "manifests/diana_raw_inputs.template.csv",
+      "resolved_path": "artifacts/diana_raw_intake_ready/manifests/diana_raw_inputs.template.csv",
+      "exists": "yes",
+      "bytes": 2140,
+      "sha256": "d6a26801a48fe4147b02186db6c124c1a66c029a167c2a83e273cbbe75ec1b96"
+    },
+    {
+      "path": "docs/operations/diana-raw-inputs.md",
+      "resolved_path": "artifacts/diana_raw_intake_ready/docs/operations/diana-raw-inputs.md",
+      "exists": "yes",
+      "bytes": 3918,
+      "sha256": "bb626beeef58556367eaf3f190557e5dd9d0f60de5f6951c46945dcd140a5065"
+    },
+    {
+      "path": "results/diana_raw_intake/input_contract.json",
+      "resolved_path": "artifacts/diana_raw_intake_ready/results/diana_raw_intake/input_contract.json",
+      "exists": "yes",
+      "bytes": 1824,
+      "sha256": "2a35c6f8099de914332361d580fa753583f691c8ced59a36f1053d31235e2381"
+    },
+    {
+      "path": "results/diana_raw_intake/intake_readiness_summary.json",
+      "resolved_path": "artifacts/diana_raw_intake_ready/results/diana_raw_intake/intake_readiness_summary.json",
+      "exists": "yes",
+      "bytes": 684,
+      "sha256": "b628fc39eec45ca508cb4d53fab90d4c68d78614ad896613464d8fdc710584f8"
+    },
+    {
+      "path": "results/diana_raw_intake/input_validation_summary.json",
+      "resolved_path": "artifacts/diana_raw_intake_ready/results/diana_raw_intake/input_validation_summary.json",
+      "exists": "yes",
+      "bytes": 2326,
+      "sha256": "9a1f48a0f1960a962a483d931336b3365a7ac9be4ff2099cb99e6cbac091de56"
+    },
+    {
+      "path": "results/diana_raw_intake/dinah_handoff_plan.json",
+      "resolved_path": "artifacts/diana_raw_intake_ready/results/diana_raw_intake/dinah_handoff_plan.json",
+      "exists": "yes",
+      "bytes": 6280,
+      "sha256": "cba41769c9ff9619c5034e86deb8340e411a7c20c4a6ba9c2ade64fb7447faea"
+    }
+  ]
+}

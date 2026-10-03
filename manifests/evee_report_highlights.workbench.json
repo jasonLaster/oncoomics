@@ -1,0 +1,7 @@
+{
+  "variants": "/Users/jasonlaster/src/projects/diana-omics/manifests/evee_report_highlights.tsv",
+  "genome_build": "GRCh38",
+  "outdir": "/Users/jasonlaster/src/projects/diana-omics/.runs/evee-report-highlights-20260904T1024/results",
+  "no_network": false,
+  "run_evo2": false
+}

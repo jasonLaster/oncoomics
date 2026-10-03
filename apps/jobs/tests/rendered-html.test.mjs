@@ -64,6 +64,11 @@ test("implements automatic refresh and server-side AWS access", async () => {
   assert.match(awsBridge, /startFromHead: false/);
   assert.match(awsBridge, /DIRECT_LOG_CURSOR_PREFIX = "cloudwatch:"/);
   assert.match(awsBridge, /DescribeJobQueuesCommand/);
+  assert.match(
+    awsBridge,
+    /do \{[\s\S]*new ListJobsCommand[\s\S]*nextToken = response\.nextToken;[\s\S]*\} while \(nextToken\);/,
+  );
+  assert.doesNotMatch(awsBridge, /\]\.slice\(0, 100\);/);
   assert.match(awsBridge, /awsCredentialsProvider/);
   assert.match(awsBridge, /AWS_ROLE_ARN/);
   assert.match(awsBridge, /export async function getViewerJob/);

@@ -111,11 +111,11 @@ HRD cross-check tooling that is unavailable in the ARM image:
 - Capacity: `min_vcpus = 0`, `desired_vcpus = 0`, and
   `hrd_x86_max_vcpus = 128` by default
 
-It reuses the encrypted Batch launch template, private subnets, no-ingress
-security group, Batch instance profile and service role, and the existing job
-and CloudWatch log roles. It has no ARM fallback and Terraform does not
-register an analysis job definition. With no submitted jobs it has no EC2
-instances or idle compute charge.
+It reuses the encrypted Batch launch template, on-demand public subnets,
+no-ingress security group, Batch instance profile and service role, and the
+existing job and CloudWatch log roles. It has no ARM fallback and Terraform
+does not register an analysis job definition. With no submitted jobs it has no
+EC2 instances, public IPv4 addresses, or idle compute/network charge.
 
 Terraform writes `aws_hrd_x86_queue` and `aws_private_results_dir` to
 `infra/aws/nextflow.aws.json`. A future cross-check must also supply an
@@ -496,10 +496,15 @@ Cloud Nextflow profiles retry failed Batch processes once by default. Override w
 
 ## Cost Notes
 
-The stack includes a NAT Gateway so private Batch compute can download public
-data. NAT Gateway, EBS root volumes, Batch EC2 instances, S3 storage, and data
-transfer can create charges. Work-bucket objects expire by lifecycle policy,
-but Batch compute and failed runs should still be checked after testing.
+Batch compute launches into public subnets with temporary public IPv4
+addresses and a no-ingress security group. Capacity and its public IPv4
+addresses exist only while Batch jobs need EC2 hosts; the stack has no NAT
+Gateway or dedicated Elastic IP idle charge. The S3 gateway endpoint is
+attached to both route tables so regional S3 traffic avoids internet and NAT
+processing paths. EBS root volumes, Batch EC2 instances, active public IPv4
+addresses, S3 storage, external data transfer, and other services can still
+create charges. Work-bucket objects expire by lifecycle policy, but Batch
+compute and failed runs should still be checked after testing.
 
 Each Terraform workspace also installs a two-layer daily Batch cost guard with
 a default and maximum `daily_cost_guard_limit_usd = 200`. The live guard scans
@@ -526,10 +531,10 @@ The live estimator deliberately overprices P5-family 48xlarge hosts in
 `daily_cost_guard_instance_hourly_rates_usd`, uses the same conservative
 `daily_cost_guard_unknown_instance_hourly_rate_usd = 140` fallback for any
 future unlisted Batch instance type, and reserves 20% of the daily cap for
-slower NAT Gateway, S3, ECR, DynamoDB, Lambda, logs, EventBridge, and AWS
-Budgets metering. That makes a GPU run stop early rather than late. AWS billing
-telemetry is still delayed, so leave GPU smoke and execute runs bounded and
-re-check Batch state after every high-cost test.
+slower S3, ECR, public IPv4, data-transfer, DynamoDB, Lambda, logs, EventBridge,
+and AWS Budgets metering. That makes a GPU run stop early rather than late. AWS
+billing telemetry is still delayed, so leave GPU smoke and execute runs bounded
+and re-check Batch state after every high-cost test.
 
 If the live estimator cannot inventory the protected Diana Batch EC2 hosts or
 update the UTC-day ledger, the Lambda fails closed and disables the protected

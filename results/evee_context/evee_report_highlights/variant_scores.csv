@@ -1,0 +1,10 @@
+source_index,chrom,pos,ref,alt,reported_gene,reported_variant,reported_claim,supplied_evee_variant_id,source_variant_id,genome_build,evee_variant_id,evee_identity_status,evee_status,http_status,evee_pathogenicity,evee_eff_pathogenic,evee_splice_disrupting,evee_gene,evee_hgvsp,clinvar_significance,consequence,top_disruption_annotation,top_disruption_delta,top_disruption_abs_delta
+1,1,11257145,C,T,MTOR,chr1:11257145C>T,high disruption,,chr1:11257145:C:T,GRCh38,chr1:11257144:C:T,derived_snv_0_based,not_found,404,,,,,,,,,,
+2,3,47419370,C,T,SCAP,chr3:47419370C>T,LoF confirmed,,chr3:47419370:C:T,GRCh38,chr3:47419369:C:T,derived_snv_0_based,not_found,404,,,,,,,,,,
+3,9,134408156,C,A,RXRA,chr9:134408156C>A,LoF confirmed,,chr9:134408156:C:A,GRCh38,chr9:134408155:C:A,derived_snv_0_based,not_found,404,,,,,,,,,,
+4,2,224506102,G,A,CUL3,chr2:224506102G>A,high disruption,,chr2:224506102:G:A,GRCh38,chr2:224506101:G:A,derived_snv_0_based,found,200,0.4003,0.4003,0.0003,CUL3,p.Arg354Cys,uncertain_significance,Missense,amino_acid_R,-0.6623,0.6623
+5,15,40936533,C,T,DLL4,chr15:40936533C>T,high disruption,,chr15:40936533:C:T,GRCh38,chr15:40936532:C:T,derived_snv_0_based,not_found,404,,,,,,,,,,
+6,2,241655311,G,A,ATG4B,chr2:241655311G>A,LoF confirmed,,chr2:241655311:G:A,GRCh38,chr2:241655310:G:A,derived_snv_0_based,not_found,404,,,,,,,,,,
+7,11,46657565,A,G,ATG13,chr11:46657565A>G,high disruption,,chr11:46657565:A:G,GRCh38,chr11:46657564:A:G,derived_snv_0_based,not_found,404,,,,,,,,,,
+8,5,177090615,C,T,FGFR4,chr5:177090615C>T,moderate-high disruption,,chr5:177090615:C:T,GRCh38,chr5:177090614:C:T,derived_snv_0_based,not_found,404,,,,,,,,,,
+9,9,134034740,T,C,BRD3,chr9:134034740T>C,moderate disruption,,chr9:134034740:T:C,GRCh38,chr9:134034739:T:C,derived_snv_0_based,not_found,404,,,,,,,,,,

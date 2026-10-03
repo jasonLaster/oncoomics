@@ -2,6 +2,14 @@ import hljs from 'highlight.js/lib/core';
 import bash from 'highlight.js/lib/languages/bash';
 import markdown from 'highlight.js/lib/languages/markdown';
 import 'highlight.js/styles/github-dark.css';
+import {
+  focusedInputPathFor,
+  focusedInputPrefix,
+  inputDownloadCommand,
+  inputPageConfig,
+  parseFocusedInputPath,
+} from './focused-input.js';
+import { normalizeIndexedObject } from './inventory.js';
 import { shouldOpenDirectory } from './tree.js';
 import './styles.css';
 
@@ -9,6 +17,7 @@ hljs.registerLanguage('bash', bash);
 hljs.registerLanguage('markdown', markdown);
 
 const PUBLIC_INDEX_URL = 'https://diana-omics-results-172630973301-us-east-1.s3.us-east-1.amazonaws.com/public-index/objects.json';
+const GLACIER_INDEX_URL = '/glacier-index.json';
 
 const PUBLIC_SOURCES = [
   {
@@ -33,7 +42,25 @@ const PUBLIC_SOURCES = [
     statusLabel: 'Live',
     loadingLabel: 'Loading live inventory…',
     downloadDirectory: 'diana-input',
-    expandByDefault: true,
+    defaultOpenDirectoryKeys: [
+      'diana/inbox/2026-07-14-echo-personalis/',
+      'diana/inbox/2026-07-14-echo-personalis/data/',
+    ],
+  },
+  {
+    id: 'glacier-archive',
+    name: 'Glacier archive',
+    treeName: 'diana/archive',
+    bucket: 'diana-omics-raw-inputs-172630973301-us-east-1',
+    region: 'us-east-1',
+    prefix: 'cache/phase3_wgs/',
+    indexUrl: GLACIER_INDEX_URL,
+    description: 'Public WGS cache in Glacier Flexible Retrieval with no auto-delete policy. Metadata stays browsable; restore is required before download.',
+    statusLabel: 'Archived',
+    loadingLabel: 'Loading archive index…',
+    storageClass: 'GLACIER',
+    archived: true,
+    stateClass: 'archive',
   },
 ].map((source) => ({
   ...source,
@@ -42,7 +69,21 @@ const PUBLIC_SOURCES = [
   s3Uri: `s3://${source.bucket}/${source.prefix ?? ''}`,
 }));
 
-const markdownInstructions = `## Download the reviewed analysis index
+const focusedInputSlug = parseFocusedInputPath(window.location.pathname);
+const focusedPage = focusedInputSlug ? inputPageConfig(focusedInputSlug) : null;
+const rawInputSource = PUBLIC_SOURCES.find((source) => source.id === 'raw-inputs');
+const focusedSource = focusedInputSlug ? {
+  ...rawInputSource,
+  name: focusedPage.title,
+  treeName: focusedInputSlug,
+  prefix: focusedInputPrefix(focusedInputSlug),
+  s3Uri: `s3://${rawInputSource.bucket}/${focusedInputPrefix(focusedInputSlug)}`,
+  description: focusedPage.description,
+  downloadDirectory: focusedInputSlug,
+} : null;
+const ACTIVE_SOURCES = focusedSource ? [focusedSource] : PUBLIC_SOURCES;
+
+const allDataMarkdownInstructions = `## Download the reviewed analysis index
 
 \`\`\`bash
 curl --fail --location \\
@@ -66,7 +107,34 @@ aws s3 cp \\
   ./diana-input/ \\
   --recursive \\
   --no-sign-request
-\`\`\``;
+\`\`\`
+
+## Restore an archived Glacier file
+
+Use a file's action menu to copy its restore command. Restore requests require
+authorized AWS access; archived objects cannot be downloaded anonymously until
+they are restored by the bucket owner. The restored copy is available for 7
+days; the underlying Glacier object remains archived without an expiry.`;
+
+const focusedMarkdownInstructions = focusedSource ? `## Download this input
+
+\`\`\`bash
+${inputDownloadCommand(focusedSource)}
+\`\`\`
+
+## Verify the downloaded files
+
+\`\`\`bash
+cd '${focusedInputSlug}'
+# Linux
+sha256sum -c checksums.sha256
+# macOS
+shasum -a 256 -c checksums.sha256
+\`\`\`` : '';
+
+const markdownInstructions = focusedSource
+  ? focusedMarkdownInstructions
+  : allDataMarkdownInstructions;
 
 const highlightMarkdownWithBash = (source) => {
   const fencePattern = /```bash\n([\s\S]*?)\n```/g;
@@ -86,72 +154,123 @@ const highlightMarkdownWithBash = (source) => {
   return highlighted;
 };
 
+if (focusedPage) {
+  document.title = `${focusedPage.title} | Diana Omics`;
+  document.querySelector('meta[name="description"]')?.setAttribute('content', focusedPage.description);
+  document.querySelector('meta[property="og:title"]')?.setAttribute('content', `${focusedPage.title} | Diana Omics`);
+  document.querySelector('meta[property="og:description"]')?.setAttribute('content', focusedPage.description);
+}
+
+const allDataIntro = `
+  <section class="intro">
+    <div>
+      <p class="eyebrow">Open genomic dataset</p>
+      <h1>Diana Omics public data</h1>
+      <p class="intro-copy">Browse reviewed analysis outputs, raw Diana inbox deliveries, and the public Glacier archive. Current public files need no AWS credentials; archived files require an owner-authorized restore before download.</p>
+    </div>
+    <dl class="dataset-stats" aria-label="Dataset summary">
+      <div><dt>Files</dt><dd id="object-count">—</dd></div>
+      <div><dt>Size</dt><dd id="total-size">—</dd></div>
+      <div><dt>Updated</dt><dd id="last-updated">—</dd></div>
+    </dl>
+  </section>`;
+
+const focusedIntro = focusedPage ? `
+  <nav class="breadcrumbs" aria-label="Breadcrumb">
+    <a href="/">All data</a>
+    <span aria-hidden="true">/</span>
+    <span>Diana input</span>
+  </nav>
+  <section class="intro focused-intro">
+    <div>
+      <p class="eyebrow">${focusedPage.eyebrow}</p>
+      <h1>${focusedPage.title}</h1>
+      <p class="intro-copy">${focusedPage.description} No AWS account or credentials are required.</p>
+    </div>
+    <dl class="dataset-stats" aria-label="Input summary">
+      <div><dt>Files</dt><dd id="object-count">—</dd></div>
+      <div><dt>Size</dt><dd id="total-size">—</dd></div>
+      <div><dt>Updated</dt><dd id="last-updated">—</dd></div>
+    </dl>
+  </section>` : '';
+
+const sourceSection = focusedPage ? '' : `
+  <section class="source-section" aria-labelledby="sources-heading">
+    <div class="source-heading">
+      <p class="eyebrow">Public S3 sources</p>
+      <h2 id="sources-heading">Live data surfaces</h2>
+    </div>
+    <div class="source-grid">
+      ${PUBLIC_SOURCES.map((source) => `
+        <article class="source-card" id="source-${source.id}">
+          <div class="source-card-heading">
+            <h3>${source.name}</h3>
+            <span class="source-state${source.stateClass ? ` ${source.stateClass}` : ''}"><i></i><span>Loading</span></span>
+          </div>
+          <p>${source.description}</p>
+          <code>${source.indexUrl ?? source.s3Uri}</code>
+          <div class="source-stats" aria-live="polite">
+            <strong>—</strong>
+            <span>${source.loadingLabel}</span>
+          </div>
+        </article>`).join('')}
+    </div>
+  </section>`;
+
+const downloadSection = focusedPage ? `
+  <section class="download-section focused-download" aria-labelledby="download-heading">
+    <div class="download-copy">
+      <p class="eyebrow">Download this import</p>
+      <h2 id="download-heading">Get the files</h2>
+      <ol class="download-steps">
+        <li>Install the <a href="https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html">AWS CLI</a> if it is not already available.</li>
+        <li>Run the anonymous copy command. It downloads this import only.</li>
+        <li>Run the checksum command after download to verify file integrity.</li>
+      </ol>
+    </div>
+    <div class="code-card">
+      <div class="code-bar">
+        <span>DOWNLOAD.md</span>
+        <button id="copy-instructions" type="button">Copy instructions</button>
+      </div>
+      <pre><code id="markdown-code" class="language-markdown"></code></pre>
+    </div>
+  </section>` : `
+  <section class="download-section" aria-labelledby="download-heading">
+    <div class="download-copy">
+      <p class="eyebrow">Download guide</p>
+      <h2 id="download-heading">Get the data</h2>
+      <p>Download current public objects directly, use the reviewed index for report outputs, or inspect archived WGS cache metadata. Glacier objects remain listed but need an authorized restore before download.</p>
+      <a href="https://github.com/jasonLaster/oncoomics/blob/main/docs/operations/diana-public-data-download.md">Open the full download guide <span aria-hidden="true">→</span></a>
+    </div>
+    <div class="code-card">
+      <div class="code-bar">
+        <span>DOWNLOAD.md</span>
+        <button id="copy-instructions" type="button">Copy Markdown</button>
+      </div>
+      <pre><code id="markdown-code" class="language-markdown"></code></pre>
+    </div>
+  </section>`;
+
 document.querySelector('#app').innerHTML = `
   <header class="site-header">
-    <a class="brand" href="#top" aria-label="Diana Omics home">
+    <a class="brand" href="/" aria-label="Diana Omics home">
       <span class="brand-mark" aria-hidden="true">D<span>/</span></span>
       <span>Diana Omics</span>
     </a>
-    <span class="access-badge"><i></i> Public S3 data</span>
+    <span class="access-badge"><i></i> ${focusedPage ? 'Public input' : 'Public S3 data'}</span>
   </header>
 
-  <main class="shell" id="top">
-    <section class="intro">
-      <div>
-        <p class="eyebrow">Open genomic dataset</p>
-        <h1>Diana Omics public data</h1>
-        <p class="intro-copy">Browse reviewed current analysis outputs and raw Diana inbox deliveries. No AWS account or credentials are required for these public files.</p>
-      </div>
-      <dl class="dataset-stats" aria-label="Dataset summary">
-        <div><dt>Files</dt><dd id="object-count">—</dd></div>
-        <div><dt>Size</dt><dd id="total-size">—</dd></div>
-        <div><dt>Updated</dt><dd id="last-updated">—</dd></div>
-      </dl>
-    </section>
-
-    <section class="source-section" aria-labelledby="sources-heading">
-      <div class="source-heading">
-        <p class="eyebrow">Public S3 sources</p>
-        <h2 id="sources-heading">Live data surfaces</h2>
-      </div>
-      <div class="source-grid">
-        ${PUBLIC_SOURCES.map((source) => `
-          <article class="source-card" id="source-${source.id}">
-            <div class="source-card-heading">
-              <h3>${source.name}</h3>
-              <span class="source-state"><i></i><span>Loading</span></span>
-            </div>
-            <p>${source.description}</p>
-            <code>${source.indexUrl ?? source.s3Uri}</code>
-            <div class="source-stats" aria-live="polite">
-              <strong>—</strong>
-              <span>${source.loadingLabel}</span>
-            </div>
-          </article>`).join('')}
-      </div>
-    </section>
-
-    <section class="download-section" aria-labelledby="download-heading">
-      <div class="download-copy">
-        <p class="eyebrow">Download guide</p>
-        <h2 id="download-heading">Get the data</h2>
-        <p>Download individual public objects directly, use the reviewed index for report outputs, or copy the live Diana inbox with anonymous S3 reads.</p>
-        <a href="https://github.com/jasonLaster/oncoomics/blob/main/docs/operations/diana-public-data-download.md">Open the full download guide <span aria-hidden="true">→</span></a>
-      </div>
-      <div class="code-card">
-        <div class="code-bar">
-          <span>DOWNLOAD.md</span>
-          <button id="copy-instructions" type="button">Copy Markdown</button>
-        </div>
-        <pre><code id="markdown-code" class="language-markdown"></code></pre>
-      </div>
-    </section>
+  <main class="shell${focusedPage ? ' focused-page' : ''}" id="top">
+    ${focusedPage ? focusedIntro : allDataIntro}
+    ${sourceSection}
+    ${downloadSection}
 
     <section class="tree-section" aria-labelledby="files-heading">
       <div class="section-heading">
         <div>
-          <h2 id="files-heading">Public files</h2>
-          <p id="inventory-status">Loading public inventories…</p>
+          <h2 id="files-heading">${focusedPage ? 'Files in this import' : 'Public files'}</h2>
+          <p id="inventory-status">${focusedPage ? 'Loading this public import…' : 'Loading public inventories…'}</p>
         </div>
         <div class="tree-actions">
           <button id="expand-all" type="button">Expand all</button>
@@ -161,11 +280,11 @@ document.querySelector('#app').innerHTML = `
 
       <div class="tree-panel">
         <div class="tree-toolbar">
-          <div class="path-label"><span>s3</span><code>${PUBLIC_SOURCES.length} public sources</code></div>
+          <div class="path-label"><span>s3</span><code>${focusedSource?.s3Uri ?? `${PUBLIC_SOURCES.length} public sources`}</code></div>
           <label class="search-field">
             <span aria-hidden="true">⌕</span>
-            <span class="sr-only">Search files, folders, and buckets</span>
-            <input id="tree-search" type="search" placeholder="Search files, folders, and buckets" autocomplete="off" />
+            <span class="sr-only">${focusedPage ? 'Search this import' : 'Search files, folders, and buckets'}</span>
+            <input id="tree-search" type="search" placeholder="${focusedPage ? 'Search this import' : 'Search files, folders, and buckets'}" autocomplete="off" />
           </label>
         </div>
         <div class="tree-column-headings" aria-hidden="true">
@@ -182,11 +301,12 @@ document.querySelector('#app').innerHTML = `
   <footer>
     <div class="shell footer-inner">
       <span>Diana Omics Open Data</span>
-      <span>Reviewed index · Live S3 · Anonymous reads</span>
+      <span>Reviewed index · Live S3 · Glacier archive</span>
     </div>
   </footer>
 
   <div class="action-menu" id="row-action-menu" role="menu" aria-label="File and folder actions" hidden>
+    <a role="menuitem" data-open-focused hidden>Open download page</a>
     <button type="button" role="menuitem" data-copy-action="s3-uri">Copy bucket path</button>
     <button type="button" role="menuitem" data-copy-action="aws-command">Copy AWS CLI command</button>
   </div>
@@ -222,6 +342,10 @@ const awsCopyCommandFor = (item) => {
   return `aws s3 cp ${shellQuote(s3UriFor(item))} ${shellQuote(destination)}${recursiveOption} --no-sign-request`;
 };
 
+const awsRestoreCommandFor = (item) => `aws s3api restore-object --bucket ${shellQuote(item.source.bucket)} --key ${shellQuote(item.key)} --restore-request ${shellQuote('{"Days":7,"GlacierJobParameters":{"Tier":"Standard"}}')} --region ${shellQuote(item.source.region)}`;
+
+const awsArchiveListCommandFor = (item) => `aws s3api list-objects-v2 --bucket ${shellQuote(item.source.bucket)} --prefix ${shellQuote(item.key)} --region ${shellQuote(item.source.region)}`;
+
 const normalizeSearch = (value) => value.toLowerCase().replace(/[^a-z0-9.]+/g, ' ');
 
 const searchTextFor = (...parts) => normalizeSearch(parts.join(' '));
@@ -230,6 +354,19 @@ const searchTokens = () => normalizeSearch(searchQuery).trim().split(/\s+/).filt
 
 const renderActionTrigger = (item) => {
   if (!item.source) return '';
+  const focusedUrl = focusedPage ? null : focusedInputPathFor(item);
+  const canRestore = item.archived === true && item.type === 'file';
+  const isArchiveDirectory = item.archived === true && item.type === 'directory';
+  const command = canRestore
+    ? awsRestoreCommandFor(item)
+    : isArchiveDirectory
+      ? awsArchiveListCommandFor(item)
+      : awsCopyCommandFor(item);
+  const commandLabel = canRestore
+    ? 'Copy restore command'
+    : isArchiveDirectory
+      ? 'Copy archive listing command'
+      : 'Copy AWS CLI command';
 
   return `
     <button
@@ -240,7 +377,10 @@ const renderActionTrigger = (item) => {
       aria-expanded="false"
       title="Actions"
       data-s3-uri="${escapeHtml(s3UriFor(item))}"
-      data-aws-command="${escapeHtml(awsCopyCommandFor(item))}"
+      data-aws-command="${escapeHtml(command)}"
+      data-command-label="${escapeHtml(commandLabel)}"
+      data-command-kind="${canRestore ? 'restore' : isArchiveDirectory ? 'archive-list' : 'copy'}"
+      ${focusedUrl ? `data-focused-input-url="${escapeHtml(focusedUrl)}"` : ''}
     >&#8942;</button>`;
 };
 
@@ -267,6 +407,7 @@ const typeForKey = (key) => {
   if (key.endsWith('.vcf.gz') || key.endsWith('.vcf')) return 'VCF';
   if (key.endsWith('.bam')) return 'BAM';
   if (key.endsWith('.bai')) return 'BAI';
+  if (key.endsWith('.svs')) return 'SVS';
   if (key.endsWith('.sha256') || key.endsWith('checksum.txt')) return 'SHA-256';
   if (key.endsWith('.csv')) return 'CSV';
   if (key.endsWith('.tsv')) return 'TSV';
@@ -281,7 +422,7 @@ const typeForKey = (key) => {
 
 function buildTree(items) {
   const root = {
-    name: 'Diana public S3',
+    name: focusedPage ? focusedPage.title : 'Diana public S3',
     type: 'directory',
     children: new Map(),
     size: 0,
@@ -301,6 +442,7 @@ function buildTree(items) {
         lastModified: new Date(0),
         source: object.source,
         key: object.source.prefix,
+        archived: object.source.archived === true,
       });
     }
 
@@ -332,6 +474,7 @@ function buildTree(items) {
           lastModified: new Date(0),
           source: object.source,
           key: `${parentKey}${part}/`,
+          archived: object.archived,
         });
       }
       directory = directory.children.get(childKey);
@@ -356,11 +499,13 @@ function renderDirectory(directory, depth = 0, isRoot = false) {
     if (child.type === 'directory') return renderDirectory(child, depth + 1);
 
     const fileType = typeForKey(child.key);
-    const url = objectUrl(child);
+    const nameMarkup = child.archived
+      ? `<span class="file-name file-name-archived" title="${escapeHtml(child.name)} is stored in Glacier Flexible Retrieval">${escapeHtml(child.name)}</span><span class="storage-badge">Glacier</span>`
+      : `<a class="file-name" href="${objectUrl(child)}" title="Download ${escapeHtml(child.name)}">${escapeHtml(child.name)}</a>`;
     return `
-      <div class="tree-file" style="--depth: ${depth + 1}">
+      <div class="tree-file${child.archived ? ' archived-file' : ''}" style="--depth: ${depth + 1}">
         <span class="file-glyph" aria-hidden="true"></span>
-        <a class="file-name" href="${url}" title="Download ${escapeHtml(child.name)}">${escapeHtml(child.name)}</a>
+        <span class="file-name-group">${nameMarkup}</span>
         <span class="file-type">${fileType}</span>
         <time class="item-date" datetime="${child.lastModified.toISOString()}" title="Updated ${child.lastModified.toISOString()}">${formatDate(child.lastModified)}</time>
         <span class="item-size">${formatBytes(child.size)}</span>
@@ -373,6 +518,7 @@ function renderDirectory(directory, depth = 0, isRoot = false) {
     isRoot,
     depth,
     source: directory.source,
+    key: directory.key,
   });
   const sourceTitle = directory.source ? ` title="${escapeHtml(directory.source.description)}"` : '';
 
@@ -402,7 +548,9 @@ function renderTree() {
   if (!filtered.length) {
     treeElement.innerHTML = objects.length
       ? '<div class="empty-tree">No files or folders match that search.</div>'
-      : '<div class="empty-tree error">The public inventories are currently unavailable. Refresh to try again.</div>';
+      : focusedPage
+        ? '<div class="empty-tree error">No public files were found for this input. Check the shared URL or browse all public data.</div>'
+        : '<div class="empty-tree error">The public inventories are currently unavailable. Refresh to try again.</div>';
   } else {
     treeElement.innerHTML = renderDirectory(buildTree(filtered), 0, true);
   }
@@ -423,18 +571,19 @@ async function fetchInventory(source) {
 
   const generatedAt = new Date(inventory.generated_at);
   const collected = inventory.objects.flatMap((entry) => {
-    const key = typeof entry.key === 'string' ? entry.key : '';
-    const size = Number(entry.size);
-    const lastModified = new Date(entry.last_modified);
-    if (!key || key.endsWith('/') || !Number.isFinite(size) || Number.isNaN(lastModified.getTime())) return [];
+    const normalized = normalizeIndexedObject(entry, source);
+    if (!normalized) return [];
 
     return [{
-      key,
-      relativeKey: key,
+      ...normalized,
       source,
-      searchText: searchTextFor(source.name, source.treeName, key),
-      size,
-      lastModified,
+      searchText: searchTextFor(
+        source.name,
+        source.treeName,
+        normalized.key,
+        normalized.storageClass,
+        normalized.archived ? 'archived glacier flexible retrieval restore' : '',
+      ),
     }];
   });
 
@@ -471,7 +620,9 @@ async function fetchS3Inventory(source) {
         key,
         relativeKey: key.slice(source.prefix.length),
         source,
-        searchText: searchTextFor(source.name, source.bucket, source.treeName, key),
+        storageClass: xmlText(entry, 'StorageClass') || 'STANDARD',
+        archived: false,
+        searchText: searchTextFor(source.name, source.bucket, source.treeName, key, 'standard current'),
         size,
         lastModified,
       });
@@ -490,6 +641,7 @@ async function fetchS3Inventory(source) {
 
 function updateSourceCard(source, sourceObjects, generatedAt = null, error = null) {
   const card = document.querySelector(`#source-${source.id}`);
+  if (!card) return;
   const state = card.querySelector('.source-state');
   const stats = card.querySelector('.source-stats');
 
@@ -510,10 +662,10 @@ function updateSourceCard(source, sourceObjects, generatedAt = null, error = nul
 }
 
 async function loadInventory() {
-  const inventories = await Promise.allSettled(PUBLIC_SOURCES.map((source) => fetchInventory(source)));
+  const inventories = await Promise.allSettled(ACTIVE_SOURCES.map((source) => fetchInventory(source)));
 
   inventories.forEach((result, index) => {
-    const source = PUBLIC_SOURCES[index];
+    const source = ACTIVE_SOURCES[index];
     if (result.status === 'fulfilled') {
       objects.push(...result.value.objects);
       updateSourceCard(source, result.value.objects, result.value.generatedAt);
@@ -545,13 +697,6 @@ document.querySelector('#collapse-all').addEventListener('click', () => {
   document.querySelectorAll('.tree-directory').forEach((directory) => { directory.open = directory.classList.contains('root-directory'); });
 });
 
-document.querySelector('#copy-instructions').addEventListener('click', async (event) => {
-  await navigator.clipboard.writeText(markdownInstructions);
-  const button = event.currentTarget;
-  button.textContent = 'Copied';
-  window.setTimeout(() => { button.textContent = 'Copy Markdown'; }, 1800);
-});
-
 const actionMenu = document.querySelector('#row-action-menu');
 const copyToast = document.querySelector('#copy-toast');
 let activeActionTrigger = null;
@@ -570,7 +715,13 @@ const openActionMenu = (trigger) => {
   closeActionMenu();
   activeActionTrigger = trigger;
   trigger.setAttribute('aria-expanded', 'true');
+  const focusedAction = actionMenu.querySelector('[data-open-focused]');
+  focusedAction.hidden = !trigger.dataset.focusedInputUrl;
+  if (trigger.dataset.focusedInputUrl) focusedAction.href = trigger.dataset.focusedInputUrl;
+  else focusedAction.removeAttribute('href');
   actionMenu.hidden = false;
+  const commandAction = actionMenu.querySelector('[data-copy-action="aws-command"]');
+  commandAction.textContent = trigger.dataset.commandLabel;
 
   const triggerRect = trigger.getBoundingClientRect();
   const menuRect = actionMenu.getBoundingClientRect();
@@ -584,7 +735,7 @@ const openActionMenu = (trigger) => {
     : triggerRect.bottom + 4;
   actionMenu.style.left = `${left}px`;
   actionMenu.style.top = `${top}px`;
-  actionMenu.querySelector('[role="menuitem"]').focus();
+  actionMenu.querySelector(':is(a, button):not([hidden])')?.focus();
 };
 
 const copyText = async (value) => {
@@ -611,6 +762,19 @@ const showCopyToast = (message) => {
   toastTimer = window.setTimeout(() => { copyToast.hidden = true; }, 1800);
 };
 
+document.querySelector('#copy-instructions').addEventListener('click', async (event) => {
+  const button = event.currentTarget;
+  const originalLabel = button.textContent;
+  try {
+    await copyText(markdownInstructions);
+    button.textContent = 'Copied';
+    window.setTimeout(() => { button.textContent = originalLabel; }, 1800);
+  } catch (error) {
+    console.error(error);
+    showCopyToast('Could not copy to clipboard');
+  }
+});
+
 document.addEventListener('click', async (event) => {
   const trigger = event.target.closest('.action-menu-trigger');
   if (trigger) {
@@ -629,7 +793,13 @@ document.addEventListener('click', async (event) => {
       : activeActionTrigger.dataset.awsCommand;
     try {
       await copyText(value);
-      showCopyToast(actionName === 's3-uri' ? 'Bucket path copied' : 'AWS CLI command copied');
+      showCopyToast(actionName === 's3-uri'
+        ? 'Bucket path copied'
+        : activeActionTrigger.dataset.commandKind === 'restore'
+          ? 'Restore command copied'
+          : activeActionTrigger.dataset.commandKind === 'archive-list'
+            ? 'Archive listing command copied'
+          : 'AWS CLI command copied');
     } catch (error) {
       console.error(error);
       showCopyToast('Could not copy to clipboard');

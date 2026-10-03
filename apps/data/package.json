@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "refresh:glacier-index": "python3 scripts/build_glacier_index.py",
     "preview": "vite preview",
     "test": "node --test src/*.test.js"
   },

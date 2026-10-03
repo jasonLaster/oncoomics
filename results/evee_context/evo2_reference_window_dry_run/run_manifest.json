@@ -1,0 +1,17 @@
+{
+  "claim_boundary": "This is the Arc Institute zero-shot delta-likelihood method, not the EVEE pathogenicity probe. It is not calibrated as a pathogenicity probability and does not establish oncogenicity or actionability.",
+  "direction": "more negative means the alternate is less likely under Evo 2",
+  "dry_run": true,
+  "evo2_source_revision": "53f195997257c56c00e5ef8d33a54f5baad143a6",
+  "input": {
+    "path": "/Users/jasonlaster/src/projects/diana-omics/manifests/evee_report_highlights.tsv",
+    "sha256": "c33c6311bbff1ab14122f6f689d00f1f053a7f46026646f150d6e3b61bd18774"
+  },
+  "model": "evo2_1b_base",
+  "reference": {
+    "path": "/Users/jasonlaster/src/projects/diana-omics/data/raw/reference/full_reference_smoke/ucsc_hg38_analysis_set_full/ucsc_hg38_analysis_set_full.fa",
+    "sha256": "d2b7be348fb20af46461855faec64dfbd21532620bd125783df050180446055e"
+  },
+  "score": "alternate sequence likelihood minus reference sequence likelihood",
+  "window_size": 8192
+}

@@ -1,0 +1,188 @@
+{
+  "bucket": "diana-omics-results-172630973301-us-east-1",
+  "objects": {
+    "artifact_index.json": {
+      "sha256": "4ca043b0a67cc7d165cf1d7c4665f4e1e24860aaa4dee71e32e589f3912278d7",
+      "version_id": "0kFpeytMX9t6ZKwX_i28dLCulsvSkgqc"
+    },
+    "calibration_summary.json": {
+      "sha256": "8388f5b7cab053ed8557ec4ac62a91855fd682eedc8bcabbe68dce618ab007d7",
+      "version_id": "IghQSTOIIOOb7BXoDRFHYtvODLYw7F6H"
+    },
+    "conda-explicit.txt": {
+      "sha256": "4c220bb3d895f45dd699de34e93d49ea143edc902d707c818f5d60d20598c87e",
+      "version_id": "SLiXEuZ2OAe31FFOm0yc7suYkDxZzVLq"
+    },
+    "input_manifest.json": {
+      "sha256": "c858af7d2872f15bbe3ed00e6a9c98a369055e1593d86c1822d501ed86660e96",
+      "version_id": "7hc9OsWLx6XUNyhyw0Ke5zUS8Qna0RE3"
+    },
+    "pbmc3k/all_cells_qc.csv": {
+      "sha256": "1d4ef0e2582e1c1c0e5bbd4e3f9c5c9a504c4f87381a5ed0e1113099a6a4b36a",
+      "version_id": "w0Ip0wmpYAfAdQ97UwQXKpFF13fqZ7r0"
+    },
+    "pbmc3k/all_cells_qc.h5ad": {
+      "sha256": "0030de3f7380c96c89f86bdc22dd1777225e0f60886f39e595dcc4943a3f80b8",
+      "version_id": "N0jlrW46yIYOgZL93VMgE35CddyGD2r."
+    },
+    "pbmc3k/analysis.h5ad": {
+      "sha256": "b0006850bf720196b61bed0a6a67f66a9836e720040da8fea898f46b4b60e654",
+      "version_id": "P75O3QjlPEq0Bz96GdKEfNRF3lxL1mFO"
+    },
+    "pbmc3k/calibration.json": {
+      "sha256": "49a625606a2a8b3a5217a7bf714b95103fe7e942b3776103e8e4bb0bcc22d311",
+      "version_id": "zz_4Xj1DVWN0j.IwHBBmtSd1H6XYzYTi"
+    },
+    "pbmc3k/cluster_marker_scores.csv": {
+      "sha256": "2ee77b8ecd3d1cee6b6400238b1477b1603a08a7b28524bb387a587e70f9d468",
+      "version_id": "ixDRxRv6SiC599.x.L1BC5siA77TLfPC"
+    },
+    "pbmc3k/doublets/barcodes.tsv": {
+      "sha256": "d2612a7f04dd7479934304de161fdfeda177b19f48ff2508753bd42ad26d6539",
+      "version_id": "bJSbhKT6EgtiMzIc0ueIv.1kuSTmc29O"
+    },
+    "pbmc3k/doublets/call.R": {
+      "sha256": "2e694db6ed2f087868abfc5df4df660eb1d31c5469859973025ab95451b5b792",
+      "version_id": "NrS6EMHjqH9e0CgpO6qpmYA8IKhfTUYn"
+    },
+    "pbmc3k/doublets/calls.csv": {
+      "sha256": "c8a461a65891f25d356aba9def7b80ad57309b6fca59c0ffc4f710983c2299fb",
+      "version_id": "knBe1TXdUp6bQrpwuhZLTbltQETW6Kw9"
+    },
+    "pbmc3k/doublets/r.log": {
+      "sha256": "8c39c516b80f8fb140b3b7df8a2d9e7b08bf7fa717173095fc85384b0085abe9",
+      "version_id": "zNY81FWzBWBcWzoOtzVrT3IZyEBCR7Do"
+    },
+    "pbmc3k/doublets/r_session.txt": {
+      "sha256": "ecb676bea5328df71bb0e5ae0fb2fb075b6852177bb32c046b520267cc0b06a1",
+      "version_id": "G0gijQbpQNsu3sEF3.zajZ8N8b0SFQap"
+    },
+    "pbmc3k/markers.csv": {
+      "sha256": "abd9e48046106b2a2a1293c39eac01ee170d4b6c607c915d9e3cd075e9aa05a9",
+      "version_id": "ScOeX_QG4SnlddECMUEJEJeblkx6iLAE"
+    },
+    "pbmc3k/parameters.json": {
+      "sha256": "c5e3fba79f1f15fa929f74cfcab36cba235427efaee626941917197cdddc039b",
+      "version_id": "h.J0AE01rTMIEoZxipZJU4Zo6vd4VPRq"
+    },
+    "pbmc3k/qc_thresholds.png": {
+      "sha256": "303def60fa906fe99fb9ec54dccce015f83397424bd09de7244ae82ecba17723",
+      "version_id": "NS_4RBKnudhTJcodfP7nDvhNlYTA7.IR"
+    },
+    "pbmc3k/reference_cluster_overlap.csv": {
+      "sha256": "a9f96495f5b2b51426117180d651212831b1fae430cea78196d0b5d199055aca",
+      "version_id": "WzGsfpWrVhxW6aiNDw0qQZ1SaaIpN7Jk"
+    },
+    "pbmc3k/umap.csv": {
+      "sha256": "8dfe72f8d88070dd6516a1a262e2d4281fe80112dc8a6ae47f283a9d1181ff97",
+      "version_id": "mNFsYJRovEWW7rJI4RGqED4ZBueuKmfT"
+    },
+    "pbmc3k/umap_coarse_label_hint.png": {
+      "sha256": "bd4630177b7d4d5360ef48b17aa846c8f0b1e64272c36948362a23476896d228",
+      "version_id": "ZnUYwuWkpy9Nuh105_EjaAv8JKqif5ep"
+    },
+    "pbmc3k/umap_leiden.png": {
+      "sha256": "c748ae3ce72951d323dbd6806001affc1a75f716a1ae681451d72d0a2cb84c9f",
+      "version_id": "8oxT3HR.hADAFiREcf9a6Pu4RStKN3Jz"
+    },
+    "pbmc5k-nextgem/all_cells_qc.csv": {
+      "sha256": "89d56f8928f0395a32e55428d14f9a34cf4995d9a6d9831110e0a212a3388d66",
+      "version_id": "xIGHBDSYmjwjF.HE4YR4EBnx4oHp.zvp"
+    },
+    "pbmc5k-nextgem/all_cells_qc.h5ad": {
+      "sha256": "e786df3c556411aae26474983b636880a8b1e366edb6a567b8cc8f5a100a832c",
+      "version_id": "WCeSRAT_BTblin_D9lN1v9H6tPcOrlml"
+    },
+    "pbmc5k-nextgem/analysis.h5ad": {
+      "sha256": "fa22dda8a4817971edde83b4113eda13c2645ce4959a7ed94bc4ff685f35037b",
+      "version_id": "iyCv0PWzuL9esNbQkvBfGOlsZdEcl1NE"
+    },
+    "pbmc5k-nextgem/calibration.json": {
+      "sha256": "4e65732119e7d93b8518bc617ff215950554468cc80ee7f3fc41c92a6cb26374",
+      "version_id": "cOZyQX2VUvu5ugHKzDRUyPqAG3IExFyV"
+    },
+    "pbmc5k-nextgem/cluster_marker_scores.csv": {
+      "sha256": "c89076e242e20ea1889f6465e3b2cdbefb95ade17ec509d9ea41a7e2d3cd70ad",
+      "version_id": "UVQM3njY6j8XqQKYzQtComZss6jxU.KH"
+    },
+    "pbmc5k-nextgem/doublets/barcodes.tsv": {
+      "sha256": "3f8c27469457cf3b8be100f86546b0688cb841f2c74717976f5e14fc05741e32",
+      "version_id": "W4q.EYznDmlaJ.roirDlDkd0glAssbGu"
+    },
+    "pbmc5k-nextgem/doublets/call.R": {
+      "sha256": "2e694db6ed2f087868abfc5df4df660eb1d31c5469859973025ab95451b5b792",
+      "version_id": "oJQ21fqm8zpv2U2hvRGOwVlYoCyGDmDz"
+    },
+    "pbmc5k-nextgem/doublets/calls.csv": {
+      "sha256": "60c4c43377ef690fa6a789e68f9cc38efc112f06b40db2f421f25b74811d81a4",
+      "version_id": "6q3rPMzbSgJ0vyzaUcg_iS1m6utZmFrF"
+    },
+    "pbmc5k-nextgem/doublets/r.log": {
+      "sha256": "05f5243ae884ea61a4e9105991df4c3dda5644a2b9cece6dcb4dd934404d7134",
+      "version_id": "if9mGj72DQBwse.965cmr6uHt0vmee2b"
+    },
+    "pbmc5k-nextgem/doublets/r_session.txt": {
+      "sha256": "ecb676bea5328df71bb0e5ae0fb2fb075b6852177bb32c046b520267cc0b06a1",
+      "version_id": "pHlw6NIzIh2Wvaf2OpAOPZnt0MDwwDHq"
+    },
+    "pbmc5k-nextgem/markers.csv": {
+      "sha256": "debc3b758a6e6f9b55c98ae15012defac6a9888f805264846e99c24e148fea86",
+      "version_id": "UJc53ibCp0XLL8Cy1I6yfr655okGIX4b"
+    },
+    "pbmc5k-nextgem/parameters.json": {
+      "sha256": "21ffc23b30733df5231ca73dd86a373b66e234878a7feef8e73ca3c5d790acc2",
+      "version_id": "QNfkJR_LxAdjMGRSQHddrHIh17t5lCjh"
+    },
+    "pbmc5k-nextgem/qc_thresholds.png": {
+      "sha256": "d63b1d1732cda5454ea5ab075008408eccaf129cfa757fdcc51933e07e11a4bf",
+      "version_id": "cWdzVMSBw7q3uMpJHX8C67RWDCUyT6yi"
+    },
+    "pbmc5k-nextgem/umap.csv": {
+      "sha256": "33fb48101477cd77a856c8d56f6fc3db6885db1d9d2a4550768443e30300b601",
+      "version_id": "bgFvIKPIm32qWHKS1g1E8mSAONzN8Owv"
+    },
+    "pbmc5k-nextgem/umap_coarse_label_hint.png": {
+      "sha256": "6de3d3e9fe51389ceb632d986ed7628789e870de11bec2261276cc2b515b73b9",
+      "version_id": "0UZSHzHcDL3gorhO0MoXtbiQ.CKlFC3q"
+    },
+    "pbmc5k-nextgem/umap_leiden.png": {
+      "sha256": "1be95cad3a657857cfd253945eaddbe7a0a6442a3322bf50e5a2fb9b5695b4ad",
+      "version_id": "QgTphECCf75_wUl5YBmphKTqjH6jrKtt"
+    },
+    "python_packages.json": {
+      "sha256": "96c7eb5396d110fef84e523c5a020e641248811f92f6cb08dc81874679a814ed",
+      "version_id": "O0tvNrxH.JSE6O4yVV5JnnIT2xadXSwo"
+    },
+    "review.html": {
+      "sha256": "b498023610267054e7110cb92297e251ea40a8bd2e251dfa444ca7d9dfd65146",
+      "version_id": "mP7p.u.6VKfLkI2dGxMblabBGJnwi3KT"
+    },
+    "review.md": {
+      "sha256": "95d8926182c7852650cdad544a4fa0f008004dbf022cfcf459b0b8b9ad358f2a",
+      "version_id": "Q7rwOAYXof.iRO5GtCALET4_xN.yus4_"
+    },
+    "run_manifest.json": {
+      "sha256": "75b254c7caebd01a674ef61defcf633a4313071e52db7bb2cde47cc283103182",
+      "version_id": ".xjU3595N9IYM6Lj2Ebq4NLtYyJXaErt"
+    },
+    "source/modal_runner.py": {
+      "sha256": "2959cf2788fbd36177b5bbbd1c378f5d9b70543580d8d19295c7a708022324f3",
+      "version_id": "osmYop6IFzdp_55BbCfi7YFTEYiTbn95"
+    },
+    "source/scrna.py": {
+      "sha256": "27e0b6e320fb015b5e3f903184e91e3a90e8795810b5a4d8ea80cbecc6ca9fb6",
+      "version_id": "PBMig3je0GwATd0cNg9CJj2C8f0FtGSS"
+    },
+    "source/scrna_io.py": {
+      "sha256": "36e09559d930da459543794bd4044de2cf356e915aa4d87c659a2b2c1f1e0887",
+      "version_id": "JIaSVhlJDInjHr26KPwf7PPJ7Z3BPIjD"
+    },
+    "source_hashes.json": {
+      "sha256": "c61b0b5d595ac4510d340e84590cb7a2e86d85b21633e2181c74228d441565a4",
+      "version_id": "Y7svow.MfthHc22dqontINqMr2jOBZ_B"
+    }
+  },
+  "prefix": "public/scrna/runs/pbmc-calibration-v2-20261001T210600Z/",
+  "run_id": "pbmc-calibration-v2-20261001T210600Z",
+  "status": "all_hashes_verified"
+}

@@ -1,0 +1,34 @@
+{
+  "run_id": "pbmc-calibration-v2-20261001T210600Z",
+  "raw_counts_independent_audit": {
+    "pbmc3k": "pass",
+    "pbmc5k-nextgem": "pass"
+  },
+  "raw_counts_method": "Loaded all_cells_qc.h5ad and analysis.h5ad independently; exact sparse element equality for retained barcodes and all genes.",
+  "pbmc5k_seed_review": {
+    "matched_barcodes": 3494,
+    "total_barcodes": 3890,
+    "best_matched_fraction": 0.8982005141388175,
+    "clusters_per_seed": [
+      10,
+      10
+    ],
+    "interpretation": "Seed sensitivity is concentrated in redistribution between neighboring clusters; the predeclared ARI screen still fails. No manual cell exclusions or gate relaxation."
+  },
+  "repeat_check": {
+    "dataset_id": "pbmc3k",
+    "exact_hash_checks": {
+      "conda-explicit.txt": true,
+      "pbmc3k/all_cells_qc.csv": true,
+      "pbmc3k/markers.csv": true,
+      "pbmc3k/umap.csv": true,
+      "python_packages.json": true,
+      "source_hashes.json": true
+    },
+    "first_run": "pbmc-calibration-v2-20261001T210600Z",
+    "scope": "Same pinned environment, inputs, parameters, and code. Exact barcode QC, UMAP/cluster table, and marker reproducibility.",
+    "second_run": "pbmc-calibration-v2-20261001T210600Z-repeat",
+    "status": "pass"
+  },
+  "limitations": "Local independent review, separate from immutable cloud run artifacts. No doublet truth, ambient correction, or independent cell-type truth."
+}

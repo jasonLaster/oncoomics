@@ -1,0 +1,25 @@
+{
+  "schema_version": 1,
+  "run_id": "pbmc-calibration-v2-20261001T210600Z",
+  "status": "complete",
+  "evidence_lane": "public_benchmark",
+  "started_at": "2026-10-01T21:04:44.931864+00:00",
+  "completed_at": "2026-10-01T21:06:35.479549+00:00",
+  "results_uri": "s3://diana-omics-results-172630973301-us-east-1/public/scrna/runs/pbmc-calibration-v2-20261001T210600Z/",
+  "artifact_index_sha256": "4ca043b0a67cc7d165cf1d7c4665f4e1e24860aaa4dee71e32e589f3912278d7",
+  "compute": {
+    "platform": "Modal",
+    "cpu": 4,
+    "memory_mib": 16384,
+    "timeout_seconds": 1800,
+    "gpu": null
+  },
+  "calibration_status": "needs_review",
+  "limitations": [
+    "Post-count matrix calibration only",
+    "Ambient RNA unassessed without empty droplets",
+    "Doublet caller executed; precision/recall unvalidated",
+    "Tutorial annotations are not independent truth",
+    "No donor-level DE, cross-dataset integration, tumor validation, or clinical claims"
+  ]
+}

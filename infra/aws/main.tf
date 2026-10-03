@@ -209,32 +209,8 @@ resource "aws_route_table_association" "public" {
   route_table_id = aws_route_table.public.id
 }
 
-resource "aws_eip" "nat" {
-  domain = "vpc"
-
-  depends_on = [aws_internet_gateway.main]
-
-  tags = {
-    Name = "${local.name_prefix}-nat"
-  }
-}
-
-resource "aws_nat_gateway" "main" {
-  allocation_id = aws_eip.nat.id
-  subnet_id     = values(aws_subnet.public)[0].id
-
-  tags = {
-    Name = "${local.name_prefix}-nat"
-  }
-}
-
 resource "aws_route_table" "private" {
   vpc_id = aws_vpc.main.id
-
-  route {
-    cidr_block     = "0.0.0.0/0"
-    nat_gateway_id = aws_nat_gateway.main.id
-  }
 
   tags = {
     Name = "${local.name_prefix}-private"
@@ -252,7 +228,10 @@ resource "aws_vpc_endpoint" "s3" {
   vpc_id            = aws_vpc.main.id
   service_name      = "com.amazonaws.${var.region}.s3"
   vpc_endpoint_type = "Gateway"
-  route_table_ids   = [aws_route_table.private.id]
+  route_table_ids = [
+    aws_route_table.private.id,
+    aws_route_table.public.id,
+  ]
 
   tags = {
     Name = "${local.name_prefix}-s3"
@@ -999,7 +978,7 @@ resource "aws_batch_compute_environment" "spot" {
     instance_role       = aws_iam_instance_profile.batch.arn
     instance_type       = var.batch_arm_instance_families
     security_group_ids  = [aws_security_group.batch.id]
-    subnets             = values(aws_subnet.private)[*].id
+    subnets             = values(aws_subnet.public)[*].id
 
     launch_template {
       launch_template_id = aws_launch_template.batch.id
@@ -1039,7 +1018,7 @@ resource "aws_batch_compute_environment" "ondemand" {
     instance_role       = aws_iam_instance_profile.batch.arn
     instance_type       = var.batch_arm_instance_families
     security_group_ids  = [aws_security_group.batch.id]
-    subnets             = values(aws_subnet.private)[*].id
+    subnets             = values(aws_subnet.public)[*].id
 
     launch_template {
       launch_template_id = aws_launch_template.batch.id
@@ -1078,7 +1057,7 @@ resource "aws_batch_compute_environment" "hrd_x86_ondemand" {
     instance_role       = aws_iam_instance_profile.batch.arn
     instance_type       = var.batch_x86_instance_families
     security_group_ids  = [aws_security_group.batch.id]
-    subnets             = values(aws_subnet.private)[*].id
+    subnets             = values(aws_subnet.public)[*].id
 
     ec2_configuration {
       image_type = "ECS_AL2023"
@@ -1128,7 +1107,7 @@ resource "aws_batch_compute_environment" "gpu_p5en_ondemand" {
     instance_role       = aws_iam_instance_profile.batch.arn
     instance_type       = var.batch_gpu_p5en_instance_types
     security_group_ids  = [aws_security_group.batch.id]
-    subnets             = values(aws_subnet.private)[*].id
+    subnets             = values(aws_subnet.public)[*].id
 
     ec2_configuration {
       image_type = "ECS_AL2023_NVIDIA"

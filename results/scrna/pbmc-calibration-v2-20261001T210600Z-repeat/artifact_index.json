@@ -1,0 +1,137 @@
+[
+  {
+    "path": "calibration_summary.json",
+    "sha256": "eb4b1713f01d16ea063ec0cd4bd7eb16616c9f01f41dcf58cf03b65b065b52ed",
+    "size_bytes": 1559
+  },
+  {
+    "path": "conda-explicit.txt",
+    "sha256": "4c220bb3d895f45dd699de34e93d49ea143edc902d707c818f5d60d20598c87e",
+    "size_bytes": 19968
+  },
+  {
+    "path": "input_manifest.json",
+    "sha256": "34fe3c2bb67490d2d86550b3bcbd8b7425936885d910e745502c13e2209962fb",
+    "size_bytes": 2989
+  },
+  {
+    "path": "pbmc3k/all_cells_qc.csv",
+    "sha256": "1d4ef0e2582e1c1c0e5bbd4e3f9c5c9a504c4f87381a5ed0e1113099a6a4b36a",
+    "size_bytes": 381039
+  },
+  {
+    "path": "pbmc3k/all_cells_qc.h5ad",
+    "sha256": "0030de3f7380c96c89f86bdc22dd1777225e0f60886f39e595dcc4943a3f80b8",
+    "size_bytes": 8063687
+  },
+  {
+    "path": "pbmc3k/analysis.h5ad",
+    "sha256": "b0006850bf720196b61bed0a6a67f66a9836e720040da8fea898f46b4b60e654",
+    "size_bytes": 22080627
+  },
+  {
+    "path": "pbmc3k/calibration.json",
+    "sha256": "0042e3f9798fa6d9bed8a1eaac35d873dba803daad979149b9b73ad74b319cf6",
+    "size_bytes": 1449
+  },
+  {
+    "path": "pbmc3k/cluster_marker_scores.csv",
+    "sha256": "2ee77b8ecd3d1cee6b6400238b1477b1603a08a7b28524bb387a587e70f9d468",
+    "size_bytes": 414
+  },
+  {
+    "path": "pbmc3k/doublets/barcodes.tsv",
+    "sha256": "d2612a7f04dd7479934304de161fdfeda177b19f48ff2508753bd42ad26d6539",
+    "size_bytes": 41480
+  },
+  {
+    "path": "pbmc3k/doublets/call.R",
+    "sha256": "2e694db6ed2f087868abfc5df4df660eb1d31c5469859973025ab95451b5b792",
+    "size_bytes": 689
+  },
+  {
+    "path": "pbmc3k/doublets/calls.csv",
+    "sha256": "c8a461a65891f25d356aba9def7b80ad57309b6fca59c0ffc4f710983c2299fb",
+    "size_bytes": 114849
+  },
+  {
+    "path": "pbmc3k/doublets/r.log",
+    "sha256": "8c39c516b80f8fb140b3b7df8a2d9e7b08bf7fa717173095fc85384b0085abe9",
+    "size_bytes": 1948
+  },
+  {
+    "path": "pbmc3k/doublets/r_session.txt",
+    "sha256": "ecb676bea5328df71bb0e5ae0fb2fb075b6852177bb32c046b520267cc0b06a1",
+    "size_bytes": 3064
+  },
+  {
+    "path": "pbmc3k/markers.csv",
+    "sha256": "abd9e48046106b2a2a1293c39eac01ee170d4b6c607c915d9e3cd075e9aa05a9",
+    "size_bytes": 26917
+  },
+  {
+    "path": "pbmc3k/parameters.json",
+    "sha256": "c5e3fba79f1f15fa929f74cfcab36cba235427efaee626941917197cdddc039b",
+    "size_bytes": 1312
+  },
+  {
+    "path": "pbmc3k/qc_thresholds.png",
+    "sha256": "303def60fa906fe99fb9ec54dccce015f83397424bd09de7244ae82ecba17723",
+    "size_bytes": 52089
+  },
+  {
+    "path": "pbmc3k/reference_cluster_overlap.csv",
+    "sha256": "a9f96495f5b2b51426117180d651212831b1fae430cea78196d0b5d199055aca",
+    "size_bytes": 221
+  },
+  {
+    "path": "pbmc3k/umap.csv",
+    "sha256": "8dfe72f8d88070dd6516a1a262e2d4281fe80112dc8a6ae47f283a9d1181ff97",
+    "size_bytes": 194433
+  },
+  {
+    "path": "pbmc3k/umap_coarse_label_hint.png",
+    "sha256": "bd4630177b7d4d5360ef48b17aa846c8f0b1e64272c36948362a23476896d228",
+    "size_bytes": 53555
+  },
+  {
+    "path": "pbmc3k/umap_leiden.png",
+    "sha256": "c748ae3ce72951d323dbd6806001affc1a75f716a1ae681451d72d0a2cb84c9f",
+    "size_bytes": 42545
+  },
+  {
+    "path": "python_packages.json",
+    "sha256": "96c7eb5396d110fef84e523c5a020e641248811f92f6cb08dc81874679a814ed",
+    "size_bytes": 1815
+  },
+  {
+    "path": "review.html",
+    "sha256": "5e6d270b5a0de8232f2103222b52e78f67c54d99be9969a0d192e101d1fa5f2c",
+    "size_bytes": 2670
+  },
+  {
+    "path": "review.md",
+    "sha256": "ea9fceff17c1be2b29bcd023b3667e3b1815ec837e875ef52629c89124591bd1",
+    "size_bytes": 752
+  },
+  {
+    "path": "source/modal_runner.py",
+    "sha256": "2959cf2788fbd36177b5bbbd1c378f5d9b70543580d8d19295c7a708022324f3",
+    "size_bytes": 6489
+  },
+  {
+    "path": "source/scrna.py",
+    "sha256": "27e0b6e320fb015b5e3f903184e91e3a90e8795810b5a4d8ea80cbecc6ca9fb6",
+    "size_bytes": 20102
+  },
+  {
+    "path": "source/scrna_io.py",
+    "sha256": "36e09559d930da459543794bd4044de2cf356e915aa4d87c659a2b2c1f1e0887",
+    "size_bytes": 5361
+  },
+  {
+    "path": "source_hashes.json",
+    "sha256": "c61b0b5d595ac4510d340e84590cb7a2e86d85b21633e2181c74228d441565a4",
+    "size_bytes": 170
+  }
+]

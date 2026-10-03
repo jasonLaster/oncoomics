@@ -1,0 +1,27 @@
+<!doctype html><html lang="en"><meta charset="utf-8">
+        <meta name="viewport" content="width=device-width,initial-scale=1"><title>Diana single-cell calibration</title>
+        <style>body{font:16px/1.5 system-ui,sans-serif;color:#182a39;background:#f6f8fa;margin:0 auto;padding:28px;max-width:1100px}
+        h1,h2{line-height:1.2}section{background:white;border:1px solid #dbe3ea;border-radius:10px;padding:20px;margin:20px 0}
+        .plots{display:grid;grid-template-columns:1fr 1fr;gap:12px}img{width:100%;height:auto}.qc{margin:16px 0}
+        a{color:#17547c}details{padding:12px;background:#eef3f7}header p{max-width:850px}
+        @media(max-width:650px){body{padding:14px}.plots{grid-template-columns:1fr}section{padding:12px}}</style>
+        <header><h1>Single-cell calibration</h1><p>Public PBMC post-count analysis · Modal CPU workers · S3 artifacts</p>
+        <p>Ambient RNA is unassessed because empty-droplet matrices were not provided. Doublet precision/recall is unvalidated. PBMC3k tutorial labels are a same-dataset comparison, not independent truth. Labels are provisional marker hints. Captures are analyzed separately; no donor-level differential expression, tumor validation, or clinical claims.</p></header><section><h2>pbmc3k</h2><p>2,330 / 2,700 barcodes retained;
+            110 scDblFinder doublets; 5 clusters.
+            Seed stability ARI 0.967; tutorial reference ARI 0.842.</p>
+            <div class="plots"><a href="pbmc3k/umap_leiden.png"><img alt="Leiden clusters" src="pbmc3k/umap_leiden.png"></a>
+            <a href="pbmc3k/umap_coarse_label_hint.png"><img alt="Provisional marker labels" src="pbmc3k/umap_coarse_label_hint.png"></a></div>
+            <img class="qc" alt="Observed QC distributions and selected thresholds" src="pbmc3k/qc_thresholds.png">
+            <details><summary>Calibration checks: pass</summary><ul><li>input_cells_match: pass</li><li>retention: pass</li><li>cluster_count: pass</li><li>finite_embedding: pass</li><li>seed_stability: pass</li><li>raw_counts_preserved: pass</li><li>doublets_called: pass</li><li>reference_overlap: pass</li><li>reference_agreement: pass</li></ul></details>
+            <p><a href="pbmc3k/calibration.json">Metrics</a> · <a href="pbmc3k/all_cells_qc.csv">All barcode decisions</a> ·
+            <a href="pbmc3k/markers.csv">Markers</a> · <a href="pbmc3k/analysis.h5ad">AnnData</a></p></section><section><h2>pbmc5k-nextgem</h2><p>3,890 / 5,527 barcodes retained;
+            249 scDblFinder doublets; 10 clusters.
+            Seed stability ARI 0.814; tutorial reference ARI Not available.</p>
+            <div class="plots"><a href="pbmc5k-nextgem/umap_leiden.png"><img alt="Leiden clusters" src="pbmc5k-nextgem/umap_leiden.png"></a>
+            <a href="pbmc5k-nextgem/umap_coarse_label_hint.png"><img alt="Provisional marker labels" src="pbmc5k-nextgem/umap_coarse_label_hint.png"></a></div>
+            <img class="qc" alt="Observed QC distributions and selected thresholds" src="pbmc5k-nextgem/qc_thresholds.png">
+            <details><summary>Calibration checks: needs_review</summary><ul><li>input_cells_match: pass</li><li>retention: pass</li><li>cluster_count: pass</li><li>finite_embedding: pass</li><li>seed_stability: NEEDS REVIEW</li><li>raw_counts_preserved: pass</li><li>doublets_called: pass</li></ul></details>
+            <p><a href="pbmc5k-nextgem/calibration.json">Metrics</a> · <a href="pbmc5k-nextgem/all_cells_qc.csv">All barcode decisions</a> ·
+            <a href="pbmc5k-nextgem/markers.csv">Markers</a> · <a href="pbmc5k-nextgem/analysis.h5ad">AnnData</a></p></section><footer><p>
+        <a href="input_manifest.json">Inputs and frozen criteria</a> · <a href="python_packages.json">Python versions</a> ·
+        <a href="conda-explicit.txt">R/Conda lock</a> · <a href="artifact_index.json">Artifact hashes</a></p></footer></html>

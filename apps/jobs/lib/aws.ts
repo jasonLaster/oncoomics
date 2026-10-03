@@ -599,7 +599,7 @@ export async function listViewerJobs() {
         .map((job) => job.jobId)
         .filter((jobId): jobId is string => Boolean(jobId)),
     ),
-  ].slice(0, 100);
+  ];
 
   const details = (
     await Promise.all(

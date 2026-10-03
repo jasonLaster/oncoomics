@@ -37,6 +37,10 @@ button, input { font: inherit; }
 .access-badge i { display: inline-block; width: 7px; height: 7px; margin-right: 7px; border-radius: 50%; background: #39b96f; }
 
 .intro { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 64px; align-items: end; padding: 68px 0 54px; }
+.breadcrumbs { display: flex; align-items: center; gap: 8px; margin-top: 32px; color: var(--muted); font: 650 10px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace; }
+.breadcrumbs a { color: var(--green); }
+.breadcrumbs a:hover { text-decoration: underline; text-underline-offset: 3px; }
+.focused-intro { padding-top: 30px; }
 .eyebrow { margin: 0 0 13px; color: var(--green); font: 750 10px/1 ui-monospace, SFMono-Regular, Menlo, monospace; text-transform: uppercase; letter-spacing: .13em; }
 h1, h2 { margin: 0; letter-spacing: -.045em; }
 h1 { font-size: clamp(42px, 6vw, 66px); line-height: 1; font-weight: 650; }
@@ -59,6 +63,8 @@ h1 { font-size: clamp(42px, 6vw, 66px); line-height: 1; font-weight: 650; }
 .source-state i { width: 6px; height: 6px; border-radius: 50%; background: #39b96f; }
 .source-state.error { color: #984440; }
 .source-state.error i { background: #c15a54; }
+.source-state.archive { color: #73551b; }
+.source-state.archive i { background: #d69a2d; }
 .source-stats { display: flex; align-items: baseline; gap: 8px; margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--line); }
 .source-stats strong { font-size: 13px; }
 .source-stats span { color: var(--muted); font-size: 10px; }
@@ -122,14 +128,22 @@ h1 { font-size: clamp(42px, 6vw, 66px); line-height: 1; font-weight: 650; }
 .file-glyph::after { content: ''; position: absolute; left: 3px; top: 6px; width: 6px; height: 1px; background: #aeb8b1; box-shadow: 0 3px 0 #c0c7c2; }
 .file-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 10.5px; font-weight: 550; }
 .file-name:hover { color: var(--green); text-decoration: underline; text-underline-offset: 3px; }
+.file-name-group { min-width: 0; display: flex; align-items: center; gap: 7px; overflow: hidden; }
+.file-name-group .file-name { display: block; }
+.file-name-archived { color: #4f5652; cursor: default; }
+.file-name-archived:hover { color: #4f5652; text-decoration: none; }
+.storage-badge { flex: none; padding: 2px 5px; border: 1px solid #d8bd7d; border-radius: 999px; color: #73551b; background: #fff7df; font: 750 7.5px/1.2 ui-monospace, SFMono-Regular, Menlo, monospace; text-transform: uppercase; letter-spacing: .05em; }
+.archived-file { background: #fffdf8; }
+.archived-file .file-glyph { border-color: #c9a95f; background: #fff8e7; }
+.archived-file .file-glyph::after { background: #c9a95f; box-shadow: 0 3px 0 #ddc98f; }
 .file-type { color: #7b837e; font-size: 8.5px; font-weight: 750; letter-spacing: .04em; }
 .action-menu-trigger { width: 28px; height: 28px; display: grid; place-items: center; padding: 0; border: 0; border-radius: 5px; color: #66706b; background: transparent; cursor: pointer; font: 700 18px/1 sans-serif; }
 .action-menu-trigger:hover, .action-menu-trigger[aria-expanded="true"] { color: white; background: var(--green); }
 .action-menu-trigger:focus-visible { outline: 2px solid #729c8f; outline-offset: 2px; }
 .action-menu { position: fixed; z-index: 30; width: 210px; overflow: hidden; padding: 5px; border: 1px solid #cfd5ce; border-radius: 8px; background: white; box-shadow: 0 14px 40px rgba(30, 47, 40, .18); }
 .action-menu[hidden] { display: none; }
-.action-menu button { width: 100%; padding: 9px 10px; border: 0; border-radius: 5px; color: var(--ink); background: transparent; cursor: pointer; font: 600 11px/1.3 ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; text-align: left; }
-.action-menu button:hover, .action-menu button:focus-visible { outline: 0; color: var(--green); background: #f1f7f4; }
+.action-menu :is(a, button) { width: 100%; display: block; padding: 9px 10px; border: 0; border-radius: 5px; color: var(--ink); background: transparent; cursor: pointer; font: 600 11px/1.3 ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; text-align: left; }
+.action-menu :is(a, button):hover, .action-menu :is(a, button):focus-visible { outline: 0; color: var(--green); background: #f1f7f4; }
 .copy-toast { position: fixed; z-index: 40; right: 18px; bottom: 18px; padding: 10px 13px; border-radius: 7px; color: white; background: #25332d; box-shadow: 0 10px 30px rgba(30, 47, 40, .2); font-size: 11px; font-weight: 700; }
 .copy-toast[hidden] { display: none; }
 .empty-tree { padding: 64px 20px; color: var(--muted); font: 12px sans-serif; text-align: center; }
@@ -139,8 +153,12 @@ h1 { font-size: clamp(42px, 6vw, 66px); line-height: 1; font-weight: 650; }
 @keyframes shimmer { to { background-position: -200% 0; } }
 
 .download-section { display: grid; grid-template-columns: .65fr 1.35fr; gap: 64px; align-items: start; padding: 16px 0 72px; }
+.focused-download { padding-top: 0; }
 .download-copy > p:not(.eyebrow) { max-width: 390px; margin: 18px 0; color: var(--muted); font-size: 14px; line-height: 1.6; }
 .download-copy a { color: var(--green); border-bottom: 1px solid #9ebdb2; padding-bottom: 2px; font-size: 12px; font-weight: 750; }
+.download-steps { margin: 18px 0 22px; padding-left: 20px; color: var(--muted); font-size: 12px; line-height: 1.65; }
+.download-steps li + li { margin-top: 7px; }
+.download-steps a { font-size: inherit; }
 .code-card { min-width: 0; overflow: hidden; border-radius: 9px; background: #19211e; box-shadow: 0 16px 45px rgba(25, 33, 30, .13); }
 .code-bar { height: 42px; display: flex; align-items: center; justify-content: space-between; padding: 0 13px; border-bottom: 1px solid #303936; color: #9ea8a3; font: 650 9px ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: .07em; }
 .code-bar button { padding: 5px 8px; border: 1px solid #46504c; border-radius: 4px; color: #d4dad7; background: #26302c; cursor: pointer; font-size: 9px; }
@@ -167,6 +185,7 @@ footer { border-top: 1px solid var(--line); }
 @media (max-width: 560px) {
   .shell, .site-header { width: min(100% - 24px, 1040px); }
   .intro { padding-bottom: 42px; }
+  .breadcrumbs { margin-top: 24px; }
   .dataset-stats { width: 100%; }
   .dataset-stats div { min-width: 0; flex: 1; padding-inline: 12px; }
   .dataset-stats dd { font-size: 13px; }

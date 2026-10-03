@@ -38,10 +38,19 @@ test.describe("viewer v2 desktop workspace", () => {
     const selectedJob = page.getByRole("button", { name: /Diana HRD evidence/ });
     const failedJob = page.getByRole("button", { name: /Filter failure sentinel/ });
     const archivedJob = page.getByRole("button", { name: /Archived validation/ });
+    const historicalJob = page.getByRole("button", { name: /Historical delivery/ });
 
     await expect(page.getByRole("heading", { name: /Running now/ })).toBeVisible();
-    await expect(page.getByRole("heading", { name: /Last 24 hours/ })).toBeVisible();
+    await expect(page.getByRole("heading", { name: /Past day/ })).toBeVisible();
+    await expect(page.getByRole("heading", { name: /Past week/ })).toBeVisible();
     await expect(page.getByRole("heading", { name: /All jobs/ })).toBeVisible();
+    await expect(
+      page.getByRole("heading", { name: /Past week/ }).locator("..").getByRole("button"),
+    ).toHaveText([/Archived validation/]);
+    await expect(
+      page.getByRole("heading", { name: /All jobs/ }).locator("..").getByRole("button"),
+    ).toHaveText([/Historical delivery/]);
+    await expect(historicalJob).toHaveCount(1);
     await expect(selectedJob).toHaveAttribute("aria-pressed", "true");
     const metrics = page.getByLabel("Run metrics");
     await expect(metrics.getByText("37.5%", { exact: true })).toBeVisible();

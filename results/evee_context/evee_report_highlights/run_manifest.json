@@ -1,0 +1,13 @@
+{
+  "api_base": "https://xix0d0o8le.execute-api.us-east-1.amazonaws.com",
+  "coordinate_rule": "SNVs use chr:POS-1:REF:ALT; indels require an explicitly supplied EVEE ID",
+  "evee_dataset_doi": "10.5281/zenodo.19701997",
+  "evee_dataset_release": "2026-04-23",
+  "genome_build": "GRCh38",
+  "input": {
+    "path": "/Users/jasonlaster/src/projects/diana-omics/manifests/evee_report_highlights.tsv",
+    "sha256": "c33c6311bbff1ab14122f6f689d00f1f053a7f46026646f150d6e3b61bd18774"
+  },
+  "online": true,
+  "software": "workflows/evee_context/bin/score_evee_variants.py"
+}

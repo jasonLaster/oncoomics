@@ -1,0 +1,4 @@
+# Install only on the selected CUDA execution target. The immutable source
+# revision matches the pipeline manifest and Arc Institute reference method.
+evo2 @ git+https://github.com/ArcInstitute/evo2.git@53f195997257c56c00e5ef8d33a54f5baad143a6
+pyfaidx==0.8.1.4

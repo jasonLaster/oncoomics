@@ -1,0 +1,19 @@
+{
+  "platform": "Modal",
+  "deployment_url": "https://modal.com/apps/jason-laster-11/main/deployed/diana-scrna-platform",
+  "suite_app_url": "https://modal.com/apps/jason-laster-11/main/ap-W0m0hUfMiHi3JeTa7UwJnT",
+  "deployed_preflight": {
+    "scanpy": "1.11.1",
+    "scDblFinder": "1.20.2",
+    "s3_access": "verified",
+    "cpu": 4,
+    "memory_mib": 16384
+  },
+  "suite_artifacts_hash_verified": 43,
+  "repeat_artifacts_hash_verified": 27,
+  "local_custody_tests_passed": 12,
+  "scientific_status": {
+    "pbmc3k": "pass",
+    "pbmc5k-nextgem": "needs_review"
+  }
+}

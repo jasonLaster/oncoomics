@@ -1,0 +1,31 @@
+{
+  "generatedAt": "2026-07-18T00:00:34.477Z",
+  "runId": "ngs-prep-diana-raw-20260718T000034Z",
+  "sampleSets": [
+    "diana_raw_intake"
+  ],
+  "packetRoot": "results/rosalind_hrd",
+  "artifactRoot": "artifacts/diana_raw_intake_ready",
+  "artifactRootMode": "materialized_artifact_root",
+  "packets": [
+    {
+      "sampleSet": "diana_raw_intake",
+      "title": "Diana Raw BAM/FASTQ Intake Readiness Packet",
+      "outputDir": "results/rosalind_hrd/diana_raw_intake/ngs-prep-diana-raw-20260718T000034Z",
+      "evidenceRows": 5,
+      "adapterRows": 4,
+      "blockers": [
+        "Actual Diana BAM/FASTQ/CRAM paths have not passed strict intake validation."
+      ],
+      "missingArtifacts": [],
+      "allowedConclusion": "This packet proves the raw-data intake contract is ready. It does not validate Diana files or produce HRD evidence until the actual BAM/FASTQ/CRAM paths are supplied and pass strict intake validation.",
+      "evidenceStatus": "partial_evidence",
+      "reportManifest": "results/rosalind_hrd/diana_raw_intake/ngs-prep-diana-raw-20260718T000034Z/report_manifest.json",
+      "reportManifestSha256": "56667f77c8940b64c85246b17055d00ee65eebd97052b7a5f9c1e233a4188b80"
+    }
+  ],
+  "sourcePattern": {
+    "ngs": "Derived from NGS Analysis router/runtime/DNA somatic patterns: inspect inputs, preflight, route, preserve provenance.",
+    "research": "Derived from Life Science Research router/variant/cancer/pathway patterns: normalize entities, query targeted sources, synthesize caveats."
+  }
+}

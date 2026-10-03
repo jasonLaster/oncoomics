@@ -1,0 +1,10 @@
+alt,chrom,evo2_status,pos,ref,reported_claim,reported_gene,reported_variant,source_index,supplied_evee_variant_id,variant_offset,window_length
+T,1,ready,11257145,C,high disruption,MTOR,chr1:11257145C>T,1,,4096,8192
+T,3,ready,47419370,C,LoF confirmed,SCAP,chr3:47419370C>T,2,,4096,8192
+A,9,ready,134408156,C,LoF confirmed,RXRA,chr9:134408156C>A,3,,4096,8192
+A,2,ready,224506102,G,high disruption,CUL3,chr2:224506102G>A,4,,4096,8192
+T,15,ready,40936533,C,high disruption,DLL4,chr15:40936533C>T,5,,4096,8192
+A,2,ready,241655311,G,LoF confirmed,ATG4B,chr2:241655311G>A,6,,4096,8192
+G,11,ready,46657565,A,high disruption,ATG13,chr11:46657565A>G,7,,4096,8192
+T,5,ready,177090615,C,moderate-high disruption,FGFR4,chr5:177090615C>T,8,,4096,8192
+C,9,ready,134034740,T,moderate disruption,BRD3,chr9:134034740T>C,9,,4096,8192

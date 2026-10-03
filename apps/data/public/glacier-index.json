@@ -1,0 +1,570 @@
+{
+  "bucket": "diana-omics-raw-inputs-172630973301-us-east-1",
+  "generated_at": "2026-07-30T20:21:51.142196+00:00",
+  "object_count": 93,
+  "objects": [
+    {
+      "key": "cache/phase3_wgs/bam/ucsc_hg38_analysis_set_full/full/normal/HCC1395BL.normal.bam",
+      "last_modified": "2026-07-30T19:35:10+00:00",
+      "size": 82560374983,
+      "storage_class": "GLACIER"
+    },
+    {
+      "key": "cache/phase3_wgs/bam/ucsc_hg38_analysis_set_full/full/normal/HCC1395BL.normal.bam.bai",
+      "last_modified": "2026-07-30T19:35:51+00:00",
+      "size": 9099192,
+      "storage_class": "GLACIER"
+    },
+    {
+      "key": "cache/phase3_wgs/bam/ucsc_hg38_analysis_set_full/full/normal/WGS_EA_N_1.normal.bam",
+      "last_modified": "2026-07-30T19:35:51+00:00",
+      "size": 101418600848,
+      "storage_class": "GLACIER"
+    },
+    {
+      "key": "cache/phase3_wgs/bam/ucsc_hg38_analysis_set_full/full/normal/WGS_EA_N_1.normal.bam.bai",
+      "last_modified": "2026-07-30T19:35:51+00:00",
+      "size": 9762480,
+      "storage_class": "GLACIER"
+    },
+    {
+      "key": "cache/phase3_wgs/bam/ucsc_hg38_analysis_set_full/full/tumor/HCC1395.tumor.bam",
+      "last_modified": "2026-07-30T19:35:51+00:00",
+      "size": 75910567011,
+      "storage_class": "GLACIER"
+    },
+    {
+      "key": "cache/phase3_wgs/bam/ucsc_hg38_analysis_set_full/full/tumor/HCC1395.tumor.bam.bai",
+      "last_modified": "2026-07-30T19:35:52+00:00",
+      "size": 9025728,
+      "storage_class": "GLACIER"
+    },
+    {
+      "key": "cache/phase3_wgs/bam/ucsc_hg38_analysis_set_full/full/tumor/WGS_EA_T_1.tumor.bam",
+      "last_modified": "2026-07-30T19:35:52+00:00",
+      "size": 114553695301,
+      "storage_class": "GLACIER"
+    },
+    {
+      "key": "cache/phase3_wgs/bam/ucsc_hg38_analysis_set_full/full/tumor/WGS_EA_T_1.tumor.bam.bai",
+      "last_modified": "2026-07-30T19:35:53+00:00",
+      "size": 9781896,
+      "storage_class": "GLACIER"
+    },
+    {
+      "key": "cache/phase3_wgs/bam_shards/ucsc_hg38_analysis_set_full/full/normal/8way/HCC1395BL.normal.shard00of08.coord.bam",
+      "last_modified": "2026-07-30T18:39:41+00:00",
+      "size": 11736370651,
+      "storage_class": "GLACIER"
+    },
+    {
+      "key": "cache/phase3_wgs/bam_shards/ucsc_hg38_analysis_set_full/full/normal/8way/HCC1395BL.normal.shard01of08.coord.bam",
+      "last_modified": "2026-07-30T18:40:22+00:00",
+      "size": 11735825107,
+      "storage_class": "GLACIER"
+    },
+    {
+      "key": "cache/phase3_wgs/bam_shards/ucsc_hg38_analysis_set_full/full/normal/8way/HCC1395BL.normal.shard02of08.coord.bam",
+      "last_modified": "2026-07-30T18:40:21+00:00",
+      "size": 11736131815,
+      "storage_class": "GLACIER"
+    },
+    {
+      "key": "cache/phase3_wgs/bam_shards/ucsc_hg38_analysis_set_full/full/normal/8way/HCC1395BL.normal.shard03of08.coord.bam",
+      "last_modified": "2026-07-30T18:40:22+00:00",
+      "size": 11736439107,
+      "storage_class": "GLACIER"
+    },
+    {
+      "key": "cache/phase3_wgs/bam_shards/ucsc_hg38_analysis_set_full/full/normal/8way/HCC1395BL.normal.shard04of08.coord.bam",
+      "last_modified": "2026-07-30T18:40:21+00:00",
+      "size": 11736469884,
+      "storage_class": "GLACIER"
+    },
+    {
+      "key": "cache/phase3_wgs/bam_shards/ucsc_hg38_analysis_set_full/full/normal/8way/HCC1395BL.normal.shard05of08.coord.bam",
+      "last_modified": "2026-07-30T18:41:49+00:00",
+      "size": 11736543127,
+      "storage_class": "GLACIER"
+    },
+    {
+      "key": "cache/phase3_wgs/bam_shards/ucsc_hg38_analysis_set_full/full/normal/8way/HCC1395BL.normal.shard06of08.coord.bam",
+      "last_modified": "2026-07-30T18:45:18+00:00",
+      "size": 11737180197,
+      "storage_class": "GLACIER"
+    },
+    {
+      "key": "cache/phase3_wgs/bam_shards/ucsc_hg38_analysis_set_full/full/normal/8way/HCC1395BL.normal.shard07of08.coord.bam",
+      "last_modified": "2026-07-30T18:45:21+00:00",
+      "size": 11736874844,
+      "storage_class": "GLACIER"
+    },
+    {
+      "key": "cache/phase3_wgs/bam_shards/ucsc_hg38_analysis_set_full/full/tumor/8way/HCC1395.tumor.shard00of08.coord.bam",
+      "last_modified": "2026-07-30T18:45:22+00:00",
+      "size": 10891463283,
+      "storage_class": "GLACIER"
+    },
+    {
+      "key": "cache/phase3_wgs/bam_shards/ucsc_hg38_analysis_set_full/full/tumor/8way/HCC1395.tumor.shard01of08.coord.bam",
+      "last_modified": "2026-07-30T18:45:25+00:00",
+      "size": 10890696789,
+      "storage_class": "GLACIER"
+    },
+    {
+      "key": "cache/phase3_wgs/bam_shards/ucsc_hg38_analysis_set_full/full/tumor/8way/HCC1395.tumor.shard02of08.coord.bam",
+      "last_modified": "2026-07-30T18:46:44+00:00",
+      "size": 10891480554,
+      "storage_class": "GLACIER"
+    },
+    {
+      "key": "cache/phase3_wgs/bam_shards/ucsc_hg38_analysis_set_full/full/tumor/8way/HCC1395.tumor.shard03of08.coord.bam",
+      "last_modified": "2026-07-30T18:49:50+00:00",
+      "size": 10891638416,
+      "storage_class": "GLACIER"
+    },
+    {
+      "key": "cache/phase3_wgs/bam_shards/ucsc_hg38_analysis_set_full/full/tumor/8way/HCC1395.tumor.shard04of08.coord.bam",
+      "last_modified": "2026-07-30T18:49:51+00:00",
+      "size": 10891630952,
+      "storage_class": "GLACIER"
+    },
+    {
+      "key": "cache/phase3_wgs/bam_shards/ucsc_hg38_analysis_set_full/full/tumor/8way/HCC1395.tumor.shard05of08.coord.bam",
+      "last_modified": "2026-07-30T18:50:07+00:00",
+      "size": 10890757888,
+      "storage_class": "GLACIER"
+    },
+    {
+      "key": "cache/phase3_wgs/bam_shards/ucsc_hg38_analysis_set_full/full/tumor/8way/HCC1395.tumor.shard06of08.coord.bam",
+      "last_modified": "2026-07-30T18:50:08+00:00",
+      "size": 10891833615,
+      "storage_class": "GLACIER"
+    },
+    {
+      "key": "cache/phase3_wgs/bam_shards/ucsc_hg38_analysis_set_full/full/tumor/8way/HCC1395.tumor.shard07of08.coord.bam",
+      "last_modified": "2026-07-30T18:51:11+00:00",
+      "size": 10890485345,
+      "storage_class": "GLACIER"
+    },
+    {
+      "key": "cache/phase3_wgs/fastq/SRR7890824_R1.full.fastq.gz",
+      "last_modified": "2026-07-30T19:34:10+00:00",
+      "size": 47988004291,
+      "storage_class": "GLACIER"
+    },
+    {
+      "key": "cache/phase3_wgs/fastq/SRR7890824_R2.full.fastq.gz",
+      "last_modified": "2026-07-30T19:34:52+00:00",
+      "size": 53593712696,
+      "storage_class": "GLACIER"
+    },
+    {
+      "key": "cache/phase3_wgs/fastq/SRR7890827_R1.full.fastq.gz",
+      "last_modified": "2026-07-30T19:34:52+00:00",
+      "size": 52069673852,
+      "storage_class": "GLACIER"
+    },
+    {
+      "key": "cache/phase3_wgs/fastq/SRR7890827_R2.full.fastq.gz",
+      "last_modified": "2026-07-30T19:34:52+00:00",
+      "size": 57224629605,
+      "storage_class": "GLACIER"
+    },
+    {
+      "key": "cache/phase3_wgs/fastq_shards/full/SRR7890824/8way/SRR7890824.shard00of08_R1.fastq.gz",
+      "last_modified": "2026-07-30T18:38:55+00:00",
+      "size": 5918658974,
+      "storage_class": "GLACIER"
+    },
+    {
+      "key": "cache/phase3_wgs/fastq_shards/full/SRR7890824/8way/SRR7890824.shard00of08_R2.fastq.gz",
+      "last_modified": "2026-07-30T18:39:41+00:00",
+      "size": 6653929905,
+      "storage_class": "GLACIER"
+    },
+    {
+      "key": "cache/phase3_wgs/fastq_shards/full/SRR7890824/8way/SRR7890824.shard01of08_R1.fastq.gz",
+      "last_modified": "2026-07-30T18:40:21+00:00",
+      "size": 5918951201,
+      "storage_class": "GLACIER"
+    },
+    {
+      "key": "cache/phase3_wgs/fastq_shards/full/SRR7890824/8way/SRR7890824.shard01of08_R2.fastq.gz",
+      "last_modified": "2026-07-30T18:40:21+00:00",
+      "size": 6654165700,
+      "storage_class": "GLACIER"
+    },
+    {
+      "key": "cache/phase3_wgs/fastq_shards/full/SRR7890824/8way/SRR7890824.shard02of08_R1.fastq.gz",
+      "last_modified": "2026-07-30T18:40:21+00:00",
+      "size": 5919044654,
+      "storage_class": "GLACIER"
+    },
+    {
+      "key": "cache/phase3_wgs/fastq_shards/full/SRR7890824/8way/SRR7890824.shard02of08_R2.fastq.gz",
+      "last_modified": "2026-07-30T18:40:13+00:00",
+      "size": 6654336691,
+      "storage_class": "GLACIER"
+    },
+    {
+      "key": "cache/phase3_wgs/fastq_shards/full/SRR7890824/8way/SRR7890824.shard03of08_R1.fastq.gz",
+      "last_modified": "2026-07-30T18:40:21+00:00",
+      "size": 5920140370,
+      "storage_class": "GLACIER"
+    },
+    {
+      "key": "cache/phase3_wgs/fastq_shards/full/SRR7890824/8way/SRR7890824.shard03of08_R2.fastq.gz",
+      "last_modified": "2026-07-30T18:42:29+00:00",
+      "size": 6655187443,
+      "storage_class": "GLACIER"
+    },
+    {
+      "key": "cache/phase3_wgs/fastq_shards/full/SRR7890824/8way/SRR7890824.shard04of08_R1.fastq.gz",
+      "last_modified": "2026-07-30T18:42:52+00:00",
+      "size": 5918772490,
+      "storage_class": "GLACIER"
+    },
+    {
+      "key": "cache/phase3_wgs/fastq_shards/full/SRR7890824/8way/SRR7890824.shard04of08_R2.fastq.gz",
+      "last_modified": "2026-07-30T18:42:52+00:00",
+      "size": 6653971122,
+      "storage_class": "GLACIER"
+    },
+    {
+      "key": "cache/phase3_wgs/fastq_shards/full/SRR7890824/8way/SRR7890824.shard05of08_R1.fastq.gz",
+      "last_modified": "2026-07-30T18:42:53+00:00",
+      "size": 5918902781,
+      "storage_class": "GLACIER"
+    },
+    {
+      "key": "cache/phase3_wgs/fastq_shards/full/SRR7890824/8way/SRR7890824.shard05of08_R2.fastq.gz",
+      "last_modified": "2026-07-30T18:43:09+00:00",
+      "size": 6654091839,
+      "storage_class": "GLACIER"
+    },
+    {
+      "key": "cache/phase3_wgs/fastq_shards/full/SRR7890824/8way/SRR7890824.shard06of08_R1.fastq.gz",
+      "last_modified": "2026-07-30T18:45:16+00:00",
+      "size": 5919015300,
+      "storage_class": "GLACIER"
+    },
+    {
+      "key": "cache/phase3_wgs/fastq_shards/full/SRR7890824/8way/SRR7890824.shard06of08_R2.fastq.gz",
+      "last_modified": "2026-07-30T18:45:19+00:00",
+      "size": 6654233643,
+      "storage_class": "GLACIER"
+    },
+    {
+      "key": "cache/phase3_wgs/fastq_shards/full/SRR7890824/8way/SRR7890824.shard07of08_R1.fastq.gz",
+      "last_modified": "2026-07-30T18:45:25+00:00",
+      "size": 5919890345,
+      "storage_class": "GLACIER"
+    },
+    {
+      "key": "cache/phase3_wgs/fastq_shards/full/SRR7890824/8way/SRR7890824.shard07of08_R2.fastq.gz",
+      "last_modified": "2026-07-30T18:45:36+00:00",
+      "size": 6655124253,
+      "storage_class": "GLACIER"
+    },
+    {
+      "key": "cache/phase3_wgs/fastq_shards/full/SRR7890827/8way/SRR7890827.shard00of08_R1.fastq.gz",
+      "last_modified": "2026-07-30T18:45:56+00:00",
+      "size": 6425222258,
+      "storage_class": "GLACIER"
+    },
+    {
+      "key": "cache/phase3_wgs/fastq_shards/full/SRR7890827/8way/SRR7890827.shard00of08_R2.fastq.gz",
+      "last_modified": "2026-07-30T18:47:43+00:00",
+      "size": 7102200423,
+      "storage_class": "GLACIER"
+    },
+    {
+      "key": "cache/phase3_wgs/fastq_shards/full/SRR7890827/8way/SRR7890827.shard01of08_R1.fastq.gz",
+      "last_modified": "2026-07-30T18:47:53+00:00",
+      "size": 6425765212,
+      "storage_class": "GLACIER"
+    },
+    {
+      "key": "cache/phase3_wgs/fastq_shards/full/SRR7890827/8way/SRR7890827.shard01of08_R2.fastq.gz",
+      "last_modified": "2026-07-30T18:48:05+00:00",
+      "size": 7102511647,
+      "storage_class": "GLACIER"
+    },
+    {
+      "key": "cache/phase3_wgs/fastq_shards/full/SRR7890827/8way/SRR7890827.shard02of08_R1.fastq.gz",
+      "last_modified": "2026-07-30T18:48:22+00:00",
+      "size": 6425823434,
+      "storage_class": "GLACIER"
+    },
+    {
+      "key": "cache/phase3_wgs/fastq_shards/full/SRR7890827/8way/SRR7890827.shard02of08_R2.fastq.gz",
+      "last_modified": "2026-07-30T18:48:34+00:00",
+      "size": 7102629126,
+      "storage_class": "GLACIER"
+    },
+    {
+      "key": "cache/phase3_wgs/fastq_shards/full/SRR7890827/8way/SRR7890827.shard03of08_R1.fastq.gz",
+      "last_modified": "2026-07-30T18:50:32+00:00",
+      "size": 6427172288,
+      "storage_class": "GLACIER"
+    },
+    {
+      "key": "cache/phase3_wgs/fastq_shards/full/SRR7890827/8way/SRR7890827.shard03of08_R2.fastq.gz",
+      "last_modified": "2026-07-30T18:50:39+00:00",
+      "size": 7103321487,
+      "storage_class": "GLACIER"
+    },
+    {
+      "key": "cache/phase3_wgs/fastq_shards/full/SRR7890827/8way/SRR7890827.shard04of08_R1.fastq.gz",
+      "last_modified": "2026-07-30T18:50:59+00:00",
+      "size": 6425427472,
+      "storage_class": "GLACIER"
+    },
+    {
+      "key": "cache/phase3_wgs/fastq_shards/full/SRR7890827/8way/SRR7890827.shard04of08_R2.fastq.gz",
+      "last_modified": "2026-07-30T18:51:03+00:00",
+      "size": 7102320619,
+      "storage_class": "GLACIER"
+    },
+    {
+      "key": "cache/phase3_wgs/fastq_shards/full/SRR7890827/8way/SRR7890827.shard05of08_R1.fastq.gz",
+      "last_modified": "2026-07-30T18:51:27+00:00",
+      "size": 6425772805,
+      "storage_class": "GLACIER"
+    },
+    {
+      "key": "cache/phase3_wgs/fastq_shards/full/SRR7890827/8way/SRR7890827.shard05of08_R2.fastq.gz",
+      "last_modified": "2026-07-30T18:53:09+00:00",
+      "size": 7102710981,
+      "storage_class": "GLACIER"
+    },
+    {
+      "key": "cache/phase3_wgs/fastq_shards/full/SRR7890827/8way/SRR7890827.shard06of08_R1.fastq.gz",
+      "last_modified": "2026-07-30T18:53:36+00:00",
+      "size": 6426046285,
+      "storage_class": "GLACIER"
+    },
+    {
+      "key": "cache/phase3_wgs/fastq_shards/full/SRR7890827/8way/SRR7890827.shard06of08_R2.fastq.gz",
+      "last_modified": "2026-07-30T18:53:36+00:00",
+      "size": 7102630932,
+      "storage_class": "GLACIER"
+    },
+    {
+      "key": "cache/phase3_wgs/fastq_shards/full/SRR7890827/8way/SRR7890827.shard07of08_R1.fastq.gz",
+      "last_modified": "2026-07-30T18:54:01+00:00",
+      "size": 6427341821,
+      "storage_class": "GLACIER"
+    },
+    {
+      "key": "cache/phase3_wgs/fastq_shards/full/SRR7890827/8way/SRR7890827.shard07of08_R2.fastq.gz",
+      "last_modified": "2026-07-30T18:54:06+00:00",
+      "size": 7103795238,
+      "storage_class": "GLACIER"
+    },
+    {
+      "key": "cache/phase3_wgs/reference/ucsc_hg38_analysis_set_full/brca_chr13_chr17_smoke.bed",
+      "last_modified": "2026-07-30T19:34:10+00:00",
+      "size": 90,
+      "storage_class": "GLACIER"
+    },
+    {
+      "key": "cache/phase3_wgs/reference/ucsc_hg38_analysis_set_full/hg38.analysisSet.fa.gz",
+      "last_modified": "2026-07-30T19:34:10+00:00",
+      "size": 949157663,
+      "storage_class": "GLACIER"
+    },
+    {
+      "key": "cache/phase3_wgs/reference/ucsc_hg38_analysis_set_full/ucsc_hg38_analysis_set_full.dict",
+      "last_modified": "2026-07-30T19:34:10+00:00",
+      "size": 40586,
+      "storage_class": "GLACIER"
+    },
+    {
+      "key": "cache/phase3_wgs/reference/ucsc_hg38_analysis_set_full/ucsc_hg38_analysis_set_full.fa",
+      "last_modified": "2026-07-30T19:34:38+00:00",
+      "size": 3161924569,
+      "storage_class": "GLACIER"
+    },
+    {
+      "key": "cache/phase3_wgs/reference/ucsc_hg38_analysis_set_full/ucsc_hg38_analysis_set_full.fa.amb",
+      "last_modified": "2026-07-30T19:34:10+00:00",
+      "size": 171935,
+      "storage_class": "GLACIER"
+    },
+    {
+      "key": "cache/phase3_wgs/reference/ucsc_hg38_analysis_set_full/ucsc_hg38_analysis_set_full.fa.ann",
+      "last_modified": "2026-07-30T19:34:10+00:00",
+      "size": 8823,
+      "storage_class": "GLACIER"
+    },
+    {
+      "key": "cache/phase3_wgs/reference/ucsc_hg38_analysis_set_full/ucsc_hg38_analysis_set_full.fa.bwt",
+      "last_modified": "2026-07-30T19:34:22+00:00",
+      "size": 3099922624,
+      "storage_class": "GLACIER"
+    },
+    {
+      "key": "cache/phase3_wgs/reference/ucsc_hg38_analysis_set_full/ucsc_hg38_analysis_set_full.fa.fai",
+      "last_modified": "2026-07-30T19:34:10+00:00",
+      "size": 7802,
+      "storage_class": "GLACIER"
+    },
+    {
+      "key": "cache/phase3_wgs/reference/ucsc_hg38_analysis_set_full/ucsc_hg38_analysis_set_full.fa.pac",
+      "last_modified": "2026-07-30T19:34:51+00:00",
+      "size": 774980637,
+      "storage_class": "GLACIER"
+    },
+    {
+      "key": "cache/phase3_wgs/reference/ucsc_hg38_analysis_set_full/ucsc_hg38_analysis_set_full.fa.sa",
+      "last_modified": "2026-07-30T19:34:15+00:00",
+      "size": 1549961320,
+      "storage_class": "GLACIER"
+    },
+    {
+      "key": "cache/phase3_wgs/validation/ucsc_hg38_analysis_set_full/full/normal/results__phase3_wgs_smoke__logs__ucsc_hg38_analysis_set_full.SRR7890827.8way.flagstat.txt",
+      "last_modified": "2026-07-30T19:34:10+00:00",
+      "size": 738,
+      "storage_class": "GLACIER"
+    },
+    {
+      "key": "cache/phase3_wgs/validation/ucsc_hg38_analysis_set_full/full/normal/results__phase3_wgs_smoke__logs__ucsc_hg38_analysis_set_full.SRR7890827.idxstats.tsv",
+      "last_modified": "2026-07-30T19:34:10+00:00",
+      "size": 6511,
+      "storage_class": "GLACIER"
+    },
+    {
+      "key": "cache/phase3_wgs/validation/ucsc_hg38_analysis_set_full/full/normal/results__phase3_wgs_smoke__logs__ucsc_hg38_analysis_set_full.SRR7890832.flagstat.txt",
+      "last_modified": "2026-07-30T19:34:10+00:00",
+      "size": 754,
+      "storage_class": "GLACIER"
+    },
+    {
+      "key": "cache/phase3_wgs/validation/ucsc_hg38_analysis_set_full/full/normal/results__phase3_wgs_smoke__logs__ucsc_hg38_analysis_set_full.SRR7890832.idxstats.tsv",
+      "last_modified": "2026-07-30T19:34:10+00:00",
+      "size": 98938,
+      "storage_class": "GLACIER"
+    },
+    {
+      "key": "cache/phase3_wgs/validation/ucsc_hg38_analysis_set_full/full/pair/seqc2_hcc1395_wgs_hiseqx_full/bam_validation_flagstat_only/results__phase3_wgs_smoke__bam_validation_summary.csv",
+      "last_modified": "2026-07-30T19:34:10+00:00",
+      "size": 1888,
+      "storage_class": "GLACIER"
+    },
+    {
+      "key": "cache/phase3_wgs/validation/ucsc_hg38_analysis_set_full/full/pair/seqc2_hcc1395_wgs_hiseqx_full/bam_validation_flagstat_only/results__phase3_wgs_smoke__bam_validation_summary.json",
+      "last_modified": "2026-07-30T19:34:10+00:00",
+      "size": 3121,
+      "storage_class": "GLACIER"
+    },
+    {
+      "key": "cache/phase3_wgs/validation/ucsc_hg38_analysis_set_full/full/pair/seqc2_hcc1395_wgs_hiseqx_full/coverage_cnv/results__phase3_wgs_smoke__coverage_cnv_bedcov.tsv",
+      "last_modified": "2026-07-30T19:34:10+00:00",
+      "size": 27169,
+      "storage_class": "GLACIER"
+    },
+    {
+      "key": "cache/phase3_wgs/validation/ucsc_hg38_analysis_set_full/full/pair/seqc2_hcc1395_wgs_hiseqx_full/coverage_cnv/results__phase3_wgs_smoke__coverage_cnv_bins.csv",
+      "last_modified": "2026-07-30T19:34:10+00:00",
+      "size": 61596,
+      "storage_class": "GLACIER"
+    },
+    {
+      "key": "cache/phase3_wgs/validation/ucsc_hg38_analysis_set_full/full/pair/seqc2_hcc1395_wgs_hiseqx_full/coverage_cnv/results__phase3_wgs_smoke__coverage_cnv_summary.csv",
+      "last_modified": "2026-07-30T19:34:10+00:00",
+      "size": 495,
+      "storage_class": "GLACIER"
+    },
+    {
+      "key": "cache/phase3_wgs/validation/ucsc_hg38_analysis_set_full/full/pair/seqc2_hcc1395_wgs_hiseqx_full/coverage_cnv/results__phase3_wgs_smoke__coverage_cnv_summary.json",
+      "last_modified": "2026-07-30T19:34:10+00:00",
+      "size": 756,
+      "storage_class": "GLACIER"
+    },
+    {
+      "key": "cache/phase3_wgs/validation/ucsc_hg38_analysis_set_full/full/pair/seqc2_hcc1395_wgs_hiseqx_full/coverage_cnv_idxstats/results__phase3_wgs_smoke__coverage_cnv_bins.csv",
+      "last_modified": "2026-07-30T19:34:10+00:00",
+      "size": 2318,
+      "storage_class": "GLACIER"
+    },
+    {
+      "key": "cache/phase3_wgs/validation/ucsc_hg38_analysis_set_full/full/pair/seqc2_hcc1395_wgs_hiseqx_full/coverage_cnv_idxstats/results__phase3_wgs_smoke__coverage_cnv_summary.csv",
+      "last_modified": "2026-07-30T19:34:10+00:00",
+      "size": 537,
+      "storage_class": "GLACIER"
+    },
+    {
+      "key": "cache/phase3_wgs/validation/ucsc_hg38_analysis_set_full/full/pair/seqc2_hcc1395_wgs_hiseqx_full/coverage_cnv_idxstats/results__phase3_wgs_smoke__coverage_cnv_summary.json",
+      "last_modified": "2026-07-30T19:34:10+00:00",
+      "size": 804,
+      "storage_class": "GLACIER"
+    },
+    {
+      "key": "cache/phase3_wgs/validation/ucsc_hg38_analysis_set_full/full/pair/seqc2_hcc1395_wgs_hiseqx_full/coverage_cnv_metadata/results__phase3_wgs_smoke__coverage_cnv_bins.csv",
+      "last_modified": "2026-07-30T19:34:10+00:00",
+      "size": 125,
+      "storage_class": "GLACIER"
+    },
+    {
+      "key": "cache/phase3_wgs/validation/ucsc_hg38_analysis_set_full/full/pair/seqc2_hcc1395_wgs_hiseqx_full/coverage_cnv_metadata/results__phase3_wgs_smoke__coverage_cnv_summary.csv",
+      "last_modified": "2026-07-30T19:34:10+00:00",
+      "size": 415,
+      "storage_class": "GLACIER"
+    },
+    {
+      "key": "cache/phase3_wgs/validation/ucsc_hg38_analysis_set_full/full/pair/seqc2_hcc1395_wgs_hiseqx_full/coverage_cnv_metadata/results__phase3_wgs_smoke__coverage_cnv_summary.json",
+      "last_modified": "2026-07-30T19:34:10+00:00",
+      "size": 682,
+      "storage_class": "GLACIER"
+    },
+    {
+      "key": "cache/phase3_wgs/validation/ucsc_hg38_analysis_set_full/full/pair/seqc2_hcc1395_wgs_hiseqx_full/sv_evidence/results__phase3_wgs_smoke__sv_evidence_candidates.csv",
+      "last_modified": "2026-07-30T19:33:50+00:00",
+      "size": 87,
+      "storage_class": "GLACIER"
+    },
+    {
+      "key": "cache/phase3_wgs/validation/ucsc_hg38_analysis_set_full/full/pair/seqc2_hcc1395_wgs_hiseqx_full/sv_evidence/results__phase3_wgs_smoke__sv_evidence_summary.csv",
+      "last_modified": "2026-07-30T19:34:10+00:00",
+      "size": 810,
+      "storage_class": "GLACIER"
+    },
+    {
+      "key": "cache/phase3_wgs/validation/ucsc_hg38_analysis_set_full/full/pair/seqc2_hcc1395_wgs_hiseqx_full/sv_evidence/results__phase3_wgs_smoke__sv_evidence_summary.json",
+      "last_modified": "2026-07-30T19:34:10+00:00",
+      "size": 1564,
+      "storage_class": "GLACIER"
+    },
+    {
+      "key": "cache/phase3_wgs/validation/ucsc_hg38_analysis_set_full/full/tumor/results__phase3_wgs_smoke__logs__ucsc_hg38_analysis_set_full.SRR7890824.8way.flagstat.txt",
+      "last_modified": "2026-07-30T19:34:10+00:00",
+      "size": 735,
+      "storage_class": "GLACIER"
+    },
+    {
+      "key": "cache/phase3_wgs/validation/ucsc_hg38_analysis_set_full/full/tumor/results__phase3_wgs_smoke__logs__ucsc_hg38_analysis_set_full.SRR7890824.idxstats.tsv",
+      "last_modified": "2026-07-30T19:34:10+00:00",
+      "size": 6484,
+      "storage_class": "GLACIER"
+    },
+    {
+      "key": "cache/phase3_wgs/validation/ucsc_hg38_analysis_set_full/full/tumor/results__phase3_wgs_smoke__logs__ucsc_hg38_analysis_set_full.SRR7890833.flagstat.txt",
+      "last_modified": "2026-07-30T19:34:10+00:00",
+      "size": 753,
+      "storage_class": "GLACIER"
+    },
+    {
+      "key": "cache/phase3_wgs/validation/ucsc_hg38_analysis_set_full/full/tumor/results__phase3_wgs_smoke__logs__ucsc_hg38_analysis_set_full.SRR7890833.idxstats.tsv",
+      "last_modified": "2026-07-30T19:34:10+00:00",
+      "size": 99153,
+      "storage_class": "GLACIER"
+    }
+  ],
+  "prefix": "cache/phase3_wgs/",
+  "retrieval_class": "Glacier Flexible Retrieval",
+  "schema_version": 1,
+  "storage_class": "GLACIER",
+  "total_size": 984734350678
+}

@@ -4,6 +4,10 @@ Use this guide when an approved sender needs to deliver raw files to the Diana
 Omics public-read S3 inbox. The instructions are sender- and vendor-agnostic;
 the sender may upload from a workstation, VM, or another cloud bucket.
 
+For single-cell or single-nucleus RNA-seq, use the
+[single-cell upload guide](scrna-data-upload.md) for the delivery contents,
+metadata, and analysis handoff alongside these transfer instructions.
+
 ## Public Destination
 
 The Diana operator assigns one batch prefix:

@@ -1,0 +1,95 @@
+{
+  "schema_version": 1,
+  "method_id": "rosalind_diana_raw_intake",
+  "report_kind": "rosalind_hrd_reviewer_packet",
+  "evidence_status": "partial_evidence",
+  "authorized_hrd_state": "no_call",
+  "classification_authorized": false,
+  "classification_qc_status": "not_applicable",
+  "support_sha256": {
+    "hrd_adapter_status.csv": "5965ea28803a10853f488b374382989c49612b5933211fd9295e41d8a023b6d6",
+    "input_evidence_index.json": "34ebeba091f42d8151de484499469fcfa9e4415d52659f9397804c71d17c8c9f",
+    "next_actions.md": "b53c073ed9fa2a3127b420dbe15015e8180d994da20d8f4495d05d31686bc075",
+    "research_context_sources.json": "12442d1c65b0ac585a9ce5a54dc6bac11b5e657bf2445931e73a4b472879b9f5",
+    "reviewer_packet.md": "51b8bef57e4f3c34262374e432dbc2004a7e2478e6d144b6480bc7248f8bb816",
+    "sample_validation_summary.csv": "6a6e6c47bf9161c88314cb7d5e52377f49ead0ef729c980f48ffad2682dc1445"
+  },
+  "source_sha256": {
+    "source_artifact_001": "d6a26801a48fe4147b02186db6c124c1a66c029a167c2a83e273cbbe75ec1b96",
+    "source_artifact_002": "bb626beeef58556367eaf3f190557e5dd9d0f60de5f6951c46945dcd140a5065",
+    "source_artifact_003": "2a35c6f8099de914332361d580fa753583f691c8ced59a36f1053d31235e2381",
+    "source_artifact_004": "b628fc39eec45ca508cb4d53fab90d4c68d78614ad896613464d8fdc710584f8",
+    "source_artifact_005": "9a1f48a0f1960a962a483d931336b3365a7ac9be4ff2099cb99e6cbac091de56",
+    "source_artifact_006": "cba41769c9ff9619c5034e86deb8340e411a7c20c4a6ba9c2ade64fb7447faea"
+  },
+  "report_sha256": "51b8bef57e4f3c34262374e432dbc2004a7e2478e6d144b6480bc7248f8bb816",
+  "review_summary": {
+    "overall": {
+      "evidence_status": "partial_evidence",
+      "authorized_hrd_state": "no_call"
+    },
+    "packet_type": "diana_raw_intake",
+    "allowed_conclusion": "This packet proves the raw-data intake contract is ready. It does not validate Diana files or produce HRD evidence until the actual BAM/FASTQ/CRAM paths are supplied and pass strict intake validation.",
+    "evidence": [
+      {
+        "evidence_id": "intake_template",
+        "status": "template_ready",
+        "detail": "Template: manifests/diana_raw_inputs.template.csv; samplesheet: manifests/diana_raw_inputs.csv; ready for raw data: True.",
+        "caveat": "Template readiness only confirms the intake surface exists."
+      },
+      {
+        "evidence_id": "input_contract",
+        "status": "present",
+        "detail": "30 required columns; DNA assays: WES;WGS; data types: BAM;CRAM;FASTQ;MANIFEST_ONLY;RNA_FASTQ.",
+        "caveat": ""
+      },
+      {
+        "evidence_id": "strict_file_validation",
+        "status": "waiting_for_diana_raw_data",
+        "detail": "Rows: 0; DNA rows: 0; tumor DNA rows: 0; normal DNA rows: 0; matched pair IDs: none.",
+        "caveat": "Expected to remain waiting until actual Diana BAM/FASTQ/CRAM paths are supplied."
+      },
+      {
+        "evidence_id": "dinah_handoff_plan",
+        "status": "waiting_for_dinah_files",
+        "detail": "Steps: 8; samplesheet: manifests/diana_raw_inputs.csv; analysis ID: diana_raw_initial; current state: waiting_for_dinah_files.",
+        "caveat": "Planning artifact only; it does not validate files or authorize human-data cloud upload."
+      },
+      {
+        "evidence_id": "run_path",
+        "status": "ready_to_validate",
+        "detail": "Plan with `PYTHONPATH=src /usr/bin/python3 -m diana_omics plan:diana-raw-handoff`; validate with `DIANA_RAW_SAMPLESHEET=manifests/diana_raw_inputs.csv DIANA_RAW_REQUIRE_DATA=1 PYTHONPATH=src /usr/bin/python3 -m diana_omics verify:diana-raw`; stage with `DIANA_RAW_SAMPLESHEET=manifests/diana_raw_inputs.csv DIANA_RAW_REQUIRE_DATA=1 PYTHONPATH=src /usr/bin/python3 -m diana_omics stage:diana-raw`.",
+        "caveat": "Passing intake validation still does not produce an HRD score."
+      }
+    ],
+    "adapters": [
+      {
+        "adapter": "Raw file intake",
+        "state": "blocked_until_files",
+        "blocker": "Actual Diana BAM/FASTQ/CRAM paths have not passed strict intake validation.",
+        "next_action": "Run plan:diana-raw-handoff, copy the template to manifests/diana_raw_inputs.csv, fill actual paths and metadata, then run verify:diana-raw with DIANA_RAW_REQUIRE_DATA=1."
+      },
+      {
+        "adapter": "Tumor-normal DNA pairing",
+        "state": "blocked_until_files",
+        "blocker": "No validated matched tumor-normal DNA pair is staged.",
+        "next_action": "Confirm tumor and normal rows share pair_id before compute."
+      },
+      {
+        "adapter": "Reference/index preflight",
+        "state": "ready_to_validate",
+        "blocker": "Reference files must exist and match all DNA rows when strict validation runs.",
+        "next_action": "Validate reference FASTA, FAI, and dict paths in verify:diana-raw."
+      },
+      {
+        "adapter": "HRD interpretation",
+        "state": "no_call",
+        "blocker": "No Diana sample evidence exists yet.",
+        "next_action": "Run the staged DNA feature lanes and public validation sidecars before interpretation."
+      }
+    ],
+    "blockers": [
+      "Actual Diana BAM/FASTQ/CRAM paths have not passed strict intake validation."
+    ]
+  }
+}

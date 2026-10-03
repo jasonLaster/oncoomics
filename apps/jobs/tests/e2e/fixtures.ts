@@ -90,6 +90,23 @@ export const jobsPayload = {
       dependsOn: ["job-filter-complete"],
       progress: null,
     },
+    {
+      id: "job-history-complete",
+      name: "Historical delivery",
+      status: "SUCCEEDED",
+      statusReason: null,
+      queue: "diana-omics-production",
+      createdAt: BASE_TIME - 10 * 24 * 60 * 60_000,
+      startedAt: BASE_TIME - 10 * 24 * 60 * 60_000 + 12 * 60_000,
+      stoppedAt: BASE_TIME - 10 * 24 * 60 * 60_000 + 42 * 60_000,
+      timeoutSeconds: 21_600,
+      attempts: 1,
+      runId: "run-history-v2-e2e",
+      stage: "delivery",
+      logStreamName: "diana/run-history-v2-e2e/delivery",
+      dependsOn: ["job-history-filter-complete"],
+      progress: null,
+    },
   ],
 };
 

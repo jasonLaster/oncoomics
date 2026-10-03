@@ -50,6 +50,7 @@ The pattern is:
 
 | Workflow | Use it when | Main output |
 | --- | --- | --- |
+| [Single-cell Modal/S3 platform](../scrna-platform.md) | You want reproducible public PBMC matrix QC, clustering, and calibration before using a larger cohort. | Preserved counts, QC and doublet decisions, UMAPs, calibration gates, and hash-verified S3 artifacts. |
 | [HRD Workflow](hrd-workflow.md) | You want to assess HRD score readiness from WGS/WES tumor-normal data and integrate sample evidence with sourced HRR context. | HRD adapter status, no-call gates, evidence tables, and reviewer packet. |
 | [TROP-2 ADC Target Workflow](trop2-adc-workflow.md) | You want to evaluate whether TROP-2/`TACSTD2` is a plausible ADC target using bulk WES plus scRNA-seq. | WES target-locus evidence, scRNA target-expression evidence, external ADC context, and target-confidence class. |
 

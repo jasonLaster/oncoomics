@@ -1,0 +1,50 @@
+{
+  "pbmc3k": {
+    "ambient_rna_status": "not_assessed_no_empty_droplet_matrix",
+    "calibration_status": "pass",
+    "clusters": 5,
+    "coarse_label_hint_counts": {
+      "B cells": 298,
+      "Dendritic cells": 26,
+      "Monocytes": 565,
+      "NK cells": 397,
+      "T cells": 1044
+    },
+    "core_qc_cells": 2440,
+    "doublet_method": "scDblFinder",
+    "doublet_validation": "no_independent_truth_labels",
+    "doublets_flagged": 110,
+    "elapsed_seconds": 27.77,
+    "finite_embedding": true,
+    "gates": {
+      "cluster_count": true,
+      "doublets_called": true,
+      "finite_embedding": true,
+      "input_cells_match": true,
+      "raw_counts_preserved": true,
+      "reference_agreement": true,
+      "reference_overlap": true,
+      "retention": true,
+      "seed_stability": true
+    },
+    "input_cells": 2700,
+    "input_genes": 32738,
+    "low_genes_flagged": 222,
+    "low_umis_flagged": 211,
+    "mt_flagged": 57,
+    "raw_counts_preserved": true,
+    "reference_ari": 0.8415665465297376,
+    "reference_common_cells": 2329,
+    "reference_nmi": 0.8328908947373584,
+    "reference_status": "same-dataset tutorial annotations; not independent truth",
+    "retained_cells": 2330,
+    "retained_fraction": 0.8629629629629629,
+    "seed_stability_ari": 0.9669390369152553,
+    "thresholds": {
+      "max_pct_mt": 5.0,
+      "min_genes": 505,
+      "min_umis": 1113,
+      "rationale": "Capture-level 3-MAD robust tails; PBMC guardrails retain low-RNA lymphocytes and bound the mt tail. Review plots before other tissues."
+    }
+  }
+}

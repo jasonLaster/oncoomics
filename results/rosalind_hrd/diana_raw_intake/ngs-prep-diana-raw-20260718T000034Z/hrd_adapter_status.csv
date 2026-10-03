@@ -1,0 +1,5 @@
+adapter,state,blocker,next_action
+Raw file intake,blocked_until_files,Actual Diana BAM/FASTQ/CRAM paths have not passed strict intake validation.,"Run plan:diana-raw-handoff, copy the template to manifests/diana_raw_inputs.csv, fill actual paths and metadata, then run verify:diana-raw with DIANA_RAW_REQUIRE_DATA=1."
+Tumor-normal DNA pairing,blocked_until_files,No validated matched tumor-normal DNA pair is staged.,Confirm tumor and normal rows share pair_id before compute.
+Reference/index preflight,ready_to_validate,Reference files must exist and match all DNA rows when strict validation runs.,"Validate reference FASTA, FAI, and dict paths in verify:diana-raw."
+HRD interpretation,no_call,No Diana sample evidence exists yet.,Run the staged DNA feature lanes and public validation sidecars before interpretation.

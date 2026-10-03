@@ -1,0 +1,43 @@
+{
+  "ambient_rna_status": "not_assessed_no_empty_droplet_matrix",
+  "calibration_status": "needs_review",
+  "clusters": 10,
+  "coarse_label_hint_counts": {
+    "B cells": 321,
+    "Dendritic cells": 140,
+    "Monocytes": 1233,
+    "NK cells": 329,
+    "T cells": 1545,
+    "Unknown / mixed": 322
+  },
+  "core_qc_cells": 4139,
+  "doublet_method": "scDblFinder",
+  "doublet_validation": "no_independent_truth_labels",
+  "doublets_flagged": 249,
+  "elapsed_seconds": 41.88,
+  "finite_embedding": true,
+  "gates": {
+    "cluster_count": true,
+    "doublets_called": true,
+    "finite_embedding": true,
+    "input_cells_match": true,
+    "raw_counts_preserved": true,
+    "retention": true,
+    "seed_stability": false
+  },
+  "input_cells": 5527,
+  "input_genes": 33538,
+  "low_genes_flagged": 1142,
+  "low_umis_flagged": 1120,
+  "mt_flagged": 1316,
+  "raw_counts_preserved": true,
+  "retained_cells": 3890,
+  "retained_fraction": 0.7038176225800615,
+  "seed_stability_ari": 0.8143181682902734,
+  "thresholds": {
+    "max_pct_mt": 15.014801502227783,
+    "min_genes": 827,
+    "min_umis": 1938,
+    "rationale": "Capture-level 3-MAD robust tails; PBMC guardrails retain low-RNA lymphocytes and bound the mt tail. Review plots before other tissues."
+  }
+}

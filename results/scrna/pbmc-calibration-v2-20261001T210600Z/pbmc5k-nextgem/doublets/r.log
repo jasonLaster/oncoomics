@@ -1,0 +1,22 @@
+Creating ~3312 artificial doublets...
+Dimensional reduction
+Evaluating kNN...
+Training model...
+iter=0, 431 cells excluded from training.
+iter=1, 431 cells excluded from training.
+iter=2, 431 cells excluded from training.
+Threshold found:0.358
+249 (6%) doublets called
+Warning messages:
+1: In check.deprecation(deprecated_cv_params, match.call(), ...) :
+  Passed invalid function arguments: max_depth, eval_metric, tree_method, subsample, nthread, eta. These should be passed as a list to argument 'params'. Conversion from argument to 'params' entry will be done automatically, but this behavior will become an error in a future version.
+2: In throw_err_or_depr_msg("Parameter(s) have been removed from this function: ",  :
+  Parameter(s) have been removed from this function: label. This warning will become an error in a future version.
+3: In check.deprecation(deprecated_cv_params, match.call(), ...) :
+  Passed invalid function arguments: max_depth, eval_metric, tree_method, subsample, nthread, eta. These should be passed as a list to argument 'params'. Conversion from argument to 'params' entry will be done automatically, but this behavior will become an error in a future version.
+4: In throw_err_or_depr_msg("Parameter(s) have been removed from this function: ",  :
+  Parameter(s) have been removed from this function: label. This warning will become an error in a future version.
+5: In check.deprecation(deprecated_cv_params, match.call(), ...) :
+  Passed invalid function arguments: max_depth, eval_metric, tree_method, subsample, nthread, eta. These should be passed as a list to argument 'params'. Conversion from argument to 'params' entry will be done automatically, but this behavior will become an error in a future version.
+6: In throw_err_or_depr_msg("Parameter(s) have been removed from this function: ",  :
+  Parameter(s) have been removed from this function: label. This warning will become an error in a future version.

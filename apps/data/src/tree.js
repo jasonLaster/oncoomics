@@ -3,9 +3,10 @@ export function shouldOpenDirectory({
   isRoot,
   depth,
   source,
+  key,
 }) {
   return hasSearchQuery
     || isRoot
     || depth <= 1
-    || source?.expandByDefault === true;
+    || source?.defaultOpenDirectoryKeys?.includes(key) === true;
 }

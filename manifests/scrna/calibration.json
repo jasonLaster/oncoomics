@@ -1,0 +1,79 @@
+{
+  "schema_version": 1,
+  "recipe_version": 2,
+  "evidence_lane": "public_benchmark",
+  "datasets": [
+    {
+      "dataset_id": "pbmc3k",
+      "species": "Homo sapiens",
+      "tissue": "PBMC",
+      "assay": "whole-cell droplet RNA-seq",
+      "chemistry": "10x Chromium 3-prime legacy",
+      "reference": "hg19 (vendor count matrix)",
+      "capture_id": "pbmc3k-capture1",
+      "donor_id": "pbmc3k-public-donor",
+      "expected_cells": 2700,
+      "format": "10x_mtx_tar",
+      "source_page": "https://www.10xgenomics.com/datasets/3-k-pbm-cs-from-a-healthy-donor-1-standard-1-1-0",
+      "license": "10x public dataset; attribute 10x Genomics",
+      "inputs": [
+        {
+          "role": "counts",
+          "filename": "pbmc3k_filtered_gene_bc_matrices.tar.gz",
+          "url": "https://cf.10xgenomics.com/samples/cell-exp/1.1.0/pbmc3k/pbmc3k_filtered_gene_bc_matrices.tar.gz",
+          "sha256": "847d6ebd9a1ec9a768f2be7e40ca42cbfe75ebeb6d76a4c24167041699dc28b5"
+        },
+        {
+          "role": "reference_labels",
+          "filename": "pbmc3k_processed.h5ad",
+          "url": "https://raw.githubusercontent.com/chanzuckerberg/cellxgene/main/example-dataset/pbmc3k.h5ad"
+        }
+      ],
+      "reference_label_column": "louvain"
+    },
+    {
+      "dataset_id": "pbmc5k-nextgem",
+      "species": "Homo sapiens",
+      "tissue": "PBMC",
+      "assay": "whole-cell droplet RNA-seq plus antibody tags; gene expression only in this workflow",
+      "chemistry": "10x Chromium Next GEM 3-prime v3.1",
+      "reference": "GRCh38-3.0.0 (vendor count matrix)",
+      "capture_id": "pbmc5k-nextgem-capture1",
+      "donor_id": "pbmc5k-nextgem-public-donor",
+      "expected_cells": 5527,
+      "format": "10x_h5",
+      "source_page": "https://www.10xgenomics.com/datasets/5-k-peripheral-blood-mononuclear-cells-pbm-cs-from-a-healthy-donor-with-cell-surface-proteins-next-gem-3-1-standard-3-1-0",
+      "license": "CC BY 4.0; 10x Genomics",
+      "inputs": [
+        {
+          "role": "counts",
+          "filename": "5k_pbmc_protein_v3_nextgem_filtered_feature_bc_matrix.h5",
+          "url": "https://cf.10xgenomics.com/samples/cell-exp/3.1.0/5k_pbmc_protein_v3_nextgem/5k_pbmc_protein_v3_nextgem_filtered_feature_bc_matrix.h5"
+        }
+      ]
+    }
+  ],
+  "parameters": {
+    "seed": 42,
+    "n_hvg": 2000,
+    "n_pcs": 40,
+    "n_neighbors": 15,
+    "leiden_resolution": 0.5,
+    "leiden_iterations": -1,
+    "qc_mad_multiplier": 3.0,
+    "qc_policy": "PBMC pilot: log1p genes/UMIs lower 3-MAD; mt upper 3-MAD with 5-25 percent bounds; no upper-count exclusion",
+    "annotation_policy": "provisional PBMC cluster marker scores; reference labels reserved for evaluation only",
+    "ambient_rna_policy": "not_assessed: filtered matrices lack empty droplets; do not claim correction"
+  },
+  "acceptance": {
+    "retained_fraction_min": 0.7,
+    "retained_fraction_max": 0.99,
+    "clusters_min": 4,
+    "clusters_max": 25,
+    "reference_common_cells_min": 2000,
+    "reference_ari_min": 0.55,
+    "seed_stability_ari_min": 0.85,
+    "repeat_coordinates_atol": 0.000001,
+    "note": "Engineering and biological plausibility screens frozen before execution; tutorial labels are not independent ground truth. Doublet precision/recall and ambient correction are uncalibrated."
+  }
+}

@@ -19,13 +19,46 @@ test('opens the root and top-level source directories', () => {
   }), true);
 });
 
-test('opens live raw input descendants by default', () => {
+test('opens only the selected raw input path by default', () => {
+  const source = {
+    id: 'raw-inputs',
+    defaultOpenDirectoryKeys: [
+      'diana/inbox/2026-07-14-echo-personalis/',
+      'diana/inbox/2026-07-14-echo-personalis/data/',
+    ],
+  };
+
   assert.equal(shouldOpenDirectory({
     hasSearchQuery: false,
     isRoot: false,
-    depth: 7,
-    source: { id: 'raw-inputs', expandByDefault: true },
+    depth: 2,
+    source,
+    key: 'diana/inbox/2026-07-14-echo-personalis/',
   }), true);
+
+  assert.equal(shouldOpenDirectory({
+    hasSearchQuery: false,
+    isRoot: false,
+    depth: 3,
+    source,
+    key: 'diana/inbox/2026-07-14-echo-personalis/data/',
+  }), true);
+
+  assert.equal(shouldOpenDirectory({
+    hasSearchQuery: false,
+    isRoot: false,
+    depth: 4,
+    source,
+    key: 'diana/inbox/2026-07-14-echo-personalis/data/wgs/',
+  }), false);
+
+  assert.equal(shouldOpenDirectory({
+    hasSearchQuery: false,
+    isRoot: false,
+    depth: 2,
+    source,
+    key: 'diana/inbox/2026-07-30-h-and-e-slides/',
+  }), false);
 });
 
 test('keeps reviewed result descendants collapsed without search', () => {
