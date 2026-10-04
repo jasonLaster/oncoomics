@@ -27,6 +27,7 @@ Sections 7-10 hold round-by-round results and corrections.
 | 14 | step14-integrated-targets | Integrated candidate targets |
 | 15 | step15-tnbc-outliers | Genes Diana's tumor expresses above other TNBC tumors (bulk vs TCGA plus tumor nuclei vs public TNBC tumor cells) |
 | 16 | step16-problems-report | Problems found in the EVEE report and the bulk-RNA bottom-up comparison |
+| 17 | step17-kb-synthesis | Connecting the omics with the clinical record, imaging, lab reports and literature (`connect_the_dots.md`) |
 
 Only reports and small tables are included. Read data (BAM slices), VCFs, images, slide labels, vendor PDFs and
 analysis scripts stay in private storage.
