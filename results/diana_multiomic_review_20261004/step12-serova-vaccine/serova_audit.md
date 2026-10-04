@@ -93,3 +93,24 @@ encoded.
 
 Limitations: KH022 is a different specimen; single-nucleus 3' coverage is sparse; bulk RNA is a capture library from
 a tumor-poor region; no normal RNA; HLA region mapping is error-prone.
+
+## 6. What the single-nucleus data change (summary, 2026-10-04)
+
+Evidence for discussion with Serova and the clinical team, not a design judgment. KH022 is a different, undated
+specimen (possibly another timepoint). It is nuclei-based 3' data, so some sites are not covered.
+
+- **Second-specimen confirmation:** mutant molecules are seen in malignant nuclei for 14 of 22 missense windows
+  (e.g. TAF4B ~94% mutant), which supports their presence beyond the T0 piece.
+- **Drivers absent from the cassette are active in tumor cells:** BRCA1 pre-mRNA in malignant nuclei is 97% mutant
+  (100/103). TP53 c.559+2 and the BRCA1 splice products are real but are not encoded. Were splice-derived antigens
+  evaluated?
+- **Antigen processing is reduced in tumor cells, more mildly than the vendor's bulk estimate:** TAP1/2, PSMB8/9,
+  NLRC5, IRF1 and ERAP2 at 0.3-0.6x of normal breast epithelium (vendor 0.05-0.27x from capture, tumor-poor bulk RNA).
+  The direction matches the vendor's "low interferon" reading.
+- **Several window genes are barely expressed in tumor nuclei:** TP63 (expressed in myoepithelial cells, not tumor),
+  PTPRH, MAST1, TAC4, SDC3 and SLC46A3. Nuclear RNA is not protein, and low detection is not proof of absence.
+- **SHANK2 expression is high because 11q13 is amplified (~9 copies),** but the encoded fusion junction is
+  unsupported (section 2).
+- **HLA/B2M presentation cannot be measured per nucleus** (ambient-dominated). Combined with DNA, there is no clonal
+  HLA haplotype loss; HLA-A is the weakest region.
+- **Immune context:** pathologist sTIL 50%, with T/NK, B/plasma cells and macrophages present in the nuclei data.
