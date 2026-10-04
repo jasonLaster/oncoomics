@@ -25,6 +25,7 @@ Sections 7-10 hold round-by-round results and corrections.
 | 12 | step12-serova-vaccine | Serova vaccine construct transcription and audit |
 | 13 | step13-targets | Tumor-enriched druggable genes from single-nucleus RNA |
 | 14 | step14-integrated-targets | Integrated candidate targets |
+| 15 | step15-tnbc-outliers | Genes Diana's tumor expresses above other TNBC tumors (bulk vs TCGA plus tumor nuclei vs public TNBC tumor cells) |
 
 Only reports and small tables are included. Read data (BAM slices), VCFs, images, slide labels, vendor PDFs and
 analysis scripts stay in private storage.
