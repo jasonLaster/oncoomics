@@ -1,0 +1,21 @@
+{
+  "jobDefinitionName": "step8-wgs-somatic-arm64",
+  "type": "container",
+  "platformCapabilities": ["EC2"],
+  "retryStrategy": {"attempts": 3, "evaluateOnExit": [
+    {"onStatusReason": "Host EC2*", "action": "RETRY"},
+    {"onReason": "CannotPullContainerError*", "action": "RETRY"},
+    {"onReason": "*", "action": "EXIT"}]},
+  "timeout": {"attemptDurationSeconds": 14400},
+  "containerProperties": {
+    "image": "172630973301.dkr.ecr.us-east-1.amazonaws.com/diana-omics@sha256:ac58e717f64ccd585a040d5ad5baa6527014d76993301606c49888ed0cb06076",
+    "command": ["true"],
+    "jobRoleArn": "arn:aws:iam::172630973301:role/diana-omics-prod-use1-batch-job",
+    "resourceRequirements": [{"type": "VCPU", "value": "2"}, {"type": "MEMORY", "value": "7000"}],
+    "environment": [{"name": "AWS_REGION", "value": "us-east-1"}, {"name": "AWS_DEFAULT_REGION", "value": "us-east-1"}, {"name": "AWS_PAGER", "value": ""}],
+    "ulimits": [{"name": "nofile", "softLimit": 65536, "hardLimit": 65536}],
+    "linuxParameters": {"initProcessEnabled": true},
+    "logConfiguration": {"logDriver": "awslogs", "options": {"awslogs-group": "/aws/batch/diana-omics-prod-use1", "awslogs-region": "us-east-1", "awslogs-stream-prefix": "step8-wgs-somatic"}}
+  },
+  "tags": {"project": "diana-omics", "run": "wgs-somatic-20261003T221959Z", "owner": "step8-agent"}
+}

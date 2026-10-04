@@ -1,0 +1,156 @@
+{
+ "positions_nonrepeat_with_rna_depth>=4": 12187635,
+ "gt_counts": {
+  "HOMREF": 11958222,
+  "NOCALL": 205639,
+  "AMBIG": 12519,
+  "HET": 7008,
+  "HOMALT": 4247
+ },
+ "discordance": {
+  "L1_depth>=20": {
+   "hom_sites": 6758165,
+   "hom_sites_discordant_(k>=3,>=3%)": 6519,
+   "rate_per_1000": 0.9646109557845953,
+   "of_which_AtoG_or_TtoC_editing_like": 1429,
+   "discordant_excluding_editing": 5090,
+   "rate_per_1000_excl_editing": 0.7531630257621706,
+   "hom_sites_strong_(k>=5,>=10%)": 1048,
+   "het_sites": 3718,
+   "het_sites_two_alleles": 3107,
+   "het_two_allele_frac": 0.8356643356643356
+  },
+  "L1_depth>=40": {
+   "hom_sites": 4489926,
+   "hom_sites_discordant_(k>=3,>=3%)": 4689,
+   "rate_per_1000": 1.0443379245003146,
+   "of_which_AtoG_or_TtoC_editing_like": 1060,
+   "discordant_excluding_editing": 3629,
+   "rate_per_1000_excl_editing": 0.8082538554087528,
+   "hom_sites_strong_(k>=5,>=10%)": 653,
+   "het_sites": 2379,
+   "het_sites_two_alleles": 2108,
+   "het_two_allele_frac": 0.8860865910046238
+  },
+  "L1_depth>=100": {
+   "hom_sites": 2258194,
+   "hom_sites_discordant_(k>=3,>=3%)": 1364,
+   "rate_per_1000": 0.6040225064808427,
+   "of_which_AtoG_or_TtoC_editing_like": 258,
+   "discordant_excluding_editing": 1106,
+   "rate_per_1000_excl_editing": 0.48977191507904105,
+   "hom_sites_strong_(k>=5,>=10%)": 161,
+   "het_sites": 1162,
+   "het_sites_two_alleles": 1063,
+   "het_two_allele_frac": 0.9148020654044751
+  },
+  "L2_depth>=20": {
+   "hom_sites": 6440747,
+   "hom_sites_discordant_(k>=3,>=3%)": 5105,
+   "rate_per_1000": 0.7926099255257193,
+   "of_which_AtoG_or_TtoC_editing_like": 1210,
+   "discordant_excluding_editing": 3895,
+   "rate_per_1000_excl_editing": 0.6047435181043441,
+   "hom_sites_strong_(k>=5,>=10%)": 764,
+   "het_sites": 3500,
+   "het_sites_two_alleles": 2941,
+   "het_two_allele_frac": 0.8402857142857143
+  },
+  "L2_depth>=40": {
+   "hom_sites": 4239634,
+   "hom_sites_discordant_(k>=3,>=3%)": 3640,
+   "rate_per_1000": 0.8585646779887132,
+   "of_which_AtoG_or_TtoC_editing_like": 879,
+   "discordant_excluding_editing": 2761,
+   "rate_per_1000_excl_editing": 0.6512354604194608,
+   "hom_sites_strong_(k>=5,>=10%)": 472,
+   "het_sites": 2263,
+   "het_sites_two_alleles": 2017,
+   "het_two_allele_frac": 0.8912947414935926
+  },
+  "L2_depth>=100": {
+   "hom_sites": 2138304,
+   "hom_sites_discordant_(k>=3,>=3%)": 990,
+   "rate_per_1000": 0.4629837478674688,
+   "of_which_AtoG_or_TtoC_editing_like": 226,
+   "discordant_excluding_editing": 764,
+   "rate_per_1000_excl_editing": 0.35729250845529914,
+   "hom_sites_strong_(k>=5,>=10%)": 127,
+   "het_sites": 1113,
+   "het_sites_two_alleles": 1027,
+   "het_two_allele_frac": 0.9227313566936208
+  },
+  "L1+L2_depth>=20": {
+   "hom_sites": 8856795,
+   "hom_sites_discordant_(k>=3,>=3%)": 9854,
+   "rate_per_1000": 1.1125920832535923,
+   "of_which_AtoG_or_TtoC_editing_like": 2096,
+   "discordant_excluding_editing": 7758,
+   "rate_per_1000_excl_editing": 0.8759376275503723,
+   "hom_sites_strong_(k>=5,>=10%)": 1634,
+   "het_sites": 4969,
+   "het_sites_two_alleles": 4236,
+   "het_two_allele_frac": 0.8524854095391426
+  },
+  "L1+L2_depth>=40": {
+   "hom_sites": 6560540,
+   "hom_sites_discordant_(k>=3,>=3%)": 7907,
+   "rate_per_1000": 1.2052361543409535,
+   "of_which_AtoG_or_TtoC_editing_like": 1662,
+   "discordant_excluding_editing": 6245,
+   "rate_per_1000_excl_editing": 0.9519033494194076,
+   "hom_sites_strong_(k>=5,>=10%)": 1202,
+   "het_sites": 3592,
+   "het_sites_two_alleles": 3181,
+   "het_two_allele_frac": 0.8855790645879733
+  },
+  "L1+L2_depth>=100": {
+   "hom_sites": 3721019,
+   "hom_sites_discordant_(k>=3,>=3%)": 2718,
+   "rate_per_1000": 0.7304450743196957,
+   "of_which_AtoG_or_TtoC_editing_like": 507,
+   "discordant_excluding_editing": 2211,
+   "rate_per_1000_excl_editing": 0.5941920748053154,
+   "hom_sites_strong_(k>=5,>=10%)": 346,
+   "het_sites": 1982,
+   "het_sites_two_alleles": 1808,
+   "het_two_allele_frac": 0.9122098890010091
+  }
+ },
+ "density": {
+  "het_per_called_site": 0.0005854892406744255,
+  "homalt_per_called_site": 0.0003548191788162507,
+  "pdiff_assumed": 0.0007052313146180072
+ },
+ "expected_if_pooled": {
+  "f=0.02": {
+   "expected_discordant_sites": 259.2375962571734,
+   "P(X<=observed_excl_editing | f)": 1.0
+  },
+  "f=0.05": {
+   "expected_discordant_sites": 1956.8306382809205,
+   "P(X<=observed_excl_editing | f)": 1.0
+  },
+  "f=0.1": {
+   "expected_discordant_sites": 3902.5824484024506,
+   "P(X<=observed_excl_editing | f)": 1.0
+  },
+  "f=0.2": {
+   "expected_discordant_sites": 4527.881898807451,
+   "P(X<=observed_excl_editing | f)": 1.0
+  },
+  "f=0.35": {
+   "expected_discordant_sites": 4621.8049813425905,
+   "P(X<=observed_excl_editing | f)": 1.0
+  },
+  "f=0.5": {
+   "expected_discordant_sites": 4626.531732293266,
+   "P(X<=observed_excl_editing | f)": 1.0
+  }
+ },
+ "observed_discordant_depth>=40": {
+  "all": 7907,
+  "excluding_editing_like": 6245,
+  "hom_sites_tested": 6560540
+ }
+}

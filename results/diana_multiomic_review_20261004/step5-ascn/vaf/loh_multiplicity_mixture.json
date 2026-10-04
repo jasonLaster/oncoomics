@@ -1,0 +1,16 @@
+{
+ "main_cnLOH_like": {
+  "n": 1398,
+  "w_all_copies": 0.3074048296884411,
+  "w_one_copy": 0.6925951703115433,
+  "w_subclonal": 1.5532166302039037e-14,
+  "clonal_frac_all_copies": 0.3074048296884459
+ },
+ "all_S1_LOH_b<0.36": {
+  "n": 2308,
+  "w_all_copies": 0.2585036314972592,
+  "w_one_copy": 0.47085637648324186,
+  "w_subclonal": 0.270639992019499,
+  "clonal_frac_all_copies": 0.3544252888405833
+ }
+}

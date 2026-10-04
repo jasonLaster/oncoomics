@@ -1,0 +1,37 @@
+{
+ "wgs_normal": {
+  "s3": "s3://diana-omics-private-results-172630973301-us-east-1/runs/subject01/diana-wgs-hrd-20260716T033101Z/deterministic/inputs/normal.markdup.bam",
+  "size": 55978126326,
+  "etag": "\"39d280845f3d528d93eb935194c7b6d2-6674\"",
+  "version": "xXSOcffjAvujaB0wpWcy6kq9FH_r1_0I",
+  "last_modified": "2026-07-17T08:51:31+00:00"
+ },
+ "wgs_tumor": {
+  "s3": "s3://diana-omics-private-results-172630973301-us-east-1/runs/subject01/diana-wgs-hrd-20260716T033101Z/deterministic/inputs/tumor.markdup.bam",
+  "size": 51081679103,
+  "etag": "\"cbe0d27bb8c074a912766b91764038b1-6090\"",
+  "version": "APPI0V_GH4Jzi4TKtDOnAtG2SPappDHS",
+  "last_modified": "2026-07-17T08:51:31+00:00"
+ },
+ "wgs_ref": {
+  "s3": "s3://diana-omics-private-results-172630973301-us-east-1/runs/subject01/diana-wgs-hrd-20260716T033101Z/deterministic/reference/reference.fa",
+  "size": 3161924569,
+  "etag": "\"81e0708262fd63efa07109dac024a15d-377\"",
+  "version": "QKDgwVfJ_OqcPgq19DK4FP.4LW0K6sbW",
+  "last_modified": "2026-07-17T09:05:36+00:00"
+ },
+ "wes_normal": {
+  "s3": "s3://diana-omics-raw-inputs-172630973301-us-east-1/diana/inbox/2026-07-14-echo-personalis/data/immunoid/E019_S01/DNA_Pipeline/Alignments/DNA_E019_S05_Vial1_normal_dna_aligned_recal.sorted.bam",
+  "size": 21035825255,
+  "etag": "\"1a117e11f0c01fb13bad1b6b59a7e1f7-2508\"",
+  "version": "IFlrWT.HQZXpYFpv8fETkOOYns9k3CPP",
+  "last_modified": "2026-07-16T03:22:14+00:00"
+ },
+ "wes_tumor": {
+  "s3": "s3://diana-omics-raw-inputs-172630973301-us-east-1/diana/inbox/2026-07-14-echo-personalis/data/immunoid/E019_S01/DNA_Pipeline/Alignments/DNA_E019_S01_tumor_dna_aligned_recal.sorted.bam",
+  "size": 44738172176,
+  "etag": "\"d524c76f2bb7647d268f85f1125c08c5-5334\"",
+  "version": "bPODEYBKvW04Svsq_sYBXJ64kBOGae6I",
+  "last_modified": "2026-07-16T03:22:14+00:00"
+ }
+}

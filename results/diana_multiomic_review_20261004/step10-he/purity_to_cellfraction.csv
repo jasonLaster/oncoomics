@@ -1,0 +1,13 @@
+source,dna_purity,tumour_ploidy,implied_tumour_cell_frac
+Serova ASCAT,0.37,2.0,0.37
+Serova ASCAT,0.37,2.9,0.288
+Serova ASCAT,0.37,3.5,0.251
+Serova ASCAT,0.37,4.9,0.193
+ASCN candidate S1,0.32,2.0,0.32
+ASCN candidate S1,0.32,2.9,0.245
+ASCN candidate S1,0.32,3.5,0.212
+ASCN candidate S1,0.32,4.9,0.161
+ASCN candidate S2,0.48,2.0,0.48
+ASCN candidate S2,0.48,2.9,0.389
+ASCN candidate S2,0.48,3.5,0.345
+ASCN candidate S2,0.48,4.9,0.274

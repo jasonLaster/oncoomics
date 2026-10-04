@@ -1,0 +1,17 @@
+label	class	site	mutect2_filter	mutect2_tumor_ref_alt	mutect2_af	strelka_filter	strelka_tumor_ref_alt_tier1	consensus_pass	expected	result_ok
+BRCA1_c.81-1G>A	positive	chr17:43115780 C>T	PASS	26,7	0.208	PASS	27,7	True	PASS	True
+BRCA2_p.S2695L	positive	chr13:32363286 C>T	PASS	47,7	0.154	PASS	47,7	True	PASS	True
+PIKFYVE_p.I1548T	positive	chr2:208338539 T>C	PASS	53,10	0.170	PASS	52,10	True	PASS	True
+MTOR_p.P1125A	positive	chr1:11212821 G>C	strand_bias	50,4	0.125	PASS	50,4	False	PASS	False
+PTPN23_p.P981A	positive	chr3:47410739 C>G	PASS	8,4	0.399	PASS	8,4	True	PASS	True
+MTOR_p.G98S	negative_evee	chr1:11257145 C>T	weak_evidence	12,2	0.166	LowEVS	13,2	False	not PASS	True
+SCAP_p.W633*	negative_evee	chr3:47419370 C>T	weak_evidence	15,2	0.152	LowEVS	16,2	False	not PASS	True
+RXRA_p.S96*	negative_evee	chr9:134408156 C>A	weak_evidence	10,2	0.182	LowEVS	10,2	False	not PASS	True
+CUL3_p.R354C	negative_evee	chr2:224506102 G>A	orientation	60,3	0.061	PASS	60,3	False	not PASS	False
+DLL4_p.R516C	negative_evee	chr15:40936533 C>T	orientation;weak_evidence	15,2	0.154	LowEVS	15,2	False	not PASS	True
+ATG4B_p.W142*	negative_evee	chr2:241655311 G>A	orientation;weak_evidence	20,2	0.111	LowEVS	22,2	False	not PASS	True
+ATG13_p.D213G	negative_evee	chr11:46657565 A>G	orientation	31,2	0.071	no_record		False	not PASS	True
+FGFR4_p.S106F	negative_evee	chr5:177090615 C>T	weak_evidence	11,2	0.182	LowEVS	11,2	False	not PASS	True
+BRD3_p.S676G	negative_evee	chr9:134034740 T>C	weak_evidence	11,2	0.164	LowEVS	11,2	False	not PASS	True
+PPARD_p.Q415H_derived	negative_derived	chr6:35425998 G>C	haplotype	17,2	0.110	LowEVS	17,2	False	not PASS	True
+TP53_c.559+2T>G	positive	chr17:7675051 A>C	PASS	13,14	0.550	PASS	13,14	True	PASS	True

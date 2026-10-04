@@ -1,0 +1,51 @@
+THIS FILE CONTAINS THE METADATA ABOUT SYSTEM AND RUNTIME
+
+
+-------System Info-------
+Operating System Name: Darwin
+Nodename: Jasons-MacBook-Pro-2.local
+Release: 25.3.0
+Version: Darwin Kernel Version 25.3.0: Wed Jan 28 20:54:38 PST 2026; root:xnu-12377.91.3~2/RELEASE_ARM64_T6050
+
+-------Python and Package Versions------- 
+Python Version: 3.11.15
+SigProfilerPlotting Version: 1.4.3
+SigProfilerMatrixGenerator Version: 1.4.0
+SigProfilerAssignment Version: 1.1.4
+Pandas version: 3.0.6
+Numpy version: 2.4.6
+
+--------------EXECUTION PARAMETERS--------------
+INPUT DATA
+	input_type: matrix
+	output: results/final/signatures/spa
+	samples: results/final/signatures/spa_input_matrix.tsv
+	cpu: 4
+	reference_genome: GRCh38
+	context_types: 96
+	exome: False
+COSMIC MATCH
+	cosmic_version: 3.5
+	nnls_add_penalty: 0.05
+	nnls_remove_penalty: 0.01
+	initial_remove_penalty: 0.05
+	de_novo_fit_penalty: 0.02
+	export_probabilities: True
+	collapse_to_SBS96: True
+	denovo_refit_option: False
+	decompose_fit_option: False
+	cosmic_fit_option: True
+
+-------Analysis Progress------- 
+[2026-10-03 19:26:12] Analysis started: 
+
+ Assigning COSMIC sigs or Signature Database ...... 
+ Finished Cosmic fitting! 
+Execution time:0:00:10.570669
+
+[2026-10-03 19:26:23] Analysis ended: 
+
+-------Job Status------- 
+Assignment of mutational signatures completed successfully! 
+Total execution time: 0:00:10 
+Results can be found in:  results/final/signatures/spa  folder

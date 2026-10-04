@@ -1,0 +1,46 @@
+{
+ "snv": {
+  "n": 38,
+  "called_both": 38,
+  "wgs_only": 0,
+  "wes_only": 0,
+  "concordance": {
+   "concordant": 38
+  },
+  "genotype_classes": {
+   "het|het": 24,
+   "hom|hom": 14
+  }
+ },
+ "indel": {
+  "n": 16,
+  "called_both": 7,
+  "wgs_only": 2,
+  "wes_only": 7,
+  "concordance": {
+   "concordant": 7,
+   "discordant": 1,
+   "not_evaluable": 8
+  },
+  "genotype_classes": {
+   "het|het": 4,
+   "het|ref": 1,
+   "lowdepth(19)|het": 1,
+   "lowdepth(7)|ref": 1,
+   "ref|ref": 3,
+   "lowdepth(19)|ref": 1,
+   "lowdepth(18)|ref": 1,
+   "lowdepth(16)|ref": 2,
+   "lowdepth(16)|het": 1,
+   "lowdepth(13)|het": 1
+  }
+ },
+ "flags_after_review": {},
+ "clinvar_classes": {
+  "Benign/Likely_benign": 19,
+  "Benign": 32,
+  "Conflicting_classifications_of_pathogenicity": 2,
+  "Likely_benign": 1
+ },
+ "min_gnomad_af_real_calls": 0.0066976398229599
+}

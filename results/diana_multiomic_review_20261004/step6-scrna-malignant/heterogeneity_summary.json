@@ -1,0 +1,194 @@
+{
+ "KH022-1": {
+  "malignant_subcluster_stability": {
+   "policy": "max median pairwise ARI over frozen grid; in-bounds cluster counts; ties to finer resolution; medoid seed reported",
+   "selected_resolution": 0.2,
+   "eligible_resolutions": 4,
+   "seeds": [
+    0,
+    1,
+    2,
+    3,
+    4
+   ],
+   "reported_seed": 1,
+   "median_pairwise_ari": 0.928917,
+   "min_pairwise_ari": 0.7481756374615234,
+   "pairs_per_resolution": 10
+  },
+  "n_malignant_used": 12840,
+  "rho_malignant": 0.14540678909905425,
+  "subcluster_sizes": {
+   "1": 9732,
+   "0": 2761,
+   "2": 347
+  },
+  "subcluster_top_genes": {
+   "0": [
+    "DIAPH3",
+    "MIR924HG",
+    "ATAD2",
+    "POLQ",
+    "CENPP",
+    "LINC01572",
+    "SMC4",
+    "BRIP1",
+    "EZH2",
+    "FANCA",
+    "ASPM",
+    "CENPF"
+   ],
+   "1": [
+    "H2AC6",
+    "FMO5",
+    "CADPS2",
+    "LINC01208",
+    "CPEB3",
+    "PDCD4",
+    "NAALADL2",
+    "GRB14",
+    "PACS1",
+    "BAZ2B",
+    "RORA",
+    "ESRRG"
+   ],
+   "2": [
+    "TRPS1",
+    "AUTS2",
+    "PLCB4",
+    "MAPK10",
+    "CDC42BPA",
+    "PVT1",
+    "LINC00472",
+    "KCTD8",
+    "PLAGL1",
+    "SLC24A3",
+    "KMT2C",
+    "MACROD2"
+   ]
+  },
+  "subcluster_prolif_score_mean": {
+   "0": 0.474,
+   "1": -0.232,
+   "2": -0.261
+  },
+  "subcluster_median_umi": {
+   "0": 6808.0,
+   "1": 5268.0,
+   "2": 6137.0
+  }
+ },
+ "KH022-1-1": {
+  "malignant_subcluster_stability": {
+   "policy": "max median pairwise ARI over frozen grid; in-bounds cluster counts; ties to finer resolution; medoid seed reported",
+   "selected_resolution": 0.5,
+   "eligible_resolutions": 4,
+   "seeds": [
+    0,
+    1,
+    2,
+    3,
+    4
+   ],
+   "reported_seed": 0,
+   "median_pairwise_ari": 0.720292,
+   "min_pairwise_ari": 0.6392839832628621,
+   "pairs_per_resolution": 10
+  },
+  "n_malignant_used": 12746,
+  "rho_malignant": 0.13940414050218553,
+  "subcluster_sizes": {
+   "1": 4151,
+   "0": 3455,
+   "4": 2611,
+   "2": 1712,
+   "3": 817
+  },
+  "subcluster_top_genes": {
+   "0": [
+    "FOXP2",
+    "ENSG00000258077",
+    "AUTS2",
+    "NBEA",
+    "PCDH11X",
+    "NEBL",
+    "STK39",
+    "ZNF385D",
+    "ITPR2",
+    "LINC02147",
+    "ROCR",
+    "LINC00639"
+   ],
+   "1": [
+    "FMNL2",
+    "LINC01208",
+    "GRIA4",
+    "LINC02343",
+    "FMO5",
+    "CADPS2",
+    "ESRRG",
+    "VAV3",
+    "PDCD4",
+    "CPEB3",
+    "ENSG00000286481",
+    "GRB14"
+   ],
+   "2": [
+    "TXNIP",
+    "ARHGAP15",
+    "DPYD",
+    "PTPRC",
+    "SKAP1",
+    "PRKCB",
+    "APBB1IP",
+    "EBF1",
+    "CENPF",
+    "DOCK10",
+    "IKZF1",
+    "DOCK2"
+   ],
+   "3": [
+    "TRPS1",
+    "EXT1",
+    "PLCB4",
+    "MACROD2",
+    "PVT1",
+    "ENSG00000226197",
+    "MAPK10",
+    "MTSS1",
+    "BRINP3",
+    "CASC15",
+    "CHODL",
+    "CDC42BPA"
+   ],
+   "4": [
+    "DIAPH3",
+    "MIR924HG",
+    "ATAD2",
+    "POLQ",
+    "CENPP",
+    "SMC4",
+    "LINC01572",
+    "BRIP1",
+    "EZH2",
+    "ASPM",
+    "CENPF",
+    "FANCA"
+   ]
+  },
+  "subcluster_prolif_score_mean": {
+   "0": -0.323,
+   "1": -0.344,
+   "2": 0.024,
+   "3": -0.339,
+   "4": 0.412
+  },
+  "subcluster_median_umi": {
+   "0": 5914.0,
+   "1": 5421.0,
+   "2": 1668.5,
+   "3": 6014.0,
+   "4": 6648.0
+  }
+ }
+}

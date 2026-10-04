@@ -1,0 +1,268 @@
+{
+ "MTOR:tumor": {
+  "samtools_mpileup": {
+   "C": 1065
+  },
+  "pysam_pileup": {
+   "A": 0,
+   "C": 1065,
+   "G": 0,
+   "T": 0
+  },
+  "match": true,
+  "mpileup_depth_field": 1065
+ },
+ "MTOR:normal": {
+  "samtools_mpileup": {
+   "C": 504
+  },
+  "pysam_pileup": {
+   "A": 0,
+   "C": 504,
+   "G": 0,
+   "T": 0
+  },
+  "match": true,
+  "mpileup_depth_field": 504
+ },
+ "SCAP:tumor": {
+  "samtools_mpileup": {
+   "C": 401,
+   "A": 2
+  },
+  "pysam_pileup": {
+   "A": 2,
+   "C": 401,
+   "G": 0,
+   "T": 0
+  },
+  "match": true,
+  "mpileup_depth_field": 403
+ },
+ "SCAP:normal": {
+  "samtools_mpileup": {
+   "C": 256,
+   "T": 1
+  },
+  "pysam_pileup": {
+   "A": 0,
+   "C": 256,
+   "G": 0,
+   "T": 1
+  },
+  "match": true,
+  "mpileup_depth_field": 257
+ },
+ "RXRA:tumor": {
+  "samtools_mpileup": {
+   "C": 434
+  },
+  "pysam_pileup": {
+   "A": 0,
+   "C": 434,
+   "G": 0,
+   "T": 0
+  },
+  "match": true,
+  "mpileup_depth_field": 434
+ },
+ "RXRA:normal": {
+  "samtools_mpileup": {
+   "C": 232
+  },
+  "pysam_pileup": {
+   "A": 0,
+   "C": 232,
+   "G": 0,
+   "T": 0
+  },
+  "match": true,
+  "mpileup_depth_field": 232
+ },
+ "CUL3:tumor": {
+  "samtools_mpileup": {
+   "G": 264
+  },
+  "pysam_pileup": {
+   "A": 0,
+   "C": 0,
+   "G": 264,
+   "T": 0
+  },
+  "match": true,
+  "mpileup_depth_field": 264
+ },
+ "CUL3:normal": {
+  "samtools_mpileup": {
+   "G": 45
+  },
+  "pysam_pileup": {
+   "A": 0,
+   "C": 0,
+   "G": 45,
+   "T": 0
+  },
+  "match": true,
+  "mpileup_depth_field": 45
+ },
+ "DLL4:tumor": {
+  "samtools_mpileup": {
+   "C": 351
+  },
+  "pysam_pileup": {
+   "A": 0,
+   "C": 351,
+   "G": 0,
+   "T": 0
+  },
+  "match": true,
+  "mpileup_depth_field": 351
+ },
+ "DLL4:normal": {
+  "samtools_mpileup": {
+   "C": 213
+  },
+  "pysam_pileup": {
+   "A": 0,
+   "C": 213,
+   "G": 0,
+   "T": 0
+  },
+  "match": true,
+  "mpileup_depth_field": 213
+ },
+ "ATG4B:tumor": {
+  "samtools_mpileup": {
+   "G": 295
+  },
+  "pysam_pileup": {
+   "A": 0,
+   "C": 0,
+   "G": 295,
+   "T": 0
+  },
+  "match": true,
+  "mpileup_depth_field": 295
+ },
+ "ATG4B:normal": {
+  "samtools_mpileup": {
+   "G": 129
+  },
+  "pysam_pileup": {
+   "A": 0,
+   "C": 0,
+   "G": 129,
+   "T": 0
+  },
+  "match": true,
+  "mpileup_depth_field": 129
+ },
+ "ATG13:tumor": {
+  "samtools_mpileup": {
+   "A": 415
+  },
+  "pysam_pileup": {
+   "A": 415,
+   "C": 0,
+   "G": 0,
+   "T": 0
+  },
+  "match": true,
+  "mpileup_depth_field": 415
+ },
+ "ATG13:normal": {
+  "samtools_mpileup": {
+   "A": 156
+  },
+  "pysam_pileup": {
+   "A": 156,
+   "C": 0,
+   "G": 0,
+   "T": 0
+  },
+  "match": true,
+  "mpileup_depth_field": 156
+ },
+ "FGFR4:tumor": {
+  "samtools_mpileup": {
+   "C": 884,
+   "G": 1
+  },
+  "pysam_pileup": {
+   "A": 0,
+   "C": 884,
+   "G": 1,
+   "T": 0
+  },
+  "match": true,
+  "mpileup_depth_field": 885
+ },
+ "FGFR4:normal": {
+  "samtools_mpileup": {
+   "C": 699
+  },
+  "pysam_pileup": {
+   "A": 0,
+   "C": 699,
+   "G": 0,
+   "T": 0
+  },
+  "match": true,
+  "mpileup_depth_field": 699
+ },
+ "BRD3:tumor": {
+  "samtools_mpileup": {
+   "T": 542
+  },
+  "pysam_pileup": {
+   "A": 0,
+   "C": 0,
+   "G": 0,
+   "T": 542
+  },
+  "match": true,
+  "mpileup_depth_field": 542
+ },
+ "BRD3:normal": {
+  "samtools_mpileup": {
+   "T": 229
+  },
+  "pysam_pileup": {
+   "A": 0,
+   "C": 0,
+   "G": 0,
+   "T": 229
+  },
+  "match": true,
+  "mpileup_depth_field": 229
+ },
+ "BRCA1:tumor": {
+  "samtools_mpileup": {
+   "C": 664,
+   "T": 201,
+   "G": 1
+  },
+  "pysam_pileup": {
+   "A": 0,
+   "C": 664,
+   "G": 1,
+   "T": 201
+  },
+  "match": true,
+  "mpileup_depth_field": 866
+ },
+ "BRCA1:normal": {
+  "samtools_mpileup": {
+   "C": 378,
+   "A": 1
+  },
+  "pysam_pileup": {
+   "A": 1,
+   "C": 378,
+   "G": 0,
+   "T": 0
+  },
+  "match": true,
+  "mpileup_depth_field": 379
+ }
+}

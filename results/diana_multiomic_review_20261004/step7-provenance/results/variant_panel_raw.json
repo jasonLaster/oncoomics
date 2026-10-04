@@ -1,0 +1,1924 @@
+[
+ {
+  "gene": "AASS",
+  "change": "R445S",
+  "sources": [
+   "Altera"
+  ],
+  "altera_vaf": 14.0,
+  "hgvs": "p.Arg445Ser",
+  "spdi37": [
+   "NC_000007.13:121741677:T:A",
+   "NC_000007.13:121741677:T:G"
+  ]
+ },
+ {
+  "gene": "ABHD2",
+  "change": "P38_L44del",
+  "sources": [
+   "Altera"
+  ],
+  "altera_vaf": 9.0,
+  "hgvs": "p.Pro38_Leu44del",
+  "spdi37": [
+   "NC_000015.9:89659669:21:",
+   "NC_000015.9:89631762:21:",
+   "NC_000015.9:89645758:21:",
+   "NC_000015.9:89636918:21:",
+   "NC_000015.9:89694999:21:",
+   "NC_000015.9:89731431:21:"
+  ]
+ },
+ {
+  "gene": "ADAD1",
+  "change": "L291I",
+  "sources": [
+   "Altera"
+  ],
+  "altera_vaf": 9.0,
+  "hgvs": "p.Leu291Ile",
+  "spdi37": [
+   "NC_000004.11:123332398:C:A"
+  ]
+ },
+ {
+  "gene": "ADAMTS2",
+  "change": "Q986R",
+  "sources": [
+   "Altera"
+  ],
+  "altera_vaf": 9.0,
+  "hgvs": "p.Gln986Arg",
+  "spdi37": [
+   "NC_000005.9:178551974:T:C"
+  ]
+ },
+ {
+  "gene": "AKAP10",
+  "change": "P21A",
+  "sources": [
+   "Altera"
+  ],
+  "altera_vaf": 6.0,
+  "hgvs": "p.Pro21Ala",
+  "spdi37": [
+   "NC_000017.10:19880931:G:C"
+  ]
+ },
+ {
+  "gene": "ANO5",
+  "change": "G348V",
+  "sources": [
+   "Altera"
+  ],
+  "altera_vaf": 11.0,
+  "hgvs": "p.Gly348Val",
+  "spdi37": [
+   "NC_000011.9:22272315:G:T"
+  ]
+ },
+ {
+  "gene": "ANTXR2",
+  "change": "R427K",
+  "sources": [
+   "Altera"
+  ],
+  "altera_vaf": 13.0,
+  "hgvs": "p.Arg427Lys",
+  "spdi37": [
+   "NC_000004.11:80899227:C:T"
+  ]
+ },
+ {
+  "gene": "AP5M1",
+  "change": "V407A",
+  "sources": [
+   "Altera"
+  ],
+  "altera_vaf": 8.0,
+  "hgvs": "p.Val407Ala",
+  "spdi37": [
+   "NC_000014.8:57749874:T:C"
+  ]
+ },
+ {
+  "gene": "APEH",
+  "change": "R693G",
+  "sources": [
+   "Altera"
+  ],
+  "altera_vaf": 14.0,
+  "hgvs": "p.Arg693Gly",
+  "spdi37": [
+   "NC_000003.11:49720562:C:G",
+   "NC_000003.11:49720547:C:G"
+  ]
+ },
+ {
+  "gene": "ARAF",
+  "change": "L527M",
+  "sources": [
+   "Altera"
+  ],
+  "altera_vaf": 9.0,
+  "hgvs": "p.Leu527Met",
+  "spdi37": [
+   "NC_000023.10:47430303:C:A"
+  ]
+ },
+ {
+  "gene": "ARAF",
+  "change": "L598I",
+  "sources": [
+   "Altera"
+  ],
+  "altera_vaf": 9.0,
+  "hgvs": "p.Leu598Ile",
+  "spdi37": [
+   "NC_000023.10:47430826:C:A"
+  ]
+ },
+ {
+  "gene": "ARAF",
+  "change": "S490*",
+  "sources": [
+   "Altera"
+  ],
+  "altera_vaf": 9.0,
+  "hgvs": "p.Ser490Ter",
+  "spdi37": [
+   "NC_000023.10:47429340:C:G",
+   "NC_000023.10:47429340:C:A"
+  ]
+ },
+ {
+  "gene": "ATAD2",
+  "change": "R1265T",
+  "sources": [
+   "Altera"
+  ],
+  "altera_vaf": 5.0,
+  "hgvs": "p.Arg1265Thr",
+  "spdi37": [
+   "NC_000008.10:124340503:C:G"
+  ]
+ },
+ {
+  "gene": "ATP13A3",
+  "change": "K1040T",
+  "sources": [
+   "Altera"
+  ],
+  "altera_vaf": 5.0,
+  "hgvs": "p.Lys1040Thr",
+  "spdi37": [
+   "NC_000003.11:194147809:T:G"
+  ]
+ },
+ {
+  "gene": "BCL2L1",
+  "change": "E179Q",
+  "sources": [
+   "Altera"
+  ],
+  "altera_vaf": 7.0,
+  "hgvs": "p.Glu179Gln",
+  "spdi37": [
+   "NC_000020.10:30309486:C:G"
+  ]
+ },
+ {
+  "gene": "BRCA2",
+  "change": "S2695L",
+  "sources": [
+   "Altera",
+   "July17",
+   "WGS_early_look"
+  ],
+  "altera_vaf": 12.0,
+  "hgvs": "p.Ser2695Leu",
+  "spdi37": [
+   "NC_000013.10:32937422:C:T",
+   "LRG_293:52806:C:T"
+  ]
+ },
+ {
+  "gene": "C1QTNF7",
+  "change": "V252I",
+  "sources": [
+   "Altera"
+  ],
+  "altera_vaf": 11.0,
+  "hgvs": "p.Val252Ile",
+  "spdi37": [
+   "NC_000004.11:15444285:G:A"
+  ]
+ },
+ {
+  "gene": "C1orf109",
+  "change": "P37S",
+  "sources": [
+   "Altera"
+  ],
+  "altera_vaf": 7.0,
+  "hgvs": "p.Pro37Ser",
+  "spdi37": [
+   "NC_000001.10:38155443:G:A"
+  ]
+ },
+ {
+  "gene": "CD84",
+  "change": "N269S",
+  "sources": [
+   "Altera"
+  ],
+  "altera_vaf": 9.0,
+  "hgvs": "p.Asn269Ser",
+  "spdi37": [
+   "NC_000001.10:160522499:T:C"
+  ]
+ },
+ {
+  "gene": "CDKL5",
+  "change": "S450C",
+  "sources": [
+   "Altera"
+  ],
+  "altera_vaf": 6.0,
+  "hgvs": "p.Ser450Cys",
+  "spdi37": [
+   "NC_000023.10:18622391:A:T"
+  ]
+ },
+ {
+  "gene": "CDX4",
+  "change": "S51L",
+  "sources": [
+   "Altera"
+  ],
+  "altera_vaf": 12.0,
+  "hgvs": "p.Ser51Leu",
+  "spdi37": [
+   "NC_000023.10:72667240:C:T"
+  ]
+ },
+ {
+  "gene": "CLASP2",
+  "change": "T774K",
+  "sources": [
+   "Altera"
+  ],
+  "altera_vaf": 20.0,
+  "hgvs": "p.Thr774Lys",
+  "spdi37": [
+   "NC_000003.11:33600816:GG:CT",
+   "NC_000003.11:33623341:G:T",
+   "NC_000003.11:33600816:GG:TT"
+  ]
+ },
+ {
+  "gene": "COL15A1",
+  "change": "S1354Y",
+  "sources": [
+   "Altera"
+  ],
+  "altera_vaf": 14.0,
+  "hgvs": "p.Ser1354Tyr",
+  "spdi37": [
+   "NC_000009.11:101832061:C:A"
+  ]
+ },
+ {
+  "gene": "COL4A6",
+  "change": "G1190*",
+  "sources": [
+   "Altera"
+  ],
+  "altera_vaf": 12.0,
+  "hgvs": "p.Gly1190Ter",
+  "spdi37": [
+   "NC_000023.10:107412773:GCC:TCA",
+   "NC_000023.10:107412773:GCC:TTA",
+   "NC_000023.10:107413174:C:A",
+   "NC_000023.10:107412773:GCC:CTA"
+  ]
+ },
+ {
+  "gene": "CPNE9",
+  "change": "A209G",
+  "sources": [
+   "Altera"
+  ],
+  "altera_vaf": 10.0,
+  "hgvs": "p.Ala209Gly",
+  "spdi37": [
+   "NC_000003.11:9754738:C:G"
+  ]
+ },
+ {
+  "gene": "CREB3L1",
+  "change": "F19L",
+  "sources": [
+   "Altera"
+  ],
+  "altera_vaf": 9.0,
+  "hgvs": "p.Phe19Leu",
+  "spdi37": [
+   "NC_000011.9:46299716:T:C",
+   "NC_000011.9:46299718:C:G",
+   "NC_000011.9:46299718:C:A"
+  ]
+ },
+ {
+  "gene": "CRNN",
+  "change": "K255N",
+  "sources": [
+   "Altera"
+  ],
+  "altera_vaf": 6.0,
+  "hgvs": "p.Lys255Asn",
+  "spdi37": [
+   "NC_000001.10:152382792:C:G",
+   "NC_000001.10:152382792:C:A"
+  ]
+ },
+ {
+  "gene": "CST5",
+  "change": "K61T",
+  "sources": [
+   "Altera"
+  ],
+  "altera_vaf": 13.0,
+  "hgvs": "p.Lys61Thr",
+  "spdi37": [
+   "NC_000020.10:23860131:T:G"
+  ]
+ },
+ {
+  "gene": "CUBN",
+  "change": "E62K",
+  "sources": [
+   "Altera"
+  ],
+  "altera_vaf": 9.0,
+  "hgvs": "p.Glu62Lys",
+  "spdi37": [
+   "NC_000010.10:17171187:C:T",
+   "NC_000010.10:17164863:C:T"
+  ]
+ },
+ {
+  "gene": "DCSTAMP",
+  "change": "H110R",
+  "sources": [
+   "Altera"
+  ],
+  "altera_vaf": 8.0,
+  "hgvs": "p.His110Arg",
+  "spdi37": [
+   "NC_000008.10:105361108:A:G"
+  ]
+ },
+ {
+  "gene": "DFNA5",
+  "change": "E375K",
+  "sources": [
+   "Altera"
+  ],
+  "altera_vaf": 11.0,
+  "hgvs": "p.Glu375Lys",
+  "spdi37": [
+   "NC_000007.13:24745862:C:T",
+   "NC_000007.13:24756466:C:T",
+   "NC_000007.13:24783482:C:T"
+  ]
+ },
+ {
+  "gene": "DNAAF1",
+  "change": "E25K",
+  "sources": [
+   "Altera"
+  ],
+  "altera_vaf": 9.0,
+  "hgvs": "p.Glu25Lys",
+  "spdi37": [
+   "NC_000016.9:84179117:G:A"
+  ]
+ },
+ {
+  "gene": "DST",
+  "change": "R4789L",
+  "sources": [
+   "Altera"
+  ],
+  "altera_vaf": 11.0,
+  "hgvs": "p.Arg4789Leu",
+  "spdi37": [
+   "NC_000006.11:56335989:C:A"
+  ]
+ },
+ {
+  "gene": "DSTN",
+  "change": "Q136E",
+  "sources": [
+   "Altera"
+  ],
+  "altera_vaf": 9.0,
+  "hgvs": "p.Gln136Glu",
+  "spdi37": [
+   "NC_000020.10:17587698:C:G"
+  ]
+ },
+ {
+  "gene": "ECT2",
+  "change": "G185V",
+  "sources": [
+   "Altera"
+  ],
+  "altera_vaf": 7.0,
+  "hgvs": "p.Gly185Val",
+  "spdi37": [
+   "NC_000003.11:172476836:G:T"
+  ]
+ },
+ {
+  "gene": "EIF4A2",
+  "change": "E245Q",
+  "sources": [
+   "Altera"
+  ],
+  "altera_vaf": 12.0,
+  "hgvs": "p.Glu245Gln",
+  "spdi37": [
+   "NC_000003.11:186504395:G:C",
+   "NC_000003.11:186505016:G:C"
+  ]
+ },
+ {
+  "gene": "ELAVL3",
+  "change": "L270V",
+  "sources": [
+   "Altera"
+  ],
+  "altera_vaf": 7.0,
+  "hgvs": "p.Leu270Val",
+  "spdi37": [
+   "NC_000019.9:11565636:G:C"
+  ]
+ },
+ {
+  "gene": "EMX1",
+  "change": "A138V",
+  "sources": [
+   "Altera"
+  ],
+  "altera_vaf": 12.0,
+  "hgvs": "p.Ala138Val",
+  "spdi37": [
+   "NC_000002.11:73145393:C:T",
+   "NC_000002.11:73151526:C:T"
+  ]
+ },
+ {
+  "gene": "EN1",
+  "change": "A274D",
+  "sources": [
+   "Altera"
+  ],
+  "altera_vaf": 7.0,
+  "hgvs": "p.Ala274Asp",
+  "spdi37": [
+   "NC_000002.11:119603922:G:T"
+  ]
+ },
+ {
+  "gene": "ETV3",
+  "change": "E417Q",
+  "sources": [
+   "Altera"
+  ],
+  "altera_vaf": 21.0,
+  "hgvs": "p.Glu417Gln",
+  "spdi37": [
+   "NC_000001.10:157094922:C:G"
+  ]
+ },
+ {
+  "gene": "F5",
+  "change": "E2057*",
+  "sources": [
+   "Altera"
+  ],
+  "altera_vaf": 9.0,
+  "hgvs": "p.Glu2057Ter",
+  "spdi37": [
+   "NC_000001.10:169489781:C:A"
+  ]
+ },
+ {
+  "gene": "FAM229A",
+  "change": "A30T",
+  "sources": [
+   "Altera"
+  ],
+  "altera_vaf": 8.0,
+  "hgvs": "p.Ala30Thr",
+  "spdi37": [
+   "NC_000001.10:32827604:C:T"
+  ]
+ },
+ {
+  "gene": "FASTK",
+  "change": "R356L",
+  "sources": [
+   "Altera"
+  ],
+  "altera_vaf": 19.0,
+  "hgvs": "p.Arg356Leu",
+  "spdi37": [
+   "NC_000007.13:150774396:CT:AG",
+   "NC_000007.13:150774839:C:A",
+   "NC_000007.13:150774396:CT:AA"
+  ]
+ },
+ {
+  "gene": "FAT4",
+  "change": "P3870R",
+  "sources": [
+   "Altera"
+  ],
+  "altera_vaf": 11.0,
+  "hgvs": "p.Pro3870Arg",
+  "spdi37": [
+   "NC_000004.11:126373779:C:G"
+  ]
+ },
+ {
+  "gene": "FBXO43",
+  "change": "E332K",
+  "sources": [
+   "Altera"
+  ],
+  "altera_vaf": 10.0,
+  "hgvs": "p.Glu332Lys",
+  "spdi37": [
+   "NC_000008.10:101153487:C:T"
+  ]
+ },
+ {
+  "gene": "GIF",
+  "change": "E118Q",
+  "sources": [
+   "Altera"
+  ],
+  "altera_vaf": 12.0,
+  "hgvs": "p.Glu118Gln",
+  "spdi37": [
+   "NC_000011.9:59610518:C:G"
+  ]
+ },
+ {
+  "gene": "HABP2",
+  "change": "D7A",
+  "sources": [
+   "Altera"
+  ],
+  "altera_vaf": 9.0,
+  "hgvs": "p.Asp7Ala",
+  "spdi37": [
+   "NC_000010.10:115312899:A:C"
+  ]
+ },
+ {
+  "gene": "HPN",
+  "change": "R8fs",
+  "sources": [
+   "Altera"
+  ],
+  "altera_vaf": 14.0,
+  "hgvs": null,
+  "codon37": [
+   [
+    "19",
+    35540199,
+    35540201
+   ]
+  ],
+  "codon_transcript": "ENST00000262626"
+ },
+ {
+  "gene": "IGDCC4",
+  "change": "Q824*",
+  "sources": [
+   "Altera"
+  ],
+  "altera_vaf": 12.0,
+  "hgvs": "p.Gln824Ter",
+  "spdi37": [
+   "NC_000015.9:65681687:G:A"
+  ]
+ },
+ {
+  "gene": "IL20",
+  "change": "D122E",
+  "sources": [
+   "Altera"
+  ],
+  "altera_vaf": 8.0,
+  "hgvs": "p.Asp122Glu",
+  "spdi37": [
+   "NC_000001.10:207039968:C:A",
+   "NC_000001.10:207039968:C:G"
+  ]
+ },
+ {
+  "gene": "IL2RA",
+  "change": "V148L",
+  "sources": [
+   "Altera"
+  ],
+  "altera_vaf": 11.0,
+  "hgvs": "p.Val148Leu",
+  "spdi37": [
+   "NC_000010.10:6063581:C:G",
+   "LRG_73:45690:G:C"
+  ]
+ },
+ {
+  "gene": "INTS2",
+  "change": "W576G",
+  "sources": [
+   "Altera"
+  ],
+  "altera_vaf": 20.0,
+  "hgvs": "p.Trp576Gly",
+  "spdi37": [
+   "NC_000017.10:59969046:A:C"
+  ]
+ },
+ {
+  "gene": "ITGA8",
+  "change": "E252G",
+  "sources": [
+   "Altera"
+  ],
+  "altera_vaf": 12.0,
+  "hgvs": "p.Glu252Gly",
+  "spdi37": [
+   "NC_000010.10:15714669:T:C"
+  ]
+ },
+ {
+  "gene": "JPH3",
+  "change": "E534D",
+  "sources": [
+   "Altera"
+  ],
+  "altera_vaf": 10.0,
+  "hgvs": "p.Glu534Asp",
+  "spdi37": [
+   "NC_000016.9:87723567:G:T",
+   "NC_000016.9:87723272:A:T",
+   "NC_000016.9:87723567:G:C",
+   "NC_000016.9:87723272:A:C"
+  ]
+ },
+ {
+  "gene": "KBTBD3",
+  "change": "S188C",
+  "sources": [
+   "Altera"
+  ],
+  "altera_vaf": 12.0,
+  "hgvs": "p.Ser188Cys",
+  "spdi37": [
+   "NC_000011.9:105924853:T:A"
+  ]
+ },
+ {
+  "gene": "KIAA1919",
+  "change": "K213fs",
+  "sources": [
+   "Altera"
+  ],
+  "altera_vaf": 9.0,
+  "hgvs": null,
+  "resolve_error": "<HTTPError 400: 'Bad Request'>"
+ },
+ {
+  "gene": "KRTAP6-2",
+  "change": "G24V",
+  "sources": [
+   "Altera"
+  ],
+  "altera_vaf": 10.0,
+  "hgvs": "p.Gly24Val",
+  "spdi37": [
+   "NC_000021.8:31971122:C:A"
+  ]
+ },
+ {
+  "gene": "LPHN3",
+  "change": "E37V",
+  "sources": [
+   "Altera"
+  ],
+  "altera_vaf": 8.0,
+  "hgvs": "p.Glu37Val",
+  "spdi37": [
+   "NC_000004.11:62452998:A:T",
+   "NC_000004.11:62383086:A:T",
+   "NC_000004.11:62775290:A:T"
+  ]
+ },
+ {
+  "gene": "LRFN2",
+  "change": "P422fs",
+  "sources": [
+   "Altera"
+  ],
+  "altera_vaf": 9.0,
+  "hgvs": null,
+  "codon37": [
+   [
+    "6",
+    40399587,
+    40399589
+   ]
+  ],
+  "codon_transcript": "ENST00000338305"
+ },
+ {
+  "gene": "MAN1A1",
+  "change": "L594F",
+  "sources": [
+   "Altera"
+  ],
+  "altera_vaf": 13.0,
+  "hgvs": "p.Leu594Phe",
+  "spdi37": [
+   "NC_000006.11:119501531:G:A"
+  ]
+ },
+ {
+  "gene": "MAST1",
+  "change": "A617D",
+  "sources": [
+   "Altera"
+  ],
+  "altera_vaf": 11.0,
+  "hgvs": "p.Ala617Asp",
+  "spdi37": [
+   "NC_000019.9:12976575:C:A"
+  ]
+ },
+ {
+  "gene": "MBNL2",
+  "change": "D196A",
+  "sources": [
+   "Altera"
+  ],
+  "altera_vaf": 7.0,
+  "hgvs": "p.Asp196Ala",
+  "spdi37": [
+   "NC_000013.10:97999103:A:C"
+  ]
+ },
+ {
+  "gene": "MED15",
+  "change": "Q185del",
+  "sources": [
+   "Altera"
+  ],
+  "altera_vaf": 9.0,
+  "hgvs": "p.Gln185del",
+  "spdi37": [
+   "NC_000022.10:20906009:AGT:",
+   "NC_000022.10:20918826:AGC:",
+   "NC_000022.10:20918837:CAA:",
+   "NC_000022.10:20909432:AGA:",
+   "NC_000022.10:20918915:CAG:",
+   "NC_000022.10:20920828:CAG:",
+   "NC_000022.10:20918906:CAG:",
+   "NC_000022.10:20920792:CTG:",
+   "NC_000022.10:20918963:AAT:",
+   "NC_000022.10:20920774:CTG:",
+   "NC_000022.10:20909076:GGA:",
+   "NC_000022.10:20937213:GAA:",
+   "NC_000022.10:20928515:CTA:",
+   "NC_000022.10:20936738:GAG:",
+   "NC_000022.10:20936931:CGT:",
+   "NC_000022.10:20937994:CCT:",
+   "NC_000022.10:20939815:AGG:",
+   "NC_000022.10:20920948:ACA:",
+   "NC_000022.10:20922903:GCT:"
+  ]
+ },
+ {
+  "gene": "MFI2",
+  "change": "G197R",
+  "sources": [
+   "Altera"
+  ],
+  "altera_vaf": 37.0,
+  "hgvs": "p.Gly197Arg",
+  "spdi37": [
+   "NC_000003.11:196749882:C:G",
+   "NC_000003.11:196749882:C:T"
+  ]
+ },
+ {
+  "gene": "MGAM",
+  "change": "S1844I",
+  "sources": [
+   "Altera"
+  ],
+  "altera_vaf": 9.0,
+  "hgvs": "p.Ser1844Ile",
+  "spdi37": [
+   "NC_000007.13:141805647:G:T"
+  ]
+ },
+ {
+  "gene": "MRPS9",
+  "change": "G20A",
+  "sources": [
+   "Altera"
+  ],
+  "altera_vaf": 7.0,
+  "hgvs": "p.Gly20Ala",
+  "spdi37": [
+   "NC_000002.11:105654608:G:C"
+  ]
+ },
+ {
+  "gene": "MSH5",
+  "change": "WF273CI",
+  "sources": [
+   "Altera"
+  ],
+  "altera_vaf": 8.0,
+  "hgvs": "p.Trp273_Phe274delinsCysIle",
+  "spdi37": []
+ },
+ {
+  "gene": "MTOR",
+  "change": "P1125A",
+  "sources": [
+   "Altera"
+  ],
+  "altera_vaf": 12.0,
+  "hgvs": "p.Pro1125Ala",
+  "spdi37": [
+   "NC_000001.10:11272877:G:C"
+  ]
+ },
+ {
+  "gene": "MTUS1",
+  "change": "L886V",
+  "sources": [
+   "Altera"
+  ],
+  "altera_vaf": 12.0,
+  "hgvs": "p.Leu886Val",
+  "spdi37": [
+   "NC_000008.10:17502089:G:C",
+   "NC_000008.10:17542018:A:C"
+  ]
+ },
+ {
+  "gene": "MTUS1",
+  "change": "R879K",
+  "sources": [
+   "Altera"
+  ],
+  "altera_vaf": 10.0,
+  "hgvs": "p.Arg879Lys",
+  "spdi37": [
+   "NC_000008.10:17510708:C:T",
+   "NC_000008.10:17542038:C:T"
+  ]
+ },
+ {
+  "gene": "MUC2",
+  "change": "T1668P",
+  "sources": [
+   "Altera"
+  ],
+  "altera_vaf": 7.0,
+  "hgvs": "p.Thr1668Pro",
+  "spdi37": [
+   "NC_000011.9:1093182:A:C"
+  ]
+ },
+ {
+  "gene": "MXRA8",
+  "change": "R240H",
+  "sources": [
+   "Altera"
+  ],
+  "altera_vaf": 23.0,
+  "hgvs": "p.Arg240His",
+  "spdi37": [
+   "NC_000001.10:1290291:C:T"
+  ]
+ },
+ {
+  "gene": "NBEA",
+  "change": "E1667G",
+  "sources": [
+   "Altera"
+  ],
+  "altera_vaf": 11.0,
+  "hgvs": "p.Glu1667Gly",
+  "spdi37": [
+   "NC_000013.10:35770072:A:G"
+  ]
+ },
+ {
+  "gene": "NDFIP1",
+  "change": "E78K",
+  "sources": [
+   "Altera"
+  ],
+  "altera_vaf": 10.0,
+  "hgvs": "p.Glu78Lys",
+  "spdi37": [
+   "NC_000005.9:141511856:G:A"
+  ]
+ },
+ {
+  "gene": "NDNF",
+  "change": "L395I",
+  "sources": [
+   "Altera"
+  ],
+  "altera_vaf": 7.0,
+  "hgvs": "p.Leu395Ile",
+  "spdi37": [
+   "NC_000004.11:121957942:G:T"
+  ]
+ },
+ {
+  "gene": "NLRP9",
+  "change": "c.2150_2159+5delAAGAGCTGATGTAAG",
+  "sources": [
+   "Altera"
+  ],
+  "altera_vaf": 9.0,
+  "hgvs": "c.2150_2159+5delAAGAGCTGATGTAAG",
+  "spdi37": [
+   "NC_000019.9:56235340:CTTACATCAGCTCTT:"
+  ]
+ },
+ {
+  "gene": "NOX1",
+  "change": "L452F",
+  "sources": [
+   "Altera"
+  ],
+  "altera_vaf": 14.0,
+  "hgvs": "p.Leu452Phe",
+  "spdi37": [
+   "NC_000023.10:100104355:C:G",
+   "NC_000023.10:100104355:C:A"
+  ]
+ },
+ {
+  "gene": "NT5C1B",
+  "change": "K570Q",
+  "sources": [
+   "Altera"
+  ],
+  "altera_vaf": 15.0,
+  "hgvs": "p.Lys570Gln",
+  "spdi37": [
+   "NC_000002.11:18744939:T:G",
+   "NC_000002.11:18745186:T:G"
+  ]
+ },
+ {
+  "gene": "OLIG2",
+  "change": "A230D",
+  "sources": [
+   "Altera"
+  ],
+  "altera_vaf": 35.0,
+  "hgvs": "p.Ala230Asp",
+  "spdi37": [
+   "NC_000021.8:34399858:C:A"
+  ]
+ },
+ {
+  "gene": "OR51A4",
+  "change": "L65I",
+  "sources": [
+   "Altera"
+  ],
+  "altera_vaf": 7.0,
+  "hgvs": "p.Leu65Ile",
+  "spdi37": [
+   "NC_000011.9:4968137:G:T"
+  ]
+ },
+ {
+  "gene": "OTUD4",
+  "change": "T1049P",
+  "sources": [
+   "Altera"
+  ],
+  "altera_vaf": 10.0,
+  "hgvs": "p.Thr1049Pro",
+  "spdi37": [
+   "NC_000004.11:146058586:T:G"
+  ]
+ },
+ {
+  "gene": "PCDHA6",
+  "change": "A381G",
+  "sources": [
+   "Altera"
+  ],
+  "altera_vaf": 9.0,
+  "hgvs": "p.Ala381Gly",
+  "spdi37": [
+   "NC_000005.9:140208817:C:G"
+  ]
+ },
+ {
+  "gene": "PHKB",
+  "change": "A5V",
+  "sources": [
+   "Altera"
+  ],
+  "altera_vaf": 19.0,
+  "hgvs": "p.Ala5Val",
+  "spdi37": [
+   "NC_000016.9:47495274:C:T"
+  ]
+ },
+ {
+  "gene": "PIKFYVE",
+  "change": "I1548T",
+  "sources": [
+   "Altera",
+   "EVEE"
+  ],
+  "altera_vaf": 12.0,
+  "hgvs": "p.Ile1548Thr",
+  "spdi37": [
+   "NC_000002.11:209203262:T:C"
+  ]
+ },
+ {
+  "gene": "PLD1",
+  "change": "V792fs",
+  "sources": [
+   "Altera"
+  ],
+  "altera_vaf": 12.0,
+  "hgvs": null,
+  "codon37": [
+   [
+    "3",
+    171377056,
+    171377058
+   ]
+  ],
+  "codon_transcript": "ENST00000351298"
+ },
+ {
+  "gene": "PLEC",
+  "change": "R3909H",
+  "sources": [
+   "Altera"
+  ],
+  "altera_vaf": 7.0,
+  "hgvs": "p.Arg3909His",
+  "spdi37": [
+   "NC_000008.10:144992673:C:T",
+   "NC_000008.10:144992331:C:T"
+  ]
+ },
+ {
+  "gene": "PLOD2",
+  "change": "Y61fs",
+  "sources": [
+   "Altera"
+  ],
+  "altera_vaf": 6.0,
+  "hgvs": null,
+  "codon37": [
+   [
+    "3",
+    145841943,
+    145841945
+   ]
+  ],
+  "codon_transcript": "ENST00000282903"
+ },
+ {
+  "gene": "PREX2",
+  "change": "S13C",
+  "sources": [
+   "Altera"
+  ],
+  "altera_vaf": 16.0,
+  "hgvs": "p.Ser13Cys",
+  "spdi37": [
+   "NC_000008.10:68864665:A:T",
+   "NC_000008.10:69103962:C:G"
+  ]
+ },
+ {
+  "gene": "PROC",
+  "change": "L47Q",
+  "sources": [
+   "Altera"
+  ],
+  "altera_vaf": 10.0,
+  "hgvs": "p.Leu47Gln",
+  "spdi37": [
+   "NC_000002.11:128178927:T:A"
+  ]
+ },
+ {
+  "gene": "PRRC2B",
+  "change": "P1828L",
+  "sources": [
+   "Altera"
+  ],
+  "altera_vaf": 11.0,
+  "hgvs": "p.Pro1828Leu",
+  "spdi37": [
+   "NC_000009.11:134372135:C:T",
+   "NC_000009.11:134360094:C:T"
+  ]
+ },
+ {
+  "gene": "PRRG1",
+  "change": "R20I",
+  "sources": [
+   "Altera"
+  ],
+  "altera_vaf": 7.0,
+  "hgvs": "p.Arg20Ile",
+  "spdi37": [
+   "NC_000023.10:37285140:G:T"
+  ]
+ },
+ {
+  "gene": "PTPN23",
+  "change": "P981A",
+  "sources": [
+   "Altera"
+  ],
+  "altera_vaf": 14.0,
+  "hgvs": "p.Pro981Ala",
+  "spdi37": [
+   "NC_000003.11:47452228:C:G",
+   "NC_000003.11:47452606:C:G"
+  ]
+ },
+ {
+  "gene": "PTPRH",
+  "change": "T490P",
+  "sources": [
+   "Altera"
+  ],
+  "altera_vaf": 24.0,
+  "hgvs": "p.Thr490Pro",
+  "spdi37": [
+   "NC_000019.9:55710232:T:G"
+  ]
+ },
+ {
+  "gene": "RABL6",
+  "change": "A432D",
+  "sources": [
+   "Altera"
+  ],
+  "altera_vaf": 11.0,
+  "hgvs": "p.Ala432Asp",
+  "spdi37": [
+   "NC_000009.11:139727537:C:A",
+   "NC_000009.11:139733371:C:A"
+  ]
+ },
+ {
+  "gene": "RAG1",
+  "change": "S382*",
+  "sources": [
+   "Altera"
+  ],
+  "altera_vaf": 14.0,
+  "hgvs": "p.Ser382Ter",
+  "spdi37": [
+   "NC_000011.9:36595998:C:A",
+   "LRG_98:11436:C:A",
+   "NC_000011.9:36595998:C:G",
+   "LRG_98:11436:C:G"
+  ]
+ },
+ {
+  "gene": "RNPC3",
+  "change": "Y423D",
+  "sources": [
+   "Altera"
+  ],
+  "altera_vaf": 11.0,
+  "hgvs": "p.Tyr423Asp",
+  "spdi37": [
+   "NC_000001.10:104088928:T:G"
+  ]
+ },
+ {
+  "gene": "RXFP4",
+  "change": "R238P",
+  "sources": [
+   "Altera"
+  ],
+  "altera_vaf": 6.0,
+  "hgvs": "p.Arg238Pro",
+  "spdi37": [
+   "NC_000001.10:155912212:G:C"
+  ]
+ },
+ {
+  "gene": "S1PR4",
+  "change": "V103M",
+  "sources": [
+   "Altera"
+  ],
+  "altera_vaf": 23.0,
+  "hgvs": "p.Val103Met",
+  "spdi37": [
+   "NC_000019.9:3179417:G:A",
+   "NC_000019.9:3179096:G:A"
+  ]
+ },
+ {
+  "gene": "SCN11A",
+  "change": "I1376M",
+  "sources": [
+   "Altera"
+  ],
+  "altera_vaf": 9.0,
+  "hgvs": "p.Ile1376Met",
+  "spdi37": [
+   "NC_000003.11:38892170:A:C"
+  ]
+ },
+ {
+  "gene": "SCN11A",
+  "change": "N822K",
+  "sources": [
+   "Altera"
+  ],
+  "altera_vaf": 11.0,
+  "hgvs": "p.Asn822Lys",
+  "spdi37": [
+   "NC_000003.11:38936392:G:T",
+   "NC_000003.11:38936392:G:C"
+  ]
+ },
+ {
+  "gene": "SEMA6C",
+  "change": "R663H",
+  "sources": [
+   "Altera"
+  ],
+  "altera_vaf": 21.0,
+  "hgvs": "p.Arg663His",
+  "spdi37": [
+   "NC_000001.10:151105860:C:T"
+  ]
+ },
+ {
+  "gene": "SLC22A10",
+  "change": "I407M",
+  "sources": [
+   "Altera"
+  ],
+  "altera_vaf": 13.0,
+  "hgvs": "p.Ile407Met",
+  "spdi37": [
+   "NC_000011.9:63069950:A:G"
+  ]
+ },
+ {
+  "gene": "SLC46A3",
+  "change": "L130F",
+  "sources": [
+   "Altera"
+  ],
+  "altera_vaf": 32.0,
+  "hgvs": "p.Leu130Phe",
+  "spdi37": [
+   "NC_000013.10:29287488:G:A"
+  ]
+ },
+ {
+  "gene": "SNX14",
+  "change": "N649Y",
+  "sources": [
+   "Altera"
+  ],
+  "altera_vaf": 11.0,
+  "hgvs": "p.Asn649Tyr",
+  "spdi37": [
+   "NC_000006.11:86238029:T:A",
+   "NC_000006.11:86235849:T:A",
+   "NC_000006.11:86235920:T:A"
+  ]
+ },
+ {
+  "gene": "SNX15",
+  "change": "T148A",
+  "sources": [
+   "Altera"
+  ],
+  "altera_vaf": 8.0,
+  "hgvs": "p.Thr148Ala",
+  "spdi37": [
+   "NC_000011.9:64802599:A:G"
+  ]
+ },
+ {
+  "gene": "SRPK3",
+  "change": "E547Q",
+  "sources": [
+   "Altera"
+  ],
+  "altera_vaf": 12.0,
+  "hgvs": "p.Glu547Gln",
+  "spdi37": [
+   "NC_000023.10:153050909:G:C"
+  ]
+ },
+ {
+  "gene": "SRRM4",
+  "change": "T510N",
+  "sources": [
+   "Altera"
+  ],
+  "altera_vaf": 5.0,
+  "hgvs": "p.Thr510Asn",
+  "spdi37": [
+   "NC_000012.11:119592184:C:A"
+  ]
+ },
+ {
+  "gene": "STK16",
+  "change": "E122D",
+  "sources": [
+   "Altera"
+  ],
+  "altera_vaf": 12.0,
+  "hgvs": "p.Glu122Asp",
+  "spdi37": [
+   "NC_000002.11:220111893:G:T",
+   "NC_000002.11:220111893:G:C"
+  ]
+ },
+ {
+  "gene": "SVOPL",
+  "change": "L81P",
+  "sources": [
+   "Altera"
+  ],
+  "altera_vaf": 6.0,
+  "hgvs": "p.Leu81Pro",
+  "spdi37": [
+   "NC_000007.13:138356794:A:G"
+  ]
+ },
+ {
+  "gene": "SYNJ1",
+  "change": "G22E",
+  "sources": [
+   "Altera"
+  ],
+  "altera_vaf": 7.0,
+  "hgvs": "p.Gly22Glu",
+  "spdi37": [
+   "NC_000021.8:34100286:C:T"
+  ]
+ },
+ {
+  "gene": "TAC4",
+  "change": "G96A",
+  "sources": [
+   "Altera"
+  ],
+  "altera_vaf": 24.0,
+  "hgvs": "p.Gly96Ala",
+  "spdi37": [
+   "NC_000017.10:47917234:C:G"
+  ]
+ },
+ {
+  "gene": "TAF4B",
+  "change": "P522T",
+  "sources": [
+   "Altera"
+  ],
+  "altera_vaf": 19.0,
+  "hgvs": "p.Pro522Thr",
+  "spdi37": [
+   "NC_000018.9:23866436:C:A"
+  ]
+ },
+ {
+  "gene": "TELO2",
+  "change": "E430D",
+  "sources": [
+   "Altera"
+  ],
+  "altera_vaf": 14.0,
+  "hgvs": "p.Glu430Asp",
+  "spdi37": [
+   "NC_000016.9:1551428:G:C",
+   "NC_000016.9:1551428:G:T"
+  ]
+ },
+ {
+  "gene": "TET2",
+  "change": "E1411D",
+  "sources": [
+   "Altera"
+  ],
+  "altera_vaf": 10.0,
+  "hgvs": "p.Glu1411Asp",
+  "spdi37": [
+   "NC_000004.11:106193770:G:C",
+   "NC_000004.11:106193770:G:T"
+  ]
+ },
+ {
+  "gene": "TEX36",
+  "change": "H43Q",
+  "sources": [
+   "Altera"
+  ],
+  "altera_vaf": 10.0,
+  "hgvs": "p.His43Gln",
+  "spdi37": [
+   "NC_000010.10:127350468:G:T",
+   "NC_000010.10:127350468:G:C"
+  ]
+ },
+ {
+  "gene": "TM7SF2",
+  "change": "T270I",
+  "sources": [
+   "Altera"
+  ],
+  "altera_vaf": 14.0,
+  "hgvs": "p.Thr270Ile",
+  "spdi37": [
+   "NC_000011.9:64882469:C:T",
+   "NC_000011.9:64882788:C:T"
+  ]
+ },
+ {
+  "gene": "TOR3A",
+  "change": "K286T",
+  "sources": [
+   "Altera"
+  ],
+  "altera_vaf": 37.0,
+  "hgvs": "p.Lys286Thr",
+  "spdi37": [
+   "NC_000001.10:179063265:A:C"
+  ]
+ },
+ {
+  "gene": "TP63",
+  "change": "C8F",
+  "sources": [
+   "Altera"
+  ],
+  "altera_vaf": 14.0,
+  "hgvs": "p.Cys8Phe",
+  "spdi37": [
+   "NC_000003.11:189349326:G:T"
+  ]
+ },
+ {
+  "gene": "TPO",
+  "change": "H511Q",
+  "sources": [
+   "Altera"
+  ],
+  "altera_vaf": 25.0,
+  "hgvs": "p.His511Gln",
+  "spdi37": [
+   "NC_000002.11:1488561:C:A",
+   "NC_000002.11:1488561:C:G"
+  ]
+ },
+ {
+  "gene": "TSC2",
+  "change": "R59W",
+  "sources": [
+   "Altera"
+  ],
+  "altera_vaf": 14.0,
+  "hgvs": "p.Arg59Trp",
+  "spdi37": [
+   "NC_000016.9:2113011:CGT:TGG",
+   "NC_000016.9:2100436:C:T",
+   "NC_000016.9:2126554:C:T"
+  ]
+ },
+ {
+  "gene": "TXNDC5",
+  "change": "V305I",
+  "sources": [
+   "Altera"
+  ],
+  "altera_vaf": 19.0,
+  "hgvs": "p.Val305Ile",
+  "spdi37": [
+   "NC_000006.11:7888987:C:T"
+  ]
+ },
+ {
+  "gene": "TYRP1",
+  "change": "P47L",
+  "sources": [
+   "Altera"
+  ],
+  "altera_vaf": 8.0,
+  "hgvs": "p.Pro47Leu",
+  "spdi37": [
+   "NC_000009.11:12694135:C:T"
+  ]
+ },
+ {
+  "gene": "UBD",
+  "change": "K143N",
+  "sources": [
+   "Altera"
+  ],
+  "altera_vaf": 11.0,
+  "hgvs": "p.Lys143Asn",
+  "spdi37": [
+   "NC_000006.11:29523725:C:G",
+   "NC_000006.11:29523725:C:A"
+  ]
+ },
+ {
+  "gene": "USH2A",
+  "change": "L860M",
+  "sources": [
+   "Altera"
+  ],
+  "altera_vaf": 6.0,
+  "hgvs": "p.Leu860Met",
+  "spdi37": [
+   "NC_000001.10:216420157:G:T"
+  ]
+ },
+ {
+  "gene": "USP10",
+  "change": "N557I",
+  "sources": [
+   "Altera"
+  ],
+  "altera_vaf": 10.0,
+  "hgvs": "p.Asn557Ile",
+  "spdi37": [
+   "NC_000016.9:84797706:A:T"
+  ]
+ },
+ {
+  "gene": "USP50",
+  "change": "C194Y",
+  "sources": [
+   "Altera"
+  ],
+  "altera_vaf": 8.0,
+  "hgvs": "p.Cys194Tyr",
+  "spdi37": [
+   "NC_000015.9:50833324:C:T"
+  ]
+ },
+ {
+  "gene": "VPS35",
+  "change": "c.506+1G>C",
+  "sources": [
+   "Altera"
+  ],
+  "altera_vaf": 5.0,
+  "hgvs": "c.506+1G>C",
+  "spdi37": [
+   "NC_000016.9:46714581:C:G",
+   "NC_000016.9:46714685:C:G",
+   "NC_000016.9:46715361:C:G",
+   "NC_000016.9:46715680:C:G"
+  ]
+ },
+ {
+  "gene": "VWA3B",
+  "change": "F1111L",
+  "sources": [
+   "Altera"
+  ],
+  "altera_vaf": 17.0,
+  "hgvs": "p.Phe1111Leu",
+  "spdi37": [
+   "NC_000002.11:98916591:C:A",
+   "NC_000002.11:98916591:C:G",
+   "NC_000002.11:98916589:T:C"
+  ]
+ },
+ {
+  "gene": "ZNF648",
+  "change": "Y250C",
+  "sources": [
+   "Altera"
+  ],
+  "altera_vaf": 8.0,
+  "hgvs": "p.Tyr250Cys",
+  "spdi37": [
+   "NC_000001.10:182026396:T:C"
+  ]
+ },
+ {
+  "gene": "ZNF83",
+  "change": "D496A",
+  "sources": [
+   "Altera"
+  ],
+  "altera_vaf": 12.0,
+  "hgvs": "p.Asp496Ala",
+  "spdi37": [
+   "NC_000019.9:53116330:T:G"
+  ]
+ },
+ {
+  "gene": "BRCA1",
+  "change": "c.81-1G>A",
+  "sources": [
+   "Altera",
+   "July17",
+   "WGS_early_look"
+  ],
+  "altera_vaf": 27.0,
+  "hgvs": "c.81-1G>A",
+  "spdi37": [
+   "NC_000017.10:41267796:C:T",
+   "LRG_292:102203:G:A",
+   "NC_000017.10:41246579:C:T",
+   "LRG_292:123420:G:A"
+  ]
+ },
+ {
+  "gene": "TP53",
+  "change": "c.559+2T>G",
+  "sources": [
+   "Altera"
+  ],
+  "altera_vaf": null,
+  "hgvs": "c.559+2T>G",
+  "spdi37": [
+   "NC_000017.10:7578368:A:C",
+   "LRG_321:17499:T:G",
+   "NC_000017.10:7577601:A:C",
+   "LRG_321:18266:T:G"
+  ]
+ },
+ {
+  "gene": "MTOR",
+  "change": "G98S",
+  "sources": [
+   "EVEE"
+  ],
+  "altera_vaf": null,
+  "hgvs": "p.Gly98Ser",
+  "spdi37": [
+   "NC_000001.10:11317201:C:T"
+  ]
+ },
+ {
+  "gene": "SCAP",
+  "change": "W633*",
+  "sources": [
+   "EVEE"
+  ],
+  "altera_vaf": null,
+  "hgvs": "p.Trp633Ter",
+  "spdi37": [
+   "NC_000003.11:47460858:C:T",
+   "NC_000003.11:47460859:C:T"
+  ]
+ },
+ {
+  "gene": "RXRA",
+  "change": "S96*",
+  "sources": [
+   "EVEE"
+  ],
+  "altera_vaf": null,
+  "hgvs": "p.Ser96Ter",
+  "spdi37": [
+   "NC_000009.11:137300001:C:G",
+   "NC_000009.11:137300001:C:A"
+  ]
+ },
+ {
+  "gene": "CUL3",
+  "change": "R354C",
+  "sources": [
+   "EVEE"
+  ],
+  "altera_vaf": null,
+  "hgvs": "p.Arg354Cys",
+  "spdi37": [
+   "NC_000002.11:225370818:G:A",
+   "NC_000002.11:225368485:CCT:GCA",
+   "NC_000002.11:225368485:CCT:ACA"
+  ]
+ },
+ {
+  "gene": "DLL4",
+  "change": "R516C",
+  "sources": [
+   "EVEE"
+  ],
+  "altera_vaf": null,
+  "hgvs": "p.Arg516Cys",
+  "spdi37": [
+   "NC_000015.9:41228730:C:T"
+  ]
+ },
+ {
+  "gene": "ATG4B",
+  "change": "W142*",
+  "sources": [
+   "EVEE"
+  ],
+  "altera_vaf": null,
+  "hgvs": "p.Trp142Ter",
+  "spdi37": [
+   "NC_000002.11:242594724:G:A",
+   "NC_000002.11:242594725:G:A"
+  ]
+ },
+ {
+  "gene": "ATG13",
+  "change": "D213G",
+  "sources": [
+   "EVEE"
+  ],
+  "altera_vaf": null,
+  "hgvs": "p.Asp213Gly",
+  "spdi37": [
+   "NC_000011.9:46679114:A:G"
+  ]
+ },
+ {
+  "gene": "FGFR4",
+  "change": "S106F",
+  "sources": [
+   "EVEE"
+  ],
+  "altera_vaf": null,
+  "hgvs": "p.Ser106Phe",
+  "spdi37": [
+   "NC_000005.9:176517615:C:T"
+  ]
+ },
+ {
+  "gene": "BRD3",
+  "change": "S676G",
+  "sources": [
+   "EVEE"
+  ],
+  "altera_vaf": null,
+  "hgvs": "p.Ser676Gly",
+  "spdi37": [
+   "NC_000009.11:136899861:T:C"
+  ]
+ },
+ {
+  "gene": "PPARD",
+  "change": "Q415H",
+  "sources": [
+   "EVEE"
+  ],
+  "altera_vaf": null,
+  "hgvs": "p.Gln415His",
+  "spdi37": [
+   "NC_000006.11:35393774:G:T",
+   "NC_000006.11:35393774:G:C"
+  ]
+ },
+ {
+  "gene": "WNT2B",
+  "change": "L39P",
+  "sources": [
+   "EVEE"
+  ],
+  "altera_vaf": null,
+  "hgvs": "p.Leu39Pro",
+  "spdi37": [
+   "NC_000001.10:113051999:T:C"
+  ]
+ },
+ {
+  "gene": "WNT6",
+  "change": "S88P",
+  "sources": [
+   "EVEE"
+  ],
+  "altera_vaf": null,
+  "hgvs": "p.Ser88Pro",
+  "spdi37": [
+   "NC_000002.11:219735929:T:C"
+  ]
+ },
+ {
+  "gene": "LIN28A",
+  "change": "A24V",
+  "sources": [
+   "EVEE"
+  ],
+  "altera_vaf": null,
+  "hgvs": "p.Ala24Val",
+  "spdi37": [
+   "NC_000001.10:26737915:C:T"
+  ]
+ },
+ {
+  "gene": "FZD10",
+  "change": "A19V",
+  "sources": [
+   "EVEE"
+  ],
+  "altera_vaf": null,
+  "hgvs": "p.Ala19Val",
+  "spdi37": [
+   "NC_000012.11:130647542:C:T"
+  ]
+ },
+ {
+  "gene": "CBL",
+  "change": "D460del",
+  "sources": [
+   "EVEE"
+  ],
+  "altera_vaf": null,
+  "hgvs": "p.Asp460del",
+  "spdi37": [
+   "NC_000011.9:119149369:GAT:"
+  ]
+ },
+ {
+  "gene": "ARIH2",
+  "change": "E29del",
+  "sources": [
+   "EVEE"
+  ],
+  "altera_vaf": null,
+  "hgvs": "p.Glu29del",
+  "spdi37": [
+   "NC_000003.11:48965075:GAA:",
+   "NC_000003.11:48956336:CCT:",
+   "NC_000003.11:48956338:TCC:",
+   "NC_000003.11:48956344:GCC:",
+   "NC_000003.11:48956347:GCT:",
+   "NC_000003.11:48956351:CGC:",
+   "NC_000003.11:48956357:AAT:",
+   "NC_000003.11:48956359:TCC:",
+   "NC_000003.11:48956363:GTC:",
+   "NC_000003.11:48956371:GGC:",
+   "NC_000003.11:48956410:GCC:",
+   "NC_000003.11:48964926:GTA:",
+   "NC_000003.11:48964930:TTT:",
+   "NC_000003.11:48962231:CAG:",
+   "NC_000003.11:48986500:AAC:",
+   "NC_000003.11:48980701:CTT:",
+   "NC_000003.11:49004575:CCT:",
+   "NC_000003.11:49005979:GGC:",
+   "NC_000003.11:49005849:CAG:",
+   "NC_000003.11:49011130:GTT:",
+   "NC_000003.11:49020225:AGT:"
+  ]
+ },
+ {
+  "gene": "SHH",
+  "change": "Q209*",
+  "sources": [
+   "EVEE",
+   "July17"
+  ],
+  "altera_vaf": null,
+  "hgvs": "p.Gln209Ter",
+  "spdi37": [
+   "NC_000007.13:155596357:G:A"
+  ]
+ }
+]

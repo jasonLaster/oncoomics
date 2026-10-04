@@ -1,0 +1,115 @@
+{
+ "pdiff": 0.0007052313146180072,
+ "L1": {
+  "HOMREF_C": {
+   "sites": 321158,
+   "median_umi_depth": 34.0,
+   "observed_discordant_sites": 10,
+   "expected_if_pooled": {
+    "f=0.02": {
+     "expected_signal_sites": 2.136270490794194,
+     "P(X<=obs)": 0.9999848307309672
+    },
+    "f=0.05": {
+     "expected_signal_sites": 26.149465507292447,
+     "P(X<=obs)": 0.000284231792974458
+    },
+    "f=0.1": {
+     "expected_signal_sites": 85.93802109713162,
+     "P(X<=obs)": 3.255945351926012e-25
+    },
+    "f=0.2": {
+     "expected_signal_sites": 156.0219467147369,
+     "P(X<=obs)": 4.377137771232763e-53
+    },
+    "f=0.5": {
+     "expected_signal_sites": 211.77306121023838,
+     "P(X<=obs)": 5.597243169329542e-76
+    }
+   }
+  },
+  "HOMALT": {
+   "sites": 2822,
+   "median_umi_depth": 31.5,
+   "observed_discordant_sites": 16,
+   "expected_if_pooled": {
+    "f=0.02": {
+     "expected_signal_sites": 7.1647943706106565,
+     "P(X<=obs)": 0.9987763665812637
+    },
+    "f=0.05": {
+     "expected_signal_sites": 86.84717241327373,
+     "P(X<=obs)": 1.1730586895432667e-20
+    },
+    "f=0.1": {
+     "expected_signal_sites": 368.800219113228,
+     "P(X<=obs)": 3.9750800186102995e-133
+    },
+    "f=0.2": {
+     "expected_signal_sites": 768.199216118133,
+     "P(X<=obs)": 1.703767516370515e-301
+    },
+    "f=0.5": {
+     "expected_signal_sites": 1123.8285651452495,
+     "P(X<=obs)": 0.0
+    }
+   }
+  }
+ },
+ "L2": {
+  "HOMREF_C": {
+   "sites": 309223,
+   "median_umi_depth": 33.0,
+   "observed_discordant_sites": 2,
+   "expected_if_pooled": {
+    "f=0.02": {
+     "expected_signal_sites": 2.009805301958485,
+     "P(X<=obs)": 0.6740224307592841
+    },
+    "f=0.05": {
+     "expected_signal_sites": 24.656930010679154,
+     "P(X<=obs)": 6.451637856885021e-09
+    },
+    "f=0.1": {
+     "expected_signal_sites": 81.25949782845933,
+     "P(X<=obs)": 1.7332243435590042e-32
+    },
+    "f=0.2": {
+     "expected_signal_sites": 148.2507699668434,
+     "P(X<=obs)": 4.595484717798873e-61
+    },
+    "f=0.5": {
+     "expected_signal_sites": 203.10397512508257,
+     "P(X<=obs)": 1.2934442250185828e-84
+    }
+   }
+  },
+  "HOMALT": {
+   "sites": 2702,
+   "median_umi_depth": 31.0,
+   "observed_discordant_sites": 15,
+   "expected_if_pooled": {
+    "f=0.02": {
+     "expected_signal_sites": 6.757906470597105,
+     "P(X<=obs)": 0.9982916005252908
+    },
+    "f=0.05": {
+     "expected_signal_sites": 81.86824351091963,
+     "P(X<=obs)": 1.2935919648704572e-19
+    },
+    "f=0.1": {
+     "expected_signal_sites": 348.167923043569,
+     "P(X<=obs)": 6.63729686580484e-126
+    },
+    "f=0.2": {
+     "expected_signal_sites": 726.4728529236404,
+     "P(X<=obs)": 2.030898349781357e-285
+    },
+    "f=0.5": {
+     "expected_signal_sites": 1071.6156537708591,
+     "P(X<=obs)": 0.0
+    }
+   }
+  }
+ }
+}

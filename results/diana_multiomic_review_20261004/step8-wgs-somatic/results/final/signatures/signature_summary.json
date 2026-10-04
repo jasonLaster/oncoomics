@@ -1,0 +1,34 @@
+{
+ "tool": "SigProfilerAssignment 1.1.4; COSMIC v3.5 SBS GRCh38; genome",
+ "primary_matrix": "subject01_tumor_consensus_lowcomplexity_excluded",
+ "primary_snvs": 14716,
+ "bootstrap_replicates": 200,
+ "seed": 20261003,
+ "spa_cosine_primary": 0.966,
+ "spa_cosine_all": 0.96,
+ "nnls_fixed_set": [
+  "SBS1",
+  "SBS2",
+  "SBS3",
+  "SBS5",
+  "SBS8",
+  "SBS13",
+  "SBS18",
+  "SBS40a"
+ ],
+ "nnls_fixed_cosine": 0.9773,
+ "sbs3": {
+  "signature": "SBS3",
+  "spa_count_primary": 0,
+  "spa_fraction_primary": 0.0,
+  "spa_count_all_snvs": 0,
+  "boot_fraction_median": 0.0,
+  "boot_fraction_ci95_low": 0.0,
+  "boot_fraction_ci95_high": 0.5859,
+  "boot_fraction_of_replicates_assigned": 0.075,
+  "nnls_fixed_count": 5808.9,
+  "nnls_fixed_fraction": 0.4084,
+  "nnls_fixed_ci95_low": 0.3751,
+  "nnls_fixed_ci95_high": 0.44
+ }
+}

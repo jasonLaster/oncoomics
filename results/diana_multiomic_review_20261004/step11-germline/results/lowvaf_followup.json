@@ -1,0 +1,111 @@
+[
+ {
+  "platform": "wes_normal",
+  "chrom": "17",
+  "pos": 29508805,
+  "ref": "T",
+  "alt": "G",
+  "clinvar_id": "41676",
+  "clnsig": "Pathogenic",
+  "kind": "PLP",
+  "gene": "NF1",
+  "alt_reads": 5,
+  "depth": 301,
+  "vaf": 0.017,
+  "pos38": "chr17:31181787",
+  "wes_normal": {
+   "other|fwd|": 174,
+   "other|rev|": 219,
+   "alt|rev|q<30": 25
+  },
+  "wes_tumor": {
+   "other|fwd|": 518,
+   "other|rev|": 553,
+   "alt|rev|q<30": 62,
+   "alt|fwd|q<30": 1
+  },
+  "wgs_normal": {
+   "other|rev|": 17,
+   "other|fwd|": 18,
+   "alt|rev|q<30": 2
+  },
+  "wgs_tumor": {
+   "other|fwd|": 23,
+   "other|rev|": 22
+  }
+ },
+ {
+  "platform": "wes_normal",
+  "chrom": "2",
+  "pos": 47641559,
+  "ref": "T",
+  "alt": "G",
+  "clinvar_id": "91249",
+  "clnsig": "Likely_pathogenic",
+  "kind": "PLP",
+  "gene": "MSH2",
+  "alt_reads": 7,
+  "depth": 241,
+  "vaf": 0.029,
+  "pos38": "chr2:47414420",
+  "wes_normal": {
+   "other|fwd|": 173,
+   "other|rev|": 151,
+   "alt|rev|q<30": 56,
+   "alt|rev|q>=30": 4
+  },
+  "wes_tumor": {
+   "other|fwd|": 552,
+   "other|rev|": 342,
+   "alt|rev|q<30": 170,
+   "alt|rev|q>=30": 16
+  },
+  "wgs_normal": {
+   "other|rev|": 6,
+   "other|fwd|": 16,
+   "alt|rev|q<30": 1,
+   "alt|rev|q>=30": 1
+  },
+  "wgs_tumor": {
+   "other|fwd|": 10,
+   "other|rev|": 2
+  }
+ },
+ {
+  "platform": "wes_normal",
+  "chrom": "2",
+  "pos": 47702411,
+  "ref": "T",
+  "alt": "G",
+  "clinvar_id": "1049378",
+  "clnsig": "Pathogenic/Likely_pathogenic",
+  "kind": "PLP",
+  "gene": "MSH2",
+  "alt_reads": 11,
+  "depth": 558,
+  "vaf": 0.02,
+  "pos38": "chr2:47475272",
+  "wes_normal": {
+   "other|fwd|": 236,
+   "other|rev|": 443,
+   "alt|rev|q>=30": 1,
+   "alt|rev|q<30": 51
+  },
+  "wes_tumor": {
+   "other|fwd|": 824,
+   "other|rev|": 1020,
+   "alt|rev|q<30": 144,
+   "alt|rev|q>=30": 1
+  },
+  "wgs_normal": {
+   "other|rev|": 19,
+   "other|fwd|": 15,
+   "alt|rev|q<30": 2
+  },
+  "wgs_tumor": {
+   "other|fwd|": 24,
+   "other|rev|": 23,
+   "alt|rev|q<30": 4
+  }
+ }
+]

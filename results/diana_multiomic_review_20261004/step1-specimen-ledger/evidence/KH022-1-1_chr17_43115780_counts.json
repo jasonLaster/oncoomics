@@ -1,0 +1,37 @@
+{
+ "library": "KH022-1-1",
+ "site": "chr17:43115780",
+ "records_in_slice": 148,
+ "base_counts": {
+  "C": 4,
+  "T": 31
+ },
+ "spliced_over_reads_in_slice": 53,
+ "distinct_cells": {
+  "C": 3,
+  "T": 25
+ },
+ "distinct_cell_UMI_pairs": {
+  "C": 3,
+  "T": 25
+ },
+ "RE_by_base": {
+  "C": {
+   "E": 2,
+   "N": 2
+  },
+  "T": {
+   "E": 4,
+   "N": 27
+  }
+ },
+ "strand_by_base": {
+  "C": {
+   "-": 4
+  },
+  "T": {
+   "-": 30,
+   "+": 1
+  }
+ }
+}

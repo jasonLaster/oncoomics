@@ -1,0 +1,56 @@
+{
+ "callable": {
+  "territory_positions": 2900108840,
+  "callable_t10_n8": 2776221624,
+  "callable_t8_n6": 2793746792
+ },
+ "callable_mb_t10_n8": 2776.22,
+ "contamination": {
+  "fraction": 0.0010653110228796847,
+  "error": 0.00027484193589200913,
+  "july_early_look": 0.0015779768215893645
+ },
+ "mutect2_filter_counts_all_records": {
+  "clustered_events": 417779,
+  "haplotype": 406796,
+  "normal_artifact": 223392,
+  "weak_evidence": 221634,
+  "orientation": 173069,
+  "slippage": 114024,
+  "multiallelic": 86704,
+  "germline": 82780,
+  "PASS": 72293,
+  "map_qual": 71747,
+  "contamination": 45419,
+  "strand_bias": 37237,
+  "base_qual": 9125,
+  "panel_of_normals": 7629,
+  "fragment": 4859,
+  "position": 355
+ },
+ "consensus_vaf_quantiles": {
+  "0.1": 0.07,
+  "0.25": 0.091,
+  "0.5": 0.139,
+  "0.75": 0.205,
+  "0.9": 0.286
+ },
+ "orientation": {
+  "mutect2_pass_CT_GA_snvs": 16794,
+  "mutect2_pass_CT_GA_f1r2_biased_p01": 2,
+  "consensus_CT_GA_snvs": 4306,
+  "consensus_CT_GA_f1r2_biased_p01": 1,
+  "records_filtered_orientation": 173069
+ },
+ "sbs96": {
+  "consensus_snvs": 16190,
+  "placed": 16190,
+  "low_complexity_excluded": 1474,
+  "ref_mismatch": 0
+ },
+ "july_brca_region_concordance": {},
+ "external_claim_july17": {
+  "somatic_mutations": 16000,
+  "per_mb": 5
+ }
+}

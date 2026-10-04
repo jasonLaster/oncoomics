@@ -1,0 +1,478 @@
+BRCA1 c.81-1G>A read-level evidence (GRCh37 / hs37d5). PRIVATE exploratory analysis; not clinical.
+Coordinates: 1-based GRCh37. BRCA1 is on the minus strand: plus-strand C>T = cDNA G>A.
+RNA = tumor RNA STAR BAM (raw); duplicate flags transferred from the recal BAM by read name.
+
+==============================================================================================================
+A. TUMOR RNA reads overlapping the variant position (all primary alignments, any strand/MAPQ; STAR unique = NH1,MAPQ255)
+==============================================================================================================
+plus-strand reference (genomic ascending) : GTGGAGACAGGTTCCTTGATCAACTCCAGACTAGCAGGGTAGGGGGGGAGAAAAAGAAAAT
+transcript-orientation (BRCA1 minus strand): ATTTTCTTTTTCTCCCCCCCTACCCTGCTAGTCTGGAGTTGATCAAGGAACCTGTCTCCAC   <- read right-to-left in the plus-strand rows above
+variant (17:41267797 C>T plus; G>A cDNA)     :                               |                                <- c.81-1
+legend: . = matches reference, letter = mismatch, ~ = N gap (spliced), lowercase = soft-clipped base, - = deletion
+..............................T......                          base=T ALT(T) mate=R2 - sense=True NH=1 MQ=255 dup=False cigar=24M1499N78M9192N10M13D38M 10767:0:AATTCTGC+GCCTACTG
+..............................T......agatcggaagagcacacg        base=T ALT(T) mate=R1 + sense=True NH=1 MQ=255 dup=False cigar=15M1521N56M9192N61M18S 8763:0:AATTCTGC+GCCTACTG
+..............................T......                          base=T ALT(T) mate=R2 - sense=True NH=1 MQ=255 dup=False cigar=18S15M1521N56M9192N61M 8763:0:AATTCTGC+GCCTACTG
+..............................T....                            base=T ALT(T) mate=R2 - sense=True NH=1 MQ=255 dup=False cigar=13M1499N78M9192N59M 20071:0:AATTCTGC+GCCTACTG
+..............................T.....                           base=T ALT(T) mate=R2 - sense=True NH=1 MQ=255 dup=False cigar=12M1499N78M9192N60M 25199:0:AATTCTGC+GCCTACTG
+..............................T......                          base=T ALT(T) mate=R2 - sense=True NH=1 MQ=255 dup=False cigar=11M1499N78M9192N61M 25844:0:AATTCTGC+GCCTACTG
+..............................T......                          base=T ALT(T) mate=R2 - sense=True NH=1 MQ=255 dup=False cigar=11M1499N78M9192N61M 4419:0:AATTCTGC+GCCTACTG
+..............................T........                        base=T ALT(T) mate=R2 - sense=True NH=1 MQ=255 dup=True cigar=9M1499N78M9192N63M 4517:0:AATTCTGC+GCCTACTG
+..............................T........                        base=T ALT(T) mate=R2 - sense=True NH=1 MQ=255 dup=False cigar=9M1499N78M9192N63M 27399:0:AATTCTGC+GCCTACTG
+..............................T............                    base=T ALT(T) mate=R1 + sense=True NH=1 MQ=255 dup=False cigar=5M1499N78M9192N67M 27091:0:AATTCTGC+GCCTACTG
+..............................T............                    base=T ALT(T) mate=R1 + sense=True NH=1 MQ=255 dup=False cigar=5M1499N78M9192N67M 14522:0:AATTCTGC+GCCTACTG
+..............................T............                    base=T ALT(T) mate=R1 + sense=True NH=1 MQ=255 dup=True cigar=5M1499N78M9192N67M 20785:0:AATTCTGC+GCCTACTG
+..............................T............a                   base=T ALT(T) mate=R1 + sense=True NH=1 MQ=255 dup=False cigar=4M1499N78M9192N67M1S 28884:0:AATTCTGC+GCCTACTG
+..............................T............                    base=T ALT(T) mate=R2 - sense=True NH=1 MQ=255 dup=False cigar=1S4M1499N78M9192N67M 28884:0:AATTCTGC+GCCTACTG
+..............................T..............                  base=T ALT(T) mate=R1 + sense=True NH=1 MQ=255 dup=False cigar=3M1499N78M9192N69M 16357:0:AATTCTGC+GCCTACTG
+..............................T..............                  base=T ALT(T) mate=R1 + sense=True NH=1 MQ=255 dup=False cigar=3M1499N78M9192N69M 12462:0:AATTCTGC+GCCTACTG
+..............................T...agatcggaaga                  base=T ALT(T) mate=R1 + sense=True NH=1 MQ=255 dup=False cigar=3M1499N78M9192N58M11S 28646:0:AATTCTGC+GCCTACTG
+..............................T...                             base=T ALT(T) mate=R2 - sense=True NH=1 MQ=255 dup=False cigar=11S3M1499N78M9192N58M 28646:0:AATTCTGC+GCCTACTG
+..............................T...agatcggaagagcacac            base=T ALT(T) mate=R1 + sense=True NH=1 MQ=255 dup=False cigar=75M9192N58M17S 12112:0:AATTCTGC+GCCTACTG
+..............................T.....................           base=T ALT(T) mate=R1 + sense=True NH=1 MQ=255 dup=False cigar=74M9192N76M 8455:0:AATTCTGC+GCCTACTG
+..............................T......agatcggaagagcacac         base=T ALT(T) mate=R1 + sense=True NH=1 MQ=255 dup=False cigar=72M9192N61M17S 20491:0:AATTCTGC+GCCTACTG
+..............................T......                          base=T ALT(T) mate=R2 - sense=True NH=1 MQ=255 dup=False cigar=17S72M9192N61M 20491:0:AATTCTGC+GCCTACTG
+..............................T............................    base=T ALT(T) mate=R1 + sense=True NH=1 MQ=255 dup=False cigar=67M9192N83M 25493:0:AATTCTGC+GCCTACTG
+..............................T..............................  base=T ALT(T) mate=R2 - sense=True NH=1 MQ=255 dup=False cigar=58M9192N92M 27693:0:AATTCTGC+GCCTACTG
+..............................T..............................  base=T ALT(T) mate=R1 + sense=True NH=1 MQ=255 dup=False cigar=57M9192N93M 12336:0:AATTCTGC+GCCTACTG
+..............................T..............................  base=T ALT(T) mate=R2 - sense=True NH=1 MQ=255 dup=False cigar=46M9192N104M 8455:0:AATTCTGC+GCCTACTG
+..............................T..............................  base=T ALT(T) mate=R2 - sense=True NH=1 MQ=255 dup=False cigar=44M9192N106M 12336:0:AATTCTGC+GCCTACTG
+..............................T..............................  base=T ALT(T) mate=R2 - sense=True NH=1 MQ=255 dup=False cigar=30M9192N120M 14522:0:AATTCTGC+GCCTACTG
+..............................T..............................  base=T ALT(T) mate=R2 - sense=True NH=1 MQ=255 dup=True cigar=30M9192N120M 20785:0:AATTCTGC+GCCTACTG
+..............................T..............................  base=T ALT(T) mate=R1 + sense=True NH=1 MQ=255 dup=False cigar=1S29M9192N120M 25311:0:AATTCTGC+GCCTACTG
+..............................T..............................  base=T ALT(T) mate=R1 + sense=True NH=1 MQ=255 dup=False cigar=14M9192N136M 13947:0:AATTCTGC+GCCTACTG
+..............................T..............................  base=T ALT(T) mate=R2 - sense=True NH=1 MQ=255 dup=False cigar=3M9192N147M 16357:0:AATTCTGC+GCCTACTG
+..............................T.........                       base=T ALT(T) mate=R1 + sense=True NH=1 MQ=255 dup=True cigar=150M 7081:0:AATTCTGC+GCCTACTG
+..............................T.........                       base=T ALT(T) mate=R1 + sense=True NH=1 MQ=255 dup=False cigar=150M 7095:0:AATTCTGC+GCCTACTG
+..............................T..A.............                base=T ALT(T) mate=R1 + sense=True NH=1 MQ=255 dup=True cigar=150M 29137:0:AATTCTGC+GCCTACTG
+..............................T..A.............                base=T ALT(T) mate=R1 + sense=True NH=1 MQ=255 dup=False cigar=150M 29137:0:AATTCTGC+GCCTACTG
+..............................T..............................  base=T ALT(T) mate=R2 - sense=True NH=1 MQ=255 dup=True cigar=150M 18740:0:AATTCTGC+GCCTACTG
+..............................T..............................  base=T ALT(T) mate=R2 - sense=True NH=1 MQ=255 dup=False cigar=150M 26152:0:AATTCTGC+GCCTACTG
+..............................T..............................  base=T ALT(T) mate=R1 + sense=True NH=1 MQ=255 dup=True cigar=150M 9407:0:AATTCTGC+GCCTACTG
+..............................T..............................  base=T ALT(T) mate=R1 + sense=True NH=1 MQ=255 dup=False cigar=150M 9421:0:AATTCTGC+GCCTACTG
+..............................T..............................  base=T ALT(T) mate=R1 + sense=True NH=1 MQ=255 dup=False cigar=150M 29333:0:AATTCTGC+GCCTACTG
+..............................T..............................  base=T ALT(T) mate=R1 + sense=True NH=1 MQ=255 dup=True cigar=150M 29333:0:AATTCTGC+GCCTACTG
+..............................T..............................  base=T ALT(T) mate=R1 + sense=True NH=1 MQ=255 dup=False cigar=150M 13597:0:AATTCTGC+GCCTACTG
+..............................T..............................  base=T ALT(T) mate=R1 + sense=True NH=1 MQ=255 dup=False cigar=150M 13975:0:AATTCTGC+GCCTACTG
+..............................T..............................  base=T ALT(T) mate=R1 + sense=True NH=1 MQ=255 dup=False cigar=150M 19833:0:AATTCTGC+GCCTACTG
+..............................T..............................  base=T ALT(T) mate=R2 - sense=True NH=1 MQ=255 dup=False cigar=150M 13975:0:AATTCTGC+GCCTACTG
+..............................T..............................  base=T ALT(T) mate=R2 - sense=True NH=1 MQ=255 dup=False cigar=150M 13597:0:AATTCTGC+GCCTACTG
+..............................T..............................  base=T ALT(T) mate=R2 - sense=True NH=1 MQ=255 dup=False cigar=150M 29333:0:AATTCTGC+GCCTACTG
+..............................T..............................  base=T ALT(T) mate=R2 - sense=True NH=1 MQ=255 dup=True cigar=150M 29333:0:AATTCTGC+GCCTACTG
+..............................T..............................  base=T ALT(T) mate=R2 - sense=True NH=1 MQ=255 dup=True cigar=150M 7081:0:AATTCTGC+GCCTACTG
+..............................T..............................  base=T ALT(T) mate=R2 - sense=True NH=1 MQ=255 dup=False cigar=150M 7095:0:AATTCTGC+GCCTACTG
+..............................T...                             base=T ALT(T) mate=R2 - sense=True NH=1 MQ=255 dup=False cigar=92S58M 12112:0:AATTCTGC+GCCTACTG
+..............................T..............................  base=T ALT(T) mate=R2 - sense=True NH=1 MQ=255 dup=False cigar=150M 13947:0:AATTCTGC+GCCTACTG
+..............................T..............................  base=T ALT(T) mate=R2 - sense=True NH=1 MQ=255 dup=False cigar=150M 19833:0:AATTCTGC+GCCTACTG
+..............................T..............................  base=T ALT(T) mate=R1 + sense=True NH=1 MQ=255 dup=False cigar=150M 26811:0:AATTCTGC+GCCTACTG
+..............................T..............................  base=T ALT(T) mate=R1 + sense=True NH=1 MQ=255 dup=False cigar=150M 26657:0:AATTCTGC+GCCTACTG
+..............................T..............................  base=T ALT(T) mate=R1 + sense=True NH=1 MQ=255 dup=True cigar=150M 13667:0:AATTCTGC+GCCTACTG
+..............................T..............................  base=T ALT(T) mate=R1 + sense=True NH=1 MQ=255 dup=True cigar=150M 13667:0:AATTCTGC+GCCTACTG
+..............................T..............................  base=T ALT(T) mate=R1 + sense=True NH=1 MQ=255 dup=True cigar=150M 13681:0:AATTCTGC+GCCTACTG
+..............................T..............................  base=T ALT(T) mate=R1 + sense=True NH=1 MQ=255 dup=True cigar=150M 13681:0:AATTCTGC+GCCTACTG
+..............................T..............................  base=T ALT(T) mate=R1 + sense=True NH=1 MQ=255 dup=False cigar=150M 13681:0:AATTCTGC+GCCTACTG
+..............................T..............................  base=T ALT(T) mate=R1 + sense=True NH=1 MQ=255 dup=False cigar=128M22S 14970:0:AATTCTGC+GCCTACTG
+..............................T..............................  base=T ALT(T) mate=R2 - sense=True NH=1 MQ=255 dup=False cigar=22S128M 14970:0:AATTCTGC+GCCTACTG
+..............................T..............................  base=T ALT(T) mate=R1 + sense=True NH=1 MQ=255 dup=False cigar=150M 26657:0:AATTCTGC+GCCTACTG
+..............................T..............................  base=T ALT(T) mate=R1 + sense=True NH=1 MQ=255 dup=False cigar=124M26S 6213:0:AATTCTGC+GCCTACTG
+..............................T..............................  base=T ALT(T) mate=R2 - sense=True NH=1 MQ=255 dup=False cigar=26S124M 6213:0:AATTCTGC+GCCTACTG
+..............................T..............................  base=T ALT(T) mate=R1 + sense=True NH=1 MQ=255 dup=True cigar=124M26S 26699:0:AATTCTGC+GCCTACTG
+..............................T..............................  base=T ALT(T) mate=R2 - sense=True NH=1 MQ=255 dup=True cigar=26S124M 26699:0:AATTCTGC+GCCTACTG
+      ........................T..............................  base=T ALT(T) mate=R2 - sense=True NH=1 MQ=255 dup=False cigar=150M 26657:0:AATTCTGC+GCCTACTG
+            ..................T..............................  base=T ALT(T) mate=R1 + sense=True NH=1 MQ=255 dup=False cigar=132M18S 12238:0:AATTCTGC+GCCTACTG
+ctcttccgatct..................T..............................  base=T ALT(T) mate=R2 - sense=True NH=1 MQ=255 dup=False cigar=18S132M 12238:0:AATTCTGC+GCCTACTG
+                     ...G.....T..A...........................  base=T ALT(T) mate=R2 - sense=True NH=1 MQ=255 dup=True cigar=150M 29137:0:AATTCTGC+GCCTACTG
+                     .........T..A...........................  base=T ALT(T) mate=R2 - sense=True NH=1 MQ=255 dup=False cigar=150M 29137:0:AATTCTGC+GCCTACTG
+...............................a                               base=C REF(C) mate=R1 + sense=True NH=1 MQ=255 dup=True cigar=16M1499N78M9192N55M1S 12490:0:AATTCTGC+GCCTACTG
+...............................a                               base=C REF(C) mate=R1 + sense=True NH=1 MQ=255 dup=False cigar=16M1499N78M9192N55M1S 12490:0:AATTCTGC+GCCTACTG
+...............................                                base=C REF(C) mate=R2 - sense=True NH=1 MQ=255 dup=True cigar=2S15M1499N78M9192N55M 18445:0:AATTCTGC+GCCTACTG
+.................A..............t                              base=C REF(C) mate=R1 + sense=True NH=1 MQ=255 dup=False cigar=15M1499N78M9192N56M1S 15082:0:AATTCTGC+GCCTACTG
+...............................ag                              base=C REF(C) mate=R1 + sense=True NH=1 MQ=255 dup=False cigar=15M1499N78M9192N55M2S 21080:0:AATTCTGC+GCCTACTG
+...............................                                base=C REF(C) mate=R2 - sense=True NH=1 MQ=255 dup=False cigar=2S15M1499N78M9192N55M 21080:0:AATTCTGC+GCCTACTG
+...............................ag                              base=C REF(C) mate=R1 + sense=True NH=1 MQ=255 dup=True cigar=15M1499N78M9192N55M2S 11761:0:AATTCTGC+GCCTACTG
+...............................                                base=C REF(C) mate=R2 - sense=True NH=1 MQ=255 dup=True cigar=2S15M1499N78M9192N55M 11761:0:AATTCTGC+GCCTACTG
+...........................C...ag                              base=C REF(C) mate=R1 + sense=True NH=1 MQ=255 dup=True cigar=1S14M1499N78M9192N55M2S 18445:0:AATTCTGC+GCCTACTG
+....................................                           base=C REF(C) mate=R2 - sense=True NH=1 MQ=255 dup=False cigar=12M1499N78M9192N60M 14760:0:AATTCTGC+GCCTACTG
+...............................agatgggacaga                    base=C REF(C) mate=R1 + sense=True NH=1 MQ=255 dup=False cigar=5M1499N78M9192N55M12S 24176:0:AATTCTGC+GCCTACTG
+...............................agatgggacactctaagagatcggaagagc  base=C REF(C) mate=R1 + sense=True NH=1 MQ=255 dup=False cigar=59M9192N55M36S 19903:0:AATTCTGC+GCCTACTG
+.........................................................      base=C REF(C) mate=R1 + sense=True NH=1 MQ=255 dup=True cigar=150M 17282:0:AATTCTGC+GCCTACTG
+.........................................................      base=C REF(C) mate=R1 + sense=True NH=1 MQ=255 dup=False cigar=150M 15643:0:AATTCTGC+GCCTACTG
+...............................agatgggacactctaag               base=C REF(C) mate=R2 - sense=True NH=1 MQ=255 dup=False cigar=78S55M17S 19903:0:AATTCTGC+GCCTACTG
+             ................................................  base=C REF(C) mate=R1 + sense=True NH=1 MQ=255 dup=False cigar=150M 28758:0:AATTCTGC+GCCTACTG
+
+89 alignments overlap the variant base (73 ALT T, 16 REF C); 89 of them also cover the first exonic base 17:41267796 (unspliced across the exon3/intron2 boundary).
+Note: only unspliced / intron-2 reads can show the variant base. Every junction read (canonical, cryptic, skipping) has the variant position inside its N gap and therefore cannot report the allele.
+
+==============================================================================================================
+B. TUMOR EXOME reads overlapping the variant (MAPQ>=20, base quality>=20, primary); showing every ALT read and the first 25 REF reads
+==============================================================================================================
+plus-strand reference (genomic ascending) : GTGGAGACAGGTTCCTTGATCAACTCCAGACTAGCAGGGTAGGGGGGGAGAAAAAGAAAAT
+transcript-orientation (BRCA1 minus strand): ATTTTCTTTTTCTCCCCCCCTACCCTGCTAGTCTGGAGTTGATCAAGGAACCTGTCTCCAC   <- read right-to-left in the plus-strand rows above
+variant (17:41267797 C>T plus; G>A cDNA)     :                               |                                <- c.81-1
+legend: . = matches reference, letter = mismatch, ~ = N gap (spliced), lowercase = soft-clipped base, - = deletion
+..............................T                                base=T mate=R2 + MQ=60 cigar=150M 48925:11789
+..............................T                                base=T mate=R1 + MQ=60 cigar=150M 39889:15110
+..............................T                                base=T mate=R1 + MQ=60 cigar=150M 47833:4601
+..............................T.                               base=T mate=R2 + MQ=60 cigar=150M 8969:14466
+..............................T...                             base=T mate=R2 + MQ=60 cigar=150M 11388:14396
+..............................T...                             base=T mate=R1 + MQ=60 cigar=150M 32689:18641
+..............................T....                            base=T mate=R2 + MQ=60 cigar=150M 9891:15307
+..............................T.....                           base=T mate=R2 + MQ=60 cigar=150M 40325:7656
+....C.........................T.....                           base=T mate=R2 + MQ=60 cigar=150M 8791:18165
+..............................T......                          base=T mate=R1 + MQ=60 cigar=150M 50211:2667
+..............................T......                          base=T mate=R1 - MQ=60 cigar=150M 5393:7348
+..............................T.......                         base=T mate=R1 + MQ=60 cigar=150M 18046:15671
+..............................T.......                         base=T mate=R1 + MQ=60 cigar=150M 42558:23966
+..............................T.........                       base=T mate=R1 + MQ=60 cigar=150M 17018:8427
+..............................T..........                      base=T mate=R1 - MQ=60 cigar=150M 27980:16371
+..............................T...........                     base=T mate=R2 - MQ=60 cigar=150M 39063:20463
+..............................T...........                     base=T mate=R2 - MQ=60 cigar=150M 30990:24583
+..............................T............                    base=T mate=R1 + MQ=60 cigar=150M 29153:9071
+..............................T............                    base=T mate=R1 - MQ=60 cigar=150M 2626:17661
+..............................T...............                 base=T mate=R1 - MQ=60 cigar=150M 31596:4307
+..............................T...............                 base=T mate=R2 - MQ=60 cigar=150M 20133:19286
+..............................T................                base=T mate=R1 - MQ=60 cigar=150M 38837:8945
+..............................T................                base=T mate=R2 - MQ=60 cigar=150M 20012:21878
+..............................T................                base=T mate=R1 - MQ=60 cigar=150M 19939:17184
+..............................T................                base=T mate=R2 - MQ=60 cigar=150M 12075:20239
+..............................T.................               base=T mate=R1 + MQ=60 cigar=150M 25844:28478
+..............................T.................               base=T mate=R1 - MQ=60 cigar=150M 22560:28366
+..............................T.................               base=T mate=R2 - MQ=60 cigar=150M 39889:15110
+..............................T...................             base=T mate=R1 - MQ=60 cigar=150M 9891:15307
+..............................T....................            base=T mate=R2 + MQ=60 cigar=150M 20772:7165
+..............................T....................            base=T mate=R1 - MQ=60 cigar=150M 29792:29151
+..............................T....................            base=T mate=R1 - MQ=60 cigar=150M 40050:10991
+..............................T.............agatcgga           base=T mate=R2 + MQ=60 cigar=142M8S 5094:7081
+...........................G..T.....................           base=T mate=R1 + MQ=60 cigar=150M 28053:9996
+..............................T.............                   base=T mate=R1 - MQ=60 cigar=8S142M 5094:7081
+..............................T.....................           base=T mate=R1 - MQ=60 cigar=150M 21646:19412
+..............................T.......................         base=T mate=R1 + MQ=60 cigar=150M 17981:11495
+..............................T.......................         base=T mate=R2 - MQ=60 cigar=150M 29153:9071
+..............................T.......................         base=T mate=R2 - MQ=60 cigar=150M 22827:4559
+..............................T........................        base=T mate=R1 + MQ=60 cigar=150M 10514:25970
+..............................T........................        base=T mate=R2 + MQ=60 cigar=150M 49856:29655
+..............................T........................        base=T mate=R1 - MQ=60 cigar=150M 12642:20407
+..............................T........................        base=T mate=R2 - MQ=60 cigar=150M 40908:27637
+..............................T...                             base=T mate=R2 - MQ=60 cigar=22S128M 21516:26250
+..............................T.........................       base=T mate=R2 - MQ=60 cigar=150M 36111:21598
+..............................T..........................      base=T mate=R2 - MQ=60 cigar=150M 19122:25746
+..............................T...........................     base=T mate=R1 + MQ=60 cigar=150M 30440:7544
+..............................T...........................     base=T mate=R1 + MQ=60 cigar=150M 13410:4279
+.............................CT...........................     base=T mate=R2 + MQ=60 cigar=150M 10182:15755
+..............................T...........................     base=T mate=R1 - MQ=60 cigar=150M 38060:17941
+..............................T.....................G......    base=T mate=R2 + MQ=60 cigar=150M 46336:24485
+..............................T.............................   base=T mate=R2 - MQ=60 cigar=150M 12706:13709
+..............................T.............................   base=T mate=R2 - MQ=60 cigar=150M 18046:15671
+..............................T.............................   base=T mate=R2 - MQ=60 cigar=150M 11509:4069
+..............................T..............................  base=T mate=R1 - MQ=60 cigar=150M 20206:6128
+..............................T..............................  base=T mate=R1 - MQ=60 cigar=150M 13766:25493
+..............................T..............................  base=T mate=R1 + MQ=60 cigar=150M 14462:15797
+..............................T..............................  base=T mate=R2 + MQ=60 cigar=150M 18685:27007
+..............................T..............................  base=T mate=R1 + MQ=60 cigar=150M 38287:14017
+..............................T..............................  base=T mate=R2 - MQ=60 cigar=150M 32689:18641
+..............................T.............................c  base=T mate=R2 - MQ=60 cigar=145M5S 51571:14522
+..............................T..............................  base=T mate=R1 + MQ=60 cigar=150M 11695:25634
+..............................T..............................  base=T mate=R1 - MQ=60 cigar=150M 27236:9393
+..............................T..............................  base=T mate=R1 - MQ=60 cigar=150M 37203:8076
+..............................T..............................  base=T mate=R2 + MQ=60 cigar=150M 42380:5190
+..............................T..............................  base=T mate=R2 - MQ=60 cigar=150M 21055:22733
+..............................T......agatcgg                   base=T mate=R2 + MQ=60 cigar=25S118M7S 38287:7039
+..............................T......                          base=T mate=R1 - MQ=60 cigar=32S118M 38287:7039
+..............................T..............................  base=T mate=R1 - MQ=60 cigar=150M 16557:28842
+..............................T..............................  base=T mate=R1 - MQ=60 cigar=150M 40325:7656
+..............................T..............................  base=T mate=R2 + MQ=60 cigar=150M 10368:21878
+..............................T..............................  base=T mate=R1 + MQ=60 cigar=150M 33020:22831
+..............................T..............................  base=T mate=R2 + MQ=60 cigar=150M 11598:7782
+..............................T..............................  base=T mate=R1 + MQ=60 cigar=150M 19372:28702
+..............................T..............................  base=T mate=R2 - MQ=60 cigar=150M 17981:11495
+..............................T..............................  base=T mate=R1 - MQ=60 cigar=150M 18685:27007
+..............................T..............................  base=T mate=R2 - MQ=60 cigar=150M 38287:14017
+..............................T..............................  base=T mate=R1 + MQ=60 cigar=150M 34913:2317
+..............................T..............................  base=T mate=R1 - MQ=60 cigar=150M 10182:15755
+..............................T..............................  base=T mate=R2 + MQ=60 cigar=150M 24801:11425
+..............................T..............................  base=T mate=R2 + MQ=60 cigar=150M 39727:24471
+...........................C..T..............................  base=T mate=R1 + MQ=60 cigar=150M 29283:23560
+..............................T..............................  base=T mate=R2 - MQ=60 cigar=150M 36369:24513
+..............................T..............................  base=T mate=R2 + MQ=60 cigar=150M 6380:11719
+..............................T..............................  base=T mate=R2 + MQ=60 cigar=150M 7593:28870
+..............................T..............................  base=T mate=R2 + MQ=60 cigar=150M 40034:15867
+..............................T..............................  base=T mate=R1 + MQ=60 cigar=150M 22754:21164
+..............................T..............................  base=T mate=R1 + MQ=60 cigar=150M 8483:6787
+..............................T..............................  base=T mate=R2 - MQ=60 cigar=150M 11938:28912
+..............................T..............................  base=T mate=R1 - MQ=60 cigar=150M 11388:14396
+..............................T..............................  base=T mate=R2 + MQ=60 cigar=150M 3459:23223
+..............................T..............................  base=T mate=R1 + MQ=60 cigar=150M 9842:1631
+..............................T..............................  base=T mate=R1 + MQ=60 cigar=150M 44921:24695
+..............................T..............................  base=T mate=R1 - MQ=60 cigar=150M 39605:21542
+..............................T..............................  base=T mate=R1 - MQ=60 cigar=150M 49257:7348
+..............................T..............................  base=T mate=R1 - MQ=60 cigar=150M 29639:14452
+..............................T..............................  base=T mate=R1 - MQ=60 cigar=150M 40034:15867
+..............................T..............................  base=T mate=R1 + MQ=60 cigar=150M 47768:23854
+..............................T..............................  base=T mate=R1 + MQ=60 cigar=150M 50341:17941
+..............................T..............................  base=T mate=R1 + MQ=60 cigar=131M19S 15044:27904
+..............................T..............................  base=T mate=R2 - MQ=60 cigar=21S129M 15044:27904
+..............................T..............................  base=T mate=R1 - MQ=60 cigar=150M 23256:28366
+..............................T..............................  base=T mate=R1 - MQ=60 cigar=150M 24801:11425
+..............................T..............................  base=T mate=R2 - MQ=60 cigar=150M 25844:28478
+..............................T..............................  base=T mate=R2 - MQ=60 cigar=150M 40633:9674
+..............................T..............................  base=T mate=R1 + MQ=60 cigar=150M 22851:4489
+..............................T..............................  base=T mate=R1 - MQ=60 cigar=150M 43481:10318
+..............................T..............................  base=T mate=R1 - MQ=60 cigar=150M 43861:29641
+..............................T..............................  base=T mate=R2 - MQ=60 cigar=150M 22851:4489
+..............................T..............................  base=T mate=R1 - MQ=60 cigar=9S141M 8766:20897
+..............................T..............................  base=T mate=R2 + MQ=60 cigar=141M9S 8766:20897
+..............................T..............................  base=T mate=R2 + MQ=60 cigar=150M 6768:4797
+..............................T..............................  base=T mate=R1 - MQ=60 cigar=150M 48925:11789
+..............................T..............................  base=T mate=R1 + MQ=60 cigar=150M 44346:5848
+..............................T..............................  base=T mate=R2 - MQ=60 cigar=150M 10368:11005
+..............................T..............................  base=T mate=R2 - MQ=60 cigar=150M 30440:7544
+..............................T..............................  base=T mate=R2 - MQ=60 cigar=150M 10514:25970
+..............................T..............................  base=T mate=R1 - MQ=60 cigar=150M 10368:21878
+..............................T................agatcggaagagcg  base=T mate=R2 + MQ=60 cigar=92M58S 27632:20113
+..............................T................                base=T mate=R1 - MQ=60 cigar=58S92M 27632:20113
+..............................T..............................  base=T mate=R2 + MQ=60 cigar=150M 21880:15054
+..............................T..............................  base=T mate=R2 - MQ=60 cigar=150M 3200:23504
+..............................T..............................  base=T mate=R2 + MQ=60 cigar=109M41S 21298:23686
+..............................T..............................  base=T mate=R2 + MQ=60 cigar=150M 28822:11075
+..............................T..............................  base=T mate=R1 + MQ=60 cigar=150M 33837:5946
+..............................T..............................  base=T mate=R2 - MQ=60 cigar=150M 10684:22201
+..............................T..............................  base=T mate=R2 - MQ=60 cigar=150M 22762:8062
+..............................T..............................  base=T mate=R1 - MQ=60 cigar=4S146M 48003:7838
+..............................T..............................  base=T mate=R1 - MQ=60 cigar=41S109M 21298:23686
+..............................T..............................  base=T mate=R2 + MQ=60 cigar=145M5S 48003:7838
+..............................T..............................  base=T mate=R1 - MQ=60 cigar=150M 14365:28520
+..............................T..............................  base=T mate=R2 - MQ=60 cigar=150M 46700:17268
+..............................T..............................  base=T mate=R2 - MQ=60 cigar=150M 33837:5946
+..............................T..............................  base=T mate=R1 - MQ=60 cigar=150M 7593:28870
+..............................T..............................  base=T mate=R2 - MQ=60 cigar=150M 34557:23504
+..............................T..............................  base=T mate=R2 - MQ=60 cigar=150M 50341:17941
+......................G.......T..............................  base=T mate=R2 - MQ=60 cigar=150M 29283:23560
+..............................T..............................  base=T mate=R1 + MQ=60 cigar=150M 8273:16736
+..............................T..............................  base=T mate=R1 - MQ=60 cigar=150M 31467:21934
+..............................T..............................  base=T mate=R1 + MQ=60 cigar=108M42S 32195:11677
+..............................T..............................  base=T mate=R2 - MQ=60 cigar=43S107M 32195:11677
+..............................T..............................  base=T mate=R2 + MQ=60 cigar=150M 12973:28268
+..............................T..............................  base=T mate=R2 + MQ=60 cigar=150M 25852:27203
+..............................T..............................  base=T mate=R2 + MQ=60 cigar=139M11S 35083:11411
+-............A..G......TG.A...T....G...........A.............  base=T mate=R2 - MQ=60 cigar=27M3I2M3D107M11S 15287:4447
+..............................T..............................  base=T mate=R1 - MQ=60 cigar=12S138M 35083:11411
+..............................T..............................  base=T mate=R1 + MQ=60 cigar=150M 17568:19608
+..............................T..............................  base=T mate=R1 - MQ=60 cigar=150M 5077:2822
+..............................T..............................  base=T mate=R1 - MQ=60 cigar=150M 49856:29655
+..............................T..............................  base=T mate=R2 + MQ=60 cigar=150M 32114:25129
+..............................T..............................  base=T mate=R1 - MQ=60 cigar=150M 48974:3018
+..............................T..............................  base=T mate=R1 - MQ=60 cigar=150M 20772:7165
+..............................T..............................  base=T mate=R2 + MQ=60 cigar=150M 45932:14872
+..............................T..............................  base=T mate=R1 + MQ=60 cigar=150M 40851:8847
+..............................T..............................  base=T mate=R2 + MQ=60 cigar=113M37S 17366:3200
+..............................T..............................  base=T mate=R1 - MQ=60 cigar=38S112M 17366:3200
+..............................T........G.....................  base=T mate=R1 - MQ=60 cigar=150M 11598:7782
+..............................T..............................  base=T mate=R2 - MQ=60 cigar=150M 47768:23854
+..............................T..............................  base=T mate=R2 + MQ=60 cigar=127M23S 21160:17647
+..............................T..............................  base=T mate=R1 - MQ=60 cigar=24S126M 21160:17647
+..............................T..............................  base=T mate=R2 + MQ=60 cigar=150M 11242:6913
+..............................T..............................  base=T mate=R2 - MQ=60 cigar=138M12S 42219:28310
+..............................T..............................  base=T mate=R1 - MQ=60 cigar=150M 6380:11719
+..............................T..............................  base=T mate=R2 + MQ=60 cigar=150M 44031:1126
+..............................T..............................  base=T mate=R2 + MQ=60 cigar=150M 15182:2191
+..............................T..............................  base=T mate=R2 + MQ=60 cigar=137M13S 13920:23041
+..............................T..............................  base=T mate=R1 - MQ=60 cigar=150M 42380:5190
+..............................T..............................  base=T mate=R1 - MQ=60 cigar=13S137M 13920:23041
+..............................T..............................  base=T mate=R1 + MQ=60 cigar=150M 22649:20449
+..............................T..............................  base=T mate=R1 - MQ=60 cigar=150M 21880:15054
+..............................T..............................  base=T mate=R2 + MQ=60 cigar=150M 18361:4811
+..............................T..............................  base=T mate=R1 + MQ=60 cigar=150M 38675:7796
+..............................T..............................  base=T mate=R1 - MQ=60 cigar=150M 39727:24471
+  ............................T..............................  base=T mate=R2 - MQ=60 cigar=150M 38675:7796
+    ..........................T..............................  base=T mate=R2 + MQ=60 cigar=150M 44346:14172
+    ..........................T..............................  base=T mate=R1 - MQ=60 cigar=150M 46336:24485
+     .........................T..............................  base=T mate=R2 + MQ=60 cigar=150M 3815:29529
+     .........................T..............................  base=T mate=R2 - MQ=60 cigar=150M 50211:2667
+       .......................T..............................  base=T mate=R2 - MQ=60 cigar=150M 13410:4279
+         .....................T..............................  base=T mate=R2 - MQ=60 cigar=150M 19372:28702
+          ....................T..............................  base=T mate=R2 - MQ=60 cigar=150M 22754:21164
+            ..................T..............................  base=T mate=R2 - MQ=60 cigar=150M 15797:15895
+              ................T..............................  base=T mate=R1 + MQ=60 cigar=150M 25132:5778
+              ................T..............................  base=T mate=R1 - MQ=60 cigar=150M 45932:14872
+               ...............T..............................  base=T mate=R2 - MQ=60 cigar=150M 11695:25634
+                 .............T..............................  base=T mate=R2 - MQ=60 cigar=150M 8273:16736
+                  ............T..............................  base=T mate=R1 - MQ=60 cigar=150M 32114:25129
+                      ........T..............................  base=T mate=R2 - MQ=60 cigar=150M 30690:20393
+                      ........T..............................  base=T mate=R2 - MQ=60 cigar=150M 42558:23966
+                       .......T..............................  base=T mate=R1 - MQ=60 cigar=150M 3459:23223
+                       .......T..............................  base=T mate=R2 - MQ=60 cigar=150M 28053:9996
+                           ...T..............................  base=T mate=R2 - MQ=60 cigar=150M 44346:5848
+                            ..T..............................  base=T mate=R1 - MQ=60 cigar=150M 15182:2191
+                            ..T..............................  base=T mate=R1 - MQ=60 cigar=150M 6768:4797
+                            ..T..............................  base=T mate=R2 - MQ=60 cigar=150M 33020:22831
+...............................                                base=C mate=R1 + MQ=60 cigar=150M 20036:4657
+...............................                                base=C mate=R2 + MQ=60 cigar=150M 34824:29151
+...............................                                base=C mate=R2 + MQ=60 cigar=150M 24186:14087
+...............................                                base=C mate=R2 + MQ=60 cigar=150M 17949:14942
+...............................                                base=C mate=R1 - MQ=60 cigar=150M 43497:25732
+...............................                                base=C mate=R2 - MQ=60 cigar=150M 8410:26390
+...............................                                base=C mate=R1 - MQ=60 cigar=150M 33562:3929
+................................                               base=C mate=R2 + MQ=60 cigar=150M 9519:13737
+................................                               base=C mate=R2 - MQ=60 cigar=150M 13588:21962
+................................                               base=C mate=R2 - MQ=60 cigar=150M 26467:11902
+................................                               base=C mate=R2 - MQ=60 cigar=150M 6979:6227
+.................................                              base=C mate=R1 + MQ=60 cigar=150M 27843:15797
+.................................                              base=C mate=R1 + MQ=60 cigar=150M 46264:24975
+.................................                              base=C mate=R2 + MQ=60 cigar=150M 19502:16259
+.................................                              base=C mate=R2 + MQ=60 cigar=150M 44953:12840
+.................................                              base=C mate=R2 + MQ=60 cigar=150M 23506:23588
+.................................                              base=C mate=R2 + MQ=60 cigar=150M 46700:18333
+.................................                              base=C mate=R1 + MQ=60 cigar=150M 16549:21262
+.................................                              base=C mate=R1 + MQ=60 cigar=150M 34064:16848
+..................................                             base=C mate=R2 + MQ=60 cigar=150M 6938:9211
+..................................                             base=C mate=R2 + MQ=60 cigar=150M 34145:4041
+..................................                             base=C mate=R1 + MQ=60 cigar=150M 8807:21640
+..................................                             base=C mate=R2 + MQ=60 cigar=150M 23401:10486
+.................................A                             base=C mate=R2 - MQ=60 cigar=150M 39476:17899
+..................................                             base=C mate=R2 - MQ=60 cigar=150M 28587:25606
+
+TUMOR EXOME: ALT reads n=195 fwd=81 rev=114 read1=98 read2=97 median_dist_to_read_end=38
+TUMOR EXOME: REF reads n=664 fwd=280 rev=384 read1=334 read2=330 median_dist_to_read_end=39.0
+
+==============================================================================================================
+B. NORMAL EXOME reads overlapping the variant (MAPQ>=20, base quality>=20, primary); showing every ALT read and the first 25 REF reads
+==============================================================================================================
+plus-strand reference (genomic ascending) : GTGGAGACAGGTTCCTTGATCAACTCCAGACTAGCAGGGTAGGGGGGGAGAAAAAGAAAAT
+transcript-orientation (BRCA1 minus strand): ATTTTCTTTTTCTCCCCCCCTACCCTGCTAGTCTGGAGTTGATCAAGGAACCTGTCTCCAC   <- read right-to-left in the plus-strand rows above
+variant (17:41267797 C>T plus; G>A cDNA)     :                               |                                <- c.81-1
+legend: . = matches reference, letter = mismatch, ~ = N gap (spliced), lowercase = soft-clipped base, - = deletion
+...............................                                base=C mate=R2 + MQ=60 cigar=150M 23814:25157
+...............................                                base=C mate=R1 + MQ=60 cigar=150M 17010:26572
+................................                               base=C mate=R2 + MQ=60 cigar=150M 2262:23784
+................................                               base=C mate=R2 + MQ=60 cigar=150M 46620:8020
+................................                               base=C mate=R1 + MQ=60 cigar=150M 23976:20645
+................................                               base=C mate=R1 + MQ=60 cigar=150M 33740:3284
+................................                               base=C mate=R1 - MQ=60 cigar=150M 42575:16820
+.................................                              base=C mate=R1 + MQ=60 cigar=150M 4867:10024
+.................................                              base=C mate=R1 + MQ=60 cigar=150M 26144:8763
+.................................                              base=C mate=R2 + MQ=60 cigar=150M 39185:17843
+.................................                              base=C mate=R2 - MQ=60 cigar=150M 22471:17871
+..................................                             base=C mate=R2 + MQ=60 cigar=150M 43537:2569
+...................................                            base=C mate=R2 + MQ=60 cigar=150M 50543:3887
+...................................                            base=C mate=R2 + MQ=60 cigar=150M 18984:10542
+...................................                            base=C mate=R1 + MQ=60 cigar=150M 39452:24975
+...................................                            base=C mate=R2 + MQ=60 cigar=150M 44629:17969
+...................................                            base=C mate=R1 + MQ=60 cigar=150M 21896:17492
+...................................                            base=C mate=R2 - MQ=60 cigar=150M 15255:1532
+....................................                           base=C mate=R2 - MQ=60 cigar=150M 1081:4475
+....................................                           base=C mate=R2 - MQ=60 cigar=150M 40050:15727
+.....................................                          base=C mate=R1 + MQ=60 cigar=150M 46183:22032
+......................................                         base=C mate=R2 - MQ=60 cigar=150M 46797:1490
+......................................                         base=C mate=R2 - MQ=60 cigar=150M 33740:3284
+.......................................                        base=C mate=R1 + MQ=60 cigar=150M 31693:15461
+.......................................                        base=C mate=R2 - MQ=60 cigar=150M 40746:22088
+
+NORMAL EXOME: ALT reads n=0
+NORMAL EXOME: REF reads n=374 fwd=166 rev=208 read1=189 read2=185 median_dist_to_read_end=39.5
+
+==============================================================================================================
+C. Junction read evidence at the exon 3 acceptor (tumor RNA, STAR unique). Full list: results/junction_reads_exon3.tsv
+==============================================================================================================
+Alignment excerpts show the exon-3 side of each junction (window 17:41267757..41267837, plus-strand letters; transcript direction is right-to-left).
+
+--- E2_E3_cryptic_+7nt: 441 alignments / 293 fragments (showing up to 12; sense-strand rows first) ---
+plus ref : GTCACACTTTGTGGAGACAGGTTCCTTGATCAACTCCAGACTAGCAGGGTAGGGGGGGAGAAAAAGAAAATAAATGAGGCT
+tx orient: AGCCTCATTTATTTTCTTTTTCTCCCCCCCTACCCTGCTAGTCTGGAGTTGATCAAGGAACCTGTCTCCACAAAGTGTGAC  (reverse complement)
+          ..........................A......~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~  R1+ sense=True anchors=(47, 15) dup=False 88M10769N47M8244N15M
+          .................................~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~  R2- sense=True anchors=(47, 23) dup=False 80M10769N47M8244N23M
+          ..........................A......~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~  R2- sense=True anchors=(47, 42) dup=False 61M10769N47M8244N42M
+          .................................~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~  R2- sense=True anchors=(47, 8) dup=False 39M1521N56M9192N47M8244N8M
+          .................................~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~  R2- sense=True anchors=(47, 8) dup=True 39M1521N56M9192N47M8244N8M
+          .................................~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~  R2- sense=True anchors=(47, 15) dup=False 32M1521N56M9192N47M8244N15M
+          .................................~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~  R2- sense=True anchors=(47, 3) dup=False 22M1499N78M9192N47M8244N3M
+          .................................~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~  R1+ sense=True anchors=(47, 4) dup=True 21M1499N78M9192N47M8244N4M
+          .................................~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~  R1+ sense=True anchors=(47, 4) dup=False 21M1499N78M9192N47M8244N4M
+          .................................~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~  R1+ sense=True anchors=(47, 4) dup=True 21M1499N78M9192N47M8244N4M
+          .................................~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~  R1+ sense=True anchors=(47, 4) dup=False 21M1499N78M9192N47M8244N4M
+          .................................~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~  R1+ sense=True anchors=(47, 4) dup=True 21M1499N78M9192N47M8244N4M
+
+--- E2_E4_exon3_skipping: 48 alignments / 34 fragments (showing up to 12; sense-strand rows first) ---
+plus ref : GTCACACTTTGTGGAGACAGGTTCCTTGATCAACTCCAGACTAGCAGGGTAGGGGGGGAGAAAAAGAAAATAAATGAGGCT
+tx orient: AGCCTCATTTATTTTCTTTTTCTCCCCCCCTACCCTGCTAGTCTGGAGTTGATCAAGGAACCTGTCTCCACAAAGTGTGAC  (reverse complement)
+          ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~  R2- sense=True anchors=(78, 10) dup=False 62M1499N78M17483N10M
+          ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~  R2- sense=True anchors=(78, 14) dup=True 58M1499N78M17483N14M
+          ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~  R2- sense=True anchors=(78, 14) dup=False 58M1499N78M17483N14M
+          ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~  R2- sense=True anchors=(78, 24) dup=False 48M1499N78M17483N24M
+          ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~  R2- sense=True anchors=(78, 24) dup=True 48M1499N78M17483N24M
+          ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~  R1+ sense=True anchors=(78, 31) dup=False 41M1499N78M17483N31M
+          ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~  R1+ sense=True anchors=(78, 31) dup=True 41M1499N78M17483N31M
+          ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~  R2- sense=True anchors=(78, 35) dup=False 37M1499N78M17483N35M
+          ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~  R2- sense=True anchors=(78, 35) dup=True 37M1499N78M17483N35M
+          ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~  R2- sense=True anchors=(78, 43) dup=False 29M1499N78M17483N43M
+          ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~  R1+ sense=True anchors=(78, 51) dup=True 21M1499N78M17483N51M
+          ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~  R1+ sense=True anchors=(78, 51) dup=False 21M1499N78M17483N51M
+
+--- E2_E3_canonical: 109 alignments / 78 fragments (showing up to 12; sense-strand rows first) ---
+plus ref : GTCACACTTTGTGGAGACAGGTTCCTTGATCAACTCCAGACTAGCAGGGTAGGGGGGGAGAAAAAGAAAATAAATGAGGCT
+tx orient: AGCCTCATTTATTTTCTTTTTCTCCCCCCCTACCCTGCTAGTCTGGAGTTGATCAAGGAACCTGTCTCCACAAAGTGTGAC  (reverse complement)
+          ........................................~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~  R2- sense=True anchors=(54, 43) dup=False 53M10769N54M8237N43M
+          ...............A........................~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~  R1+ sense=True anchors=(54, 3) dup=False 18M1499N62M3D13M9192N54M8237N3M
+          ........................................~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~  R1+ sense=True anchors=(54, 3) dup=False 15M1499N78M9192N54M8237N3M
+          ........................................~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~  R1+ sense=True anchors=(54, 4) dup=False 15M1499N72M1D5M9192N54M8237N4M
+          ........................................~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~  R1+ sense=True anchors=(54, 4) dup=True 15M1499N72M1D5M9192N54M8237N4M
+          ........................................~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~  R2- sense=True anchors=(54, 4) dup=False 14M1499N78M9192N54M8237N4M
+          ........................................~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~  R1+ sense=True anchors=(54, 5) dup=False 13M1499N78M9192N54M8237N5M
+          ........................................~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~  R2- sense=True anchors=(54, 8) dup=False 10M1499N78M9192N54M8237N8M
+          ........................................~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~  R1+ sense=True anchors=(54, 10) dup=True 8M1499N78M9192N54M8237N10M
+          ........................................~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~  R1+ sense=True anchors=(54, 10) dup=False 8M1499N78M9192N54M8237N10M
+          ...............A........................~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~  R2- sense=True anchors=(54, 14) dup=False 7M1499N62M3D13M9192N54M8237N14M
+          ........................................~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~  R2- sense=True anchors=(54, 10) dup=False 3S5M1499N78M9192N54M8237N10M
+
+--- E2_E3_cryptic_+16nt: 62 alignments / 39 fragments (showing up to 12; sense-strand rows first) ---
+plus ref : GTCACACTTTGTGGAGACAGGTTCCTTGATCAACTCCAGACTAGCAGGGTAGGGGGGGAGAAAAAGAAAATAAATGAGGCT
+tx orient: AGCCTCATTTATTTTCTTTTTCTCCCCCCCTACCCTGCTAGTCTGGAGTTGATCAAGGAACCTGTCTCCACAAAGTGTGAC  (reverse complement)
+          ........................~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~  R1+ sense=True anchors=(38, 13) dup=False 21M1499N78M9192N38M8253N13M
+          ........................~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~  R1+ sense=True anchors=(38, 13) dup=True 21M1499N78M9192N38M8253N13M
+          ........................~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~  R1+ sense=True anchors=(38, 13) dup=True 21M1499N78M9192N38M8253N13M
+          ........................~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~  R1+ sense=True anchors=(38, 13) dup=False 21M1499N78M9192N38M8253N13M
+          ........................~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~  R1+ sense=True anchors=(38, 14) dup=False 20M1499N78M9192N38M8253N14M
+          ........................~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~  R1+ sense=True anchors=(38, 14) dup=False 20M1499N78M9192N38M8253N14M
+          ........................~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~  R1+ sense=True anchors=(38, 16) dup=False 18M1499N78M9192N38M8253N16M
+          ........................~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~  R1+ sense=True anchors=(38, 19) dup=False 15M1499N78M9192N38M8253N19M
+          ........................~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~  R1+ sense=True anchors=(38, 19) dup=True 15M1499N78M9192N38M8253N19M
+          ........................~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~  R1+ sense=True anchors=(38, 19) dup=True 15M1499N78M9192N38M8253N19M
+          ........................~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~  R1+ sense=True anchors=(38, 42) dup=False 14M1521N56M9192N38M8253N42M
+          ........................~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~  R1+ sense=True anchors=(38, 23) dup=False 11M1499N78M9192N38M8253N23M
+
+--- E2_E3_cryptic_+5nt: 2 alignments / 1 fragments (showing up to 12; sense-strand rows first) ---
+plus ref : GTCACACTTTGTGGAGACAGGTTCCTTGATCAACTCCAGACTAGCAGGGTAGGGGGGGAGAAAAAGAAAATAAATGAGGCT
+tx orient: AGCCTCATTTATTTTCTTTTTCTCCCCCCCTACCCTGCTAGTCTGGAGTTGATCAAGGAACCTGTCTCCACAAAGTGTGAC  (reverse complement)
+          ...................................~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~  R1+ sense=True anchors=(49, 38) dup=False 7M1521N56M9192N49M8242N38M
+          ...................................~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~  R2- sense=True anchors=(49, 72) dup=False 29M9192N49M8242N72M
+
+--- E2_E3_cryptic_+10nt (STAR-misaligned; sequence-rescued): 30 alignments / 30 fragments (showing up to 12; sense-strand rows first) ---
+plus ref : GTCACACTTTGTGGAGACAGGTTCCTTGATCAACTCCAGACTAGCAGGGTAGGGGGGGAGAAAAAGAAAATAAATGAGGCT
+tx orient: AGCCTCATTTATTTTCTTTTTCTCCCCCCCTACCCTGCTAGTCTGGAGTTGATCAAGGAACCTGTCTCCACAAAGTGTGAC  (reverse complement)
+          ................................GA.GGGAC~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~  R1+ sense=True anchors=(44, 25) dup=False 3M1499N78M9192N54M8247N15M
+          ................................GA.GGGAC~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~  R2- sense=True anchors=(44, 47) dup=False 3M1521N56M9192N54M8247N37M
+          ................................GA.GGGAC~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~  R2- sense=True anchors=(44, 18) dup=True 7S3M1499N78M9192N54M8247N8M
+          ................................GA.GGGAC~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~  R1+ sense=True anchors=(44, 25) dup=False 3M1499N78M9192N54M8247N15M
+          ................................GA.GGGAC~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~  R1+ sense=True anchors=(44, 25) dup=False 3M1499N78M9192N54M8247N15M
+          ................................GA.GGGAC~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~  R2- sense=True anchors=(44, 32) dup=False 74M9192N54M8247N22M
+          ................................GA.GGGAC~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~  R2- sense=True anchors=(44, 32) dup=True 74M9192N54M8247N22M
+          ................................GA.GGGAC~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~  R2- sense=True anchors=(44, 47) dup=False 59M9192N54M8247N37M
+          ................................GA.GGGAC~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~  R2- sense=True anchors=(44, 49) dup=False 57M9192N54M8247N39M
+          ................................GA.GGGAC~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~  R1+ sense=True anchors=(44, 59) dup=False 2S45M9193N54M8247N49M
+          ................................GA.GGGAC~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~  R1+ sense=True anchors=(44, 59) dup=True 2S45M9193N54M8247N49M
+          .......................A........GA.GGGAC~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~  R2- sense=True anchors=(44, 70) dup=False 36M9192N54M8247N60M
+
+Spliced sequences (transcript orientation, last 20 nt of exon 2 | first nt of exon 3):
+  canonical            : ATCTTAGAGTGTCCCATCTG | TCTGGAGTTGATCAAGGAACCTGTCTCCAC
+  cryptic +7 (c.81_87del) : ATCTTAGAGTGTCCCATCTG | TTGATCAAGGAACCTGTCTCCACAAAGTGT
+  cryptic +16 (c.81_96del): ATCTTAGAGTGTCCCATCTG | GAACCTGTCTCCACAAAGTGTGACCACATA
+  cryptic +10 (c.81_90del): ATCTTAGAGTGTCCCATCTG | ATCAAGGAACCTGTCTCCACAAAGTGTGAC   (no AG; 30 STAR-misaligned fragments, see 03b)
+
+==============================================================================================================
+D. Predicted consequence of each observed exon-3 splice product (in silico translation of the reference sequence; NMD rule = PTC >50 nt upstream of last exon-exon junction)
+==============================================================================================================
+ATG start located at mRNA offset 113 (expected exon 1 length 94 + 19 UTR bases in exon 2 = 113 -> index 113)
+  canonical                       : protein 1863 aa (BRCA1 reference 1863), stop codon at mRNA offset 5702, last exon-exon junction at 5580 -> not NMD-predicted by 50-nt rule / no PTC
+  cryptic +5 (r.81_85del)         : protein 26 aa (BRCA1 reference 1863), stop codon at mRNA offset 191, last exon-exon junction at 5575 -> NMD-predicted (PTC 5384 nt upstream of last junction)
+  cryptic +7 (r.81_87del)         : protein 27 aa (BRCA1 reference 1863), stop codon at mRNA offset 194, last exon-exon junction at 5573 -> NMD-predicted (PTC 5379 nt upstream of last junction)
+  cryptic +10 (r.81_90del)        : protein 26 aa (BRCA1 reference 1863), stop codon at mRNA offset 191, last exon-exon junction at 5570 -> NMD-predicted (PTC 5379 nt upstream of last junction)
+  cryptic +16 (r.81_96del)        : protein 43 aa (BRCA1 reference 1863), stop codon at mRNA offset 242, last exon-exon junction at 5564 -> NMD-predicted (PTC 5322 nt upstream of last junction)
+  exon 3 skipping (r.81_134del; 54 nt, multiple of 3): protein 26 aa (BRCA1 reference 1863), stop codon at mRNA offset 191, last exon-exon junction at 5526 -> NMD-predicted (PTC 5335 nt upstream of last junction)

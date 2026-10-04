@@ -1,0 +1,189 @@
+{
+ "background_by_class": {
+  "A>C": {
+   "n_positions": 1245,
+   "median": 0.0,
+   "q99": 0.002506830429878428,
+   "q999": 0.004655870078025841,
+   "mean": 0.00010332971579788281
+  },
+  "A>G": {
+   "n_positions": 1245,
+   "median": 0.0,
+   "q99": 0.004225711295080398,
+   "q999": 0.007627956613888709,
+   "mean": 0.00032819902286537403
+  },
+  "A>T": {
+   "n_positions": 1245,
+   "median": 0.0,
+   "q99": 0.0014915586004404207,
+   "q999": 0.0034234427519131048,
+   "mean": 5.261690609471519e-05
+  },
+  "C>A": {
+   "n_positions": 1634,
+   "median": 0.0,
+   "q99": 0.00546448087431694,
+   "q999": 0.008515719406041981,
+   "mean": 0.0003842777999138281
+  },
+  "C>G": {
+   "n_positions": 1634,
+   "median": 0.0,
+   "q99": 0.0035231458579482594,
+   "q999": 0.009501608228143936,
+   "mean": 0.00017684522684928606
+  },
+  "C>T": {
+   "n_positions": 1634,
+   "median": 0.0,
+   "q99": 0.00866793597066498,
+   "q999": 0.013140890336590652,
+   "mean": 0.0008827055131152767
+  },
+  "G>A": {
+   "n_positions": 1570,
+   "median": 0.0,
+   "q99": 0.01001452810386377,
+   "q999": 0.013285449513638914,
+   "mean": 0.0013700975661884295
+  },
+  "G>C": {
+   "n_positions": 1570,
+   "median": 0.0,
+   "q99": 0.0030048234437568223,
+   "q999": 0.007466780335322621,
+   "mean": 0.00011559220602162375
+  },
+  "G>T": {
+   "n_positions": 1570,
+   "median": 0.0,
+   "q99": 0.004898382009349695,
+   "q999": 0.010679023088525433,
+   "mean": 0.00026105410279438415
+  },
+  "T>A": {
+   "n_positions": 1312,
+   "median": 0.0,
+   "q99": 0.0018995623789367976,
+   "q999": 0.006526484480431862,
+   "mean": 8.574946110197699e-05
+  },
+  "T>C": {
+   "n_positions": 1312,
+   "median": 0.0,
+   "q99": 0.004573226544622428,
+   "q999": 0.011185594381637727,
+   "mean": 0.000289234603850196
+  },
+  "T>G": {
+   "n_positions": 1312,
+   "median": 0.0,
+   "q99": 0.002801150903877275,
+   "q999": 0.00584009857255787,
+   "mean": 0.00010812379996766243
+  }
+ },
+ "site_comparison": [
+  {
+   "gene": "MTOR",
+   "class": "C>T",
+   "rna_alt": 1,
+   "rna_depth": 2101,
+   "rna_alt_fraction": 0.00047596382674916705,
+   "background_median": 0.0,
+   "background_q99": 0.00866793597066498,
+   "background_q999": 0.013140890336590652,
+   "frac_background_positions_at_or_above": 0.3298653610771114
+  },
+  {
+   "gene": "SCAP",
+   "class": "C>T",
+   "rna_alt": 0,
+   "rna_depth": 982,
+   "rna_alt_fraction": 0.0,
+   "background_median": 0.0,
+   "background_q99": 0.00866793597066498,
+   "background_q999": 0.013140890336590652,
+   "frac_background_positions_at_or_above": 1.0
+  },
+  {
+   "gene": "RXRA",
+   "class": "C>A",
+   "rna_alt": 0,
+   "rna_depth": 1700,
+   "rna_alt_fraction": 0.0,
+   "background_median": 0.0,
+   "background_q99": 0.00546448087431694,
+   "background_q999": 0.008515719406041981,
+   "frac_background_positions_at_or_above": 1.0
+  },
+  {
+   "gene": "CUL3",
+   "class": "G>A",
+   "rna_alt": 2,
+   "rna_depth": 722,
+   "rna_alt_fraction": 0.002770083102493075,
+   "background_median": 0.0,
+   "background_q99": 0.01001452810386377,
+   "background_q999": 0.013285449513638914,
+   "frac_background_positions_at_or_above": 0.18280254777070062
+  },
+  {
+   "gene": "DLL4",
+   "class": "C>T",
+   "rna_alt": 0,
+   "rna_depth": 40,
+   "rna_alt_fraction": 0.0,
+   "background_median": 0.0,
+   "background_q99": 0.00866793597066498,
+   "background_q999": 0.013140890336590652,
+   "frac_background_positions_at_or_above": 1.0
+  },
+  {
+   "gene": "ATG4B",
+   "class": "G>A",
+   "rna_alt": 4,
+   "rna_depth": 710,
+   "rna_alt_fraction": 0.005633802816901409,
+   "background_median": 0.0,
+   "background_q99": 0.01001452810386377,
+   "background_q999": 0.013285449513638914,
+   "frac_background_positions_at_or_above": 0.05031847133757962
+  },
+  {
+   "gene": "ATG13",
+   "class": "A>G",
+   "rna_alt": 0,
+   "rna_depth": 777,
+   "rna_alt_fraction": 0.0,
+   "background_median": 0.0,
+   "background_q99": 0.004225711295080398,
+   "background_q999": 0.007627956613888709,
+   "frac_background_positions_at_or_above": 1.0
+  },
+  {
+   "gene": "FGFR4",
+   "class": "C>T",
+   "rna_alt": 0,
+   "rna_depth": 322,
+   "rna_alt_fraction": 0.0,
+   "background_median": 0.0,
+   "background_q99": 0.00866793597066498,
+   "background_q999": 0.013140890336590652,
+   "frac_background_positions_at_or_above": 1.0
+  },
+  {
+   "gene": "BRD3",
+   "class": "T>C",
+   "rna_alt": 0,
+   "rna_depth": 515,
+   "rna_alt_fraction": 0.0,
+   "background_median": 0.0,
+   "background_q99": 0.004573226544622428,
+   "background_q999": 0.011185594381637727,
+   "frac_background_positions_at_or_above": 1.0
+  }
+ ]
+}

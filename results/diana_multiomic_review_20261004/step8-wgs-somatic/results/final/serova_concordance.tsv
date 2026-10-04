@@ -1,0 +1,23 @@
+window	gene	protein	site	ref	serova_exome_alt_of_informative	serova_exome_vaf	serova_tumor_wgs_alt_of_depth	ref_matches_mutect2	mutect2_alt	mutect2_filter	mutect2_tumor_ad	mutect2_tumor_af	strelka_alt	strelka_filter	strelka_tumor_ref_alt_tier1	consensus_pass
+W1	MTOR	p.Pro1125Ala	chr1:11212821	G	100/1057	0.0946	4/38	True	C	strand_bias	50,4	0.125	C	PASS	50,4	False
+W2	PTPRH	p.Thr490Pro	chr19:55198865	T	26/114	0.2281	7/16	True	G	PASS	14,10	0.444	G	PASS	14,10	True
+W3	USP10	p.Asn557Ile	chr16:84764101	A	19/248	0.0766	3/32	True	T	PASS	38,5	0.117	T	PASS	39,5	True
+W4	TAF4B	p.Pro522Thr	chr18:26286473	C	82/345	0.2377	10/34	True	A	PASS	32,15	0.306	A	PASS	32,15	True
+W5	PHKB	p.Ala5Val	chr16:47461364	C	32/134	0.2388	3/21	True	T	orientation	27,4	0.174	T	PASS	27,4	False
+W6	BRCA2	p.Ser2695Leu	chr13:32363286	C	201/1354	0.1484	5/37	True	T	PASS	47,7	0.154	T	PASS	47,7	True
+W10	ZNF83	p.Asp496Ala	chr19:52613078	T	58/311	0.1865	5/28	True	G	PASS	34,7	0.199	G	PASS	34,7	True
+W11	MAST1	p.Ala617Asp	chr19:12865762	C	40/297	0.1347	0/7			no_record				no_record		False
+W12	MAN1A1	p.Leu594Phe	chr6:119180367	G	31/312	0.0994	5/56	True	A	PASS	70,9	0.103	A	PASS	69,9	True
+W13	SLC46A3	p.Leu130Phe	chr13:28713352	G	93/357	0.2605	6/24	True	A	PASS	28,11	0.269	A	PASS	28,10	True
+W14	MELTF	p.Gly197Arg	chr3:197023012	C	109/285	0.3825	9/22	True	G	PASS	19,12	0.417	G	PASS	19,12	True
+W16	ANTXR2	p.Arg427Lys	chr4:79978074	C	14/131	0.1069	4/56	True	T	PASS	72,6	0.086	T	PASS	74,6	True
+W17	TAC4	p.Gly90Ala	chr17:49839873	C	30/240	0.125	2/16	True	G	PASS	16,3	0.167	G	PASS	16,3	True
+W19	HERC1	p.Met3642Ile	chr15:63645635	C	22/213	0.1033	2/42	True	A	PASS	53,3	0.068	A	PASS	53,3	True
+W20	TP63	p.Cys8Phe	chr3:189631538	G	21/283	0.0742	17/73	True	T	PASS	76,25	0.24	T	PASS	77,25	True
+W21	REST	p.Arg339Ile	chr4:56927648	G	21/112	0.1875	5/23	True	T	PASS	27,9	0.24	T	PASS	28,9	True
+W22	APEH	p.Arg693Gly	chr3:49683130	C	38/279	0.1362	2/16	True	G	PASS	20,3	0.167	G	PASS	20,3	True
+W23	RABL6	p.Ala431Asp	chr9:136838920	C	57/348	0.1638	0/8			no_record				no_record		False
+W24	SDC3	p.Val59Met	chr1:30878704	C	16/158	0.1013	0/15			no_record				no_record		False
+W25	DSTN	p.Gln136Glu	chr20:17607054	C	34/349	0.0974	4/34	True	G	PASS	40,6	0.138	G	PASS	40,6	True
+W26	NUMA1	p.Gly2060Arg	chr11:72004045	C	31/381	0.0814	1/17			no_record				no_record		False
+W27	TXNDC5	p.Val305Ile	chr6:7888755	C	97/462	0.21	5/20	True	T	PASS	19,6	0.286	T	PASS	20,6	True

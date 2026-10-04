@@ -1,0 +1,18 @@
+claim_id,section,claim
+C1,overview,27 windows; 1063 aa; 3473 nt mRNA; unmodified uridine; 5 class I alleles
+C2,variant evidence,21 of 22 missense windows called by three callers (DeepSomatic Mutect2 Strelka2); three by two
+C3,variant evidence,tumour DNA and RNA are fresh-frozen rather than fixed; no window carries a fixation-artefact flag
+C4,clonality,8 windows at full CCF; 14 at CCF 0.43; purity 0.37 ploidy 2.4 (ASCAT goodness of fit 91.6)
+C5,RNA support,lowest RNA fractions REST 1.4% ANTXR2 3.8% SDC3 4.6%; MAST1 and TP63 not covered; RNA library maps 71.6% uniquely vs 80% QC threshold
+C6,board,1 include / 14 flag / 8 eligible / 4 exclude (SLC46A3 MELTF SDC3 TXNDC5); construct composed with no override recorded against exclude verdicts
+C7,burden,tumour mutational burden 3 mutations per megabase
+C8,presentation,11 windows <2.0 %rank on both models; 10 B23-only; 5 NetMHCpan-only; APEH on neither
+C9,immunogenicity,model well trained only on B*18:01; A*26:01 and B*38:01 proxy transfer collapses; no immunogenicity score carried
+C10,HLA typing,eleven-locus ensemble consensus not accredited; earlier typing disagreed at A and B loci; allele loss assessed against earlier genotype
+C11,APM,TAP2 0.05x B2M 0.17x PSMB8 0.25x PSMB9 0.26x IRF1 0.27x of normal breast (bulk tumour TPM vs normal breast median)
+C12,B2M,copy-number fit reads B2M at one copy; RNA 0.17x normal breast; single-copy not biallelic loss
+C13,allele loss,loss unresolved for all five alleles; one loss removes 35-65% of candidate slate
+C14,self-peptide,1262 of 3920 cassette peptides occur in normal proteome; 29 strong self binders; 21 from three NCKAP1 windows; 8 from MITD trafficking domain
+C15,cross-reactivity,ZNF83 W10 mutant and wild-type registers both presented on A*33:03 (review); 6 missense windows (MAST1 SLC46A3 MELTF TP63 SDC3 TXNDC5) carry no screen result
+C16,class II,7 windows contain a predicted class II binder vs design target 5
+C17,manufacturing,no DNA template built; 9 GC-rich 100-nt windows >0.70; cryptic splice acceptor motif at nt 1511; 17 slippery sites

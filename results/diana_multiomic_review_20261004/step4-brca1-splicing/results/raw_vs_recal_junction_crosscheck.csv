@@ -1,0 +1,8 @@
+junction,coords,raw_BAM_P1,recal_BAM_reconstructed_withdups,raw_BAM_P2_nodups,recal_BAM_reconstructed_nodups
+E2->E3 canonical,41267797-41276033,76,76,54,54
+E2->E4 skipping E3,41258551-41276033,34,34,22,22
+E3->E4 canonical,41258551-41267742,468,468,339,339
+cryptic E2->41267790,41267790-41276033,274,274,194,194
+cryptic E2->41267781,41267781-41276033,38,38,29,29
+"cryptic +10 (STAR aligned as 17:41267797-41276043, remapped)",41267787-41276033,30,0,22,0
+SUM of 22 canonical introns,,13657,13496,,

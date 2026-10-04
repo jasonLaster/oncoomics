@@ -1,0 +1,9 @@
+consensus,lymph,other,stromal,tumor
+benign_epi,100,314,20,40
+dead,72,259,8,1
+epi_unassigned,0,5,0,1
+lymph,12055,11350,648,489
+other,4,37,1,2
+other_inflam,106,370,16,53
+stromal,201,6817,4466,1575
+tumor,1156,8084,492,8727

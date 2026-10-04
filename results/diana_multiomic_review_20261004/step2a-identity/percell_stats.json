@@ -1,0 +1,305 @@
+{
+ "percell_homalt_discordance": {
+  "L1": {
+   "obs_total": 266364,
+   "disc_total": 471,
+   "rate": 0.0017682569716628374,
+   "cells_with_obs": 35796,
+   "sites": 4223,
+   "cells_obs>=3": 27178,
+   "frac_cells_obs>=3_with>=1_disc": 0.014938553241592465,
+   "frac_cells_obs>=3_with>=2_disc": 0.0017293399072779454,
+   "cells_obs>=5": 20544,
+   "frac_cells_obs>=5_with>=1_disc": 0.018204828660436136,
+   "frac_cells_obs>=5_with>=2_disc": 0.002141744548286604,
+   "cells_obs>=8": 13430,
+   "frac_cells_obs>=8_with>=1_disc": 0.022338049143708117,
+   "frac_cells_obs>=8_with>=2_disc": 0.002829486224869695,
+   "perm": {
+    "cells_ge2_obs": 47,
+    "cells_ge2_perm_mean": 12.596,
+    "cells_ge2_perm_sd": 3.054305813110403,
+    "cells_ge2_z": 11.264097999723255,
+    "pairs_obs": 47.0,
+    "pairs_perm_mean": 13.078,
+    "pairs_perm_sd": 3.3280498794339004,
+    "pairs_z": 10.192755886750746,
+    "n_perm": 500,
+    "n_perm_ge_obs_pairs": 0
+   }
+  },
+  "L2": {
+   "obs_total": 255948,
+   "disc_total": 484,
+   "rate": 0.0018910091112257178,
+   "cells_with_obs": 34383,
+   "sites": 4206,
+   "cells_obs>=3": 25618,
+   "frac_cells_obs>=3_with>=1_disc": 0.015848231712077446,
+   "frac_cells_obs>=3_with>=2_disc": 0.002107892887813256,
+   "cells_obs>=5": 19247,
+   "frac_cells_obs>=5_with>=1_disc": 0.019847248921909907,
+   "frac_cells_obs>=5_with>=2_disc": 0.0028056320465527093,
+   "cells_obs>=8": 12612,
+   "frac_cells_obs>=8_with>=1_disc": 0.02450047573739296,
+   "frac_cells_obs>=8_with>=2_disc": 0.0036473200126863306,
+   "perm": {
+    "cells_ge2_obs": 56,
+    "cells_ge2_perm_mean": 15.03,
+    "cells_ge2_perm_sd": 3.282240088719897,
+    "cells_ge2_z": 12.482328803673427,
+    "pairs_obs": 56.0,
+    "pairs_perm_mean": 15.744,
+    "pairs_perm_sd": 3.683811070074034,
+    "pairs_z": 10.92781340688869,
+    "n_perm": 500,
+    "n_perm_ge_obs_pairs": 0
+   }
+  }
+ },
+ "vireo": {
+  "L1": {
+   "sites": 6788,
+   "cells": 15000,
+   "obs_total": 320045,
+   "obs_per_cell_median": 17.0,
+   "site_gt_counts": {
+    "HET": 3405,
+    "HOMREF": 2876,
+    "NOCALL": 326,
+    "AMBIG": 166,
+    "HOMALT": 15
+   },
+   "vireo": {
+    "K=1": {
+     "ELBO": -162149.14728422897,
+     "cluster_sizes": [
+      15000
+     ],
+     "frac_cells_maxprob>=0.9": 1.0
+    },
+    "K=2": {
+     "ELBO": -162830.773744916,
+     "cluster_sizes": [
+      7442,
+      7558
+     ],
+     "frac_cells_maxprob>=0.9": 0.5213333333333333,
+     "K2_sites_with_confident_genotype_difference(>=0.8)": 451,
+     "K2_sites_by_chrom_with_difference>=0.8": {
+      "chr1": 52,
+      "chr2": 43,
+      "chr3": 43,
+      "chr4": 41,
+      "chr11": 34,
+      "chr10": 33,
+      "chr20": 27,
+      "chr12": 26,
+      "chr7": 25,
+      "chr6": 24,
+      "chr8": 20,
+      "chr19": 14,
+      "chr14": 12,
+      "chr16": 12,
+      "chr5": 10,
+      "chr9": 9,
+      "chr15": 9,
+      "chr17": 9,
+      "chr13": 2,
+      "chr18": 2,
+      "chr21": 2,
+      "chr22": 2
+     },
+     "K2_sites_difference>=0.8_by_normal_gt": {
+      "HET": 231,
+      "HOMREF": 186,
+      "NOCALL": 27,
+      "AMBIG": 7
+     },
+     "K2_mean_site_diff": 0.2669643374056265
+    },
+    "K=3": {
+     "ELBO": -164339.94370638594,
+     "cluster_sizes": [
+      5199,
+      4971,
+      4830
+     ],
+     "frac_cells_maxprob>=0.9": 0.4702
+    }
+   },
+   "seconds": 33.748862981796265
+  },
+  "L2": {
+   "sites": 5868,
+   "cells": 15000,
+   "obs_total": 308572,
+   "obs_per_cell_median": 16.0,
+   "site_gt_counts": {
+    "HET": 3302,
+    "HOMREF": 2112,
+    "NOCALL": 288,
+    "AMBIG": 152,
+    "HOMALT": 14
+   },
+   "vireo": {
+    "K=1": {
+     "ELBO": -159518.63166715222,
+     "cluster_sizes": [
+      15000
+     ],
+     "frac_cells_maxprob>=0.9": 1.0
+    },
+    "K=2": {
+     "ELBO": -159536.24331918845,
+     "cluster_sizes": [
+      7865,
+      7135
+     ],
+     "frac_cells_maxprob>=0.9": 0.5066666666666667,
+     "K2_sites_with_confident_genotype_difference(>=0.8)": 329,
+     "K2_sites_by_chrom_with_difference>=0.8": {
+      "chr4": 48,
+      "chr3": 41,
+      "chr1": 32,
+      "chr2": 25,
+      "chr10": 25,
+      "chr11": 25,
+      "chr7": 24,
+      "chr12": 23,
+      "chr16": 17,
+      "chr20": 14,
+      "chr8": 9,
+      "chr6": 7,
+      "chr9": 7,
+      "chr19": 7,
+      "chr21": 6,
+      "chr14": 5,
+      "chr5": 5,
+      "chr18": 4,
+      "chr17": 3,
+      "chr15": 2
+     },
+     "K2_sites_difference>=0.8_by_normal_gt": {
+      "HET": 197,
+      "HOMREF": 115,
+      "NOCALL": 11,
+      "AMBIG": 6
+     },
+     "K2_mean_site_diff": 0.25778907073611546
+    },
+    "K=3": {
+     "ELBO": -160965.35009734266,
+     "cluster_sizes": [
+      4845,
+      5178,
+      4977
+     ],
+     "frac_cells_maxprob>=0.9": 0.432
+    }
+   },
+   "seconds": 31.28532886505127
+  },
+  "L1+L2": {
+   "sites": 9611,
+   "cells": 15000,
+   "obs_total": 327282,
+   "obs_per_cell_median": 18.0,
+   "site_gt_counts": {
+    "HOMREF": 4433,
+    "HET": 4423,
+    "NOCALL": 462,
+    "AMBIG": 270,
+    "HOMALT": 23
+   },
+   "vireo": {
+    "K=1": {
+     "ELBO": -165667.9221652205,
+     "cluster_sizes": [
+      15000
+     ],
+     "frac_cells_maxprob>=0.9": 1.0,
+     "cluster_by_library": {
+      "0": [
+       7806,
+       7194
+      ]
+     }
+    },
+    "K=2": {
+     "ELBO": -166969.77916581125,
+     "cluster_sizes": [
+      7668,
+      7332
+     ],
+     "frac_cells_maxprob>=0.9": 0.5771333333333334,
+     "cluster_by_library": {
+      "0": [
+       3971,
+       3697
+      ],
+      "1": [
+       3835,
+       3497
+      ]
+     },
+     "K2_sites_with_confident_genotype_difference(>=0.8)": 469,
+     "K2_sites_by_chrom_with_difference>=0.8": {
+      "chr3": 57,
+      "chr2": 51,
+      "chr1": 45,
+      "chr4": 33,
+      "chr6": 33,
+      "chr20": 33,
+      "chr11": 31,
+      "chr7": 30,
+      "chr10": 30,
+      "chr12": 30,
+      "chr8": 20,
+      "chr5": 16,
+      "chr19": 11,
+      "chr14": 10,
+      "chr16": 10,
+      "chr21": 9,
+      "chr17": 6,
+      "chr9": 4,
+      "chr22": 4,
+      "chr18": 4,
+      "chr13": 2
+     },
+     "K2_sites_difference>=0.8_by_normal_gt": {
+      "HOMREF": 221,
+      "HET": 220,
+      "NOCALL": 23,
+      "AMBIG": 5
+     },
+     "K2_mean_site_diff": 0.2677489094796626
+    },
+    "K=3": {
+     "ELBO": -169044.86899507898,
+     "cluster_sizes": [
+      5078,
+      5032,
+      4890
+     ],
+     "frac_cells_maxprob>=0.9": 0.5308666666666667,
+     "cluster_by_library": {
+      "0": [
+       2648,
+       2430
+      ],
+      "1": [
+       2683,
+       2349
+      ],
+      "2": [
+       2475,
+       2415
+      ]
+     }
+    }
+   },
+   "seconds": 34.78664493560791
+  }
+ }
+}

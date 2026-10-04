@@ -1,0 +1,65 @@
+{
+ "locus38": "chr2:47414419",
+ "locus37": "2:47641558",
+ "wgs_normal": {
+  "n_fragments": 15,
+  "events": {
+   "del@+2:A": 3,
+   "del@-2:A": 3,
+   "del@+2:AA": 2,
+   "del@+2:AAA": 1,
+   "del@+1:TA|del@+2:AA": 1,
+   "ins@+33:C|ins@-2:G": 1,
+   "del@+2:AAAA": 1,
+   "del@+1:TAAA": 1,
+   "del@+29:G": 1,
+   "del@+1:TAAAAA|del@+2:AAAAAA": 1
+  }
+ },
+ "wgs_tumor": {
+  "n_fragments": 12,
+  "events": {
+   "del@+2:A": 3,
+   "del@+1:T|del@+2:A": 2,
+   "del@+2:AA": 2,
+   "del@+1:TA": 2,
+   "del@+2:AAAAA": 1,
+   "del@+1:TAA": 1,
+   "del@+1:T": 1
+  }
+ },
+ "wes_normal": {
+  "n_fragments": 259,
+  "events": {
+   "del@+2:AA": 69,
+   "del@+1:T": 31,
+   "del@+2:AAA": 30,
+   "del@+1:TAA": 21,
+   "del@+2:A": 21,
+   "ref": 16,
+   "del@+1:TAAA": 11,
+   "del@+2:AAAAAAA": 7,
+   "del@+2:AAAAA": 6,
+   "del@+2:AAAA": 6,
+   "del@+1:T|del@+2:A": 5,
+   "del@+2:AAAAAA": 5
+  }
+ },
+ "wes_tumor": {
+  "n_fragments": 710,
+  "events": {
+   "del@+2:AA": 151,
+   "del@+2:A": 75,
+   "del@+1:T": 62,
+   "ref": 61,
+   "del@+1:TAA": 54,
+   "del@+2:AAA": 52,
+   "del@+2:AAAA": 39,
+   "del@+1:TAAA": 37,
+   "del@+2:AAAAA": 32,
+   "del@+1:T|del@+2:A": 22,
+   "del@+1:TAA|del@+2:AAA": 17,
+   "del@+1:TAAAA": 17
+  }
+ }
+}

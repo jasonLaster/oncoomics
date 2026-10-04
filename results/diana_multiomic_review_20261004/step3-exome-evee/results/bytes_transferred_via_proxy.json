@@ -1,0 +1,18 @@
+{
+ "normal_exome": {
+  "bytes": 53018764,
+  "requests": 30
+ },
+ "tumor_exome": {
+  "bytes": 79495280,
+  "requests": 27
+ },
+ "rna_recal": {
+  "bytes": 41091156,
+  "requests": 27
+ },
+ "rna_sorted": {
+  "bytes": 42270776,
+  "requests": 20
+ }
+}

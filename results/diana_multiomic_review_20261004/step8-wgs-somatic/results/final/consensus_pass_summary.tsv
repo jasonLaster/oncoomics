@@ -1,0 +1,6 @@
+set	snv	indel	total	ti_tv	per_callable_mb
+mutect2_pass	66201	6092	72293	0.816	26.04
+strelka_pass	49317	4481	53798	1.599	19.378
+consensus_pass	16190	777	16967	0.893	6.112
+mutect2_only_pass	50011	5315	55326	0.792	19.929
+strelka_only_pass	33127	3704	36831	2.179	13.267

@@ -1,0 +1,46 @@
+{
+ "wgs_normal": {
+  "n_pairs": 8420,
+  "median": 242,
+  "mean": 252.5,
+  "p10": 171,
+  "p25": 200,
+  "p75": 297,
+  "p90": 351,
+  "frac_le_150": 0.044,
+  "window": "BRCA1 gene window (hg19 17:41196312-41277500 / hg38 chr17:43044295-43125483), proper pairs, MAPQ>=20, first-in-pair, TLEN 1-999"
+ },
+ "wgs_tumor": {
+  "n_pairs": 5275,
+  "median": 213,
+  "mean": 219.8,
+  "p10": 143,
+  "p25": 174,
+  "p75": 257,
+  "p90": 307,
+  "frac_le_150": 0.128,
+  "window": "BRCA1 gene window (hg19 17:41196312-41277500 / hg38 chr17:43044295-43125483), proper pairs, MAPQ>=20, first-in-pair, TLEN 1-999"
+ },
+ "exome_normal": {
+  "n_pairs": 15576,
+  "median": 266,
+  "mean": 277.1,
+  "p10": 184,
+  "p25": 218,
+  "p75": 327,
+  "p90": 385,
+  "frac_le_150": 0.024,
+  "window": "BRCA1 gene window (hg19 17:41196312-41277500 / hg38 chr17:43044295-43125483), proper pairs, MAPQ>=20, first-in-pair, TLEN 1-999"
+ },
+ "exome_tumor": {
+  "n_pairs": 29124,
+  "median": 219,
+  "mean": 226.7,
+  "p10": 152,
+  "p25": 180,
+  "p75": 266,
+  "p90": 313,
+  "frac_le_150": 0.095,
+  "window": "BRCA1 gene window (hg19 17:41196312-41277500 / hg38 chr17:43044295-43125483), proper pairs, MAPQ>=20, first-in-pair, TLEN 1-999"
+ }
+}

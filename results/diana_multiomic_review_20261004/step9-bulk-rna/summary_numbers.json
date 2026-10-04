@@ -1,0 +1,369 @@
+{
+ "reference": {
+  "n_BRCA_primary": 1092,
+  "n_TNBC_Lehmann2016": 180,
+  "n_Basal_PAM50": 139,
+  "n_immune_high_TNBC": 60
+ },
+ "platform_qc": {
+  "n_expressed_pc_genes": 13780,
+  "spearman_patient_vs_tnbc_median_raw": 0.7603125255196633,
+  "spearman_tcga_tnbc_vs_median_q05_q50_q95": [
+   0.8430468927068832,
+   0.9034354929581365,
+   0.9332485993318941
+  ],
+  "loglog_slope_patient_vs_tnbc_median_raw": 0.7744889113036287,
+  "loglog_slope_tcga_q05_q50_q95": [
+   0.891574912947094,
+   0.9765208705033148,
+   1.0269654503843415
+  ],
+  "patient_median_abs_z": 1.103344951160004,
+  "patient_q90_abs_z": 2.9423914210238133,
+  "tcga_tnbc_median_abs_z_q50": 0.656655058339201,
+  "tcga_tnbc_q90_abs_z_q50": 1.548126175651885,
+  "tcga_tnbc_q90_abs_z_max": 2.543763080201905,
+  "robust_sd_z_patient": 1.583133759762826,
+  "robust_sd_z_tcga_median": 0.9662916383161477,
+  "excess_sd_z_for_noise_injection": 1.254030689824247,
+  "capture_resid_log2_median_OncoKB_any_in_vs_out": [
+   0.6887096073359344,
+   -0.044388356233010295
+  ],
+  "capture_frac_resid_gt2_OncoKB_any_in_vs_out": [
+   0.1938872970391595,
+   0.039442607463391594
+  ],
+  "capture_n_OncoKB_any": 1047,
+  "capture_mwu_p_OncoKB_any": 1.5208058643228469e-74,
+  "capture_resid_log2_median_FoundationOne_in_vs_out": [
+   1.778724768504346,
+   -0.0187425538380038
+  ],
+  "capture_frac_resid_gt2_FoundationOne_in_vs_out": [
+   0.4456140350877193,
+   0.04285502079619727
+  ],
+  "capture_n_FoundationOne": 285,
+  "capture_mwu_p_FoundationOne": 2.5523282248419312e-64,
+  "capture_resid_log2_median_MSK_IMPACT_in_vs_out": [
+   1.161899299005261,
+   -0.02374183982902478
+  ],
+  "capture_frac_resid_gt2_MSK_IMPACT_in_vs_out": [
+   0.335632183908046,
+   0.041910770617395225
+  ],
+  "capture_n_MSK_IMPACT": 435,
+  "capture_mwu_p_MSK_IMPACT": 4.1338979111883004e-65,
+  "histone_resid_log2_median": 4.665182881781476,
+  "n_capture_flag_genes": 1268,
+  "marker_HIST1H4C_patient_tpm_vs_tnbc_median": [
+   361.6572277957983,
+   0.2848653644323349
+  ],
+  "marker_HIST1H1C_patient_tpm_vs_tnbc_median": [
+   256.8622951057978,
+   75.60956573486328
+  ],
+  "marker_NEAT1_patient_tpm_vs_tnbc_median": [
+   7.859025618518537,
+   131.57235717773438
+  ],
+  "marker_GAPDH_patient_tpm_vs_tnbc_median": [
+   556.4594803548448,
+   4697.349609375
+  ],
+  "marker_EEF1A1_patient_tpm_vs_tnbc_median": [
+   2054.5769319625283,
+   8111.348388671875
+  ],
+  "marker_ACTB_patient_tpm_vs_tnbc_median": [
+   2098.498470984201,
+   4665.42333984375
+  ]
+ },
+ "pam50": {
+  "patient": {
+   "Basal": 0.506,
+   "Her2": -0.052,
+   "LumA": -0.291,
+   "LumB": -0.413,
+   "Normal": 0.273
+  },
+  "patient_rank_variant": {
+   "Basal": 0.467,
+   "Her2": -0.067,
+   "LumA": -0.271,
+   "LumB": -0.385,
+   "Normal": 0.249
+  },
+  "patient_call": "Basal",
+  "margin_top2": 0.23346938775510206,
+  "tcga_agreement_with_PAM50Call_RNAseq": 0.733015494636472,
+  "genes_used": 50,
+  "gene_bootstrap": {
+   "Basal": 0.897,
+   "Normal": 0.096,
+   "Her2": 0.007
+  },
+  "noise_injection_basal_retention": 0.9965217391304347,
+  "excl_capture_flagged": {
+   "genes_used": 34,
+   "patient": {
+    "Basal": 0.62,
+    "Her2": -0.039,
+    "LumA": -0.461,
+    "LumB": -0.315,
+    "Normal": 0.095
+   },
+   "call": "Basal",
+   "tcga_agreement": 0.6674612634088201
+  },
+  "tcga_basal_TNBC_basal_corr_q05_q50_q95": [
+   0.6222617046818727,
+   0.7774789915966386,
+   0.8684753901560625
+  ]
+ },
+ "lehmann": {
+  "patient_scores": {
+   "BL1": -0.306,
+   "BL2": -0.983,
+   "IM": 0.42,
+   "LAR": 0.142,
+   "M": -0.207,
+   "MSL": 1.097
+  },
+  "patient_rank_scores": {
+   "BL1": 0.1413,
+   "BL2": 0.0518,
+   "IM": 0.098,
+   "LAR": 0.001,
+   "M": 0.085,
+   "MSL": 0.0215
+  },
+  "patient_call6": "MSL",
+  "patient_call4": "LAR",
+  "patient_call4_rank": "BL1",
+  "tcga_agree6_vs_S1_TNBCtype": 0.8143712574850299,
+  "tcga_agree4_vs_S1_refined": 0.8522727272727273,
+  "tcga_agree4_rank_vs_S1_refined": 0.6136363636363636,
+  "coverage": {
+   "BL1": 0.9528023598820059,
+   "BL2": 0.9476082004555809,
+   "IM": 0.8253061224489796,
+   "LAR": 0.9396243291592129,
+   "M": 0.9497663551401869,
+   "MSL": 0.9399577167019028
+  },
+  "bootstrap_call6": {
+   "MSL": 1.0
+  },
+  "bootstrap_call4": {
+   "LAR": 0.996,
+   "M": 0.002,
+   "BL1": 0.002
+  },
+  "noise_injection_call4_retention": 0.9633333333333334,
+  "tcga_tnbc_call4_distribution": {
+   "BL1": 58,
+   "M": 52,
+   "LAR": 36,
+   "BL2": 34
+  },
+  "excl_capture_flagged": {
+   "patient_scores": {
+    "BL1": -0.421,
+    "BL2": -0.897,
+    "IM": 0.371,
+    "LAR": 0.105,
+    "M": -0.258,
+    "MSL": 1.195
+   },
+   "call6": "MSL",
+   "call4": "LAR",
+   "tcga_agree4": 0.8352272727272727,
+   "pct_TNBC": {
+    "BL1": 21.11111111111111,
+    "BL2": 3.3333333333333335,
+    "IM": 69.44444444444444,
+    "LAR": 72.22222222222221,
+    "M": 33.33333333333333,
+    "MSL": 94.44444444444444
+   }
+  },
+  "tcga_centroid4": {
+   "n_genes": 3412,
+   "patient_spearman": {
+    "BL1": -0.173,
+    "BL2": 0.179,
+    "M": -0.022,
+    "LAR": 0.072
+   },
+   "patient_call": "BL2",
+   "tcga_loo_agreement_vs_S1_refined": 0.7215909090909091
+  }
+ },
+ "severson_brca1ness": {
+  "patient": 0.41614083661433393,
+  "pct_TNBC": 29.444444444444446,
+  "n_genes_excl_flagged": 73,
+  "pct_TNBC_excl_capture_flagged": 27.77777777777778,
+  "pct_BRCA": 83.88278388278388,
+  "auc_basal_vs_nonbasal_TCGA": 0.9693011305241521,
+  "spearman_vs_HRDsum_in_TNBC": [
+   0.45279039798518433,
+   8.063163564403227e-10
+  ],
+  "n_TNBC_with_HRD": 167
+ },
+ "brca1_capture_resid_pct_among_FoundationOne_genes": 71.40350877192982,
+ "hrd_context_TNBC": {
+  "BRCA1_expr_vs_HRD_spearman": [
+   -0.1479140641589018,
+   0.05644026143153519
+  ],
+  "HR_KEGG_vs_HRD_spearman": [
+   0.32599310851625024,
+   1.71451710641113e-05
+  ],
+  "prolif_vs_HRD_spearman": [
+   0.33555415734463445,
+   9.294825634505238e-06
+  ],
+  "TNBC_HRD_sum_q25_q50_q75": [
+   31.5,
+   46.0,
+   66.5
+  ],
+  "n_TNBC_BRCA1_somatic_mut": 9
+ },
+ "epic": {
+  "sig_genes_used": 97,
+  "sig_genes_OncoKB_excluded_in_sensitivity": 21,
+  "patient_QN_excl_OncoKB": {
+   "Bcells": 0.03867691156069768,
+   "CAFs": 0.08191383592680918,
+   "CD4_Tcells": 0.03679819179473662,
+   "CD8_Tcells": 0.03551260947015251,
+   "Endothelial": 0.04408097467545374,
+   "Macrophages": 0.015133893908316369,
+   "NKcells": 0.0,
+   "otherCells": 0.747883582663834
+  },
+  "fit_spearman_excl_OncoKB": 0.5957421628445192,
+  "patient_QN": {
+   "Bcells": 0.042119911526147004,
+   "CAFs": 0.07686756368774321,
+   "CD4_Tcells": 0.15754745452107585,
+   "CD8_Tcells": 0.0,
+   "Endothelial": 0.055744487273317905,
+   "Macrophages": 0.015872769144695785,
+   "NKcells": 0.0,
+   "otherCells": 0.6518478138470203
+  },
+  "patient_rawTPM": {
+   "Bcells": 0.05277955097610734,
+   "CAFs": 0.06772790449455374,
+   "CD4_Tcells": 0.21015616088195846,
+   "CD8_Tcells": 0.0,
+   "Endothelial": 0.07790143655995467,
+   "Macrophages": 0.017952979283244026,
+   "NKcells": 0.0,
+   "otherCells": 0.5734819678041817
+  },
+  "fit_spearman_QN": 0.6055649063749211,
+  "fit_spearman_raw": 0.5904297285924679,
+  "converged": true
+ },
+ "ig": {
+  "patient_IG_fraction_of_total_TPM": 0.22568509694273187,
+  "pct_TNBC": 96.11111111111111,
+  "TNBC_IG_fraction_q50_q90": [
+   0.018378680108993527,
+   0.15540932683009162
+  ],
+  "patient_isotype_TPM_pcnorm": {
+   "IGHG1": 2843.9066329447455,
+   "IGHG2": 623.8222102835991,
+   "IGHG3": 313.2599426005602,
+   "IGHG4": 79.49043896800598,
+   "IGHA1": 12192.621389930158,
+   "IGHA2": 3534.221649261709,
+   "IGHM": 1055.5187917085102,
+   "IGHD": 82.60658370637394,
+   "IGKC": 21463.424428830538
+  },
+  "IgA_share_of_IgA_plus_IgG": {
+   "patient": 0.8029092913892377,
+   "TNBC_median": 0.14033210830615117,
+   "TNBC_q90": 0.4494589640155773,
+   "pct_TNBC": 97.77777777777777
+  }
+ },
+ "nuclei_step6": {
+  "KH022-1": {
+   "all": {
+    "B": 0.0302,
+    "T_NK": 0.1019,
+    "adipocyte": 0.0254,
+    "doublet_like_epi+fibroblast": 0.0717,
+    "doublet_like_epi+myeloid": 0.0131,
+    "endothelial": 0.0409,
+    "epithelial": 0.5077,
+    "fibroblast": 0.0674,
+    "low_quality": 0.0494,
+    "myeloid": 0.0426,
+    "myoepithelial": 0.0336,
+    "plasma": 0.016
+   },
+   "excluding_doublet_lowq": {
+    "B": 0.0349,
+    "T_NK": 0.1176,
+    "adipocyte": 0.0294,
+    "endothelial": 0.0473,
+    "epithelial": 0.5864,
+    "fibroblast": 0.0779,
+    "myeloid": 0.0492,
+    "myoepithelial": 0.0389,
+    "plasma": 0.0184
+   },
+   "n_total": 38994
+  },
+  "KH022-1-1": {
+   "all": {
+    "B": 0.0278,
+    "T_NK": 0.0995,
+    "adipocyte": 0.0263,
+    "doublet_like_epi+T_NK": 0.0415,
+    "doublet_like_epi+fibroblast": 0.0718,
+    "endothelial": 0.0253,
+    "epithelial": 0.4396,
+    "epithelial_lowq": 0.0996,
+    "epithelial_luminal_HS": 0.0079,
+    "fibroblast": 0.0729,
+    "myeloid": 0.044,
+    "myoepithelial": 0.0206,
+    "perivascular": 0.0082,
+    "plasma": 0.015
+   },
+   "excluding_doublet_lowq": {
+    "B": 0.0314,
+    "T_NK": 0.1122,
+    "adipocyte": 0.0297,
+    "endothelial": 0.0285,
+    "epithelial": 0.4958,
+    "epithelial_lowq": 0.1123,
+    "epithelial_luminal_HS": 0.0089,
+    "fibroblast": 0.0822,
+    "myeloid": 0.0497,
+    "myoepithelial": 0.0232,
+    "perivascular": 0.0092,
+    "plasma": 0.0169
+   },
+   "n_total": 37805
+  }
+ }
+}

@@ -1,0 +1,355 @@
+{
+ "copy_number_context": [
+  {
+   "gene": "MTOR",
+   "window": "1:11267202-11367202",
+   "n_positions_ratio": 13811,
+   "log2_ratio_median_window": -0.1625843715784757,
+   "log2_ratio_median_pm2kb": -0.20613119451124962,
+   "n_het_snps": 1,
+   "tumor_minor_allele_fraction_median": 0.4596354166666667,
+   "tumor_minor_allele_fraction_mean": 0.4596354166666667,
+   "frac_snps_minor_lt_0.40": 0.0
+  },
+  {
+   "gene": "SCAP",
+   "window": "3:47410860-47510860",
+   "n_positions_ratio": 12352,
+   "log2_ratio_median_window": -0.5928120818127269,
+   "log2_ratio_median_pm2kb": -0.5848978055600073,
+   "n_het_snps": 6,
+   "tumor_minor_allele_fraction_median": 0.33052287581699347,
+   "tumor_minor_allele_fraction_mean": 0.32949055690082046,
+   "frac_snps_minor_lt_0.40": 1.0
+  },
+  {
+   "gene": "RXRA",
+   "window": "9:137250002-137350002",
+   "n_positions_ratio": 3465,
+   "log2_ratio_median_window": -0.40174831331226424,
+   "log2_ratio_median_pm2kb": -0.3182933473117897,
+   "n_het_snps": 4,
+   "tumor_minor_allele_fraction_median": 0.35343493733560266,
+   "tumor_minor_allele_fraction_mean": 0.34329228528442557,
+   "frac_snps_minor_lt_0.40": 1.0
+  },
+  {
+   "gene": "CUL3",
+   "window": "2:225320819-225420819",
+   "n_positions_ratio": 2079,
+   "log2_ratio_median_window": 0.28808330526284703,
+   "log2_ratio_median_pm2kb": 0.1900205211108081,
+   "n_het_snps": 2,
+   "tumor_minor_allele_fraction_median": 0.3783492822966507,
+   "tumor_minor_allele_fraction_mean": 0.3783492822966507,
+   "frac_snps_minor_lt_0.40": 0.5
+  },
+  {
+   "gene": "DLL4",
+   "window": "15:41178731-41278731",
+   "n_positions_ratio": 10433,
+   "log2_ratio_median_window": -0.6111128985556706,
+   "log2_ratio_median_pm2kb": -0.6198616358663881,
+   "n_het_snps": 2,
+   "tumor_minor_allele_fraction_median": 0.4209468692227313,
+   "tumor_minor_allele_fraction_mean": 0.4209468692227313,
+   "frac_snps_minor_lt_0.40": 0.5
+  },
+  {
+   "gene": "ATG4B",
+   "window": "2:242544726-242644726",
+   "n_positions_ratio": 5737,
+   "log2_ratio_median_window": -0.02831368365128624,
+   "log2_ratio_median_pm2kb": -0.045917621925090364,
+   "n_het_snps": 8,
+   "tumor_minor_allele_fraction_median": 0.36010629178810216,
+   "tumor_minor_allele_fraction_mean": 0.37650003555822054,
+   "frac_snps_minor_lt_0.40": 0.875
+  },
+  {
+   "gene": "ATG13",
+   "window": "11:46629115-46729115",
+   "n_positions_ratio": 9061,
+   "log2_ratio_median_window": -0.12886498205293662,
+   "log2_ratio_median_pm2kb": 0.06869197378142261,
+   "n_het_snps": 1,
+   "tumor_minor_allele_fraction_median": 0.4432284541723666,
+   "tumor_minor_allele_fraction_mean": 0.4432284541723666,
+   "frac_snps_minor_lt_0.40": 0.0
+  },
+  {
+   "gene": "FGFR4",
+   "window": "5:176467616-176567616",
+   "n_positions_ratio": 8501,
+   "log2_ratio_median_window": -0.8779246531055855,
+   "log2_ratio_median_pm2kb": -0.9111127743943677,
+   "n_het_snps": 21,
+   "tumor_minor_allele_fraction_median": 0.34750462107208874,
+   "tumor_minor_allele_fraction_mean": 0.3399072359601894,
+   "frac_snps_minor_lt_0.40": 0.9047619047619048
+  },
+  {
+   "gene": "BRD3",
+   "window": "9:136849862-136949862",
+   "n_positions_ratio": 3180,
+   "log2_ratio_median_window": -0.2959314798163024,
+   "log2_ratio_median_pm2kb": -0.15288677752691307,
+   "n_het_snps": 9,
+   "tumor_minor_allele_fraction_median": 0.33695652173913043,
+   "tumor_minor_allele_fraction_mean": 0.3398044500629685,
+   "frac_snps_minor_lt_0.40": 0.8888888888888888
+  },
+  {
+   "gene": "BRCA1",
+   "window": "17:41217797-41317797",
+   "n_positions_ratio": 11232,
+   "log2_ratio_median_window": -0.41356289001965074,
+   "log2_ratio_median_pm2kb": -0.09781927795248503,
+   "n_het_snps": 1,
+   "tumor_minor_allele_fraction_median": 0.4020994979461433,
+   "tumor_minor_allele_fraction_mean": 0.4020994979461433,
+   "frac_snps_minor_lt_0.40": 0.0
+  }
+ ],
+ "noise_by_class": {
+  "A>C": {
+   "n_pos": 18235,
+   "t_alt": 228,
+   "t_depth": 11004152,
+   "n_alt": 72,
+   "n_depth": 5726126,
+   "f1r2": 123,
+   "f2r1": 105,
+   "tumor_noise_rate": 2.0719452075907348e-05,
+   "normal_noise_rate": 1.2573946154869802e-05,
+   "alt_F1R2_fraction_in_noise": 0.5394736842105263,
+   "per_position_tumor_alt_fraction_q50_q99_q999": [
+    0.0,
+    0.0005406208011500505,
+    0.00427074692537956
+   ]
+  },
+  "A>G": {
+   "n_pos": 18235,
+   "t_alt": 1216,
+   "t_depth": 11004152,
+   "n_alt": 353,
+   "n_depth": 5726126,
+   "f1r2": 616,
+   "f2r1": 600,
+   "tumor_noise_rate": 0.0001105037444048392,
+   "normal_noise_rate": 6.164726378707e-05,
+   "alt_F1R2_fraction_in_noise": 0.506578947368421,
+   "per_position_tumor_alt_fraction_q50_q99_q999": [
+    0.0,
+    0.0038022813688212928,
+    0.00809525018114236
+   ]
+  },
+  "A>T": {
+   "n_pos": 18235,
+   "t_alt": 293,
+   "t_depth": 11004152,
+   "n_alt": 63,
+   "n_depth": 5726126,
+   "f1r2": 132,
+   "f2r1": 161,
+   "tumor_noise_rate": 2.6626313413337074e-05,
+   "normal_noise_rate": 1.1002202885511077e-05,
+   "alt_F1R2_fraction_in_noise": 0.45051194539249145,
+   "per_position_tumor_alt_fraction_q50_q99_q999": [
+    0.0,
+    0.0006670853741624918,
+    0.004726350488917479
+   ]
+  },
+  "C>A": {
+   "n_pos": 21893,
+   "t_alt": 2378,
+   "t_depth": 12082491,
+   "n_alt": 231,
+   "n_depth": 6447593,
+   "f1r2": 402,
+   "f2r1": 1976,
+   "tumor_noise_rate": 0.00019681371995228467,
+   "normal_noise_rate": 3.582732346784296e-05,
+   "alt_F1R2_fraction_in_noise": 0.16904962153069805,
+   "per_position_tumor_alt_fraction_q50_q99_q999": [
+    0.0,
+    0.005420054200542005,
+    0.009814404969908772
+   ]
+  },
+  "C>G": {
+   "n_pos": 21893,
+   "t_alt": 464,
+   "t_depth": 12082387,
+   "n_alt": 33,
+   "n_depth": 6447481,
+   "f1r2": 137,
+   "f2r1": 327,
+   "tumor_noise_rate": 3.840300761761728e-05,
+   "normal_noise_rate": 5.118277975538044e-06,
+   "alt_F1R2_fraction_in_noise": 0.2952586206896552,
+   "per_position_tumor_alt_fraction_q50_q99_q999": [
+    0.0,
+    0.0012935434545489643,
+    0.006181172839506186
+   ]
+  },
+  "C>T": {
+   "n_pos": 21893,
+   "t_alt": 2857,
+   "t_depth": 12081813,
+   "n_alt": 317,
+   "n_depth": 6447336,
+   "f1r2": 1814,
+   "f2r1": 1043,
+   "tumor_noise_rate": 0.00023647113227129074,
+   "normal_noise_rate": 4.9167594181534824e-05,
+   "alt_F1R2_fraction_in_noise": 0.6349317465873293,
+   "per_position_tumor_alt_fraction_q50_q99_q999": [
+    0.0,
+    0.005716912972085324,
+    0.01061306648263175
+   ]
+  },
+  "G>A": {
+   "n_pos": 20211,
+   "t_alt": 3113,
+   "t_depth": 10904689,
+   "n_alt": 510,
+   "n_depth": 5817228,
+   "f1r2": 1229,
+   "f2r1": 1884,
+   "tumor_noise_rate": 0.00028547352427932607,
+   "normal_noise_rate": 8.767062250267653e-05,
+   "alt_F1R2_fraction_in_noise": 0.39479601670414394,
+   "per_position_tumor_alt_fraction_q50_q99_q999": [
+    0.0,
+    0.0063816235262230845,
+    0.011130850910883451
+   ]
+  },
+  "G>C": {
+   "n_pos": 20211,
+   "t_alt": 429,
+   "t_depth": 10903339,
+   "n_alt": 33,
+   "n_depth": 5816799,
+   "f1r2": 302,
+   "f2r1": 127,
+   "tumor_noise_rate": 3.934574537212867e-05,
+   "normal_noise_rate": 5.673223365634604e-06,
+   "alt_F1R2_fraction_in_noise": 0.703962703962704,
+   "per_position_tumor_alt_fraction_q50_q99_q999": [
+    0.0,
+    0.0016917615585128316,
+    0.006915403889750648
+   ]
+  },
+  "G>T": {
+   "n_pos": 20211,
+   "t_alt": 2011,
+   "t_depth": 10904635,
+   "n_alt": 135,
+   "n_depth": 5817216,
+   "f1r2": 1691,
+   "f2r1": 320,
+   "tumor_noise_rate": 0.00018441699332439828,
+   "normal_noise_rate": 2.320697735824147e-05,
+   "alt_F1R2_fraction_in_noise": 0.8408751864743909,
+   "per_position_tumor_alt_fraction_q50_q99_q999": [
+    0.0,
+    0.005291005291005291,
+    0.010318508192840982
+   ]
+  },
+  "T>A": {
+   "n_pos": 18550,
+   "t_alt": 309,
+   "t_depth": 11743046,
+   "n_alt": 51,
+   "n_depth": 6164836,
+   "f1r2": 177,
+   "f2r1": 132,
+   "tumor_noise_rate": 2.6313445421230573e-05,
+   "normal_noise_rate": 8.272726152001449e-06,
+   "alt_F1R2_fraction_in_noise": 0.5728155339805825,
+   "per_position_tumor_alt_fraction_q50_q99_q999": [
+    0.0,
+    0.000711790067826432,
+    0.005111544298498163
+   ]
+  },
+  "T>C": {
+   "n_pos": 18550,
+   "t_alt": 1349,
+   "t_depth": 11743046,
+   "n_alt": 439,
+   "n_depth": 6164836,
+   "f1r2": 631,
+   "f2r1": 718,
+   "tumor_noise_rate": 0.00011487649797165063,
+   "normal_noise_rate": 7.121032903389482e-05,
+   "alt_F1R2_fraction_in_noise": 0.46775389177168275,
+   "per_position_tumor_alt_fraction_q50_q99_q999": [
+    0.0,
+    0.003937007874015748,
+    0.008928571428571428
+   ]
+  },
+  "T>G": {
+   "n_pos": 18550,
+   "t_alt": 222,
+   "t_depth": 11743046,
+   "n_alt": 53,
+   "n_depth": 6164836,
+   "f1r2": 108,
+   "f2r1": 114,
+   "tumor_noise_rate": 1.890480544826274e-05,
+   "normal_noise_rate": 8.597146785413269e-06,
+   "alt_F1R2_fraction_in_noise": 0.4864864864864865,
+   "per_position_tumor_alt_fraction_q50_q99_q999": [
+    0.0,
+    0.0004271754876623925,
+    0.004088422199865995
+   ]
+  }
+ },
+ "somatic_like_positions_in_windows": [
+  {
+   "window_of": "MTOR",
+   "pos": 11272878,
+   "class": "G>C",
+   "tumor_alt": 142,
+   "tumor_depth": 1456,
+   "tumor_vaf": 0.09752747252747253,
+   "normal_depth": 532
+  },
+  {
+   "window_of": "SCAP",
+   "pos": 47452229,
+   "class": "C>G",
+   "tumor_alt": 40,
+   "tumor_depth": 248,
+   "tumor_vaf": 0.16129032258064516,
+   "normal_depth": 217
+  },
+  {
+   "window_of": "BRCA1",
+   "pos": 41267797,
+   "class": "C>T",
+   "tumor_alt": 179,
+   "tumor_depth": 822,
+   "tumor_vaf": 0.21776155717761558,
+   "normal_depth": 362
+  }
+ ],
+ "library_totals_mapped_reads": {
+  "tumor": 330909042,
+  "normal": 137130618
+ },
+ "base_quality_threshold": 30,
+ "notes": "depth-ratio normalised by mapped reads only (capture/duplicate differences not modelled); het SNP allele balance is unphased."
+}

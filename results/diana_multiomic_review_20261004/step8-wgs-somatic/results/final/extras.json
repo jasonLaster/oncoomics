@@ -1,0 +1,42 @@
+{
+ "serova_22_missense": {
+  "n": 22,
+  "consensus_pass": 16,
+  "mutect2_pass": 16,
+  "strelka_pass": 18,
+  "not_consensus": [
+   "MTOR p.Pro1125Ala (M2 strand_bias, S2 PASS)",
+   "PHKB p.Ala5Val (M2 orientation, S2 PASS)",
+   "MAST1 p.Ala617Asp (M2 no_record, S2 no_record)",
+   "RABL6 p.Ala431Asp (M2 no_record, S2 no_record)",
+   "SDC3 p.Val59Met (M2 no_record, S2 no_record)",
+   "NUMA1 p.Gly2060Arg (M2 no_record, S2 no_record)"
+  ]
+ },
+ "vaf_quantiles": {
+  "mutect2_pass": {
+   "n": 72293,
+   "q10": 0.049,
+   "q25": 0.061,
+   "q50": 0.082,
+   "q75": 0.125,
+   "q90": 0.191
+  },
+  "strelka_pass_snv_tier1": {
+   "n": 49317,
+   "q10": 0.043,
+   "q25": 0.055,
+   "q50": 0.079,
+   "q75": 0.15,
+   "q90": 0.267
+  },
+  "consensus_pass": {
+   "n": 16967,
+   "q10": 0.07,
+   "q25": 0.091,
+   "q50": 0.139,
+   "q75": 0.205,
+   "q90": 0.286
+  }
+ }
+}

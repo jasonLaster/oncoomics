@@ -1,0 +1,28 @@
+window,gene,class,alteration,peptide,credited_allele,b23_rank,netmhcpan_rank,stability_h,expression_tpm,grch38_site,ref,serova_wgs_alt,serova_wgs_depth,serova_normal_wgs_alt,serova_normal_wgs_depth,serova_exome_alt,serova_exome_depth,serova_normal_exome_alt,serova_normal_exome_depth,serova_rna_alt,serova_rna_depth,serova_rna_strand_alt,notes
+W1,MTOR,missense,p.Pro1125Ala,DAAEAPLPSRK,A*26:01,0.23,3.72,0.51,158.6,chr1:11212821,G,4,38,0,47,100,1057,0,431,269,1624,125f/144r,
+W2,PTPRH,missense,p.Thr490Pro,WTNSPIALR,A*33:03,0.14,0.05,7.01,2.1,chr19:55198865,T,7,16,0,45,26,114,0,97,2,9,2f/0r,
+W3,USP10,missense,p.Asn557Ile,NEKLTISI,B*18:01,0.03,0.15,2.75,70.8,chr16:84764101,A,3,32,0,45,19,249,0,108,158,817,73f/85r,
+W4,TAF4B,missense,p.Pro522Thr,TQAVQVKQL,B*38:01,0.28,0.82,0.36,10.4,chr18:26286473,C,10,34,0,47,82,345,0,135,89,141,43f/46r,
+W5,PHKB,missense,p.Ala5Val,GAVGLTAEVSW,C*12:03,1.44,11.32,0.57,14.2,chr16:47461364,C,3,21,0,51,32,134,0,60,44,115,36f/8r,
+W6,BRCA2,missense,p.Ser2695Leu,DIILLSANI,A*26:01,5.86,1.62,0.33,54.7,chr13:32363286,C,5,37,0,54,201,1354,0,777,229,568,101f/128r,
+W7,NCKAP1,structural_variant,breakpoints chr2:183009643/183025236,RLSSVDSVLKR,A*33:03,0.17,1.78,0.18,20.2,chr2:183009643,A,,,,,,,,,,,,tumor genome 4 split + 8 clipped vs 52 intact; normal genome 0/58; exome 0 split/9 intact; RNA 0 split/1057 intact
+W8,SHANK2,fusion,breakpoint chr11:70798443 (partner unrecorded),DSQAGVISR,A*33:03,0.28,0.04,4.05,97.4,chr11:70798443,C,,,,,,,,,,,,tumor RNA 251 clipped vs 2841 intact; tumor genome 0 clipped/36 intact; normal genome 0/40
+W9,MSH6,splice,novel junction chr2:47799569-47799625,SVLEDSSGHTR,B*18:01,0.03,21.40,0.40,77.8,chr2:47799569-47799625,,,,,,,,,,,,,79 junction reads (117 dups collapsed) vs 1705 contiguous over donor (4.4%) and 2118 over acceptor; no normal RNA
+W10,ZNF83,missense,p.Asp496Ala,KLFRANSYLVR,A*33:03,0.22,3.81,0.69,43.2,chr19:52613078,T,5,28,0,42,58,311,0,163,271,697,160f/111r,vendor self-screen: mutant and wild-type registers both presented on A*33:03 (cross-reactivity review)
+W11,MAST1,missense,p.Ala617Asp,DQLLISSL,B*18:01,0.23,0.99,1.44,1.1,chr19:12865762,C,0,7,0,41,40,297,0,177,0,0,,
+W12,MAN1A1,missense,p.Leu594Phe,DVYLFHESY,A*26:01,0.01,0.02,0.48,31.2,chr6:119180367,G,5,56,0,42,31,312,0,107,71,553,37f/34r,
+W13,SLC46A3,missense,p.Leu130Phe,FAFPFQFL,C*12:03,3.46,0.13,2.27,7.2,chr13:28713352,G,6,24,0,50,93,357,0,204,40,131,19f/21r,board verdict exclude
+W14,MELTF,missense,p.Gly197Arg,RVCDKSPLER,A*33:03,4.50,1.05,1.49,24.7,chr3:197023012,C,9,22,0,53,109,285,0,115,1190,1582,709f/481r,board verdict exclude
+W15,NCKAP1,structural_variant,breakpoints chr2:183009643/183025236,DAMEKWIIF,B*18:01,0.12,0.97,0.59,20.2,chr2:183009643,A,,,,,,,,,,,,same SV as W7
+W16,ANTXR2,missense,p.Arg427Lys,ETEEPIKPR,A*33:03,0.12,0.05,2.16,6.0,chr4:79978074,C,4,56,0,53,14,131,0,41,8,210,3f/5r,
+W17,TAC4,missense,p.Gly90Ala,TFQGLLAKR,A*33:03,0.65,0.08,7.12,6.3,chr17:49839873,C,2,16,0,51,30,240,0,115,10,48,7f/3r,
+W18,NCKAP1,structural_variant,breakpoints chr2:183009643/183025236,FIDKHIAELIF,A*26:01,0.02,5.63,0.45,20.2,chr2:183009643,A,,,,,,,,,,,,same SV as W7
+W19,HERC1,missense,p.Met3642Ile,KWDPTGHILI,B*38:01,0.03,3.18,0.66,46.8,chr15:63645635,C,2,42,0,38,22,213,0,99,78,407,47f/31r,
+W20,TP63,missense,p.Cys8Phe,FETSRFATLQY,A*26:01,0.38,2.17,0.46,4.4,chr3:189631538,G,17,73,0,41,21,283,0,82,0,4,,
+W21,REST,missense,p.Arg339Ile,YHLVIFTI,B*38:01,6.75,0.50,1.18,19.2,chr4:56927648,G,5,23,0,58,21,112,0,65,6,26,3f/3r,construct report text and Fig 4 give REST RNA fraction 1.4% but read-evidence page gives 6/26 = 23.1%
+W22,APEH,missense,p.Arg693Gly,GNVPVRLLL,C*12:03,3.99,2.96,0.23,25.2,chr3:49683130,C,2,16,0,54,38,280,0,185,75,287,35f/40r,meets presentation threshold on neither model
+W23,RABL6,missense,p.Ala431Asp,GEDLGGNPM,B*18:01,29.97,1.20,0.53,24.1,chr9:136838920,C,0,8,0,49,57,348,0,188,135,545,80f/55r,
+W24,SDC3,missense,p.Val59Met,NFERPMDL,B*18:01,1.03,19.75,0.66,9.5,chr1:30878704,C,0,15,0,52,16,158,0,89,6,130,0f/6r,board verdict exclude; RNA alt reads all reverse strand
+W25,DSTN,missense,p.Gln136Glu,EANGPEDLNRA,A*26:01,1.19,6.56,0.67,56.5,chr20:17607054,C,4,34,0,41,34,349,0,127,426,1760,203f/223r,
+W26,NUMA1,missense,p.Gly2060Arg,TPKKLRNSLLR,A*33:03,1.80,2.37,1.59,104.7,chr11:72004045,C,1,17,0,51,31,381,0,136,480,3238,243f/237r,
+W27,TXNDC5,missense,p.Val305Ile,ETITPSEAPVL,A*26:01,0.62,0.95,0.36,14.0,chr6:7888755,C,5,20,0,50,97,462,0,155,604,2899,262f/342r,board verdict exclude

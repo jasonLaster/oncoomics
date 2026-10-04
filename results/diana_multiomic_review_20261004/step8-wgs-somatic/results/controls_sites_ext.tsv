@@ -1,0 +1,17 @@
+chrom	pos	ref	alt	label	class
+chr17	43115780	C	T	BRCA1_c.81-1G>A	positive
+chr13	32363286	C	T	BRCA2_p.S2695L	positive
+chr2	208338539	T	C	PIKFYVE_p.I1548T	positive
+chr1	11212821	G	C	MTOR_p.P1125A	positive
+chr3	47410739	C	G	PTPN23_p.P981A	positive
+chr1	11257145	C	T	MTOR_p.G98S	negative_evee
+chr3	47419370	C	T	SCAP_p.W633*	negative_evee
+chr9	134408156	C	A	RXRA_p.S96*	negative_evee
+chr2	224506102	G	A	CUL3_p.R354C	negative_evee
+chr15	40936533	C	T	DLL4_p.R516C	negative_evee
+chr2	241655311	G	A	ATG4B_p.W142*	negative_evee
+chr11	46657565	A	G	ATG13_p.D213G	negative_evee
+chr5	177090615	C	T	FGFR4_p.S106F	negative_evee
+chr9	134034740	T	C	BRD3_p.S676G	negative_evee
+chr6	35425998	G	C	PPARD_p.Q415H_derived	negative_derived
+chr17	7675051	A	C	TP53_c.559+2T>G	positive

@@ -1,0 +1,28 @@
+site_type,pos,ref,alt,region,normal_called_AD,sample_policy,ref_count,alt_count,other_count,discordant_mates,depth,alt_fraction,ci_lo,ci_hi
+germline_het_SNP,17:41199638,C,G,intronic (22 bp from nearest NM_007294.4 exon edge),"368,354",RNA_unique_sense_withdups,32,4,0,0,36,0.1111111111111111,0.031116139945015234,0.2606109205108292
+germline_het_SNP,17:41199638,C,G,intronic (22 bp from nearest NM_007294.4 exon edge),"368,354",RNA_unique_sense_nodups,28,3,0,0,31,0.0967741935483871,0.0204198626877921,0.2575390646277355
+germline_het_SNP,17:41199638,C,G,intronic (22 bp from nearest NM_007294.4 exon edge),"368,354",RNA_unique_anystrand_withdups,32,4,0,0,36,0.1111111111111111,0.031116139945015234,0.2606109205108292
+germline_het_SNP,17:41199638,C,G,intronic (22 bp from nearest NM_007294.4 exon edge),"368,354",RNA_recal_BAM_withdups,32,4,0,0,36,0.1111111111111111,0.031116139945015234,0.2606109205108292
+germline_het_SNP,17:41199638,C,G,intronic (22 bp from nearest NM_007294.4 exon edge),"368,354",tumorWES_MQ20_BQ20_frag,728,359,2,0,1089,0.33026678932842685,0.3023393938790872,0.35911639404067874
+germline_het_SNP,17:41199638,C,G,intronic (22 bp from nearest NM_007294.4 exon edge),"368,354",tumorWES_MQ20_BQ30_frag,713,352,2,0,1067,0.3305164319248826,0.302296713508659,0.3596761982781415
+germline_het_SNP,17:41199638,C,G,intronic (22 bp from nearest NM_007294.4 exon edge),"368,354",normalWES_MQ20_BQ20_frag,369,357,0,0,726,0.49173553719008267,0.4547782505429318,0.5287602229694972
+germline_het_SNP,17:41246481,T,C,exon 10 (NM_007294.4; legacy 11),"578,546",RNA_unique_sense_withdups,53,669,6,0,728,0.9265927977839336,0.9050785341165505,0.9445326070517447
+germline_het_SNP,17:41246481,T,C,exon 10 (NM_007294.4; legacy 11),"578,546",RNA_unique_sense_nodups,37,453,2,0,492,0.9244897959183673,0.8974191762760084,0.9462793128050946
+germline_het_SNP,17:41246481,T,C,exon 10 (NM_007294.4; legacy 11),"578,546",RNA_unique_anystrand_withdups,53,672,6,0,731,0.926896551724138,0.9054667432879699,0.9447641579965648
+germline_het_SNP,17:41246481,T,C,exon 10 (NM_007294.4; legacy 11),"578,546",RNA_recal_BAM_withdups,53,672,6,0,731,0.926896551724138,0.9054667432879699,0.9447641579965648
+germline_het_SNP,17:41246481,T,C,exon 10 (NM_007294.4; legacy 11),"578,546",tumorWES_MQ20_BQ20_frag,661,1094,1,0,1756,0.6233618233618233,0.6002163392195216,0.6460940166025184
+germline_het_SNP,17:41246481,T,C,exon 10 (NM_007294.4; legacy 11),"578,546",tumorWES_MQ20_BQ30_frag,652,985,1,0,1638,0.6017104459376909,0.5775252840453926,0.6255301664738582
+germline_het_SNP,17:41246481,T,C,exon 10 (NM_007294.4; legacy 11),"578,546",normalWES_MQ20_BQ20_frag,580,555,0,0,1135,0.4889867841409692,0.4595256030860627,0.5185051805654237
+somatic_BRCA1_c.81-1G>A,17:41267797,C,T,"intron 2, c.81-1 (acceptor of exon 3)",,RNA_raw_unique_sense_withdups,12,48,0,0,60,0.8,0.6767,0.8922
+somatic_BRCA1_c.81-1G>A,17:41267797,C,T,"intron 2, c.81-1 (acceptor of exon 3)",,RNA_raw_unique_sense_nodups,8,36,0,0,44,0.81818,0.6729,0.9181
+somatic_BRCA1_c.81-1G>A,17:41267797,C,T,"intron 2, c.81-1 (acceptor of exon 3)",,RNA_raw_unique_anystrand_withdups,12,48,0,0,60,0.8,0.6767,0.8922
+somatic_BRCA1_c.81-1G>A,17:41267797,C,T,"intron 2, c.81-1 (acceptor of exon 3)",,RNA_raw_unique_antisense_withdups,0,0,0,0,0,nan,nan,nan
+somatic_BRCA1_c.81-1G>A,17:41267797,C,T,"intron 2, c.81-1 (acceptor of exon 3)",,RNA_recal_withdups,7,48,0,0,55,0.87273,0.7552,0.9473
+somatic_BRCA1_c.81-1G>A,17:41267797,C,T,"intron 2, c.81-1 (acceptor of exon 3)",,tumorWES_MQ20_BQ20_frag,464,134,0,1,598,0.22408,0.1913,0.2597
+somatic_BRCA1_c.81-1G>A,17:41267797,C,T,"intron 2, c.81-1 (acceptor of exon 3)",,tumorWES_MQ20_BQ30_frag,452,127,0,1,579,0.21934,0.1863,0.2553
+somatic_BRCA1_c.81-1G>A,17:41267797,C,T,"intron 2, c.81-1 (acceptor of exon 3)",,tumorWES_MQ20_BQ20_uniqfrag,464,134,0,1,598,0.22408,0.1913,0.2597
+somatic_BRCA1_c.81-1G>A,17:41267797,C,T,"intron 2, c.81-1 (acceptor of exon 3)",,tumorWES_MQ0_BQ0_reads,664,201,1,0,866,0.23237,0.2046,0.2620
+somatic_BRCA1_c.81-1G>A,17:41267797,C,T,"intron 2, c.81-1 (acceptor of exon 3)",,normalWES_MQ20_BQ20_frag,292,0,0,0,292,0.0,0.0000,0.0126
+somatic_BRCA1_c.81-1G>A,17:41267797,C,T,"intron 2, c.81-1 (acceptor of exon 3)",,normalWES_MQ20_BQ30_frag,286,0,0,0,286,0.0,0.0000,0.0128
+somatic_BRCA1_c.81-1G>A,17:41267797,C,T,"intron 2, c.81-1 (acceptor of exon 3)",,normalWES_MQ20_BQ20_uniqfrag,292,0,0,0,292,0.0,0.0000,0.0126
+somatic_BRCA1_c.81-1G>A,17:41267797,C,T,"intron 2, c.81-1 (acceptor of exon 3)",,normalWES_MQ0_BQ0_reads,378,0,1,0,379,0.0,0.0000,0.0097

@@ -1,0 +1,48 @@
+{
+ "lib": "L1",
+ "sites": 6788,
+ "cells": 8000,
+ "obs": 168089,
+ "f=0.0": {
+  "n_donor2_cells": 0,
+  "ELBO_K1": -85743.66279885531,
+  "ELBO_K2": -89368.57627875946,
+  "dELBO_K2_minus_K1": -3624.9134799041494,
+  "cluster_accuracy": null
+ },
+ "f=0.02": {
+  "n_donor2_cells": 148,
+  "ELBO_K1": -88107.71578786509,
+  "ELBO_K2": -91445.48347992019,
+  "dELBO_K2_minus_K1": -3337.767692055102,
+  "cluster_accuracy": 0.64125
+ },
+ "f=0.05": {
+  "n_donor2_cells": 391,
+  "ELBO_K1": -91100.97897578518,
+  "ELBO_K2": -92568.88083161393,
+  "dELBO_K2_minus_K1": -1467.9018558287498,
+  "cluster_accuracy": 0.893
+ },
+ "f=0.1": {
+  "n_donor2_cells": 818,
+  "ELBO_K1": -94431.82734374086,
+  "ELBO_K2": -93368.21151445585,
+  "dELBO_K2_minus_K1": 1063.615829285016,
+  "cluster_accuracy": 0.90775
+ },
+ "f=0.25": {
+  "n_donor2_cells": 1986,
+  "ELBO_K1": -101472.51694348668,
+  "ELBO_K2": -92677.52203180788,
+  "dELBO_K2_minus_K1": 8794.994911678805,
+  "cluster_accuracy": 0.977125
+ },
+ "f=0.5": {
+  "n_donor2_cells": 3952,
+  "ELBO_K1": -104125.77393293096,
+  "ELBO_K2": -89208.02132944655,
+  "dELBO_K2_minus_K1": 14917.752603484405,
+  "cluster_accuracy": 0.984875
+ }
+}

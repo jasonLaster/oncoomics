@@ -1,0 +1,51 @@
+{
+ "BRCA1 c.81-1G>A (C>T genomic)": {
+  "site": "chr17:43115780",
+  "base_counts": {
+   "T": 91,
+   "C": 4
+  },
+  "spliced_over_reads": 569,
+  "distinct_cells": {
+   "T": 62,
+   "C": 2
+  },
+  "distinct_cell_UMI_pairs": {
+   "T": 64,
+   "C": 2
+  },
+  "RE_by_base": {
+   "T": {
+    "E": 55,
+    "N": 36
+   },
+   "C": {
+    "E": 4
+   }
+  }
+ },
+ "BRCA2 c.8084C>T": {
+  "site": "chr13:32363286",
+  "base_counts": {
+   "C": 2,
+   "T": 2
+  },
+  "spliced_over_reads": 85,
+  "distinct_cells": {
+   "C": 1,
+   "T": 2
+  },
+  "distinct_cell_UMI_pairs": {
+   "C": 1,
+   "T": 2
+  },
+  "RE_by_base": {
+   "C": {
+    "E": 2
+   },
+   "T": {
+    "E": 2
+   }
+  }
+ }
+}

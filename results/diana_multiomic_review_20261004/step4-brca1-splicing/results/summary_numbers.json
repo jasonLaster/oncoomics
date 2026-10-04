@@ -1,0 +1,58 @@
+{
+ "brca1_fragments_any_primary": 24987,
+ "sense_unique_fragments_on_exons": 24579,
+ "sense_unique_nodup": 16523,
+ "spliced_fragments_in_locus": 9342,
+ "mean_depth_sense_unique": {
+  "2": 780.040404040404,
+  "3": 747.5925925925926,
+  "4": 849.6666666666666,
+  "10": 1185.2641564506714
+ },
+ "duplicates_flagged_fraction_in_recal": 0.3259876592675695,
+ "ase_derived": [
+  {
+   "pos": "17:41199638",
+   "region": "intronic (22 bp from nearest NM_007294.4 exon edge)",
+   "DNA_major_frac": 0.6697332106715731,
+   "delta_DNA": 0.3394664213431462,
+   "delta_DNA_ci": [
+    0.2817672119186425,
+    0.3953212122418255
+   ],
+   "RNA_major_frac": 0.8888888888888888,
+   "delta_RNA_tumor_share": 0.7777777777777777,
+   "delta_RNA_ci": [
+    0.47877815897834153,
+    0.9377677201099694
+   ],
+   "nD": 1087,
+   "nR": 36
+  },
+  {
+   "pos": "17:41246481",
+   "region": "exon 10 (NM_007294.4; legacy 11)",
+   "DNA_major_frac": 0.6233618233618233,
+   "delta_DNA": 0.24672364672364666,
+   "delta_DNA_ci": [
+    0.2004326784390431,
+    0.29218803320503683
+   ],
+   "RNA_major_frac": 0.9265927977839336,
+   "delta_RNA_tumor_share": 0.8531855955678671,
+   "delta_RNA_ci": [
+    0.810157068233101,
+    0.8890652141034894
+   ],
+   "nD": 1755,
+   "nR": 722
+  }
+ ],
+ "exon3_vs_background": {
+  "k": 377,
+  "n": 453,
+  "bk_mis": 77,
+  "bk_tot": 13264,
+  "log10_p_one_sided": -572.2836723362718
+ }
+}

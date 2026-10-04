@@ -1,0 +1,42 @@
+{
+ "KH022-1": {
+  "locus_reads_primary_by_barcode_class": {
+   "called": 32399,
+   "noncell": 67009
+  },
+  "gene_assigned_reads_by_class": {
+   "called": 27844,
+   "noncell": 65878
+  },
+  "tacstd2_umi_called_cells_bam": 16478,
+  "tacstd2_umi_intronic": 0,
+  "tacstd2_umi_exonic": 16478,
+  "tacstd2_reads_called_E": 27844,
+  "tacstd2_reads_called_N": 0,
+  "tacstd2_cells_detected_bam": 12484,
+  "tacstd2_umi_matrix": 16478,
+  "tacstd2_cells_detected_matrix": 12484,
+  "frac_cells_detected": 0.3201518182284454,
+  "mean_umi_per_detecting_cell": 1.3199295097725088
+ },
+ "KH022-1-1": {
+  "locus_reads_primary_by_barcode_class": {
+   "noncell": 71783,
+   "called": 32866
+  },
+  "gene_assigned_reads_by_class": {
+   "noncell": 70580,
+   "called": 28715
+  },
+  "tacstd2_umi_called_cells_bam": 17080,
+  "tacstd2_umi_intronic": 0,
+  "tacstd2_umi_exonic": 17080,
+  "tacstd2_reads_called_E": 28715,
+  "tacstd2_reads_called_N": 0,
+  "tacstd2_cells_detected_bam": 12602,
+  "tacstd2_umi_matrix": 17080,
+  "tacstd2_cells_detected_matrix": 12602,
+  "frac_cells_detected": 0.3333421505091919,
+  "mean_umi_per_detecting_cell": 1.3553404221552134
+ }
+}

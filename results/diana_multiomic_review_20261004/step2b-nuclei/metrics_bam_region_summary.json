@@ -1,0 +1,874 @@
+{
+ "KH022-1": {
+  "chunks": [
+   "0_5000000",
+   "5000000_10000000",
+   "10000000_15000000",
+   "15000000_20000000",
+   "20000000_25000000",
+   "25000000_30000000",
+   "30000000_35000000",
+   "35000000_40000000"
+  ],
+  "region_read_composition_allbarcodes": {
+   "E": 0.49144066495312333,
+   "N": 0.4540814354248178,
+   "I": 0.054477899622058824
+  },
+  "vendor_composition_normalized_to_E+N+I": {
+   "E": 0.40389287198972007,
+   "N": 0.5322491220067402,
+   "I": 0.0638580060035397
+  },
+  "vendor_raw_fractions": {
+   "E": 0.3766241299743725,
+   "N": 0.4963144348596334,
+   "I": 0.05954664620472314
+  },
+  "composition_by_barcode_class": {
+   "called": {
+    "E": 0.38308993082244425,
+    "N": 0.5608986048941739,
+    "I": 0.056011464283381815,
+    "n_reads": 7962120
+   },
+   "noncell": {
+    "E": 0.7599303988218467,
+    "N": 0.18939182687220446,
+    "I": 0.0506777743059489,
+    "n_reads": 3213164
+   }
+  },
+  "validation": {
+   "dup_cb_ub_gn_among_representative_reads": 0.0,
+   "n_genes_validated": 816,
+   "median_ratio_bam_over_matrix_genes_ge2000umi": 1.0,
+   "iqr_ratio": [
+    1.0,
+    1.0
+   ],
+   "spearman_per_gene_totals": 1.0,
+   "spearman_per_cell_region_umi": 1.0,
+   "total_bam_umi_called_cells": 3954392,
+   "total_matrix_umi_region_genes": 3954392.0
+  },
+  "umi_level": {
+   "pooled_intronic_frac_called_cells": 0.5697513043724547,
+   "read_level_intronic_frac_gene_assigned_called_cells": 0.5669519953474693,
+   "n_cells_ge30_region_umi": 31482,
+   "mean_cell_intronic_frac": 0.5515290670556658,
+   "quantiles": {
+    "0.05": 0.36363636363636365,
+    "0.25": 0.5,
+    "0.5": 0.5652173913043478,
+    "0.75": 0.6209150326797386,
+    "0.95": 0.6923076923076923
+   },
+   "dip_stat": 0.00983101454799568,
+   "dip_p": 0.0,
+   "obs_sd": 0.10234578438766041,
+   "binomial_expected_sd": 0.05630777625017329,
+   "frac_cells_lt0.30": 0.021250238231370306,
+   "frac_cells_gt0.40": 0.9202083730385617,
+   "spearman_with_pct_mt": -0.3132826088752332,
+   "spearman_with_pct_rp": -0.5312093078339687,
+   "spearman_with_total_counts": 0.42508688067770367
+  },
+  "gene_length": {
+   "spearman_intronic_vs_log10_span": 0.606252761216698,
+   "n_genes": 457,
+   "bins": [
+    {
+     "span_kb": "0-10",
+     "n_genes": 100,
+     "median_gene_intronic_frac": 0.06878378378378379,
+     "umi_weighted_intronic_frac": 0.1550659350347833,
+     "umi": 238189
+    },
+    {
+     "span_kb": "10-50",
+     "n_genes": 232,
+     "median_gene_intronic_frac": 0.45855653762658305,
+     "umi_weighted_intronic_frac": 0.4053573342346724,
+     "umi": 1455612
+    },
+    {
+     "span_kb": "50-200",
+     "n_genes": 111,
+     "median_gene_intronic_frac": 0.7249969875888661,
+     "umi_weighted_intronic_frac": 0.7025952270501521,
+     "umi": 1552080
+    },
+    {
+     "span_kb": "200-1e+06",
+     "n_genes": 14,
+     "median_gene_intronic_frac": 0.8498120300751879,
+     "umi_weighted_intronic_frac": 0.7928014959968354,
+     "umi": 611766
+    }
+   ],
+   "top_long_genes_ge100kb": [
+    {
+     "gene": "RERE",
+     "umi": 197560,
+     "intronic_frac_umi": 0.8042518728487548,
+     "gene_span_bp": 496524.0
+    },
+    {
+     "gene": "MACF1",
+     "umi": 118626,
+     "intronic_frac_umi": 0.6163488611265658,
+     "gene_span_bp": 406439.0
+    },
+    {
+     "gene": "EIF4G3",
+     "umi": 94303,
+     "intronic_frac_umi": 0.8870979714325101,
+     "gene_span_bp": 371296.0
+    },
+    {
+     "gene": "PUM1",
+     "umi": 82176,
+     "intronic_frac_umi": 0.8012801791277259,
+     "gene_span_bp": 134486.0
+    },
+    {
+     "gene": "KAZN",
+     "umi": 57859,
+     "intronic_frac_umi": 0.953542231977739,
+     "gene_span_bp": 1225251.0
+    },
+    {
+     "gene": "PHACTR4",
+     "umi": 55592,
+     "intronic_frac_umi": 0.8530364081162757,
+     "gene_span_bp": 130806.0
+    },
+    {
+     "gene": "ZMYM4",
+     "umi": 54331,
+     "intronic_frac_umi": 0.8134766523715743,
+     "gene_span_bp": 154549.0
+    },
+    {
+     "gene": "VPS13D",
+     "umi": 51914,
+     "intronic_frac_umi": 0.8131332588511769,
+     "gene_span_bp": 282040.0
+    },
+    {
+     "gene": "CAMTA1",
+     "umi": 47464,
+     "intronic_frac_umi": 0.8788344850834316,
+     "gene_span_bp": 984274.0
+    },
+    {
+     "gene": "KIAA0319L",
+     "umi": 43316,
+     "intronic_frac_umi": 0.7414119493951427,
+     "gene_span_bp": 164067.0
+    }
+   ],
+   "top_short_genes_lt20kb": [
+    {
+     "gene": "SFPQ",
+     "umi": 65451,
+     "intronic_frac_umi": 0.18734625903347543,
+     "gene_span_bp": 17068.0
+    },
+    {
+     "gene": "SRSF10",
+     "umi": 63221,
+     "intronic_frac_umi": 0.2827066955600196,
+     "gene_span_bp": 18453.0
+    },
+    {
+     "gene": "RPL11",
+     "umi": 42241,
+     "intronic_frac_umi": 0.06465282545394285,
+     "gene_span_bp": 6741.0
+    },
+    {
+     "gene": "CCNL2",
+     "umi": 41376,
+     "intronic_frac_umi": 0.029848221191028614,
+     "gene_span_bp": 15200.0
+    },
+    {
+     "gene": "MARCKSL1",
+     "umi": 33728,
+     "intronic_frac_umi": 0.003409629981024668,
+     "gene_span_bp": 2677.0
+    },
+    {
+     "gene": "HMGN2",
+     "umi": 20606,
+     "intronic_frac_umi": 0.021789769969911676,
+     "gene_span_bp": 16042.0
+    },
+    {
+     "gene": "PABPC4",
+     "umi": 12420,
+     "intronic_frac_umi": 0.1785829307568438,
+     "gene_span_bp": 16191.0
+    },
+    {
+     "gene": "PNRC2",
+     "umi": 10688,
+     "intronic_frac_umi": 0.24784805389221556,
+     "gene_span_bp": 6937.0
+    },
+    {
+     "gene": "DDOST",
+     "umi": 10020,
+     "intronic_frac_umi": 0.23193612774451097,
+     "gene_span_bp": 14077.0
+    },
+    {
+     "gene": "MRPL20",
+     "umi": 9872,
+     "intronic_frac_umi": 0.17524311183144248,
+     "gene_span_bp": 5399.0
+    }
+   ]
+  },
+  "top_genes_fully_in_region": [
+   {
+    "gene": "RERE",
+    "umi": 197560,
+    "intronic_frac_umi": 0.8042518728487548
+   },
+   {
+    "gene": "MACF1",
+    "umi": 118626,
+    "intronic_frac_umi": 0.6163488611265658
+   },
+   {
+    "gene": "EIF4G3",
+    "umi": 94303,
+    "intronic_frac_umi": 0.8870979714325101
+   },
+   {
+    "gene": "PUM1",
+    "umi": 82176,
+    "intronic_frac_umi": 0.8012801791277259
+   },
+   {
+    "gene": "RSRP1",
+    "umi": 78810,
+    "intronic_frac_umi": 0.2578479888339043
+   },
+   {
+    "gene": "HP1BP3",
+    "umi": 70204,
+    "intronic_frac_umi": 0.30264657284485214
+   },
+   {
+    "gene": "SFPQ",
+    "umi": 65451,
+    "intronic_frac_umi": 0.18734625903347543
+   },
+   {
+    "gene": "SRSF10",
+    "umi": 63221,
+    "intronic_frac_umi": 0.2827066955600196
+   },
+   {
+    "gene": "KAZN",
+    "umi": 57859,
+    "intronic_frac_umi": 0.953542231977739
+   },
+   {
+    "gene": "HNRNPR",
+    "umi": 55599,
+    "intronic_frac_umi": 0.32711019982373785
+   },
+   {
+    "gene": "PHACTR4",
+    "umi": 55592,
+    "intronic_frac_umi": 0.8530364081162757
+   },
+   {
+    "gene": "ZMYM4",
+    "umi": 54331,
+    "intronic_frac_umi": 0.8134766523715743
+   },
+   {
+    "gene": "VPS13D",
+    "umi": 51914,
+    "intronic_frac_umi": 0.8131332588511769
+   },
+   {
+    "gene": "CAMTA1",
+    "umi": 47464,
+    "intronic_frac_umi": 0.8788344850834316
+   },
+   {
+    "gene": "KIAA0319L",
+    "umi": 43316,
+    "intronic_frac_umi": 0.7414119493951427
+   },
+   {
+    "gene": "AGO3",
+    "umi": 42836,
+    "intronic_frac_umi": 0.7696797086562704
+   },
+   {
+    "gene": "RPL11",
+    "umi": 42241,
+    "intronic_frac_umi": 0.06465282545394285
+   },
+   {
+    "gene": "WASF2",
+    "umi": 42187,
+    "intronic_frac_umi": 0.6295778320335649
+   },
+   {
+    "gene": "PADI2",
+    "umi": 41529,
+    "intronic_frac_umi": 0.7472609501793928
+   },
+   {
+    "gene": "CCNL2",
+    "umi": 41376,
+    "intronic_frac_umi": 0.029848221191028614
+   },
+   {
+    "gene": "THRAP3",
+    "umi": 39238,
+    "intronic_frac_umi": 0.7452724399816505
+   },
+   {
+    "gene": "GNB1",
+    "umi": 38371,
+    "intronic_frac_umi": 0.7833780719814443
+   },
+   {
+    "gene": "USP48",
+    "umi": 38094,
+    "intronic_frac_umi": 0.6243765422376227
+   },
+   {
+    "gene": "KHDRBS1",
+    "umi": 37341,
+    "intronic_frac_umi": 0.6830025976808334
+   },
+   {
+    "gene": "SRSF4",
+    "umi": 36897,
+    "intronic_frac_umi": 0.6146299157113044
+   },
+   {
+    "gene": "SRRM1",
+    "umi": 36451,
+    "intronic_frac_umi": 0.21955501906669228
+   },
+   {
+    "gene": "RBBP4",
+    "umi": 35932,
+    "intronic_frac_umi": 0.4185962373371925
+   },
+   {
+    "gene": "ARID1A",
+    "umi": 35613,
+    "intronic_frac_umi": 0.7027209165192486
+   },
+   {
+    "gene": "NIPAL3",
+    "umi": 35218,
+    "intronic_frac_umi": 0.6724970185700494
+   },
+   {
+    "gene": "EPB41",
+    "umi": 34751,
+    "intronic_frac_umi": 0.7314609651520819
+   }
+  ],
+  "genes_of_interest": [
+   {
+    "gene": "MACF1",
+    "umi": 118626,
+    "umi_N": 73115,
+    "intronic_frac_umi": 0.6163488611265658
+   },
+   {
+    "gene": "RPL11",
+    "umi": 42241,
+    "umi_N": 2731,
+    "intronic_frac_umi": 0.06465282545394285
+   },
+   {
+    "gene": "ARID1A",
+    "umi": 35613,
+    "umi_N": 25026,
+    "intronic_frac_umi": 0.7027209165192486
+   },
+   {
+    "gene": "HSPG2",
+    "umi": 16962,
+    "umi_N": 10561,
+    "intronic_frac_umi": 0.6226270486970876
+   },
+   {
+    "gene": "MTOR",
+    "umi": 15314,
+    "umi_N": 10665,
+    "intronic_frac_umi": 0.6964215750293848
+   },
+   {
+    "gene": "ENO1",
+    "umi": 14167,
+    "umi_N": 5012,
+    "intronic_frac_umi": 0.3537799110609162
+   },
+   {
+    "gene": "STMN1",
+    "umi": 13004,
+    "umi_N": 896,
+    "intronic_frac_umi": 0.06890187634573977
+   },
+   {
+    "gene": "CSF3R",
+    "umi": 856,
+    "umi_N": 293,
+    "intronic_frac_umi": 0.3422897196261682
+   }
+  ]
+ },
+ "KH022-1-1": {
+  "chunks": [
+   "0_5000000",
+   "5000000_10000000",
+   "10000000_15000000",
+   "15000000_20000000",
+   "20000000_25000000",
+   "25000000_30000000",
+   "30000000_35000000",
+   "35000000_40000000"
+  ],
+  "region_read_composition_allbarcodes": {
+   "E": 0.5013945576782352,
+   "N": 0.4436153817517141,
+   "I": 0.0549900605700508
+  },
+  "vendor_composition_normalized_to_E+N+I": {
+   "E": 0.4103920976764057,
+   "N": 0.5272847650101377,
+   "I": 0.06232313731345672
+  },
+  "vendor_raw_fractions": {
+   "E": 0.3837020422830695,
+   "N": 0.4929925365148423,
+   "I": 0.058269920897739434
+  },
+  "composition_by_barcode_class": {
+   "noncell": {
+    "E": 0.7406511559873711,
+    "N": 0.20618563389535807,
+    "I": 0.053163210117270834,
+    "n_reads": 3390954
+   },
+   "called": {
+    "E": 0.39186862095090186,
+    "N": 0.5523050301237187,
+    "I": 0.05582634892537947,
+    "n_reads": 7407452
+   }
+  },
+  "validation": {
+   "dup_cb_ub_gn_among_representative_reads": 0.0,
+   "n_genes_validated": 799,
+   "median_ratio_bam_over_matrix_genes_ge2000umi": 1.0,
+   "iqr_ratio": [
+    1.0,
+    1.0
+   ],
+   "spearman_per_gene_totals": 1.0,
+   "spearman_per_cell_region_umi": 1.0,
+   "total_bam_umi_called_cells": 3737014,
+   "total_matrix_umi_region_genes": 3737014.0
+  },
+  "umi_level": {
+   "pooled_intronic_frac_called_cells": 0.5607656273163547,
+   "read_level_intronic_frac_gene_assigned_called_cells": 0.5583568405315765,
+   "n_cells_ge30_region_umi": 29866,
+   "mean_cell_intronic_frac": 0.5412830730437044,
+   "quantiles": {
+    "0.05": 0.35294117647058826,
+    "0.25": 0.4852941176470588,
+    "0.5": 0.5540540540540541,
+    "0.75": 0.6116755079571614,
+    "0.95": 0.685090830449827
+   },
+   "dip_stat": 0.01151811424362151,
+   "dip_p": 0.0,
+   "obs_sd": 0.1030762062059442,
+   "binomial_expected_sd": 0.05736506028146716,
+   "frac_cells_lt0.30": 0.024509475657938793,
+   "frac_cells_gt0.40": 0.9084242951851604,
+   "spearman_with_pct_mt": -0.3171854069689696,
+   "spearman_with_pct_rp": -0.5292014746950982,
+   "spearman_with_total_counts": 0.42497728348530356
+  },
+  "gene_length": {
+   "spearman_intronic_vs_log10_span": 0.6128163336456479,
+   "n_genes": 455,
+   "bins": [
+    {
+     "span_kb": "0-10",
+     "n_genes": 101,
+     "median_gene_intronic_frac": 0.0701006873113698,
+     "umi_weighted_intronic_frac": 0.14903891153221072,
+     "umi": 235046
+    },
+    {
+     "span_kb": "10-50",
+     "n_genes": 231,
+     "median_gene_intronic_frac": 0.44886363636363635,
+     "umi_weighted_intronic_frac": 0.3970865666160245,
+     "umi": 1394094
+    },
+    {
+     "span_kb": "50-200",
+     "n_genes": 110,
+     "median_gene_intronic_frac": 0.7294449622035829,
+     "umi_weighted_intronic_frac": 0.6963478897460512,
+     "umi": 1447930
+    },
+    {
+     "span_kb": "200-1e+06",
+     "n_genes": 13,
+     "median_gene_intronic_frac": 0.8363636363636363,
+     "umi_weighted_intronic_frac": 0.7916941527661369,
+     "umi": 571501
+    }
+   ],
+   "top_long_genes_ge100kb": [
+    {
+     "gene": "RERE",
+     "umi": 183996,
+     "intronic_frac_umi": 0.8065773168981935,
+     "gene_span_bp": 496524.0
+    },
+    {
+     "gene": "MACF1",
+     "umi": 110067,
+     "intronic_frac_umi": 0.6145347833592266,
+     "gene_span_bp": 406439.0
+    },
+    {
+     "gene": "EIF4G3",
+     "umi": 89097,
+     "intronic_frac_umi": 0.8838905911534619,
+     "gene_span_bp": 371296.0
+    },
+    {
+     "gene": "PUM1",
+     "umi": 78955,
+     "intronic_frac_umi": 0.7999240073459566,
+     "gene_span_bp": 134486.0
+    },
+    {
+     "gene": "KAZN",
+     "umi": 52930,
+     "intronic_frac_umi": 0.94519176270546,
+     "gene_span_bp": 1225251.0
+    },
+    {
+     "gene": "ZMYM4",
+     "umi": 51312,
+     "intronic_frac_umi": 0.8095377299657001,
+     "gene_span_bp": 154549.0
+    },
+    {
+     "gene": "PHACTR4",
+     "umi": 50144,
+     "intronic_frac_umi": 0.8588265794511806,
+     "gene_span_bp": 130806.0
+    },
+    {
+     "gene": "VPS13D",
+     "umi": 49594,
+     "intronic_frac_umi": 0.817094809856031,
+     "gene_span_bp": 282040.0
+    },
+    {
+     "gene": "CAMTA1",
+     "umi": 44766,
+     "intronic_frac_umi": 0.8728052539874012,
+     "gene_span_bp": 984274.0
+    },
+    {
+     "gene": "KIAA0319L",
+     "umi": 40088,
+     "intronic_frac_umi": 0.7352075434045101,
+     "gene_span_bp": 164067.0
+    }
+   ],
+   "top_short_genes_lt20kb": [
+    {
+     "gene": "SFPQ",
+     "umi": 62744,
+     "intronic_frac_umi": 0.18690233329083258,
+     "gene_span_bp": 17068.0
+    },
+    {
+     "gene": "SRSF10",
+     "umi": 59801,
+     "intronic_frac_umi": 0.30959348505877826,
+     "gene_span_bp": 18453.0
+    },
+    {
+     "gene": "CCNL2",
+     "umi": 43459,
+     "intronic_frac_umi": 0.027198048735589866,
+     "gene_span_bp": 15200.0
+    },
+    {
+     "gene": "RPL11",
+     "umi": 39429,
+     "intronic_frac_umi": 0.0701006873113698,
+     "gene_span_bp": 6741.0
+    },
+    {
+     "gene": "MARCKSL1",
+     "umi": 35788,
+     "intronic_frac_umi": 0.0031295406281435117,
+     "gene_span_bp": 2677.0
+    },
+    {
+     "gene": "HMGN2",
+     "umi": 21348,
+     "intronic_frac_umi": 0.019720816938354882,
+     "gene_span_bp": 16042.0
+    },
+    {
+     "gene": "PABPC4",
+     "umi": 12879,
+     "intronic_frac_umi": 0.17579004581101018,
+     "gene_span_bp": 16191.0
+    },
+    {
+     "gene": "PNRC2",
+     "umi": 10745,
+     "intronic_frac_umi": 0.2516519311307585,
+     "gene_span_bp": 6937.0
+    },
+    {
+     "gene": "DDOST",
+     "umi": 9942,
+     "intronic_frac_umi": 0.21856769261717965,
+     "gene_span_bp": 14077.0
+    },
+    {
+     "gene": "NOC2L",
+     "umi": 9254,
+     "intronic_frac_umi": 0.01588502269288956,
+     "gene_span_bp": 17187.0
+    }
+   ]
+  },
+  "top_genes_fully_in_region": [
+   {
+    "gene": "RERE",
+    "umi": 183996,
+    "intronic_frac_umi": 0.8065773168981935
+   },
+   {
+    "gene": "MACF1",
+    "umi": 110067,
+    "intronic_frac_umi": 0.6145347833592266
+   },
+   {
+    "gene": "EIF4G3",
+    "umi": 89097,
+    "intronic_frac_umi": 0.8838905911534619
+   },
+   {
+    "gene": "PUM1",
+    "umi": 78955,
+    "intronic_frac_umi": 0.7999240073459566
+   },
+   {
+    "gene": "RSRP1",
+    "umi": 77061,
+    "intronic_frac_umi": 0.2471937815496814
+   },
+   {
+    "gene": "HP1BP3",
+    "umi": 66183,
+    "intronic_frac_umi": 0.29864164513545777
+   },
+   {
+    "gene": "SFPQ",
+    "umi": 62744,
+    "intronic_frac_umi": 0.18690233329083258
+   },
+   {
+    "gene": "SRSF10",
+    "umi": 59801,
+    "intronic_frac_umi": 0.30959348505877826
+   },
+   {
+    "gene": "HNRNPR",
+    "umi": 55397,
+    "intronic_frac_umi": 0.32306803617524416
+   },
+   {
+    "gene": "KAZN",
+    "umi": 52930,
+    "intronic_frac_umi": 0.94519176270546
+   },
+   {
+    "gene": "ZMYM4",
+    "umi": 51312,
+    "intronic_frac_umi": 0.8095377299657001
+   },
+   {
+    "gene": "PHACTR4",
+    "umi": 50144,
+    "intronic_frac_umi": 0.8588265794511806
+   },
+   {
+    "gene": "VPS13D",
+    "umi": 49594,
+    "intronic_frac_umi": 0.817094809856031
+   },
+   {
+    "gene": "CAMTA1",
+    "umi": 44766,
+    "intronic_frac_umi": 0.8728052539874012
+   },
+   {
+    "gene": "CCNL2",
+    "umi": 43459,
+    "intronic_frac_umi": 0.027198048735589866
+   },
+   {
+    "gene": "KIAA0319L",
+    "umi": 40088,
+    "intronic_frac_umi": 0.7352075434045101
+   },
+   {
+    "gene": "AGO3",
+    "umi": 39771,
+    "intronic_frac_umi": 0.7628674159563501
+   },
+   {
+    "gene": "RPL11",
+    "umi": 39429,
+    "intronic_frac_umi": 0.0701006873113698
+   },
+   {
+    "gene": "WASF2",
+    "umi": 39304,
+    "intronic_frac_umi": 0.6135507836352534
+   },
+   {
+    "gene": "PADI2",
+    "umi": 36817,
+    "intronic_frac_umi": 0.7582095227748051
+   },
+   {
+    "gene": "THRAP3",
+    "umi": 36485,
+    "intronic_frac_umi": 0.7466630121967932
+   },
+   {
+    "gene": "KHDRBS1",
+    "umi": 36418,
+    "intronic_frac_umi": 0.6559942885386347
+   },
+   {
+    "gene": "USP48",
+    "umi": 35808,
+    "intronic_frac_umi": 0.6311159517426274
+   },
+   {
+    "gene": "MARCKSL1",
+    "umi": 35788,
+    "intronic_frac_umi": 0.0031295406281435117
+   },
+   {
+    "gene": "GNB1",
+    "umi": 35404,
+    "intronic_frac_umi": 0.7711558016043385
+   },
+   {
+    "gene": "SRSF4",
+    "umi": 35228,
+    "intronic_frac_umi": 0.6115873736800272
+   },
+   {
+    "gene": "RBBP4",
+    "umi": 34470,
+    "intronic_frac_umi": 0.42013344937626923
+   },
+   {
+    "gene": "SRRM1",
+    "umi": 34419,
+    "intronic_frac_umi": 0.22595078299776286
+   },
+   {
+    "gene": "NIPAL3",
+    "umi": 33654,
+    "intronic_frac_umi": 0.6703215071016818
+   },
+   {
+    "gene": "ARID1A",
+    "umi": 33234,
+    "intronic_frac_umi": 0.6816814106035988
+   }
+  ],
+  "genes_of_interest": [
+   {
+    "gene": "MACF1",
+    "umi": 110067,
+    "umi_N": 67640,
+    "intronic_frac_umi": 0.6145347833592266
+   },
+   {
+    "gene": "RPL11",
+    "umi": 39429,
+    "umi_N": 2764,
+    "intronic_frac_umi": 0.0701006873113698
+   },
+   {
+    "gene": "ARID1A",
+    "umi": 33234,
+    "umi_N": 22655,
+    "intronic_frac_umi": 0.6816814106035988
+   },
+   {
+    "gene": "HSPG2",
+    "umi": 15501,
+    "umi_N": 9419,
+    "intronic_frac_umi": 0.6076382168892329
+   },
+   {
+    "gene": "ENO1",
+    "umi": 14014,
+    "umi_N": 4959,
+    "intronic_frac_umi": 0.3538604252889967
+   },
+   {
+    "gene": "MTOR",
+    "umi": 13837,
+    "umi_N": 9751,
+    "intronic_frac_umi": 0.7047047770470478
+   },
+   {
+    "gene": "STMN1",
+    "umi": 12722,
+    "umi_N": 810,
+    "intronic_frac_umi": 0.06366923439710738
+   },
+   {
+    "gene": "CSF3R",
+    "umi": 819,
+    "umi_N": 261,
+    "intronic_frac_umi": 0.31868131868131866
+   }
+  ]
+ }
+}

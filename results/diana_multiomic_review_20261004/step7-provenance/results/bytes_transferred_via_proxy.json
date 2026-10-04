@@ -1,0 +1,22 @@
+{
+ "tumor_wgs": {
+  "bytes": 136904732,
+  "requests": 147
+ },
+ "tumor_exome": {
+  "bytes": 239206428,
+  "requests": 148
+ },
+ "normal_exome": {
+  "bytes": 271450168,
+  "requests": 228
+ },
+ "rna_sorted": {
+  "bytes": 347275292,
+  "requests": 168
+ },
+ "normal_wgs": {
+  "bytes": 152371228,
+  "requests": 146
+ }
+}

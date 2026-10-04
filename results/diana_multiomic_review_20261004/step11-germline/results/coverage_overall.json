@@ -1,0 +1,7 @@
+{
+ "target_bp": 115589,
+ "wgs_frac_ge20": 0.971,
+ "wes_frac_ge20": 0.9984,
+ "both_frac_ge20": 0.971,
+ "either_frac_ge20": 0.9984
+}

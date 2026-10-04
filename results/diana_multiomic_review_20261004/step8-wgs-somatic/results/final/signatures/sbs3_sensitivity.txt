@@ -1,0 +1,7 @@
+cosine(observed, single signature): {'SBS3': 0.884, 'SBS39': 0.692, 'SBS5': 0.879, 'SBS40a': 0.852, 'SBS8': 0.624, 'SBS1': 0.342}
+cosine between flat signatures: {'SBS3-SBS39': 0.791, 'SBS3-SBS5': 0.793, 'SBS3-SBS40a': 0.763, 'SBS39-SBS5': 0.562, 'SBS3-SBS8': 0.69}
+fixed(SBS1,2,3,5,8,13,18,40a): cosine=0.9773; SBS3=0.408 CI95 0.382-0.444; top: {'SBS1': 0.055, 'SBS3': 0.408, 'SBS5': 0.319, 'SBS8': 0.047, 'SBS18': 0.042, 'SBS40a': 0.09}
+fixed+SBS39: cosine=0.9773; SBS3=0.378 CI95 0.337-0.426; top: {'SBS1': 0.054, 'SBS3': 0.378, 'SBS5': 0.321, 'SBS8': 0.052, 'SBS18': 0.041, 'SBS40a': 0.097}
+fixed-SBS3: cosine=0.9627; SBS3 not in set; top: {'SBS1': 0.05, 'SBS5': 0.531, 'SBS8': 0.18, 'SBS13': 0.046, 'SBS40a': 0.175}
+fixed-SBS3+SBS39: cosine=0.9718; SBS3 not in set; top: {'SBS1': 0.047, 'SBS5': 0.421, 'SBS8': 0.142, 'SBS40a': 0.177, 'SBS39': 0.162}
+breast_HRD_minimal(SBS1,2,3,5,13): cosine=0.9686; SBS3=0.560 CI95 0.536-0.584; top: {'SBS1': 0.06, 'SBS3': 0.56, 'SBS5': 0.336}

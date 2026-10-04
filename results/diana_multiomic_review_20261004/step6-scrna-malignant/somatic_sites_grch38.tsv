@@ -1,0 +1,10 @@
+chrom	pos	ref	alt	label	evidence
+chr17	43115780	C	T	BRCA1 c.81-1G>A	exome 22% / WGS / Altera; normal 0
+chr13	32363286	C	T	BRCA2 p.Ser2695Leu	exome 14.8% / WGS Mutect2 7/54 / Altera 12%
+chr2	208338539	T	C	PIKFYVE p.Ile1548Thr	exome 9.0% / Altera 12%
+chr1	11212821	G	C	MTOR p.Pro1125Ala	exome 9.4% / Altera 12% (GRCh37 1:11272878; Ensembl REST liftover)
+chr3	47410739	C	G	PTPN23 p.Pro981Ala	exome 16.2% / Altera 14% (GRCh37 3:47452229; Ensembl REST liftover)
+chr17	43056158	C	A	BRCA1 intronic (Mutect2 core-HRR PASS 8/22)	WGS core-HRR Mutect2 only; unvalidated
+chr17	43162843	C	G	BRCA1 upstream/intronic (Mutect2 core-HRR PASS 6/30)	WGS core-HRR Mutect2 only; unvalidated
+chr16	89762118	G	A	FANCA intronic (Mutect2 core-HRR PASS 8/34)	WGS core-HRR Mutect2 only; unvalidated
+chr16	89781798	G	T	FANCA intronic (Mutect2 core-HRR PASS 6/32)	WGS core-HRR Mutect2 only; unvalidated

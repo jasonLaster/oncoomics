@@ -1,0 +1,1060 @@
+{
+ "BRCA1 c.81-1G>A": {
+  "wgs_normal": {
+   "locus": "chr17:43115780",
+   "fragments": {
+    "C": 41
+   },
+   "any_reads": {
+    "C": 54
+   },
+   "alt_fragments": 0,
+   "ref_alt_fragments": 41,
+   "alt_frac": 0.0,
+   "upper95_if_zero_alt": 0.0705
+  },
+  "wgs_tumor": {
+   "locus": "chr17:43115780",
+   "fragments": {
+    "C": 19,
+    "T": 4
+   },
+   "any_reads": {
+    "C": 38,
+    "T": 9
+   },
+   "alt_fragments": 4,
+   "ref_alt_fragments": 23,
+   "alt_frac": 0.1739,
+   "upper95_if_zero_alt": null
+  },
+  "wes_normal": {
+   "locus": "17:41267797",
+   "fragments": {
+    "C": 292
+   },
+   "any_reads": {
+    "C": 378,
+    "A": 1
+   },
+   "alt_fragments": 0,
+   "ref_alt_fragments": 292,
+   "alt_frac": 0.0,
+   "upper95_if_zero_alt": 0.0102
+  },
+  "wes_tumor": {
+   "locus": "17:41267797",
+   "fragments": {
+    "C": 464,
+    "T": 134,
+    "discordant_pair": 1
+   },
+   "any_reads": {
+    "C": 664,
+    "T": 201,
+    "G": 1
+   },
+   "alt_fragments": 134,
+   "ref_alt_fragments": 598,
+   "alt_frac": 0.2241,
+   "upper95_if_zero_alt": null
+  },
+  "pooled_normals": {
+   "alt": 0,
+   "n": 333,
+   "upper95_vaf_if_zero": 0.009
+  }
+ },
+ "BRCA2 c.8084C>T p.Ser2695Leu": {
+  "wgs_normal": {
+   "locus": "chr13:32363286",
+   "fragments": {
+    "C": 54
+   },
+   "any_reads": {
+    "C": 91
+   },
+   "alt_fragments": 0,
+   "ref_alt_fragments": 54,
+   "alt_frac": 0.0,
+   "upper95_if_zero_alt": 0.054
+  },
+  "wgs_tumor": {
+   "locus": "chr13:32363286",
+   "fragments": {
+    "T": 5,
+    "C": 32
+   },
+   "any_reads": {
+    "T": 10,
+    "C": 55
+   },
+   "alt_fragments": 5,
+   "ref_alt_fragments": 37,
+   "alt_frac": 0.1351,
+   "upper95_if_zero_alt": null
+  },
+  "wes_normal": {
+   "locus": "13:32937423",
+   "fragments": {
+    "C": 778
+   },
+   "any_reads": {
+    "C": 936
+   },
+   "alt_fragments": 0,
+   "ref_alt_fragments": 778,
+   "alt_frac": 0.0,
+   "upper95_if_zero_alt": 0.0038
+  },
+  "wes_tumor": {
+   "locus": "13:32937423",
+   "fragments": {
+    "C": 1161,
+    "T": 201
+   },
+   "any_reads": {
+    "C": 1595,
+    "T": 275
+   },
+   "alt_fragments": 201,
+   "ref_alt_fragments": 1362,
+   "alt_frac": 0.1476,
+   "upper95_if_zero_alt": null
+  },
+  "pooled_normals": {
+   "alt": 0,
+   "n": 832,
+   "upper95_vaf_if_zero": 0.0036
+  }
+ },
+ "loh_context": {
+  "BRCA1": {
+   "n_het_sites": 9,
+   "normal_wgs_median_minor_af": 0.459,
+   "tumor_wgs_median_minor_af": 0.327,
+   "n_tumor_wgs": 8,
+   "normal_wes_median_minor_af": 0.49,
+   "n_normal_wes": 2,
+   "tumor_wes_median_minor_af": 0.353,
+   "n_tumor_wes": 2,
+   "sites": [
+    {
+     "pos38": 43047621,
+     "ref": "C",
+     "alt": "G",
+     "normal_wgs_ad": [
+      22,
+      22
+     ],
+     "tumor_wgs_ad": [
+      16,
+      7
+     ],
+     "tumor_wes_ad": [
+      728,
+      359
+     ],
+     "normal_wes_ad": [
+      369,
+      357
+     ]
+    },
+    {
+     "pos38": 43055445,
+     "ref": "C",
+     "alt": "A",
+     "normal_wgs_ad": [
+      23,
+      16
+     ],
+     "tumor_wgs_ad": [
+      3,
+      11
+     ],
+     "tumor_wes_ad": [
+      6,
+      10
+     ],
+     "normal_wes_ad": [
+      2,
+      3
+     ]
+    },
+    {
+     "pos38": 43088898,
+     "ref": "A",
+     "alt": "G",
+     "normal_wgs_ad": [
+      16,
+      19
+     ],
+     "tumor_wgs_ad": [
+      13,
+      20
+     ],
+     "tumor_wes_ad": [
+      1,
+      1
+     ],
+     "normal_wes_ad": [
+      1,
+      1
+     ]
+    },
+    {
+     "pos38": 43094464,
+     "ref": "T",
+     "alt": "C",
+     "normal_wgs_ad": [
+      27,
+      24
+     ],
+     "tumor_wgs_ad": [
+      10,
+      22
+     ],
+     "tumor_wes_ad": [
+      661,
+      1094
+     ],
+     "normal_wes_ad": [
+      580,
+      555
+     ]
+    },
+    {
+     "pos38": 43109088,
+     "ref": "G",
+     "alt": "C",
+     "normal_wgs_ad": [
+      33,
+      28
+     ],
+     "tumor_wgs_ad": [
+      18,
+      15
+     ],
+     "tumor_wes_ad": [
+      5,
+      1
+     ],
+     "normal_wes_ad": [
+      2,
+      4
+     ]
+    },
+    {
+     "pos38": 43125979,
+     "ref": "T",
+     "alt": "C",
+     "normal_wgs_ad": [
+      18,
+      23
+     ],
+     "tumor_wgs_ad": [
+      11,
+      9
+     ],
+     "tumor_wes_ad": [
+      0,
+      0
+     ],
+     "normal_wes_ad": [
+      0,
+      0
+     ]
+    },
+    {
+     "pos38": 43127616,
+     "ref": "T",
+     "alt": "G",
+     "normal_wgs_ad": [
+      22,
+      22
+     ],
+     "tumor_wgs_ad": [
+      13,
+      6
+     ],
+     "tumor_wes_ad": [
+      2,
+      1
+     ],
+     "normal_wes_ad": [
+      1,
+      1
+     ]
+    },
+    {
+     "pos38": 43132602,
+     "ref": "C",
+     "alt": "T",
+     "normal_wgs_ad": [
+      8,
+      16
+     ],
+     "tumor_wgs_ad": [
+      12,
+      6
+     ],
+     "tumor_wes_ad": [
+      1,
+      0
+     ],
+     "normal_wes_ad": [
+      2,
+      1
+     ]
+    },
+    {
+     "pos38": 43133071,
+     "ref": "C",
+     "alt": "T",
+     "normal_wgs_ad": [
+      23,
+      20
+     ],
+     "tumor_wgs_ad": [
+      8,
+      17
+     ],
+     "tumor_wes_ad": [
+      3,
+      5
+     ],
+     "normal_wes_ad": [
+      1,
+      3
+     ]
+    }
+   ]
+  },
+  "BRCA2": {
+   "n_het_sites": 34,
+   "normal_wgs_median_minor_af": 0.437,
+   "tumor_wgs_median_minor_af": 0.311,
+   "n_tumor_wgs": 34,
+   "normal_wes_median_minor_af": 0.455,
+   "n_normal_wes": 7,
+   "tumor_wes_median_minor_af": 0.343,
+   "n_tumor_wes": 7,
+   "sites": [
+    {
+     "pos38": 32296769,
+     "ref": "G",
+     "alt": "T",
+     "normal_wgs_ad": [
+      23,
+      21
+     ],
+     "tumor_wgs_ad": [
+      19,
+      23
+     ],
+     "tumor_wes_ad": [
+      60,
+      89
+     ],
+     "normal_wes_ad": [
+      25,
+      35
+     ]
+    },
+    {
+     "pos38": 32298040,
+     "ref": "C",
+     "alt": "T",
+     "normal_wgs_ad": [
+      18,
+      25
+     ],
+     "tumor_wgs_ad": [
+      23,
+      16
+     ],
+     "tumor_wes_ad": [
+      0,
+      0
+     ],
+     "normal_wes_ad": [
+      1,
+      0
+     ]
+    },
+    {
+     "pos38": 32298973,
+     "ref": "C",
+     "alt": "T",
+     "normal_wgs_ad": [
+      20,
+      15
+     ],
+     "tumor_wgs_ad": [
+      26,
+      10
+     ],
+     "tumor_wes_ad": [
+      2,
+      2
+     ],
+     "normal_wes_ad": [
+      0,
+      0
+     ]
+    },
+    {
+     "pos38": 32299128,
+     "ref": "A",
+     "alt": "C",
+     "normal_wgs_ad": [
+      24,
+      13
+     ],
+     "tumor_wgs_ad": [
+      20,
+      12
+     ],
+     "tumor_wes_ad": [
+      1,
+      0
+     ],
+     "normal_wes_ad": [
+      0,
+      0
+     ]
+    },
+    {
+     "pos38": 32299687,
+     "ref": "C",
+     "alt": "T",
+     "normal_wgs_ad": [
+      26,
+      23
+     ],
+     "tumor_wgs_ad": [
+      9,
+      14
+     ],
+     "tumor_wes_ad": [
+      0,
+      0
+     ],
+     "normal_wes_ad": [
+      0,
+      0
+     ]
+    },
+    {
+     "pos38": 32299695,
+     "ref": "G",
+     "alt": "C",
+     "normal_wgs_ad": [
+      26,
+      24
+     ],
+     "tumor_wgs_ad": [
+      9,
+      14
+     ],
+     "tumor_wes_ad": [
+      0,
+      0
+     ],
+     "normal_wes_ad": [
+      0,
+      0
+     ]
+    },
+    {
+     "pos38": 32300833,
+     "ref": "C",
+     "alt": "T",
+     "normal_wgs_ad": [
+      18,
+      28
+     ],
+     "tumor_wgs_ad": [
+      9,
+      21
+     ],
+     "tumor_wes_ad": [
+      0,
+      1
+     ],
+     "normal_wes_ad": [
+      1,
+      0
+     ]
+    },
+    {
+     "pos38": 32300877,
+     "ref": "C",
+     "alt": "T",
+     "normal_wgs_ad": [
+      24,
+      26
+     ],
+     "tumor_wgs_ad": [
+      11,
+      20
+     ],
+     "tumor_wes_ad": [
+      0,
+      0
+     ],
+     "normal_wes_ad": [
+      1,
+      0
+     ]
+    },
+    {
+     "pos38": 32301366,
+     "ref": "C",
+     "alt": "G",
+     "normal_wgs_ad": [
+      30,
+      33
+     ],
+     "tumor_wgs_ad": [
+      11,
+      26
+     ],
+     "tumor_wes_ad": [
+      0,
+      1
+     ],
+     "normal_wes_ad": [
+      0,
+      0
+     ]
+    },
+    {
+     "pos38": 32303751,
+     "ref": "A",
+     "alt": "C",
+     "normal_wgs_ad": [
+      17,
+      21
+     ],
+     "tumor_wgs_ad": [
+      28,
+      11
+     ],
+     "tumor_wes_ad": [
+      230,
+      120
+     ],
+     "normal_wes_ad": [
+      77,
+      89
+     ]
+    },
+    {
+     "pos38": 32304632,
+     "ref": "G",
+     "alt": "A",
+     "normal_wgs_ad": [
+      22,
+      21
+     ],
+     "tumor_wgs_ad": [
+      6,
+      29
+     ],
+     "tumor_wes_ad": [
+      0,
+      0
+     ],
+     "normal_wes_ad": [
+      0,
+      0
+     ]
+    },
+    {
+     "pos38": 32309108,
+     "ref": "A",
+     "alt": "G",
+     "normal_wgs_ad": [
+      15,
+      22
+     ],
+     "tumor_wgs_ad": [
+      9,
+      21
+     ],
+     "tumor_wes_ad": [
+      4,
+      9
+     ],
+     "normal_wes_ad": [
+      2,
+      7
+     ]
+    },
+    {
+     "pos38": 32309446,
+     "ref": "G",
+     "alt": "A",
+     "normal_wgs_ad": [
+      31,
+      22
+     ],
+     "tumor_wgs_ad": [
+      15,
+      33
+     ],
+     "tumor_wes_ad": [
+      1,
+      1
+     ],
+     "normal_wes_ad": [
+      1,
+      2
+     ]
+    },
+    {
+     "pos38": 32310367,
+     "ref": "G",
+     "alt": "C",
+     "normal_wgs_ad": [
+      21,
+      28
+     ],
+     "tumor_wgs_ad": [
+      20,
+      9
+     ],
+     "tumor_wes_ad": [
+      1,
+      1
+     ],
+     "normal_wes_ad": [
+      2,
+      1
+     ]
+    },
+    {
+     "pos38": 32312076,
+     "ref": "G",
+     "alt": "A",
+     "normal_wgs_ad": [
+      18,
+      15
+     ],
+     "tumor_wgs_ad": [
+      19,
+      12
+     ],
+     "tumor_wes_ad": [
+      83,
+      48
+     ],
+     "normal_wes_ad": [
+      27,
+      39
+     ]
+    },
+    {
+     "pos38": 32312437,
+     "ref": "C",
+     "alt": "G",
+     "normal_wgs_ad": [
+      26,
+      19
+     ],
+     "tumor_wgs_ad": [
+      24,
+      16
+     ],
+     "tumor_wes_ad": [
+      1,
+      3
+     ],
+     "normal_wes_ad": [
+      1,
+      1
+     ]
+    },
+    {
+     "pos38": 32312690,
+     "ref": "C",
+     "alt": "G",
+     "normal_wgs_ad": [
+      21,
+      28
+     ],
+     "tumor_wgs_ad": [
+      14,
+      13
+     ],
+     "tumor_wes_ad": [
+      5,
+      8
+     ],
+     "normal_wes_ad": [
+      2,
+      2
+     ]
+    },
+    {
+     "pos38": 32312803,
+     "ref": "G",
+     "alt": "T",
+     "normal_wgs_ad": [
+      24,
+      22
+     ],
+     "tumor_wgs_ad": [
+      10,
+      23
+     ],
+     "tumor_wes_ad": [
+      4,
+      9
+     ],
+     "normal_wes_ad": [
+      3,
+      1
+     ]
+    },
+    {
+     "pos38": 32313013,
+     "ref": "G",
+     "alt": "T",
+     "normal_wgs_ad": [
+      16,
+      19
+     ],
+     "tumor_wgs_ad": [
+      21,
+      11
+     ],
+     "tumor_wes_ad": [
+      3,
+      2
+     ],
+     "normal_wes_ad": [
+      0,
+      2
+     ]
+    },
+    {
+     "pos38": 32313252,
+     "ref": "A",
+     "alt": "C",
+     "normal_wgs_ad": [
+      15,
+      13
+     ],
+     "tumor_wgs_ad": [
+      29,
+      11
+     ],
+     "tumor_wes_ad": [
+      1,
+      0
+     ],
+     "normal_wes_ad": [
+      2,
+      1
+     ]
+    },
+    {
+     "pos38": 32313393,
+     "ref": "T",
+     "alt": "C",
+     "normal_wgs_ad": [
+      20,
+      16
+     ],
+     "tumor_wgs_ad": [
+      24,
+      12
+     ],
+     "tumor_wes_ad": [
+      2,
+      1
+     ],
+     "normal_wes_ad": [
+      3,
+      2
+     ]
+    },
+    {
+     "pos38": 32313428,
+     "ref": "A",
+     "alt": "G",
+     "normal_wgs_ad": [
+      26,
+      18
+     ],
+     "tumor_wgs_ad": [
+      25,
+      11
+     ],
+     "tumor_wes_ad": [
+      2,
+      1
+     ],
+     "normal_wes_ad": [
+      4,
+      4
+     ]
+    },
+    {
+     "pos38": 32313884,
+     "ref": "G",
+     "alt": "A",
+     "normal_wgs_ad": [
+      22,
+      27
+     ],
+     "tumor_wgs_ad": [
+      9,
+      27
+     ],
+     "tumor_wes_ad": [
+      3,
+      0
+     ],
+     "normal_wes_ad": [
+      0,
+      0
+     ]
+    },
+    {
+     "pos38": 32313925,
+     "ref": "A",
+     "alt": "C",
+     "normal_wgs_ad": [
+      24,
+      25
+     ],
+     "tumor_wgs_ad": [
+      25,
+      11
+     ],
+     "tumor_wes_ad": [
+      0,
+      2
+     ],
+     "normal_wes_ad": [
+      0,
+      0
+     ]
+    },
+    {
+     "pos38": 32314336,
+     "ref": "C",
+     "alt": "T",
+     "normal_wgs_ad": [
+      20,
+      24
+     ],
+     "tumor_wgs_ad": [
+      22,
+      10
+     ],
+     "tumor_wes_ad": [
+      0,
+      2
+     ],
+     "normal_wes_ad": [
+      0,
+      0
+     ]
+    },
+    {
+     "pos38": 32315226,
+     "ref": "G",
+     "alt": "A",
+     "normal_wgs_ad": [
+      24,
+      32
+     ],
+     "tumor_wgs_ad": [
+      26,
+      8
+     ],
+     "tumor_wes_ad": [
+      4,
+      1
+     ],
+     "normal_wes_ad": [
+      2,
+      2
+     ]
+    },
+    {
+     "pos38": 32325331,
+     "ref": "G",
+     "alt": "T",
+     "normal_wgs_ad": [
+      16,
+      10
+     ],
+     "tumor_wgs_ad": [
+      19,
+      12
+     ],
+     "tumor_wes_ad": [
+      143,
+      80
+     ],
+     "normal_wes_ad": [
+      50,
+      60
+     ]
+    },
+    {
+     "pos38": 32325627,
+     "ref": "G",
+     "alt": "A",
+     "normal_wgs_ad": [
+      19,
+      12
+     ],
+     "tumor_wgs_ad": [
+      26,
+      9
+     ],
+     "tumor_wes_ad": [
+      2,
+      1
+     ],
+     "normal_wes_ad": [
+      0,
+      1
+     ]
+    },
+    {
+     "pos38": 32368799,
+     "ref": "T",
+     "alt": "G",
+     "normal_wgs_ad": [
+      9,
+      11
+     ],
+     "tumor_wgs_ad": [
+      5,
+      12
+     ],
+     "tumor_wes_ad": [
+      0,
+      0
+     ],
+     "normal_wes_ad": [
+      0,
+      0
+     ]
+    },
+    {
+     "pos38": 32379045,
+     "ref": "A",
+     "alt": "G",
+     "normal_wgs_ad": [
+      31,
+      30
+     ],
+     "tumor_wgs_ad": [
+      7,
+      20
+     ],
+     "tumor_wes_ad": [
+      4,
+      6
+     ],
+     "normal_wes_ad": [
+      6,
+      10
+     ]
+    },
+    {
+     "pos38": 32384750,
+     "ref": "G",
+     "alt": "A",
+     "normal_wgs_ad": [
+      24,
+      32
+     ],
+     "tumor_wgs_ad": [
+      26,
+      14
+     ],
+     "tumor_wes_ad": [
+      207,
+      107
+     ],
+     "normal_wes_ad": [
+      76,
+      75
+     ]
+    },
+    {
+     "pos38": 32394277,
+     "ref": "C",
+     "alt": "T",
+     "normal_wgs_ad": [
+      22,
+      11
+     ],
+     "tumor_wgs_ad": [
+      18,
+      7
+     ],
+     "tumor_wes_ad": [
+      0,
+      0
+     ],
+     "normal_wes_ad": [
+      0,
+      0
+     ]
+    },
+    {
+     "pos38": 32403359,
+     "ref": "C",
+     "alt": "A",
+     "normal_wgs_ad": [
+      16,
+      28
+     ],
+     "tumor_wgs_ad": [
+      17,
+      28
+     ],
+     "tumor_wes_ad": [
+      27,
+      71
+     ],
+     "normal_wes_ad": [
+      33,
+      34
+     ]
+    },
+    {
+     "pos38": 32403395,
+     "ref": "C",
+     "alt": "G",
+     "normal_wgs_ad": [
+      15,
+      23
+     ],
+     "tumor_wgs_ad": [
+      17,
+      27
+     ],
+     "tumor_wes_ad": [
+      14,
+      47
+     ],
+     "normal_wes_ad": [
+      16,
+      25
+     ]
+    }
+   ]
+  }
+ }
+}

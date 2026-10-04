@@ -1,0 +1,107 @@
+{
+ "CHEK2 c.1100delC (p.Thr367fs)": {
+  "hgvs": "NM_007194.4:c.1100del",
+  "vcf_grch38": [
+   "22-28695868-AG-A",
+   "LRG_302-50997-AC-A"
+  ]
+ },
+ "CHEK2 c.470T>C (p.Ile157Thr)": {
+  "hgvs": "NM_007194.4:c.470T>C",
+  "vcf_grch38": [
+   "22-28725099-A-G",
+   "LRG_302-21768-T-C"
+  ]
+ },
+ "CHEK2 c.1283C>T (p.Ser428Phe)": {
+  "hgvs": "NM_007194.4:c.1283C>T",
+  "vcf_grch38": [
+   "22-28695219-G-A",
+   "LRG_302-51648-C-T"
+  ]
+ },
+ "CHEK2 c.444+1G>A (IVS2+1G>A)": {
+  "hgvs": "NM_007194.4:c.444+1G>A",
+  "vcf_grch38": [
+   "22-28725242-C-T",
+   "LRG_302-21625-G-A"
+  ]
+ },
+ "BRCA1 185delAG (c.68_69del)": {
+  "hgvs": "NM_007294.4:c.68_69del",
+  "vcf_grch38": [
+   "17-43124027-ACT-A",
+   "LRG_292-93954-GAG-G"
+  ]
+ },
+ "BRCA1 5382insC (c.5266dup)": {
+  "hgvs": "NM_007294.4:c.5266dup",
+  "vcf_grch38": [
+   "17-43057063-G-GG",
+   "LRG_292-160920-C-CC"
+  ]
+ },
+ "BRCA1 c.181T>G (p.Cys61Gly)": {
+  "hgvs": "NM_007294.4:c.181T>G",
+  "vcf_grch38": [
+   "17-43106487-A-C",
+   "LRG_292-111497-T-G"
+  ]
+ },
+ "BRCA1 c.4035del": {
+  "hgvs": "NM_007294.4:c.4035del",
+  "vcf_grch38": [
+   "17-43091495-CT-C",
+   "LRG_292-126487-AA-A"
+  ]
+ },
+ "BRCA2 6174delT (c.5946del)": {
+  "hgvs": "NM_000059.4:c.5946del",
+  "vcf_grch38": [
+   "13-32340300-GT-G",
+   "LRG_293-29821-GT-G"
+  ]
+ },
+ "BRCA2 999del5 (c.771_775del)": {
+  "hgvs": "NM_000059.4:c.771_775del",
+  "vcf_grch38": [
+   "13-32331007-ATCAAA-A",
+   "LRG_293-20528-ATCAAA-A"
+  ]
+ },
+ "PALB2 c.1592delT": {
+  "hgvs": "NM_024675.4:c.1592del",
+  "vcf_grch38": [
+   "16-23634953-CA-C",
+   "LRG_308-11403-TT-T"
+  ]
+ },
+ "PALB2 c.3113G>A (p.Trp1038Ter)": {
+  "hgvs": "NM_024675.4:c.3113G>A",
+  "vcf_grch38": [
+   "16-23621362-C-T",
+   "LRG_308-24996-G-A"
+  ]
+ },
+ "PALB2 c.509_510del": {
+  "hgvs": "NM_024675.4:c.509_510del",
+  "vcf_grch38": [
+   "16-23636035-ATC-A",
+   "LRG_308-10320-AGA-A"
+  ]
+ },
+ "ATM c.7271T>G (p.Val2424Gly)": {
+  "hgvs": "NM_000051.4:c.7271T>G",
+  "vcf_grch38": [
+   "11-108329202-T-G",
+   "LRG_135-111371-T-G"
+  ]
+ },
+ "NBN 657del5 (c.657_661del)": {
+  "hgvs": "NM_002485.5:c.657_661del",
+  "vcf_grch38": [
+   "8-89971213-ATTTGT-A",
+   "LRG_158-18453-AACAAA-A"
+  ]
+ }
+}

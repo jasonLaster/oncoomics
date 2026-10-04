@@ -1,0 +1,289 @@
+{
+ "baseline_median_exon_depth_other_genes": 39.7,
+ "n_baseline_exons": 483,
+ "per_gene": {
+  "BRCA1": {
+   "n_exons": 23,
+   "ratio_min": 0.684,
+   "ratio_max": 1.41,
+   "ratio_median": 1.147
+  },
+  "BRCA2": {
+   "n_exons": 27,
+   "ratio_min": 0.625,
+   "ratio_max": 1.318,
+   "ratio_median": 0.953
+  },
+  "PALB2": {
+   "n_exons": 13,
+   "ratio_min": 0.756,
+   "ratio_max": 1.357,
+   "ratio_median": 0.989
+  }
+ },
+ "sustained_flags_ge2_consecutive_exons": [
+  {
+   "gene": "BRCA1",
+   "exons": [
+    21,
+    22
+   ],
+   "state": "high"
+  }
+ ],
+ "body_bins_outside_0.65_1.35": [
+  {
+   "gene": "BRCA1",
+   "chrom": "chr17",
+   "start": 43027295,
+   "end": 43028294,
+   "mean_depth": 58.3,
+   "ratio": 1.467
+  },
+  {
+   "gene": "BRCA1",
+   "chrom": "chr17",
+   "start": 43028295,
+   "end": 43029294,
+   "mean_depth": 54.9,
+   "ratio": 1.381
+  },
+  {
+   "gene": "BRCA1",
+   "chrom": "chr17",
+   "start": 43043295,
+   "end": 43044294,
+   "mean_depth": 54.9,
+   "ratio": 1.384
+  },
+  {
+   "gene": "BRCA1",
+   "chrom": "chr17",
+   "start": 43100295,
+   "end": 43101294,
+   "mean_depth": 22.9,
+   "ratio": 0.577
+  },
+  {
+   "gene": "BRCA2",
+   "chrom": "chr13",
+   "start": 32345508,
+   "end": 32346507,
+   "mean_depth": 23.4,
+   "ratio": 0.588
+  },
+  {
+   "gene": "BRCA2",
+   "chrom": "chr13",
+   "start": 32365508,
+   "end": 32366507,
+   "mean_depth": 25.6,
+   "ratio": 0.645
+  },
+  {
+   "gene": "PALB2",
+   "chrom": "chr16",
+   "start": 23612165,
+   "end": 23613164,
+   "mean_depth": 21.1,
+   "ratio": 0.532
+  },
+  {
+   "gene": "PALB2",
+   "chrom": "chr16",
+   "start": 23636165,
+   "end": 23637164,
+   "mean_depth": 24.3,
+   "ratio": 0.612
+  }
+ ],
+ "sv_read_clusters": {
+  "BRCA1": {
+   "split_read_1kb_bins_ge4": {
+    "43025000": 11
+   },
+   "discordant_1kb_bins_ge4": {
+    "43024000": 22,
+    "43025000": 16,
+    "43032000": 4,
+    "43047000": 5,
+    "43052000": 4,
+    "43136000": 4,
+    "43137000": 6
+   },
+   "split_total": 30,
+   "discordant_total": 128
+  },
+  "BRCA2": {
+   "split_read_1kb_bins_ge4": {},
+   "discordant_1kb_bins_ge4": {
+    "32304000": 4
+   },
+   "split_total": 16,
+   "discordant_total": 54
+  },
+  "PALB2": {
+   "split_read_1kb_bins_ge4": {},
+   "discordant_1kb_bins_ge4": {},
+   "split_total": 8,
+   "discordant_total": 53
+  }
+ },
+ "comparator_calibration": {
+  "TP53": {
+   "n_exons": 11,
+   "single_exon_flags": 3,
+   "adjacent_flag_pairs": 0
+  },
+  "PTEN": {
+   "n_exons": 9,
+   "single_exon_flags": 1,
+   "adjacent_flag_pairs": 0
+  },
+  "CDH1": {
+   "n_exons": 16,
+   "single_exon_flags": 5,
+   "adjacent_flag_pairs": 3
+  },
+  "STK11": {
+   "n_exons": 10,
+   "single_exon_flags": 4,
+   "adjacent_flag_pairs": 1
+  },
+  "CHEK2": {
+   "n_exons": 15,
+   "single_exon_flags": 1,
+   "adjacent_flag_pairs": 0
+  },
+  "ATM": {
+   "n_exons": 63,
+   "single_exon_flags": 14,
+   "adjacent_flag_pairs": 1
+  },
+  "BARD1": {
+   "n_exons": 11,
+   "single_exon_flags": 2,
+   "adjacent_flag_pairs": 0
+  },
+  "RAD51C": {
+   "n_exons": 9,
+   "single_exon_flags": 0,
+   "adjacent_flag_pairs": 0
+  },
+  "RAD51D": {
+   "n_exons": 10,
+   "single_exon_flags": 4,
+   "adjacent_flag_pairs": 2
+  },
+  "BRIP1": {
+   "n_exons": 20,
+   "single_exon_flags": 2,
+   "adjacent_flag_pairs": 0
+  },
+  "NF1": {
+   "n_exons": 58,
+   "single_exon_flags": 7,
+   "adjacent_flag_pairs": 0
+  },
+  "MLH1": {
+   "n_exons": 19,
+   "single_exon_flags": 4,
+   "adjacent_flag_pairs": 0
+  },
+  "MSH2": {
+   "n_exons": 16,
+   "single_exon_flags": 7,
+   "adjacent_flag_pairs": 1
+  },
+  "MSH6": {
+   "n_exons": 10,
+   "single_exon_flags": 2,
+   "adjacent_flag_pairs": 0
+  },
+  "PMS2": {
+   "n_exons": 15,
+   "single_exon_flags": 6,
+   "adjacent_flag_pairs": 3
+  },
+  "EPCAM": {
+   "n_exons": 9,
+   "single_exon_flags": 0,
+   "adjacent_flag_pairs": 0
+  },
+  "RAD51B": {
+   "n_exons": 11,
+   "single_exon_flags": 3,
+   "adjacent_flag_pairs": 0
+  },
+  "FANCA": {
+   "n_exons": 43,
+   "single_exon_flags": 15,
+   "adjacent_flag_pairs": 6
+  },
+  "FANCC": {
+   "n_exons": 15,
+   "single_exon_flags": 3,
+   "adjacent_flag_pairs": 0
+  },
+  "FANCM": {
+   "n_exons": 23,
+   "single_exon_flags": 5,
+   "adjacent_flag_pairs": 1
+  },
+  "NBN": {
+   "n_exons": 16,
+   "single_exon_flags": 4,
+   "adjacent_flag_pairs": 2
+  },
+  "MRE11": {
+   "n_exons": 20,
+   "single_exon_flags": 1,
+   "adjacent_flag_pairs": 0
+  },
+  "RAD50": {
+   "n_exons": 25,
+   "single_exon_flags": 5,
+   "adjacent_flag_pairs": 0
+  },
+  "XRCC2": {
+   "n_exons": 3,
+   "single_exon_flags": 1,
+   "adjacent_flag_pairs": 0
+  },
+  "ABRAXAS1": {
+   "n_exons": 9,
+   "single_exon_flags": 3,
+   "adjacent_flag_pairs": 1
+  },
+  "BAP1": {
+   "n_exons": 17,
+   "single_exon_flags": 8,
+   "adjacent_flag_pairs": 5
+  }
+ },
+ "flag_followup": [
+  {
+   "gene": "BRCA1",
+   "exons": [
+    21,
+    22
+   ],
+   "state": "high",
+   "span": "chr17:43047643-43049194",
+   "bins_ratio": [
+    0.902,
+    0.992,
+    1.138,
+    1.089,
+    1.041,
+    1.058
+   ],
+   "within_gene_ratios": [
+    1.196,
+    1.231
+   ]
+  }
+ ],
+ "comparator_genes_with_adjacent_flag_pairs": 11,
+ "comparator_single_exon_flag_rate": 0.2277
+}

@@ -1,0 +1,104 @@
+{
+ "wgs_normal": {
+  "next4_after_CAGG": {
+   "TAAA": 18,
+   "GAAA": 1
+  },
+  "tract_when_both_flanks": {
+   "T+A25": 3,
+   "T+A26": 2,
+   "T+A23": 1,
+   "T+A21": 1
+  },
+  "n": 19,
+  "plus2_base_by_strand_bq": {
+   "G|rev|BQ<30": 1,
+   "T|fwd|BQ>=30": 15,
+   "T|rev|BQ>=30": 3
+  }
+ },
+ "wgs_tumor": {
+  "next4_after_CAGG": {
+   "TAAA": 11,
+   "GAAA": 2
+  },
+  "tract_when_both_flanks": {
+   "T+A25": 2,
+   "T+A26": 2
+  },
+  "n": 13,
+  "plus2_base_by_strand_bq": {
+   "G|rev|BQ<30": 2,
+   "T|fwd|BQ>=30": 10,
+   "T|rev|BQ<30": 1
+  }
+ },
+ "wes_normal": {
+  "next4_after_CAGG": {
+   "TAAA": 256,
+   "GAAA": 75,
+   "GGAA": 8,
+   "TAAG": 1,
+   "TAGA": 1
+  },
+  "tract_when_both_flanks": {
+   "T+A25": 27,
+   "T+A24": 22,
+   "T+A26": 15,
+   "T+A23": 8,
+   "T+A20": 7,
+   "T+A22": 6,
+   "T+A27": 5,
+   "T+A21": 3,
+   "T+A28": 2,
+   "T+A19": 1,
+   "T+A17": 1
+  },
+  "n": 341,
+  "plus2_base_by_strand_bq": {
+   "G|rev|BQ<30": 77,
+   "G|rev|BQ>=30": 6,
+   "T|fwd|BQ<30": 2,
+   "T|fwd|BQ>=30": 165,
+   "T|rev|BQ<30": 63,
+   "T|rev|BQ>=30": 28
+  }
+ },
+ "wes_tumor": {
+  "next4_after_CAGG": {
+   "TAAA": 655,
+   "GAAA": 197,
+   "GGAA": 11,
+   "TGAA": 5,
+   "TAAG": 2,
+   "AGAT": 2,
+   "TAGA": 1,
+   "CAAA": 1
+  },
+  "tract_when_both_flanks": {
+   "T+A25": 46,
+   "T+A26": 46,
+   "T+A24": 36,
+   "T+A22": 28,
+   "T+A23": 26,
+   "T+A21": 10,
+   "T+A27": 10,
+   "T+A20": 7,
+   "T+A19": 5,
+   "T+A13": 1,
+   "T+A18": 1,
+   "T+A16": 1
+  },
+  "n": 874,
+  "plus2_base_by_strand_bq": {
+   "A|fwd|BQ>=30": 2,
+   "C|rev|BQ<30": 1,
+   "G|rev|BQ<30": 187,
+   "G|rev|BQ>=30": 21,
+   "T|fwd|BQ<30": 12,
+   "T|fwd|BQ>=30": 493,
+   "T|rev|BQ<30": 141,
+   "T|rev|BQ>=30": 17
+  }
+ }
+}

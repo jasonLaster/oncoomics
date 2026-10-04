@@ -1,0 +1,22 @@
+{
+ "Altera": {
+  "confirmed_exome": 107,
+  "not_reproduced": 17,
+  "unresolved_low_support": 5,
+  "coordinates_unresolved": 2,
+  "not_reproduced_indel_scan": 1
+ },
+ "EVEE": {
+  "confirmed_exome": 1,
+  "not_reproduced": 14,
+  "unresolved_low_support": 1,
+  "not_reproduced_indel_scan": 2
+ },
+ "July17": {
+  "confirmed_exome": 2,
+  "not_reproduced": 1
+ },
+ "WGS_early_look": {
+  "confirmed_exome": 2
+ }
+}

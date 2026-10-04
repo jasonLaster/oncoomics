@@ -1,0 +1,776 @@
+{
+ "n_candidate_sites": 84456,
+ "molecule_obs": {
+  "KH022-1": 3196902,
+  "KH022-1-1": 2961409
+ },
+ "phased_sites": {
+  "KH022-1": 4927,
+  "KH022-1-1": 4230
+ },
+ "phase_agreement_L1_vs_L2": 0.9664506290507053,
+ "phase_sites_both": 2623,
+ "phase_vs_tumor_wgs": {
+  "KH022-1_absdev>=0.1": {
+   "n": 17,
+   "agree": 1.0,
+   "by_arm": {
+    "13q": [
+     3,
+     1.0
+    ],
+    "17": [
+     10,
+     1.0
+    ],
+    "9p": [
+     1,
+     1.0
+    ],
+    "9q": [
+     3,
+     1.0
+    ]
+   }
+  },
+  "KH022-1_absdev>=0.2": {
+   "n": 10,
+   "agree": 1.0,
+   "by_arm": {
+    "13q": [
+     2,
+     1.0
+    ],
+    "17": [
+     7,
+     1.0
+    ],
+    "9p": [
+     1,
+     1.0
+    ]
+   }
+  },
+  "KH022-1-1_absdev>=0.1": {
+   "n": 15,
+   "agree": 1.0,
+   "by_arm": {
+    "13q": [
+     3,
+     1.0
+    ],
+    "17": [
+     10,
+     1.0
+    ],
+    "9p": [
+     1,
+     1.0
+    ],
+    "9q": [
+     1,
+     1.0
+    ]
+   }
+  },
+  "KH022-1-1_absdev>=0.2": {
+   "n": 10,
+   "agree": 1.0,
+   "by_arm": {
+    "13q": [
+     2,
+     1.0
+    ],
+    "17": [
+     7,
+     1.0
+    ],
+    "9p": [
+     1,
+     1.0
+    ]
+   }
+  }
+ },
+ "arm_mixture": {
+  "KH022-1": {
+   "13q": {
+    "theta": 0.836106747353848,
+    "p_normal": 0.557476674521828,
+    "pi_tumor": 0.7436276669426664,
+    "nuclei_with_obs": 31294,
+    "median_mol": 3.0
+   },
+   "17": {
+    "theta": 0.8541710799427243,
+    "p_normal": 0.5969722522854171,
+    "pi_tumor": 0.802354969041477,
+    "nuclei_with_obs": 36023,
+    "median_mol": 5.0
+   },
+   "9p": {
+    "theta": 0.8507172674295712,
+    "p_normal": 0.6021155358521784,
+    "pi_tumor": 0.7696725254611337,
+    "nuclei_with_obs": 25881,
+    "median_mol": 2.0
+   },
+   "9q": {
+    "theta": 0.8797843905517988,
+    "p_normal": 0.5779853597542483,
+    "pi_tumor": 0.7644588448921578,
+    "nuclei_with_obs": 30956,
+    "median_mol": 3.0
+   }
+  },
+  "KH022-1-1": {
+   "13q": {
+    "theta": 0.8289444901000421,
+    "p_normal": 0.5522345644303707,
+    "pi_tumor": 0.7637330323114654,
+    "nuclei_with_obs": 29938,
+    "median_mol": 3.0
+   },
+   "17": {
+    "theta": 0.8440472761707628,
+    "p_normal": 0.5835033029907564,
+    "pi_tumor": 0.838308974684174,
+    "nuclei_with_obs": 34985,
+    "median_mol": 5.0
+   },
+   "9p": {
+    "theta": 0.8673802016612956,
+    "p_normal": 0.6339040938987685,
+    "pi_tumor": 0.721940583217184,
+    "nuclei_with_obs": 24648,
+    "median_mol": 2.0
+   },
+   "9q": {
+    "theta": 0.8706703533942572,
+    "p_normal": 0.5826478867515361,
+    "pi_tumor": 0.7817747374193056,
+    "nuclei_with_obs": 29861,
+    "median_mol": 3.0
+   }
+  }
+ },
+ "somatic": {
+  "KH022-1": {
+   "BRCA1 c.81-1G>A": {
+    "alt_mol": 48,
+    "ref_mol": 0,
+    "alt_nuclei": 46,
+    "ref_nuclei": 0
+   },
+   "BRCA2 p.Ser2695Leu": {
+    "alt_mol": 1,
+    "ref_mol": 1,
+    "alt_nuclei": 1,
+    "ref_nuclei": 1
+   },
+   "PIKFYVE p.Ile1548Thr": {
+    "alt_mol": 8,
+    "ref_mol": 9,
+    "alt_nuclei": 8,
+    "ref_nuclei": 9
+   },
+   "MTOR p.Pro1125Ala": {
+    "alt_mol": 3,
+    "ref_mol": 6,
+    "alt_nuclei": 3,
+    "ref_nuclei": 6
+   },
+   "PTPN23 p.Pro981Ala": {
+    "alt_mol": 2,
+    "ref_mol": 0,
+    "alt_nuclei": 2,
+    "ref_nuclei": 0
+   },
+   "BRCA1 intronic (Mutect2 core-HRR PASS 8/22)": {
+    "alt_mol": 0,
+    "ref_mol": 3,
+    "alt_nuclei": 0,
+    "ref_nuclei": 3
+   },
+   "BRCA1 upstream/intronic (Mutect2 core-HRR PASS 6/30)": {
+    "alt_mol": 0,
+    "ref_mol": 6,
+    "alt_nuclei": 0,
+    "ref_nuclei": 6
+   },
+   "FANCA intronic (Mutect2 core-HRR PASS 8/34)": {
+    "alt_mol": 1,
+    "ref_mol": 11,
+    "alt_nuclei": 1,
+    "ref_nuclei": 11
+   },
+   "FANCA intronic (Mutect2 core-HRR PASS 6/32)": {
+    "alt_mol": 3,
+    "ref_mol": 10,
+    "alt_nuclei": 3,
+    "ref_nuclei": 10
+   }
+  },
+  "KH022-1-1": {
+   "BRCA1 c.81-1G>A": {
+    "alt_mol": 52,
+    "ref_mol": 3,
+    "alt_nuclei": 52,
+    "ref_nuclei": 3
+   },
+   "BRCA2 p.Ser2695Leu": {
+    "alt_mol": 1,
+    "ref_mol": 0,
+    "alt_nuclei": 1,
+    "ref_nuclei": 0
+   },
+   "PIKFYVE p.Ile1548Thr": {
+    "alt_mol": 1,
+    "ref_mol": 14,
+    "alt_nuclei": 1,
+    "ref_nuclei": 14
+   },
+   "MTOR p.Pro1125Ala": {
+    "alt_mol": 3,
+    "ref_mol": 5,
+    "alt_nuclei": 3,
+    "ref_nuclei": 5
+   },
+   "PTPN23 p.Pro981Ala": {
+    "alt_mol": 2,
+    "ref_mol": 3,
+    "alt_nuclei": 2,
+    "ref_nuclei": 3
+   },
+   "BRCA1 intronic (Mutect2 core-HRR PASS 8/22)": {
+    "alt_mol": 0,
+    "ref_mol": 0,
+    "alt_nuclei": 0,
+    "ref_nuclei": 0
+   },
+   "BRCA1 upstream/intronic (Mutect2 core-HRR PASS 6/30)": {
+    "alt_mol": 0,
+    "ref_mol": 10,
+    "alt_nuclei": 0,
+    "ref_nuclei": 10
+   },
+   "FANCA intronic (Mutect2 core-HRR PASS 8/34)": {
+    "alt_mol": 1,
+    "ref_mol": 7,
+    "alt_nuclei": 1,
+    "ref_nuclei": 7
+   },
+   "FANCA intronic (Mutect2 core-HRR PASS 6/32)": {
+    "alt_mol": 1,
+    "ref_mol": 12,
+    "alt_nuclei": 1,
+    "ref_nuclei": 12
+   }
+  }
+ },
+ "labels": {
+  "KH022-1": {
+   "cnv_vs_allele_crosstab_qcpass_nondoublet_informative": {
+    "allele_normal": {
+     "cnv_malignant": 63,
+     "cnv_normal": 1661,
+     "cnv_unresolved": 29
+    },
+    "allele_tumor": {
+     "cnv_malignant": 5068,
+     "cnv_normal": 79,
+     "cnv_unresolved": 97
+    }
+   },
+   "concordance_decisive": {
+    "n": 6871,
+    "agree": 0.9793334303594818,
+    "cnv_mal_allele_normal": 63,
+    "cnv_normal_allele_tumor": 79
+   },
+   "allele_informative_frac_qcpass_nondoublet": 0.2747585015314537,
+   "hap_molecules_median_used": 8.0,
+   "somatic_alt_nuclei_by_cnv_call": {
+    "cnv_malignant": 57,
+    "cnv_normal": 4,
+    "cnv_unresolved": 3
+   },
+   "somatic_alt_nuclei_by_compartment": {
+    "epithelial": 44,
+    "doublet_like_epi+fibroblast": 14,
+    "myoepithelial": 2,
+    "T_NK": 1,
+    "adipocyte": 1,
+    "myeloid": 1,
+    "plasma": 1,
+    "B": 0,
+    "doublet_like_epi+myeloid": 0,
+    "endothelial": 0,
+    "fibroblast": 0,
+    "low_quality": 0,
+    "perivascular": 0
+   },
+   "somatic_ref_nuclei_by_cnv_call": {
+    "cnv_malignant": 43,
+    "cnv_normal": 2,
+    "cnv_unresolved": 1
+   },
+   "tumor_hap_frac_by_compartment": {
+    "B": {
+     "n": 1025.0,
+     "mol": 4153.0,
+     "tumor_hap_frac": 0.6362
+    },
+    "T_NK": {
+     "n": 3377.0,
+     "mol": 13004.0,
+     "tumor_hap_frac": 0.6428
+    },
+    "adipocyte": {
+     "n": 768.0,
+     "mol": 11603.0,
+     "tumor_hap_frac": 0.5806
+    },
+    "doublet_like_epi+fibroblast": {
+     "n": 0.0,
+     "mol": 0.0,
+     "tumor_hap_frac": 0.0
+    },
+    "doublet_like_epi+myeloid": {
+     "n": 0.0,
+     "mol": 0.0,
+     "tumor_hap_frac": 0.0
+    },
+    "endothelial": {
+     "n": 1017.0,
+     "mol": 6691.0,
+     "tumor_hap_frac": 0.6092
+    },
+    "epithelial": {
+     "n": 13037.0,
+     "mol": 171186.0,
+     "tumor_hap_frac": 0.8722
+    },
+    "fibroblast": {
+     "n": 2125.0,
+     "mol": 17685.0,
+     "tumor_hap_frac": 0.5898
+    },
+    "low_quality": {
+     "n": 1574.0,
+     "mol": 4460.0,
+     "tumor_hap_frac": 0.8112
+    },
+    "myeloid": {
+     "n": 1243.0,
+     "mol": 8267.0,
+     "tumor_hap_frac": 0.619
+    },
+    "myoepithelial": {
+     "n": 488.0,
+     "mol": 2639.0,
+     "tumor_hap_frac": 0.648
+    },
+    "perivascular": {
+     "n": 334.0,
+     "mol": 1539.0,
+     "tumor_hap_frac": 0.6426
+    },
+    "plasma": {
+     "n": 478.0,
+     "mol": 2266.0,
+     "tumor_hap_frac": 0.6293
+    }
+   },
+   "tumor_hap_frac_by_cnv_call": {
+    "cnv_malignant": {
+     "n": 12805.0,
+     "mol": 168197.0,
+     "tumor_hap_frac": 0.8718
+    },
+    "cnv_normal": {
+     "n": 11287.0,
+     "mol": 68306.0,
+     "tumor_hap_frac": 0.6173
+    },
+    "cnv_unresolved": {
+     "n": 1374.0,
+     "mol": 6990.0,
+     "tumor_hap_frac": 0.8021
+    }
+   },
+   "label_counts_all": {
+    "malignant": 21971,
+    "non_malignant": 14581,
+    "unresolved": 2442
+   },
+   "malignant_fraction": {
+    "all_barcodes": {
+     "n": 38994,
+     "malignant": 21971,
+     "unresolved": 2442,
+     "non_malignant": 14581,
+     "malignant_frac": 0.5634456583064061,
+     "upper_bound_incl_unresolved": 0.6260706775401343
+    },
+    "qc_pass": {
+     "n": 36946,
+     "malignant": 20787,
+     "unresolved": 2266,
+     "non_malignant": 13893,
+     "malignant_frac": 0.5626319493314568,
+     "upper_bound_incl_unresolved": 0.6239647052454934
+    },
+    "qc_pass_non_doublet_union": {
+     "n": 25466,
+     "malignant": 12840,
+     "unresolved": 1389,
+     "non_malignant": 11237,
+     "malignant_frac": 0.5042016806722689,
+     "upper_bound_incl_unresolved": 0.5587449933244326
+    },
+    "qc_pass_excl_scdbl": {
+     "n": 27550,
+     "malignant": 13331,
+     "unresolved": 1589,
+     "non_malignant": 12630,
+     "malignant_frac": 0.48388384754990926,
+     "upper_bound_incl_unresolved": 0.5415607985480944
+    },
+    "qc_pass_excl_heuristic": {
+     "n": 31837,
+     "malignant": 18162,
+     "unresolved": 1613,
+     "non_malignant": 12062,
+     "malignant_frac": 0.5704683230203851,
+     "upper_bound_incl_unresolved": 0.6211326444074504
+    }
+   },
+   "label_by_compartment": {
+    "B": {
+     "malignant": 17,
+     "non_malignant": 1105,
+     "unresolved": 57
+    },
+    "T_NK": {
+     "malignant": 47,
+     "non_malignant": 3684,
+     "unresolved": 241
+    },
+    "adipocyte": {
+     "malignant": 3,
+     "non_malignant": 961,
+     "unresolved": 28
+    },
+    "doublet_like_epi+fibroblast": {
+     "malignant": 2051,
+     "non_malignant": 292,
+     "unresolved": 452
+    },
+    "doublet_like_epi+myeloid": {
+     "malignant": 394,
+     "non_malignant": 38,
+     "unresolved": 79
+    },
+    "endothelial": {
+     "malignant": 13,
+     "non_malignant": 1528,
+     "unresolved": 55
+    },
+    "epithelial": {
+     "malignant": 18749,
+     "non_malignant": 234,
+     "unresolved": 815
+    },
+    "fibroblast": {
+     "malignant": 16,
+     "non_malignant": 2535,
+     "unresolved": 79
+    },
+    "low_quality": {
+     "malignant": 467,
+     "non_malignant": 1015,
+     "unresolved": 443
+    },
+    "myeloid": {
+     "malignant": 7,
+     "non_malignant": 1591,
+     "unresolved": 64
+    },
+    "myoepithelial": {
+     "malignant": 117,
+     "non_malignant": 595,
+     "unresolved": 66
+    },
+    "perivascular": {
+     "malignant": 83,
+     "non_malignant": 413,
+     "unresolved": 38
+    },
+    "plasma": {
+     "malignant": 7,
+     "non_malignant": 590,
+     "unresolved": 25
+    }
+   },
+   "conflicts_qcpass_nondoublet": 143
+  },
+  "KH022-1-1": {
+   "cnv_vs_allele_crosstab_qcpass_nondoublet_informative": {
+    "allele_normal": {
+     "cnv_malignant": 50,
+     "cnv_normal": 1583,
+     "cnv_unresolved": 28
+    },
+    "allele_tumor": {
+     "cnv_malignant": 5063,
+     "cnv_normal": 76,
+     "cnv_unresolved": 56
+    }
+   },
+   "concordance_decisive": {
+    "n": 6772,
+    "agree": 0.9813939751919669,
+    "cnv_mal_allele_normal": 50,
+    "cnv_normal_allele_tumor": 76
+   },
+   "allele_informative_frac_qcpass_nondoublet": 0.2753745431176447,
+   "hap_molecules_median_used": 8.0,
+   "somatic_alt_nuclei_by_cnv_call": {
+    "cnv_malignant": 56,
+    "cnv_normal": 3,
+    "cnv_unresolved": 2
+   },
+   "somatic_alt_nuclei_by_compartment": {
+    "epithelial": 46,
+    "doublet_like_epi+fibroblast": 11,
+    "epithelial_lowq": 1,
+    "epithelial_luminal_HS": 1,
+    "fibroblast": 1,
+    "myeloid": 1,
+    "B": 0,
+    "T_NK": 0,
+    "adipocyte": 0,
+    "doublet_like_epi+T_NK": 0,
+    "endothelial": 0,
+    "myoepithelial": 0,
+    "perivascular": 0,
+    "plasma": 0
+   },
+   "somatic_ref_nuclei_by_cnv_call": {
+    "cnv_malignant": 41,
+    "cnv_normal": 11,
+    "cnv_unresolved": 2
+   },
+   "tumor_hap_frac_by_compartment": {
+    "B": {
+     "n": 950.0,
+     "mol": 4125.0,
+     "tumor_hap_frac": 0.6524
+    },
+    "T_NK": {
+     "n": 3249.0,
+     "mol": 13489.0,
+     "tumor_hap_frac": 0.6411
+    },
+    "adipocyte": {
+     "n": 742.0,
+     "mol": 11505.0,
+     "tumor_hap_frac": 0.5865
+    },
+    "doublet_like_epi+T_NK": {
+     "n": 0.0,
+     "mol": 0.0,
+     "tumor_hap_frac": 0.0
+    },
+    "doublet_like_epi+fibroblast": {
+     "n": 0.0,
+     "mol": 0.0,
+     "tumor_hap_frac": 0.0
+    },
+    "endothelial": {
+     "n": 637.0,
+     "mol": 4344.0,
+     "tumor_hap_frac": 0.5916
+    },
+    "epithelial": {
+     "n": 11434.0,
+     "mol": 167555.0,
+     "tumor_hap_frac": 0.8711
+    },
+    "epithelial_lowq": {
+     "n": 3069.0,
+     "mol": 11009.0,
+     "tumor_hap_frac": 0.839
+    },
+    "epithelial_luminal_HS": {
+     "n": 83.0,
+     "mol": 523.0,
+     "tumor_hap_frac": 0.5908
+    },
+    "fibroblast": {
+     "n": 2146.0,
+     "mol": 17876.0,
+     "tumor_hap_frac": 0.5901
+    },
+    "myeloid": {
+     "n": 1241.0,
+     "mol": 9165.0,
+     "tumor_hap_frac": 0.6264
+    },
+    "myoepithelial": {
+     "n": 425.0,
+     "mol": 2174.0,
+     "tumor_hap_frac": 0.6058
+    },
+    "perivascular": {
+     "n": 474.0,
+     "mol": 2405.0,
+     "tumor_hap_frac": 0.6486
+    },
+    "plasma": {
+     "n": 447.0,
+     "mol": 2418.0,
+     "tumor_hap_frac": 0.6286
+    }
+   },
+   "tumor_hap_frac_by_cnv_call": {
+    "cnv_malignant": {
+     "n": 12740.0,
+     "mol": 172300.0,
+     "tumor_hap_frac": 0.8696
+    },
+    "cnv_normal": {
+     "n": 10922.0,
+     "mol": 68929.0,
+     "tumor_hap_frac": 0.6219
+    },
+    "cnv_unresolved": {
+     "n": 1235.0,
+     "mol": 5359.0,
+     "tumor_hap_frac": 0.7744
+    }
+   },
+   "label_counts_all": {
+    "malignant": 21645,
+    "non_malignant": 14087,
+    "unresolved": 2073
+   },
+   "malignant_fraction": {
+    "all_barcodes": {
+     "n": 37805,
+     "malignant": 21645,
+     "unresolved": 2073,
+     "non_malignant": 14087,
+     "malignant_frac": 0.5725433143764053,
+     "upper_bound_incl_unresolved": 0.6273773310408676
+    },
+    "qc_pass": {
+     "n": 35946,
+     "malignant": 20543,
+     "unresolved": 1955,
+     "non_malignant": 13448,
+     "malignant_frac": 0.5714961330885217,
+     "upper_bound_incl_unresolved": 0.6258832693484672
+    },
+    "qc_pass_non_doublet_union": {
+     "n": 24897,
+     "malignant": 12746,
+     "unresolved": 1278,
+     "non_malignant": 10873,
+     "malignant_frac": 0.5119492308310238,
+     "upper_bound_incl_unresolved": 0.563280716552195
+    },
+    "qc_pass_excl_scdbl": {
+     "n": 27401,
+     "malignant": 13630,
+     "unresolved": 1496,
+     "non_malignant": 12275,
+     "malignant_frac": 0.4974271012006861,
+     "upper_bound_incl_unresolved": 0.5520236487719427
+    },
+    "qc_pass_excl_heuristic": {
+     "n": 30035,
+     "malignant": 17004,
+     "unresolved": 1360,
+     "non_malignant": 11671,
+     "malignant_frac": 0.5661395039121025,
+     "upper_bound_incl_unresolved": 0.6114200099883469
+    }
+   },
+   "label_by_compartment": {
+    "B": {
+     "malignant": 12,
+     "non_malignant": 994,
+     "unresolved": 45
+    },
+    "T_NK": {
+     "malignant": 54,
+     "non_malignant": 3508,
+     "unresolved": 198
+    },
+    "adipocyte": {
+     "malignant": 4,
+     "non_malignant": 965,
+     "unresolved": 26
+    },
+    "doublet_like_epi+T_NK": {
+     "malignant": 1288,
+     "non_malignant": 114,
+     "unresolved": 167
+    },
+    "doublet_like_epi+fibroblast": {
+     "malignant": 2211,
+     "non_malignant": 187,
+     "unresolved": 318
+    },
+    "endothelial": {
+     "malignant": 7,
+     "non_malignant": 911,
+     "unresolved": 38
+    },
+    "epithelial": {
+     "malignant": 16300,
+     "non_malignant": 68,
+     "unresolved": 252
+    },
+    "epithelial_lowq": {
+     "malignant": 1687,
+     "non_malignant": 1297,
+     "unresolved": 781
+    },
+    "epithelial_luminal_HS": {
+     "malignant": 12,
+     "non_malignant": 273,
+     "unresolved": 14
+    },
+    "fibroblast": {
+     "malignant": 29,
+     "non_malignant": 2635,
+     "unresolved": 91
+    },
+    "myeloid": {
+     "malignant": 15,
+     "non_malignant": 1580,
+     "unresolved": 70
+    },
+    "myoepithelial": {
+     "malignant": 9,
+     "non_malignant": 482,
+     "unresolved": 19
+    },
+    "perivascular": {
+     "malignant": 10,
+     "non_malignant": 542,
+     "unresolved": 25
+    },
+    "plasma": {
+     "malignant": 7,
+     "non_malignant": 531,
+     "unresolved": 29
+    }
+   },
+   "conflicts_qcpass_nondoublet": 127
+  }
+ }
+}

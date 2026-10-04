@@ -1,0 +1,29 @@
+[gene-expression]
+reference,/MG/SHARED/APPS/10X_Tools_Data/refdata-gex-GRCh38-2024-A
+create-bam,true
+include-introns,true
+tenx-cloud-token-path,/MG/SHARED/APPS/10X_token_analysis.json
+cell-annotation-model,auto
+
+[libraries]
+fastq_id,fastqs,feature_types
+KH022-1-1_Gex,/MG/RUNFOLDERS/10X_ANALYSIS/20260924_125002/P2011765/KH022-1-1_FASTQ/Gex,Gene Expression
+
+
+{
+ "corrected_bc_frac": 0.019478876821330763,
+ "corrected_bc_in_gel_bead_frac": null,
+ "corrected_bc_in_probe_frac": null,
+ "ANTIBODY_corrected_bc_frac": null,
+ "ANTIBODY_corrected_bc_in_gel_bead_frac": null,
+ "ANTIBODY_corrected_bc_in_probe_frac": null,
+ "i1_bases_with_q30_frac": 0.8490410046551368,
+ "i2_bases_with_q30_frac": 0.8351362922658547,
+ "low_support_umi_reads_frac": 0.0028938656570035057,
+ "tag_contaminant_info": null,
+ "tso_frac": 0.03958253563442359,
+ "probe_barcode_overlap_coefficients": null,
+ "fraction_reads_high_occupancy_gems": 0.0,
+ "high_occupancy_probe_barcode_count_threshold": 0,
+ "unknown_feature_barcode_seqs": {}
+}

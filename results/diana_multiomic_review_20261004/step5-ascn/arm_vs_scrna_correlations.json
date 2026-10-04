@@ -1,0 +1,14 @@
+{
+ "KH022-1": {
+  "n_arms": 38,
+  "spearman_scrnaCNV_vs_S1_arm_logR": 0.6847950986887232,
+  "spearman_scrnaCNV_vs_S1_arm_meanCN": 0.7295715055716208,
+  "spearman_scrna_allele_excess_vs_S1_imbalance": 0.6245688191833093
+ },
+ "KH022-1-1": {
+  "n_arms": 38,
+  "spearman_scrnaCNV_vs_S1_arm_logR": 0.6998960452561638,
+  "spearman_scrnaCNV_vs_S1_arm_meanCN": 0.738109626717095,
+  "spearman_scrna_allele_excess_vs_S1_imbalance": 0.6245688191833093
+ }
+}

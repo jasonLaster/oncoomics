@@ -1,0 +1,3 @@
+gene	exome_region	exome_het_snps	exome_b	exome_b_ci	expected_vaf_all_copies	expected_vaf_all_copies_range	expected_vaf_half_copies	observed_alt	observed_depth	observed_vaf	ratio_obs_to_all_copies	ratio_ci95	p_all_copies	p_half
+BRCA1	17:40267797-42267797 (hs37d5)	113	0.365	0.365-0.37	0.27	0.260-0.270	0.135	134	598	0.224	0.83	0.71-0.96	0.01125	3.26e-09
+TP53	17:6078369-9078369 (hs37d5)	327	0.335	0.335-0.335	0.33	0.330-0.330	0.165	441	1269	0.348	1.05	0.97-1.13	0.189	6.787e-56

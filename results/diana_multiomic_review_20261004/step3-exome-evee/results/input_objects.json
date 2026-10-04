@@ -1,0 +1,61 @@
+{
+ "bucket": "diana-omics-raw-inputs-172630973301-us-east-1",
+ "objects": {
+  "tumor_exome_bam": {
+   "key": "diana/inbox/2026-07-14-echo-personalis/data/immunoid/E019_S01/DNA_Pipeline/Alignments/DNA_E019_S01_tumor_dna_aligned_recal.sorted.bam",
+   "size_bytes": 44738172176,
+   "etag": "\"d524c76f2bb7647d268f85f1125c08c5-5334\"",
+   "version_id": "bPODEYBKvW04Svsq_sYBXJ64kBOGae6I",
+   "last_modified": "2026-07-16T03:22:14+00:00"
+  },
+  "tumor_exome_bai": {
+   "key": "diana/inbox/2026-07-14-echo-personalis/data/immunoid/E019_S01/DNA_Pipeline/Alignments/DNA_E019_S01_tumor_dna_aligned_recal.sorted.bai",
+   "size_bytes": 6226096,
+   "etag": "\"a2c2d644ebadc5e379389435fa723eec\"",
+   "version_id": "4aqgwpEVHM289UnS7.QM_4QXINkrLbaF",
+   "last_modified": "2026-07-16T03:22:14+00:00"
+  },
+  "normal_exome_bam": {
+   "key": "diana/inbox/2026-07-14-echo-personalis/data/immunoid/E019_S01/DNA_Pipeline/Alignments/DNA_E019_S05_Vial1_normal_dna_aligned_recal.sorted.bam",
+   "size_bytes": 21035825255,
+   "etag": "\"1a117e11f0c01fb13bad1b6b59a7e1f7-2508\"",
+   "version_id": "IFlrWT.HQZXpYFpv8fETkOOYns9k3CPP",
+   "last_modified": "2026-07-16T03:22:14+00:00"
+  },
+  "normal_exome_bai": {
+   "key": "diana/inbox/2026-07-14-echo-personalis/data/immunoid/E019_S01/DNA_Pipeline/Alignments/DNA_E019_S05_Vial1_normal_dna_aligned_recal.sorted.bai",
+   "size_bytes": 4547768,
+   "etag": "\"826d2443b91f680a628b1d74bda64cae\"",
+   "version_id": "_5owfmymSvBhO_bOUkWIHE935Bzq4HVC",
+   "last_modified": "2026-07-16T03:22:14+00:00"
+  },
+  "rna_recal_bam": {
+   "key": "diana/inbox/2026-07-14-echo-personalis/data/immunoid/E019_S01/RNA_Pipeline/Alignments/RNA_E019_S01_tumor_rna_aligned.recal.sorted.bam",
+   "size_bytes": 24905892448,
+   "etag": "\"cf781c9fd807b32b7f7ea72dc3f834d5-2970\"",
+   "version_id": "g9JfmajCh6R1ObwwtC.DA1rts0uPNGIJ",
+   "last_modified": "2026-07-16T03:25:41+00:00"
+  },
+  "rna_recal_bai": {
+   "key": "diana/inbox/2026-07-14-echo-personalis/data/immunoid/E019_S01/RNA_Pipeline/Alignments/RNA_E019_S01_tumor_rna_aligned.recal.sorted.bam.bai",
+   "size_bytes": 3411312,
+   "etag": "\"e84e598da54687c82c10bbcf22b4d8eb\"",
+   "version_id": "1zcicEZYfAVK9YiR.PUKtVpZqrKuqoxu",
+   "last_modified": "2026-07-16T03:27:36+00:00"
+  },
+  "rna_sorted_bam": {
+   "key": "diana/inbox/2026-07-14-echo-personalis/data/immunoid/E019_S01/RNA_Pipeline/Alignments/RNA_E019_S01_tumor_rna_aligned.sorted.bam",
+   "size_bytes": 9769769184,
+   "etag": "\"06bf1ecf06f2004dc9b562144126b23b-1165\"",
+   "version_id": "ntUadPKrIcUDmSfTqyk37GClAHg8Y8CC",
+   "last_modified": "2026-07-16T03:27:36+00:00"
+  },
+  "rna_sorted_bai": {
+   "key": "diana/inbox/2026-07-14-echo-personalis/data/immunoid/E019_S01/RNA_Pipeline/Alignments/RNA_E019_S01_tumor_rna_aligned.sorted.bam.bai",
+   "size_bytes": 12571960,
+   "etag": "\"d10867c236d3ad3d5d483b7bde9585ce-2\"",
+   "version_id": "_BmbDSZGlnaaCcvzrEVFNBWim8SYKoZQ",
+   "last_modified": "2026-07-16T03:28:44+00:00"
+  }
+ }
+}

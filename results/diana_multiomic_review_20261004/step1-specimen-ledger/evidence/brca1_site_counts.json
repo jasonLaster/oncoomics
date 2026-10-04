@@ -1,0 +1,90 @@
+{
+ "exome_tumor": {
+  "contig": "17",
+  "pos": 41267797,
+  "depth": 862,
+  "counts": {
+   "C": 660,
+   "T": 201,
+   "G": 1
+  },
+  "fwd": {
+   "C": 277,
+   "T": 82
+  },
+  "rev": {
+   "c": 383,
+   "t": 119,
+   "g": 1
+  },
+  "alt_frac_T": 0.2332
+ },
+ "exome_normal": {
+  "contig": "17",
+  "pos": 41267797,
+  "depth": 379,
+  "counts": {
+   "C": 378,
+   "A": 1
+  },
+  "fwd": {
+   "C": 168,
+   "A": 1
+  },
+  "rev": {
+   "c": 210
+  },
+  "alt_frac_T": 0.0
+ },
+ "rna_tumor": {
+  "contig": "17",
+  "pos": 41267797,
+  "depth": 73,
+  "counts": {
+   "T": 66,
+   "C": 7
+  },
+  "fwd": {
+   "T": 31,
+   "C": 3
+  },
+  "rev": {
+   "t": 35,
+   "c": 4
+  },
+  "alt_frac_T": 0.9041
+ },
+ "wgs_tumor": {
+  "contig": "chr17",
+  "pos": 43115780,
+  "depth": 47,
+  "counts": {
+   "C": 38,
+   "T": 9
+  },
+  "fwd": {
+   "C": 21,
+   "T": 5
+  },
+  "rev": {
+   "c": 17,
+   "t": 4
+  },
+  "alt_frac_T": 0.1915
+ },
+ "wgs_normal": {
+  "contig": "chr17",
+  "pos": 43115780,
+  "depth": 54,
+  "counts": {
+   "C": 54
+  },
+  "fwd": {
+   "C": 31
+  },
+  "rev": {
+   "c": 23
+  },
+  "alt_frac_T": 0.0
+ }
+}

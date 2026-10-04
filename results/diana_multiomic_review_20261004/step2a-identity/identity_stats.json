@@ -1,0 +1,529 @@
+{
+ "L1_depth10": {
+  "lib": "L1",
+  "mindepth": 10,
+  "sites_by_class": {
+   "HOMREF_C": 321158,
+   "HOMREF_B": 12271,
+   "HET": 4525,
+   "HOMALT": 2822
+  },
+  "hom_unbiased": {
+   "HOMREF_C": {
+    "sites": 321158,
+    "umis": 31180774,
+    "discordant_umis": 12878,
+    "pooled_disc_rate": 0.00041301091499524673,
+    "sites_0_disc": 310190,
+    "sites_ge2_disc": 1198,
+    "sites_ge3_disc_and_ge5pct": 10,
+    "sites_majority_nonmatching": 0
+   },
+   "HOMALT": {
+    "sites": 2822,
+    "umis": 259385,
+    "discordant_umis": 454,
+    "pooled_disc_rate": 0.0017502939645700406,
+    "sites_0_disc": 2648,
+    "sites_ge2_disc": 50,
+    "sites_ge3_disc_and_ge5pct": 16,
+    "sites_majority_nonmatching": 0
+   }
+  },
+  "hom_error_BB": {
+   "eps": 0.00043891451375849673,
+   "kappa": 1086.3899293632671
+  },
+  "het_BB": {
+   "mu": 0.4885202398247692,
+   "kappa": 1.9349386112894569,
+   "rho": 0.34072262913896273
+  },
+  "het": {
+   "sites": 4525,
+   "sites_both_alleles(each>=2 UMIs, minor>=5%)": 3665,
+   "frac_both_alleles": 0.8099447513812155,
+   "sites_one_allele_only(minor<=1 UMI)": 741,
+   "mean_alt_fraction": 0.49505416612865377,
+   "mean_minor_fraction": 0.2577289364032952,
+   "median_depth": 32.0,
+   "sites_depth>=20": 3139,
+   "frac_both_alleles_depth>=20": 0.8534565148136349,
+   "sites_depth>=50": 1664,
+   "frac_both_alleles_depth>=50": 0.8689903846153846,
+   "binom_p_vs_P(het|normal het)=0.5": 0.0
+  },
+  "LR_log10": {
+   "HET_only_conservative(p=0.5)": 863.0513049162979,
+   "HET_sites": 4525,
+   "HOMALT_only(p=0.5, not conservative)": 1524.5476858561965,
+   "HOMALT_sites": 2822,
+   "HET+HOMALT": 2387.5989907724943,
+   "HET_sites_LLR<0": 434,
+   "HOMALT_sites_LLR<0": 53,
+   "HET_sites_LLR<-3nats": 28,
+   "HOMALT_sites_LLR<-3nats": 20
+  },
+  "permutation_HET_vs_HOMALT_labels": {
+   "observed_loglik": -17609.818902604988,
+   "perm_mean": -31025.065114794917,
+   "perm_sd": 162.2321263708564,
+   "z": 82.69167465341108,
+   "n_perm": 2000,
+   "n_perm_ge_obs": 0,
+   "log10_gain_over_perm_mean": 5826.167403327587
+  },
+  "rna_call_by_normal_class(-1=nocall,0=RR,1=RA,2=AA)": {
+   "HET": {
+    "-1": 573,
+    "0": 442,
+    "1": 3186,
+    "2": 324
+   },
+   "HOMALT": {
+    "-1": 11,
+    "1": 11,
+    "2": 2800
+   },
+   "HOMREF_C": {
+    "-1": 154,
+    "0": 321004
+   },
+   "HOMREF_B": {
+    "-1": 4800,
+    "0": 5432,
+    "1": 2033,
+    "2": 6
+   }
+  },
+  "concordance": {
+   "HET_called_het": 3186,
+   "HET_called_other(RR/AA)": 766,
+   "HET_nocall": 573,
+   "HOMALT_called_AA": 2800,
+   "HOMALT_called_RA": 11,
+   "HOMALT_called_RR": 0,
+   "HOMALT_nocall": 11,
+   "HOMREF_C_called_RR": 321004,
+   "HOMREF_C_called_RA_or_AA": 0,
+   "HOMREF_C_nocall": 154
+  }
+ },
+ "L1_depth20": {
+  "lib": "L1",
+  "mindepth": 20,
+  "sites_by_class": {
+   "HOMREF_C": 228942,
+   "HOMREF_B": 9728,
+   "HET": 3141,
+   "HOMALT": 1948
+  },
+  "hom_unbiased": {
+   "HOMREF_C": {
+    "sites": 228942,
+    "umis": 29886333,
+    "discordant_umis": 12087,
+    "pooled_disc_rate": 0.0004044323537451048,
+    "sites_0_disc": 218736,
+    "sites_ge2_disc": 1169,
+    "sites_ge3_disc_and_ge5pct": 10,
+    "sites_majority_nonmatching": 0
+   },
+   "HOMALT": {
+    "sites": 1948,
+    "umis": 247165,
+    "discordant_umis": 431,
+    "pooled_disc_rate": 0.0017437744017154532,
+    "sites_0_disc": 1792,
+    "sites_ge2_disc": 46,
+    "sites_ge3_disc_and_ge5pct": 15,
+    "sites_majority_nonmatching": 0
+   }
+  },
+  "hom_error_BB": {
+   "eps": 0.00042776927560220083,
+   "kappa": 1144.5640949068586
+  },
+  "het_BB": {
+   "mu": 0.4859137542313384,
+   "kappa": 1.9201656829128508,
+   "rho": 0.34244632277251646
+  },
+  "het": {
+   "sites": 3141,
+   "sites_both_alleles(each>=2 UMIs, minor>=5%)": 2680,
+   "frac_both_alleles": 0.8532314549506527,
+   "sites_one_allele_only(minor<=1 UMI)": 342,
+   "mean_alt_fraction": 0.49408329309526855,
+   "mean_minor_fraction": 0.26362030018118376,
+   "median_depth": 53.0,
+   "sites_depth>=20": 3139,
+   "frac_both_alleles_depth>=20": 0.8534565148136349,
+   "sites_depth>=50": 1664,
+   "frac_both_alleles_depth>=50": 0.8689903846153846,
+   "binom_p_vs_P(het|normal het)=0.5": 0.0
+  },
+  "LR_log10": {
+   "HET_only_conservative(p=0.5)": 644.6108187256215,
+   "HET_sites": 3141,
+   "HOMALT_only(p=0.5, not conservative)": 1067.6473124760687,
+   "HOMALT_sites": 1948,
+   "HET+HOMALT": 1712.2581312016905,
+   "HET_sites_LLR<0": 223,
+   "HOMALT_sites_LLR<0": 40,
+   "HET_sites_LLR<-3nats": 26,
+   "HOMALT_sites_LLR<-3nats": 19
+  },
+  "permutation_HET_vs_HOMALT_labels": {
+   "observed_loglik": -13804.433031901086,
+   "perm_mean": -23717.9719169939,
+   "perm_sd": 142.68876485524905,
+   "z": 69.47666058466221,
+   "n_perm": 2000,
+   "n_perm_ge_obs": 0,
+   "log10_gain_over_perm_mean": 4305.3952339291245
+  },
+  "rna_call_by_normal_class(-1=nocall,0=RR,1=RA,2=AA)": {
+   "HET": {
+    "-1": 407,
+    "0": 228,
+    "1": 2368,
+    "2": 138
+   },
+   "HOMALT": {
+    "-1": 10,
+    "1": 10,
+    "2": 1928
+   },
+   "HOMREF_C": {
+    "-1": 134,
+    "0": 228808
+   },
+   "HOMREF_B": {
+    "-1": 4243,
+    "0": 4001,
+    "1": 1481,
+    "2": 3
+   }
+  },
+  "concordance": {
+   "HET_called_het": 2368,
+   "HET_called_other(RR/AA)": 366,
+   "HET_nocall": 407,
+   "HOMALT_called_AA": 1928,
+   "HOMALT_called_RA": 10,
+   "HOMALT_called_RR": 0,
+   "HOMALT_nocall": 10,
+   "HOMREF_C_called_RR": 228808,
+   "HOMREF_C_called_RA_or_AA": 0,
+   "HOMREF_C_nocall": 134
+  }
+ },
+ "L2_depth10": {
+  "lib": "L2",
+  "mindepth": 10,
+  "sites_by_class": {
+   "HOMREF_C": 309223,
+   "HOMREF_B": 11867,
+   "HET": 4376,
+   "HOMALT": 2702
+  },
+  "hom_unbiased": {
+   "HOMREF_C": {
+    "sites": 309223,
+    "umis": 29815669,
+    "discordant_umis": 11164,
+    "pooled_disc_rate": 0.00037443399307927655,
+    "sites_0_disc": 299584,
+    "sites_ge2_disc": 998,
+    "sites_ge3_disc_and_ge5pct": 2,
+    "sites_majority_nonmatching": 0
+   },
+   "HOMALT": {
+    "sites": 2702,
+    "umis": 248805,
+    "discordant_umis": 455,
+    "pooled_disc_rate": 0.001828741383814634,
+    "sites_0_disc": 2530,
+    "sites_ge2_disc": 52,
+    "sites_ge3_disc_and_ge5pct": 15,
+    "sites_majority_nonmatching": 0
+   }
+  },
+  "hom_error_BB": {
+   "eps": 0.00039631584024172825,
+   "kappa": 1315.3216632883107
+  },
+  "het_BB": {
+   "mu": 0.48928256662772607,
+   "kappa": 1.9373385694159335,
+   "rho": 0.3404442410596345
+  },
+  "het": {
+   "sites": 4376,
+   "sites_both_alleles(each>=2 UMIs, minor>=5%)": 3531,
+   "frac_both_alleles": 0.8069012797074955,
+   "sites_one_allele_only(minor<=1 UMI)": 740,
+   "mean_alt_fraction": 0.49648835587722767,
+   "mean_minor_fraction": 0.2563597255607375,
+   "median_depth": 31.0,
+   "sites_depth>=20": 2962,
+   "frac_both_alleles_depth>=20": 0.8568534773801485,
+   "sites_depth>=50": 1556,
+   "frac_both_alleles_depth>=50": 0.8811053984575835,
+   "binom_p_vs_P(het|normal het)=0.5": 0.0
+  },
+  "LR_log10": {
+   "HET_only_conservative(p=0.5)": 822.9361518179944,
+   "HET_sites": 4376,
+   "HOMALT_only(p=0.5, not conservative)": 1452.473875020424,
+   "HOMALT_sites": 2702,
+   "HET+HOMALT": 2275.4100268384186,
+   "HET_sites_LLR<0": 431,
+   "HOMALT_sites_LLR<0": 56,
+   "HET_sites_LLR<-3nats": 25,
+   "HOMALT_sites_LLR<-3nats": 20
+  },
+  "permutation_HET_vs_HOMALT_labels": {
+   "observed_loglik": -16879.737397229102,
+   "perm_mean": -29765.909891706793,
+   "perm_sd": 162.9470203162169,
+   "z": 79.08197688715407,
+   "n_perm": 2000,
+   "n_perm_ge_obs": 0,
+   "log10_gain_over_perm_mean": 5596.393607205122
+  },
+  "rna_call_by_normal_class(-1=nocall,0=RR,1=RA,2=AA)": {
+   "HET": {
+    "-1": 520,
+    "0": 439,
+    "1": 3095,
+    "2": 322
+   },
+   "HOMALT": {
+    "-1": 15,
+    "1": 9,
+    "2": 2678
+   },
+   "HOMREF_C": {
+    "-1": 80,
+    "0": 309143
+   },
+   "HOMREF_B": {
+    "-1": 4094,
+    "0": 6214,
+    "1": 1553,
+    "2": 6
+   }
+  },
+  "concordance": {
+   "HET_called_het": 3095,
+   "HET_called_other(RR/AA)": 761,
+   "HET_nocall": 520,
+   "HOMALT_called_AA": 2678,
+   "HOMALT_called_RA": 9,
+   "HOMALT_called_RR": 0,
+   "HOMALT_nocall": 15,
+   "HOMREF_C_called_RR": 309143,
+   "HOMREF_C_called_RA_or_AA": 0,
+   "HOMREF_C_nocall": 80
+  }
+ },
+ "L2_depth20": {
+  "lib": "L2",
+  "mindepth": 20,
+  "sites_by_class": {
+   "HOMREF_C": 216486,
+   "HOMREF_B": 9170,
+   "HET": 2962,
+   "HOMALT": 1830
+  },
+  "hom_unbiased": {
+   "HOMREF_C": {
+    "sites": 216486,
+    "umis": 28522685,
+    "discordant_umis": 10509,
+    "pooled_disc_rate": 0.00036844357394824503,
+    "sites_0_disc": 207484,
+    "sites_ge2_disc": 981,
+    "sites_ge3_disc_and_ge5pct": 1,
+    "sites_majority_nonmatching": 0
+   },
+   "HOMALT": {
+    "sites": 1830,
+    "umis": 236638,
+    "discordant_umis": 432,
+    "pooled_disc_rate": 0.0018255732384486007,
+    "sites_0_disc": 1679,
+    "sites_ge2_disc": 50,
+    "sites_ge3_disc_and_ge5pct": 15,
+    "sites_majority_nonmatching": 0
+   }
+  },
+  "hom_error_BB": {
+   "eps": 0.00038884963832978625,
+   "kappa": 1363.88653064535
+  },
+  "het_BB": {
+   "mu": 0.48807584582929237,
+   "kappa": 1.9161226356284524,
+   "rho": 0.34292110619157495
+  },
+  "het": {
+   "sites": 2962,
+   "sites_both_alleles(each>=2 UMIs, minor>=5%)": 2538,
+   "frac_both_alleles": 0.8568534773801485,
+   "sites_one_allele_only(minor<=1 UMI)": 319,
+   "mean_alt_fraction": 0.49762353128667736,
+   "mean_minor_fraction": 0.26337788023647607,
+   "median_depth": 52.0,
+   "sites_depth>=20": 2962,
+   "frac_both_alleles_depth>=20": 0.8568534773801485,
+   "sites_depth>=50": 1556,
+   "frac_both_alleles_depth>=50": 0.8811053984575835,
+   "binom_p_vs_P(het|normal het)=0.5": 0.0
+  },
+  "LR_log10": {
+   "HET_only_conservative(p=0.5)": 599.2957007783061,
+   "HET_sites": 2962,
+   "HOMALT_only(p=0.5, not conservative)": 999.6748480959066,
+   "HOMALT_sites": 1830,
+   "HET+HOMALT": 1598.9705488742127,
+   "HET_sites_LLR<0": 215,
+   "HOMALT_sites_LLR<0": 38,
+   "HET_sites_LLR<-3nats": 24,
+   "HOMALT_sites_LLR<-3nats": 18
+  },
+  "permutation_HET_vs_HOMALT_labels": {
+   "observed_loglik": -12992.829120559794,
+   "perm_mean": -22323.355139188297,
+   "perm_sd": 144.5303007950764,
+   "z": 64.55757697382691,
+   "n_perm": 2000,
+   "n_perm_ge_obs": 0,
+   "log10_gain_over_perm_mean": 4052.1959631450763
+  },
+  "rna_call_by_normal_class(-1=nocall,0=RR,1=RA,2=AA)": {
+   "HET": {
+    "-1": 368,
+    "0": 217,
+    "1": 2253,
+    "2": 124
+   },
+   "HOMALT": {
+    "-1": 13,
+    "1": 9,
+    "2": 1808
+   },
+   "HOMREF_C": {
+    "-1": 70,
+    "0": 216416
+   },
+   "HOMREF_B": {
+    "-1": 3564,
+    "0": 4503,
+    "1": 1100,
+    "2": 3
+   }
+  },
+  "concordance": {
+   "HET_called_het": 2253,
+   "HET_called_other(RR/AA)": 341,
+   "HET_nocall": 368,
+   "HOMALT_called_AA": 1808,
+   "HOMALT_called_RA": 9,
+   "HOMALT_called_RR": 0,
+   "HOMALT_nocall": 13,
+   "HOMREF_C_called_RR": 216416,
+   "HOMREF_C_called_RA_or_AA": 0,
+   "HOMREF_C_nocall": 70
+  }
+ },
+ "cross_library": {
+  "by_class": {
+   "HET": {
+    "sites_called_in_both": 3336,
+    "identical": 3185,
+    "RR_vs_AA_discordant": 0,
+    "confusion(L1 rows x L2 cols)": {
+     "0": {
+      "0": 297,
+      "1": 45,
+      "2": 0
+     },
+     "1": {
+      "0": 35,
+      "1": 2714,
+      "2": 32
+     },
+     "2": {
+      "0": 0,
+      "1": 39,
+      "2": 174
+     }
+    }
+   },
+   "HOMALT": {
+    "sites_called_in_both": 2517,
+    "identical": 2513,
+    "RR_vs_AA_discordant": 0,
+    "confusion(L1 rows x L2 cols)": {
+     "1": {
+      "1": 8,
+      "2": 1
+     },
+     "2": {
+      "1": 3,
+      "2": 2505
+     }
+    }
+   },
+   "HOMREF_C": {
+    "sites_called_in_both": 292834,
+    "identical": 292834,
+    "RR_vs_AA_discordant": 0,
+    "confusion(L1 rows x L2 cols)": {
+     "0": {
+      "0": 292834
+     }
+    }
+   },
+   "HOMREF_B": {
+    "sites_called_in_both": 5033,
+    "identical": 4105,
+    "RR_vs_AA_discordant": 0,
+    "confusion(L1 rows x L2 cols)": {
+     "0": {
+      "0": 3288,
+      "1": 602,
+      "2": 0
+     },
+     "1": {
+      "0": 326,
+      "1": 812,
+      "2": 0
+     },
+     "2": {
+      "0": 0,
+      "1": 0,
+      "2": 5
+     }
+    }
+   }
+  },
+  "HET+HOMALT_sites_called_in_both": 5853,
+  "HET+HOMALT_identical": 5698,
+  "HET+HOMALT_identical_frac": 0.9735178540919187,
+  "HET_AF_L1_vs_L2": {
+   "n_sites": 2801,
+   "pearson_r": 0.9608363342081526,
+   "imbalance_abs_pearson_r": 0.9088162387182604
+  },
+  "LR_log10_L2_data_given_L1_calls": {
+   "all_calls": 2040.52692461443,
+   "sites": 6099,
+   "het_calls_only": 846.1619671453116,
+   "het_calls": 2939
+  }
+ }
+}

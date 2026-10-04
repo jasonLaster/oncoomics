@@ -1,0 +1,233 @@
+[
+ {
+  "gene": "MTOR",
+  "grch37": "1:11317202",
+  "ref>alt": "C>T",
+  "vep": [
+   {
+    "transcript": "ENST00000361445",
+    "consequence": [
+     "missense_variant"
+    ],
+    "amino_acids": "G/S",
+    "protein_start": 98,
+    "hgvsp": "ENSP00000354558.4:p.Gly98Ser",
+    "hgvsc": "ENST00000361445.4:c.292G>A"
+   }
+  ]
+ },
+ {
+  "gene": "SCAP",
+  "grch37": "3:47460860",
+  "ref>alt": "C>T",
+  "vep": [
+   {
+    "transcript": "ENST00000265565",
+    "consequence": [
+     "stop_gained"
+    ],
+    "amino_acids": "W/*",
+    "protein_start": 633,
+    "hgvsp": "ENSP00000265565.5:p.Trp633Ter",
+    "hgvsc": "ENST00000265565.5:c.1898G>A"
+   }
+  ]
+ },
+ {
+  "gene": "RXRA",
+  "grch37": "9:137300002",
+  "ref>alt": "C>A",
+  "vep": [
+   {
+    "transcript": "ENST00000481739",
+    "consequence": [
+     "stop_gained"
+    ],
+    "amino_acids": "S/*",
+    "protein_start": 96,
+    "hgvsp": "ENSP00000419692.1:p.Ser96Ter",
+    "hgvsc": "ENST00000481739.1:c.287C>A"
+   }
+  ]
+ },
+ {
+  "gene": "CUL3",
+  "grch37": "2:225370819",
+  "ref>alt": "G>A",
+  "vep": [
+   {
+    "transcript": "ENST00000264414",
+    "consequence": [
+     "missense_variant"
+    ],
+    "amino_acids": "R/C",
+    "protein_start": 354,
+    "hgvsp": "ENSP00000264414.4:p.Arg354Cys",
+    "hgvsc": "ENST00000264414.4:c.1060C>T"
+   }
+  ]
+ },
+ {
+  "gene": "DLL4",
+  "grch37": "15:41228731",
+  "ref>alt": "C>T",
+  "vep": [
+   {
+    "transcript": "ENST00000249749",
+    "consequence": [
+     "missense_variant"
+    ],
+    "amino_acids": "R/C",
+    "protein_start": 516,
+    "hgvsp": "ENSP00000249749.5:p.Arg516Cys",
+    "hgvsc": "ENST00000249749.5:c.1546C>T"
+   }
+  ]
+ },
+ {
+  "gene": "ATG4B",
+  "grch37": "2:242594726",
+  "ref>alt": "G>A",
+  "vep": [
+   {
+    "transcript": "ENST00000404914",
+    "consequence": [
+     "stop_gained"
+    ],
+    "amino_acids": "W/*",
+    "protein_start": 142,
+    "hgvsp": "ENSP00000384259.3:p.Trp142Ter",
+    "hgvsc": "ENST00000404914.3:c.426G>A"
+   }
+  ]
+ },
+ {
+  "gene": "ATG13",
+  "grch37": "11:46679115",
+  "ref>alt": "A>G",
+  "vep": [
+   {
+    "transcript": "ENST00000528494",
+    "consequence": [
+     "missense_variant"
+    ],
+    "amino_acids": "D/G",
+    "protein_start": 213,
+    "hgvsp": "ENSP00000432412.1:p.Asp213Gly",
+    "hgvsc": "ENST00000528494.1:c.638A>G"
+   }
+  ]
+ },
+ {
+  "gene": "FGFR4",
+  "grch37": "5:176517616",
+  "ref>alt": "C>T",
+  "vep": [
+   {
+    "transcript": "ENST00000292408",
+    "consequence": [
+     "missense_variant"
+    ],
+    "amino_acids": "S/F",
+    "protein_start": 106,
+    "hgvsp": "ENSP00000292408.4:p.Ser106Phe",
+    "hgvsc": "ENST00000292408.4:c.317C>T"
+   }
+  ]
+ },
+ {
+  "gene": "BRD3",
+  "grch37": "9:136899862",
+  "ref>alt": "T>C",
+  "vep": [
+   {
+    "transcript": "ENST00000303407",
+    "consequence": [
+     "missense_variant"
+    ],
+    "amino_acids": "S/G",
+    "protein_start": 676,
+    "hgvsp": "ENSP00000305918.6:p.Ser676Gly",
+    "hgvsc": "ENST00000303407.7:c.2026A>G"
+   }
+  ]
+ },
+ {
+  "gene": "BRCA1",
+  "grch37": "17:41267797",
+  "ref>alt": "C>T",
+  "vep": [
+   {
+    "transcript": "ENST00000357654",
+    "consequence": [
+     "splice_acceptor_variant"
+    ],
+    "amino_acids": null,
+    "protein_start": null,
+    "hgvsp": null,
+    "hgvsc": "ENST00000357654.3:c.81-1G>A"
+   },
+   {
+    "transcript": "ENST00000471181",
+    "consequence": [
+     "splice_acceptor_variant"
+    ],
+    "amino_acids": null,
+    "protein_start": null,
+    "hgvsp": null,
+    "hgvsc": "ENST00000471181.2:c.81-1G>A"
+   }
+  ]
+ },
+ {
+  "gene": "PPARD",
+  "grch37": "6:35393775",
+  "ref>alt": "G>C",
+  "vep": [
+   {
+    "transcript": "ENST00000311565",
+    "consequence": [
+     "missense_variant"
+    ],
+    "amino_acids": "Q/H",
+    "protein_start": 415,
+    "hgvsp": "ENSP00000310928.4:p.Gln415His",
+    "hgvsc": "ENST00000311565.4:c.1245G>C"
+   }
+  ]
+ },
+ {
+  "gene": "PIKFYVE",
+  "grch37": "2:209203263",
+  "ref>alt": "T>C",
+  "vep": [
+   {
+    "transcript": "ENST00000264380",
+    "consequence": [
+     "missense_variant"
+    ],
+    "amino_acids": "I/T",
+    "protein_start": 1548,
+    "hgvsp": "ENSP00000264380.4:p.Ile1548Thr",
+    "hgvsc": "ENST00000264380.4:c.4643T>C"
+   }
+  ]
+ },
+ {
+  "gene": "BRCA2",
+  "grch37": "13:32937423",
+  "ref>alt": "C>T",
+  "vep": [
+   {
+    "transcript": "ENST00000544455",
+    "consequence": [
+     "missense_variant"
+    ],
+    "amino_acids": "S/L",
+    "protein_start": 2695,
+    "hgvsp": "ENSP00000439902.1:p.Ser2695Leu",
+    "hgvsc": "ENST00000544455.1:c.8084C>T"
+   }
+  ]
+ }
+]

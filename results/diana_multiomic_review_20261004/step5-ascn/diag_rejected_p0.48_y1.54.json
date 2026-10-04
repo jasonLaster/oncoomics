@@ -1,0 +1,14 @@
+{
+ "purity": 0.48,
+ "ploidy_param": 1.54,
+ "ploidy_fit": 1.7408270257134315,
+ "nseg": 260,
+ "frac_cn0": 0.029119351598568925,
+ "cn0_ratio": 0.5845323741007195,
+ "frac_below_cn0_ratio": 0.0,
+ "frac_loh": 0.4924956092473831,
+ "frac_misfit_gt9": 0.6152739429951211,
+ "median_abs_dlogR": 0.15771959288259088,
+ "median_abs_dbaf": 0.02786628733997154,
+ "wgd_major_ge2_frac": 0.25020166981105196
+}

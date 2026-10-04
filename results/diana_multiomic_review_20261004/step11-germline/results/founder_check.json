@@ -1,0 +1,197 @@
+{
+ "CHEK2 c.1100delC (p.Thr367fs)": {
+  "hgvs": "NM_007194.4:c.1100del",
+  "grch38": "22-28695868-AG-A",
+  "grch37": "22-29091856",
+  "wgs_normal_ref_alt": [
+   30,
+   0
+  ],
+  "wes_normal_ref_alt": [
+   479,
+   2
+  ]
+ },
+ "CHEK2 c.470T>C (p.Ile157Thr)": {
+  "hgvs": "NM_007194.4:c.470T>C",
+  "grch38": "22-28725099-A-G",
+  "grch37": "22-29121087",
+  "wgs_normal_ref_alt": [
+   41,
+   0
+  ],
+  "wes_normal_ref_alt": [
+   823,
+   0
+  ]
+ },
+ "CHEK2 c.1283C>T (p.Ser428Phe)": {
+  "hgvs": "NM_007194.4:c.1283C>T",
+  "grch38": "22-28695219-G-A",
+  "grch37": "22-29091207",
+  "wgs_normal_ref_alt": [
+   41,
+   0
+  ],
+  "wes_normal_ref_alt": [
+   458,
+   0
+  ]
+ },
+ "CHEK2 c.444+1G>A (IVS2+1G>A)": {
+  "hgvs": "NM_007194.4:c.444+1G>A",
+  "grch38": "22-28725242-C-T",
+  "grch37": "22-29121230",
+  "wgs_normal_ref_alt": [
+   43,
+   0
+  ],
+  "wes_normal_ref_alt": [
+   858,
+   0
+  ]
+ },
+ "BRCA1 185delAG (c.68_69del)": {
+  "hgvs": "NM_007294.4:c.68_69del",
+  "grch38": "17-43124027-ACT-A",
+  "grch37": "17-41276044",
+  "wgs_normal_ref_alt": [
+   27,
+   0
+  ],
+  "wes_normal_ref_alt": [
+   425,
+   0
+  ]
+ },
+ "BRCA1 5382insC (c.5266dup)": {
+  "hgvs": "NM_007294.4:c.5266dup",
+  "grch38": "17-43057063-G-GG",
+  "grch37": "17-41209080",
+  "wgs_normal_ref_alt": [
+   39,
+   0
+  ],
+  "wes_normal_ref_alt": [
+   314,
+   0
+  ]
+ },
+ "BRCA1 c.181T>G (p.Cys61Gly)": {
+  "hgvs": "NM_007294.4:c.181T>G",
+  "grch38": "17-43106487-A-C",
+  "grch37": "17-41258504",
+  "wgs_normal_ref_alt": [
+   30,
+   0
+  ],
+  "wes_normal_ref_alt": [
+   291,
+   0
+  ]
+ },
+ "BRCA1 c.4035del": {
+  "hgvs": "NM_007294.4:c.4035del",
+  "grch38": "17-43091495-CT-C",
+  "grch37": "17-41243512",
+  "wgs_normal_ref_alt": [
+   32,
+   0
+  ],
+  "wes_normal_ref_alt": [
+   778,
+   0
+  ]
+ },
+ "BRCA2 6174delT (c.5946del)": {
+  "hgvs": "NM_000059.4:c.5946del",
+  "grch38": "13-32340300-GT-G",
+  "grch37": "13-32914437",
+  "wgs_normal_ref_alt": [
+   32,
+   0
+  ],
+  "wes_normal_ref_alt": [
+   711,
+   0
+  ]
+ },
+ "BRCA2 999del5 (c.771_775del)": {
+  "hgvs": "NM_000059.4:c.771_775del",
+  "grch38": "13-32331007-ATCAAA-A",
+  "grch37": "13-32905144",
+  "wgs_normal_ref_alt": [
+   36,
+   0
+  ],
+  "wes_normal_ref_alt": [
+   411,
+   0
+  ]
+ },
+ "PALB2 c.1592delT": {
+  "hgvs": "NM_024675.4:c.1592del",
+  "grch38": "16-23634953-CA-C",
+  "grch37": "16-23646274",
+  "wgs_normal_ref_alt": [
+   36,
+   0
+  ],
+  "wes_normal_ref_alt": [
+   525,
+   0
+  ]
+ },
+ "PALB2 c.3113G>A (p.Trp1038Ter)": {
+  "hgvs": "NM_024675.4:c.3113G>A",
+  "grch38": "16-23621362-C-T",
+  "grch37": "16-23632683",
+  "wgs_normal_ref_alt": [
+   33,
+   0
+  ],
+  "wes_normal_ref_alt": [
+   407,
+   0
+  ]
+ },
+ "PALB2 c.509_510del": {
+  "hgvs": "NM_024675.4:c.509_510del",
+  "grch38": "16-23636035-ATC-A",
+  "grch37": "16-23647356",
+  "wgs_normal_ref_alt": [
+   41,
+   0
+  ],
+  "wes_normal_ref_alt": [
+   673,
+   0
+  ]
+ },
+ "ATM c.7271T>G (p.Val2424Gly)": {
+  "hgvs": "NM_000051.4:c.7271T>G",
+  "grch38": "11-108329202-T-G",
+  "grch37": "11-108199929",
+  "wgs_normal_ref_alt": [
+   40,
+   0
+  ],
+  "wes_normal_ref_alt": [
+   493,
+   0
+  ]
+ },
+ "NBN 657del5 (c.657_661del)": {
+  "hgvs": "NM_002485.5:c.657_661del",
+  "grch38": "8-89971213-ATTTGT-A",
+  "grch37": "8-90983441",
+  "wgs_normal_ref_alt": [
+   22,
+   0
+  ],
+  "wes_normal_ref_alt": [
+   56,
+   0
+  ]
+ }
+}

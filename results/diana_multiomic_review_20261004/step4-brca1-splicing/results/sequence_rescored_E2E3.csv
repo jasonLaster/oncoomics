@@ -1,0 +1,8 @@
+model,ambiguous_with,window,sense_fragments_all,sense_unique_fragments,sense_unique_nodup_fragments,any_strand_fragments
+canonical_acceptor_0,,GTGTCCCATCTGTCTGGAGTTGAT,75,75,53,75
+acceptor_+4,,GTGTCCCATCTGGAGTTGATCAAG,5,4,1,5
+acceptor_+5,,GTGTCCCATCTGAGTTGATCAAGG,1,1,1,1
+acceptor_+7,,GTGTCCCATCTGTTGATCAAGGAA,254,253,178,256
+acceptor_+10,,GTGTCCCATCTGATCAAGGAACCT,27,27,20,27
+acceptor_+16,,GTGTCCCATCTGGAACCTGTCTCC,37,37,28,37
+exon3_skipping_E2_E4,,GTGTCCCATCTGATTTTGCATGCT,33,33,21,33

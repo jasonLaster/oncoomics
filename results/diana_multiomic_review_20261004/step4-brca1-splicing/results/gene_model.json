@@ -1,0 +1,194 @@
+{
+ "hg38": "chr17:43115780",
+ "hg19": "17:41267797",
+ "hg19_ref": "C",
+ "transcript": "NM_007294.4",
+ "affected_exon_refseq": 3,
+ "affected_exon_legacy": 3,
+ "exons": [
+  {
+   "exon": 1,
+   "start": 41277288,
+   "end": 41277381,
+   "length": 94,
+   "legacy": 1
+  },
+  {
+   "exon": 2,
+   "start": 41276034,
+   "end": 41276132,
+   "length": 99,
+   "legacy": 2
+  },
+  {
+   "exon": 3,
+   "start": 41267743,
+   "end": 41267796,
+   "length": 54,
+   "legacy": 3
+  },
+  {
+   "exon": 4,
+   "start": 41258473,
+   "end": 41258550,
+   "length": 78,
+   "legacy": 5
+  },
+  {
+   "exon": 5,
+   "start": 41256885,
+   "end": 41256973,
+   "length": 89,
+   "legacy": 6
+  },
+  {
+   "exon": 6,
+   "start": 41256139,
+   "end": 41256278,
+   "length": 140,
+   "legacy": 7
+  },
+  {
+   "exon": 7,
+   "start": 41251792,
+   "end": 41251897,
+   "length": 106,
+   "legacy": 8
+  },
+  {
+   "exon": 8,
+   "start": 41249261,
+   "end": 41249306,
+   "length": 46,
+   "legacy": 9
+  },
+  {
+   "exon": 9,
+   "start": 41247863,
+   "end": 41247939,
+   "length": 77,
+   "legacy": 10
+  },
+  {
+   "exon": 10,
+   "start": 41243452,
+   "end": 41246877,
+   "length": 3426,
+   "legacy": 11
+  },
+  {
+   "exon": 11,
+   "start": 41242961,
+   "end": 41243049,
+   "length": 89,
+   "legacy": 12
+  },
+  {
+   "exon": 12,
+   "start": 41234421,
+   "end": 41234592,
+   "length": 172,
+   "legacy": 13
+  },
+  {
+   "exon": 13,
+   "start": 41228505,
+   "end": 41228631,
+   "length": 127,
+   "legacy": 14
+  },
+  {
+   "exon": 14,
+   "start": 41226348,
+   "end": 41226538,
+   "length": 191,
+   "legacy": 15
+  },
+  {
+   "exon": 15,
+   "start": 41222945,
+   "end": 41223255,
+   "length": 311,
+   "legacy": 16
+  },
+  {
+   "exon": 16,
+   "start": 41219625,
+   "end": 41219712,
+   "length": 88,
+   "legacy": 17
+  },
+  {
+   "exon": 17,
+   "start": 41215891,
+   "end": 41215968,
+   "length": 78,
+   "legacy": 18
+  },
+  {
+   "exon": 18,
+   "start": 41215350,
+   "end": 41215390,
+   "length": 41,
+   "legacy": 19
+  },
+  {
+   "exon": 19,
+   "start": 41209069,
+   "end": 41209152,
+   "length": 84,
+   "legacy": 20
+  },
+  {
+   "exon": 20,
+   "start": 41203080,
+   "end": 41203134,
+   "length": 55,
+   "legacy": 21
+  },
+  {
+   "exon": 21,
+   "start": 41201138,
+   "end": 41201211,
+   "length": 74,
+   "legacy": 22
+  },
+  {
+   "exon": 22,
+   "start": 41199660,
+   "end": 41199720,
+   "length": 61,
+   "legacy": 23
+  },
+  {
+   "exon": 23,
+   "start": 41196312,
+   "end": 41197819,
+   "length": 1508,
+   "legacy": 24
+  }
+ ],
+ "cryptic_AG_offsets": [
+  -94,
+  -87,
+  -69,
+  -64,
+  -39,
+  0,
+  7,
+  16,
+  34,
+  55,
+  59,
+  89
+ ],
+ "notes": [
+  "hg38 chr17:43115780 C>T -> hg19 chr17:41267797; hg19 plus-strand base = C (complement G); expected plus-strand REF C = cDNA G (minus strand). validated=True",
+  "affected acceptor = exon 3 (RefSeq NM_007294.4 numbering; legacy BIC numbering = exon 3), hg19 41267743-41267796 (54 bp, c.81_134)",
+  "upstream exon 2 hg19 41276034-41276132 (99 bp); downstream exon 4 hg19 41258473-41258550 (78 bp)",
+  "canonical junction exon2->exon3: intron hg19 41267797-41276033; skipping exon3: intron 41258551-41276033; exon3->exon4: intron 41258551-41267742",
+  "reference AG (acceptor-like) dinucleotides, offset of last intron base relative to c.81-1 (positive = into exon (exon trimmed), negative = upstream in intron (exon extended)): -94,-87,-69,-64,-39,0,7,16,34,55,59,89",
+  "transcript-orientation (minus strand) window: intron 30nt | exon 40nt = TTTTCTTTTTCTCCCCCCCTACCCTGCTAG|TCTGGAGTTGATCAAGGAACCTGTCTCCACAAAGTGTGAC",
+  "mutant (c.81-1G>A): TTTTCTTTTTCTCCCCCCCTACCCTGCTAA|TCTGGAGTTGATCAAGGAACCTGTCTCCACAAAGTGTGAC"
+ ]
+}

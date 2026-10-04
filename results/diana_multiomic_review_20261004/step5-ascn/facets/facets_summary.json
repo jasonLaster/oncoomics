@@ -1,0 +1,86 @@
+{
+  "cval100": {
+    "purity": 0.394101,
+    "ploidy": 2.959057,
+    "dipLogR": -0.249728,
+    "alBalLogR": [
+      [-0.177178, 0.19096],
+      [0.1296, 0.226209]
+    ],
+    "emflags": {},
+    "loglik": 3727.897435,
+    "nseg": 1868
+  },
+  "cval100_dip-0.177": {
+    "purity": 0.406757,
+    "ploidy": 2.641812,
+    "dipLogR": -0.177,
+    "loglik": 4615.668583,
+    "emflags": {},
+    "nseg": 1868
+  },
+  "cval100_dip0.13": {
+    "purity": 0.402078,
+    "ploidy": 1.571384,
+    "dipLogR": 0.13,
+    "loglik": 4555.118772,
+    "emflags": {},
+    "nseg": 1868
+  },
+  "cval150": {
+    "purity": 0.393939,
+    "ploidy": 2.640382,
+    "dipLogR": -0.171381,
+    "alBalLogR": [
+      [-0.120912, 0.199063],
+      [0.166674, 0.211499]
+    ],
+    "emflags": {},
+    "loglik": 3503.56849,
+    "nseg": 1200
+  },
+  "cval150_dip-0.121": {
+    "purity": 0.379435,
+    "ploidy": 2.46115,
+    "dipLogR": -0.121,
+    "loglik": 3466.534483,
+    "emflags": {},
+    "nseg": 1200
+  },
+  "cval150_dip0.167": {
+    "purity": 0.424563,
+    "ploidy": 1.485084,
+    "dipLogR": 0.167,
+    "loglik": 4254.551734,
+    "emflags": {},
+    "nseg": 1200
+  },
+  "cval300": {
+    "purity": 0.39475,
+    "ploidy": 3.644247,
+    "dipLogR": -0.405484,
+    "alBalLogR": [
+      [-0.133257, 0.196974],
+      [0.155502, 0.201624]
+    ],
+    "emflags": {},
+    "loglik": 2910.047352,
+    "nseg": 609
+  },
+  "cval300_dip-0.133": {
+    "purity": 0.371392,
+    "ploidy": 2.520052,
+    "dipLogR": -0.133,
+    "loglik": 2979.179012,
+    "emflags": {},
+    "nseg": 609
+  },
+  "cval300_dip0.156": {
+    "purity": 0.415755,
+    "ploidy": 1.50697,
+    "dipLogR": 0.156,
+    "loglik": 3656.439804,
+    "emflags": {},
+    "nseg": 609
+  }
+}

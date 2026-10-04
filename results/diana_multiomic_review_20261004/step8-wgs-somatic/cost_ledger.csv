@@ -1,0 +1,15 @@
+item,instance_type,lifecycle,az,start_utc,end_utc,state,hours,price_per_hour_usd,compute_usd,ebs_gp3_usd,public_ipv4_usd,total_usd
+i-0f0e061e6d1358e32,m7g.xlarge,spot,us-east-1b,2026-10-03T22:32:28+00:00,2026-10-03T22:42:53+00:00,terminated,0.174,0.0948,0.0165,0.0618,0.0009,0.0792
+i-0f38712d7542432a2,c7g.2xlarge,spot,us-east-1a,2026-10-03T22:32:38+00:00,2026-10-03T22:53:44+00:00,terminated,0.352,0.1651,0.0581,0.1253,0.0018,0.1851
+i-01c4b780ca9e04bb1,c7i.xlarge,on-demand,us-east-1b,2026-10-03T22:32:42+00:00,2026-10-03T22:49:18+00:00,terminated,0.277,0.1785,0.0494,0.0985,0.0014,0.1493
+i-0390b375b0070acb0,m7i.large,on-demand,us-east-1a,2026-10-03T22:34:38+00:00,2026-10-03T22:41:49.940894+00:00,terminated(purged),0.120,0.1008,0.0121,0.0427,0.0006,0.0554
+i-099ffb77d9aa2a99b,c7i.xlarge,on-demand,us-east-1a,2026-10-03T22:47:16+00:00,2026-10-03T22:59:55+00:00,terminated,0.211,0.1785,0.0376,0.0751,0.0011,0.1138
+i-030c5873cfb869dff,c7i.16xlarge,on-demand,us-east-1a,2026-10-03T23:02:01+00:00,2026-10-04T00:40:00+00:00,terminated(purged; end conservatively set 00:40Z: last job on it ended 00:22Z; Batch scale-down lag),1.633,2.856,4.6640,0.5816,0.0082,5.2538
+i-0eeeb2153324d166c,c7i.16xlarge,on-demand,us-east-1b,2026-10-03T23:02:01+00:00,2026-10-03T23:58:58+00:00,terminated,0.949,2.856,2.7108,0.3381,0.0047,3.0536
+i-0a0d771e6a43237f5,m7g.8xlarge,spot,us-east-1b,2026-10-03T23:02:03+00:00,2026-10-03T23:33:40+00:00,terminated,0.527,0.6308,0.3324,0.1877,0.0026,0.5227
+i-09ecb6c4f16320f1a,c7g.8xlarge,spot,us-east-1a,2026-10-04T00:20:00+00:00,2026-10-04T00:55:00+00:00,terminated(purged; gather job 00:22:43-00:45:23Z; launch/end conservatively bracketed 00:20-00:55Z),0.583,0.4328,0.2525,0.2078,0.0029,0.4631
+s3_storage_1_month_allowance,,,,,,,,,,,,0.2500
+s3_kms_requests_allowance,,,,,,,,,,,,0.1000
+cloudwatch_logs_allowance,,,,,,,,,,,,0.0500
+s3_egress_to_local_result_downloads_allowance,,,,,,,,,,,,0.0500
+TOTAL_AS_OF_20261004T022937Z,,,,,,,,,,,,10.3260

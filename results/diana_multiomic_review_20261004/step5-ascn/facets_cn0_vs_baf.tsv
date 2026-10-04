@@ -1,0 +1,3 @@
+fit	cn0_Mb	n_seg	lenweighted_median_b_obs	frac_len_b_below_0p45	note
+FACETS_c150	102	67	0.427	0.634	CN0 predicts b=0.5 (normal cells only); b<0.45 means tumor alleles are present
+FACETS_c300_dip-0.133	132	37	0.43	0.632	CN0 predicts b=0.5 (normal cells only); b<0.45 means tumor alleles are present

@@ -1,0 +1,304 @@
+{
+ "A_SP-26-022231": {
+  "is_svs": true,
+  "n_pages": 7,
+  "pages": [
+   {
+    "i": 0,
+    "shape": [
+     85218,
+     189288,
+     3
+    ],
+    "compression": "7",
+    "subfiletype": 0,
+    "is_tiled": true,
+    "offset": 2925316564,
+    "description": "Aperio Leica Biosystems GT450 v1.0.1 \n189288x85218 [0,0,189288x85218] (256x256) JPEG/YCC Q=91|AppMag = 40|CalibrationAverageBlue = 172.92723083496|CalibrationAverageGreen = 173.18489074707|CalibrationAverageRed = 172.03979492188|Date = 07/09/2026|Exposure Scale = 0.000001|Exposure Time = 8|Filtered = 3|Focus Offset = -0.500000|Left = 23.222053527832|MPP = 0.263089|Rack = 3|ScanScope ID = SS12248|ScannerType = GT450|SessionMode = UNKNOWN|Slide = 8|StripeWidth = 4096|Time = 17:24:37|Time Zone = GMT+429496729200|Top = 50.267379760742|Scan Warning = NONE",
+    "software": "",
+    "datetime": "None"
+   },
+   {
+    "i": 1,
+    "shape": [
+     864,
+     1920,
+     3
+    ],
+    "compression": "7",
+    "subfiletype": 0,
+    "is_tiled": false,
+    "offset": 2942533798,
+    "description": "Aperio Leica Biosystems GT450 v1.0.1 \n1920x864 [0,0,1920x864] (1920x864) JPEG/YCC Q=100|AppMag = 40|CalibrationAverageBlue = 172.92723083496|CalibrationAverageGreen = 173.18489074707|CalibrationAverageRed = 172.03979492188|Date = 07/09/2026|Exposure Scale = 0.000001|Exposure Time = 8|Focus Offset = 0.000000|Left = 7.1657752990723|MPP = 25.943129|Rack = 3|ScanScope ID = SS12248|ScannerType = GT450|SessionMode = UNKNOWN|Slide = 8|StripeWidth = 4096|Time = 17:24:37|Time Zone = GMT+429496729200|Top = 0.80213904380798|Scan Warning = NONE",
+    "software": "",
+    "datetime": "None"
+   },
+   {
+    "i": 2,
+    "shape": [
+     21304,
+     47322,
+     3
+    ],
+    "compression": "7",
+    "subfiletype": 0,
+    "is_tiled": true,
+    "offset": 3028654568,
+    "description": "Aperio Leica Biosystems GT450 v1.0.1 \n47322x21304 [0,0,47322x21304] (256x256) JPEG/YCC Q=91|AppMag = 40|CalibrationAverageBlue = 172.92723083496|CalibrationAverageGreen = 173.18489074707|CalibrationAverageRed = 172.03979492188|Date = 07/09/2026|Exposure Scale = 0.000001|Exposure Time = 8|Filtered = 3|Focus Offset = -0.500000|Left = 23.221527099609|MPP = 1.052368|Rack = 3|ScanScope ID = SS12248|ScannerType = GT450|SessionMode = UNKNOWN|Slide = 8|StripeWidth = 4096|Time = 17:24:37|Time Zone = GMT+429496729200|Top = 50.267379760742|Scan Warning = NONE",
+    "software": "",
+    "datetime": "None"
+   },
+   {
+    "i": 3,
+    "shape": [
+     5326,
+     11830,
+     3
+    ],
+    "compression": "7",
+    "subfiletype": 0,
+    "is_tiled": true,
+    "offset": 3047013318,
+    "description": "Aperio Leica Biosystems GT450 v1.0.1 \n11830x5326 [0,0,11830x5326] (256x256) JPEG/YCC Q=91|AppMag = 40|CalibrationAverageBlue = 172.92723083496|CalibrationAverageGreen = 173.18489074707|CalibrationAverageRed = 172.03979492188|Date = 07/09/2026|Exposure Scale = 0.000001|Exposure Time = 8|Filtered = 3|Focus Offset = -0.500000|Left = 23.221527099609|MPP = 4.209562|Rack = 3|ScanScope ID = SS12248|ScannerType = GT450|SessionMode = UNKNOWN|Slide = 8|StripeWidth = 4096|Time = 17:24:37|Time Zone = GMT+429496729200|Top = 50.267379760742|Scan Warning = NONE",
+    "software": "",
+    "datetime": "None"
+   },
+   {
+    "i": 4,
+    "shape": [
+     1331,
+     2957,
+     3
+    ],
+    "compression": "7",
+    "subfiletype": 0,
+    "is_tiled": true,
+    "offset": 3060551940,
+    "description": "Aperio Leica Biosystems GT450 v1.0.1 \n2957x1331 [0,0,2957x1331] (256x256) JPEG/YCC Q=91|AppMag = 40|CalibrationAverageBlue = 172.92723083496|CalibrationAverageGreen = 173.18489074707|CalibrationAverageRed = 172.03979492188|Date = 07/09/2026|Exposure Scale = 0.000001|Exposure Time = 8|Filtered = 3|Focus Offset = -0.500000|Left = 23.213108062744|MPP = 16.842833|Rack = 3|ScanScope ID = SS12248|ScannerType = GT450|SessionMode = UNKNOWN|Slide = 8|StripeWidth = 4096|Time = 17:24:37|Time Zone = GMT+429496729200|Top = 50.267379760742|Scan Warning = NONE",
+    "software": "",
+    "datetime": "None"
+   },
+   {
+    "i": 5,
+    "shape": [
+     834,
+     640,
+     3
+    ],
+    "compression": "5",
+    "subfiletype": 1,
+    "is_tiled": false,
+    "offset": 3074463380,
+    "description": "Aperio Leica Biosystems GT450 v1.0.1 \nlabel 640x834",
+    "software": "",
+    "datetime": "None"
+   },
+   {
+    "i": 6,
+    "shape": [
+     593,
+     1432,
+     3
+    ],
+    "compression": "7",
+    "subfiletype": 9,
+    "is_tiled": false,
+    "offset": 3074621208,
+    "description": "Aperio Leica Biosystems GT450 v1.0.1 \nmacro 1432x593",
+    "software": "",
+    "datetime": "None"
+   }
+  ],
+  "series": [
+   {
+    "name": "Baseline",
+    "shape": [
+     85218,
+     189288,
+     3
+    ]
+   },
+   {
+    "name": "Thumbnail",
+    "shape": [
+     864,
+     1920,
+     3
+    ]
+   },
+   {
+    "name": "Label",
+    "shape": [
+     834,
+     640,
+     3
+    ]
+   },
+   {
+    "name": "Macro",
+    "shape": [
+     593,
+     1432,
+     3
+    ]
+   }
+  ],
+  "saved": [
+   "he/A_SP-26-022231_label.png",
+   "he/A_SP-26-022231_macro.png"
+  ],
+  "bytes_fetched": 9109581,
+  "requests": 18
+ },
+ "B_SP-26-027487": {
+  "is_svs": true,
+  "n_pages": 7,
+  "pages": [
+   {
+    "i": 0,
+    "shape": [
+     81356,
+     124244,
+     3
+    ],
+    "compression": "7",
+    "subfiletype": 0,
+    "is_tiled": true,
+    "offset": 1819183316,
+    "description": "Aperio Leica Biosystems GT450 v1.0.1 \n124244x81356 [0,0,124244x81356] (256x256) JPEG/YCC Q=91|AppMag = 40|CalibrationAverageBlue = 174.05061340332|CalibrationAverageGreen = 174.50343322754|CalibrationAverageRed = 173.23582458496|Date = 07/09/2026|Exposure Scale = 0.000001|Exposure Time = 8|Filtered = 3|Focus Offset = -0.500000|Left = 21.403865814209|MPP = 0.263089|Rack = 3|ScanScope ID = SS12248|ScannerType = GT450|SessionMode = UNKNOWN|Slide = 1|StripeWidth = 4096|Time = 17:21:18|Time Zone = GMT+429496729200|Top = 40.909091949463|Scan Warning = NONE",
+    "software": "",
+    "datetime": "None"
+   },
+   {
+    "i": 1,
+    "shape": [
+     1257,
+     1920,
+     3
+    ],
+    "compression": "7",
+    "subfiletype": 0,
+    "is_tiled": false,
+    "offset": 1834940900,
+    "description": "Aperio Leica Biosystems GT450 v1.0.1 \n1920x1257 [0,0,1920x1257] (1920x1257) JPEG/YCC Q=100|AppMag = 40|CalibrationAverageBlue = 174.05061340332|CalibrationAverageGreen = 174.50343322754|CalibrationAverageRed = 173.23582458496|Date = 07/09/2026|Exposure Scale = 0.000001|Exposure Time = 8|Focus Offset = 0.000000|Left = 16.5240650177|MPP = 17.026167|Rack = 3|ScanScope ID = SS12248|ScannerType = GT450|SessionMode = UNKNOWN|Slide = 1|StripeWidth = 4096|Time = 17:21:18|Time Zone = GMT+429496729200|Top = 0|Scan Warning = NONE",
+    "software": "",
+    "datetime": "None"
+   },
+   {
+    "i": 2,
+    "shape": [
+     20339,
+     31061,
+     3
+    ],
+    "compression": "7",
+    "subfiletype": 0,
+    "is_tiled": true,
+    "offset": 1887752254,
+    "description": "Aperio Leica Biosystems GT450 v1.0.1 \n31061x20339 [0,0,31061x20339] (256x256) JPEG/YCC Q=91|AppMag = 40|CalibrationAverageBlue = 174.05061340332|CalibrationAverageGreen = 174.50343322754|CalibrationAverageRed = 173.23582458496|Date = 07/09/2026|Exposure Scale = 0.000001|Exposure Time = 8|Filtered = 3|Focus Offset = -0.500000|Left = 21.403865814209|MPP = 1.052356|Rack = 3|ScanScope ID = SS12248|ScannerType = GT450|SessionMode = UNKNOWN|Slide = 1|StripeWidth = 4096|Time = 17:21:18|Time Zone = GMT+429496729200|Top = 40.909091949463|Scan Warning = NONE",
+    "software": "",
+    "datetime": "None"
+   },
+   {
+    "i": 3,
+    "shape": [
+     5084,
+     7765,
+     3
+    ],
+    "compression": "7",
+    "subfiletype": 0,
+    "is_tiled": true,
+    "offset": 1903763698,
+    "description": "Aperio Leica Biosystems GT450 v1.0.1 \n7765x5084 [0,0,7765x5084] (256x256) JPEG/YCC Q=91|AppMag = 40|CalibrationAverageBlue = 174.05061340332|CalibrationAverageGreen = 174.50343322754|CalibrationAverageRed = 173.23582458496|Date = 07/09/2026|Exposure Scale = 0.000001|Exposure Time = 8|Filtered = 3|Focus Offset = -0.500000|Left = 21.400707244873|MPP = 4.209802|Rack = 3|ScanScope ID = SS12248|ScannerType = GT450|SessionMode = UNKNOWN|Slide = 1|StripeWidth = 4096|Time = 17:21:18|Time Zone = GMT+429496729200|Top = 40.909091949463|Scan Warning = NONE",
+    "software": "",
+    "datetime": "None"
+   },
+   {
+    "i": 4,
+    "shape": [
+     1271,
+     1941,
+     3
+    ],
+    "compression": "7",
+    "subfiletype": 0,
+    "is_tiled": true,
+    "offset": 1917103550,
+    "description": "Aperio Leica Biosystems GT450 v1.0.1 \n1941x1271 [0,0,1941x1271] (256x256) JPEG/YCC Q=91|AppMag = 40|CalibrationAverageBlue = 174.05061340332|CalibrationAverageGreen = 174.50343322754|CalibrationAverageRed = 173.23582458496|Date = 07/09/2026|Exposure Scale = 0.000001|Exposure Time = 8|Filtered = 3|Focus Offset = -0.500000|Left = 21.400707244873|MPP = 16.840291|Rack = 3|ScanScope ID = SS12248|ScannerType = GT450|SessionMode = UNKNOWN|Slide = 1|StripeWidth = 4096|Time = 17:21:18|Time Zone = GMT+429496729200|Top = 40.909091949463|Scan Warning = NONE",
+    "software": "",
+    "datetime": "None"
+   },
+   {
+    "i": 5,
+    "shape": [
+     834,
+     640,
+     3
+    ],
+    "compression": "5",
+    "subfiletype": 1,
+    "is_tiled": false,
+    "offset": 1931020300,
+    "description": "Aperio Leica Biosystems GT450 v1.0.1 \nlabel 640x834",
+    "software": "",
+    "datetime": "None"
+   },
+   {
+    "i": 6,
+    "shape": [
+     593,
+     1432,
+     3
+    ],
+    "compression": "7",
+    "subfiletype": 9,
+    "is_tiled": false,
+    "offset": 1931166296,
+    "description": "Aperio Leica Biosystems GT450 v1.0.1 \nmacro 1432x593",
+    "software": "",
+    "datetime": "None"
+   }
+  ],
+  "series": [
+   {
+    "name": "Baseline",
+    "shape": [
+     81356,
+     124244,
+     3
+    ]
+   },
+   {
+    "name": "Thumbnail",
+    "shape": [
+     1257,
+     1920,
+     3
+    ]
+   },
+   {
+    "name": "Label",
+    "shape": [
+     834,
+     640,
+     3
+    ]
+   },
+   {
+    "name": "Macro",
+    "shape": [
+     593,
+     1432,
+     3
+    ]
+   }
+  ],
+  "saved": [
+   "he/B_SP-26-027487_label.png",
+   "he/B_SP-26-027487_macro.png"
+  ],
+  "bytes_fetched": 7029645,
+  "requests": 14
+ }
+}

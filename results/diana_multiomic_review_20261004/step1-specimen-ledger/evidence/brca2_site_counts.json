@@ -1,0 +1,7 @@
+{"site":"BRCA2 c.8084C>T p.Ser2695Leu; hg38 chr13:32363286 = hs37d5 13:32937423 (offset 574137 located by 40 bp read-context match)",
+ "exome_tumor":{"depth":1860,"C":1585,"T":275,"alt_frac":0.148},
+ "exome_normal":{"depth":934,"C":934,"T":0},
+ "rna_tumor":{"depth":1282,"C":787,"T":495,"alt_frac":0.386},
+ "wgs_tumor":{"depth":65,"C":55,"T":10,"alt_frac":0.154},
+ "wgs_normal":{"depth":91,"C":91,"T":0},
+ "altera_report_VAF":0.12}

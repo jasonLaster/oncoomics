@@ -1,0 +1,512 @@
+class	chrom	pos	id	size	homlen	somaticscore	imprecise
+translocation	chr1	8043043	MantaBND:178523:0:1:0:3:0:1		5	35	False
+inversion_junction	chr1	9814197	MantaBND:291021:0:1:0:0:0:0	230996344	7	42	False
+inversion_junction	chr1	15651976	MantaBND:291364:0:1:0:1:0:1	170523982	6	35	False
+translocation	chr1	22171457	MantaBND:240210:0:1:0:0:0:1		4	40	False
+tandem_duplication	chr1	24364453	MantaDUP:TANDEM:292000:0:1:0:0:0	10414	0	45	False
+inversion_junction	chr1	31862267	MantaBND:292464:0:1:0:0:0:1	122658580	10	37	False
+translocation	chr1	36493767	MantaBND:189628:0:1:0:1:0:1		5	40	False
+translocation	chr1	38402482	MantaBND:159144:2:3:0:0:0:0		15	36	False
+tandem_duplication	chr1	44624574	MantaDUP:TANDEM:225371:1:2:0:0:0	5523	2	40	False
+translocation	chr1	47342512	MantaBND:207296:0:2:0:0:0:1		2	32	False
+tandem_duplication	chr1	50167400	MantaDUP:TANDEM:293482:0:1:0:0:0	5261	1	42	False
+tandem_duplication	chr1	51206729	MantaDUP:TANDEM:293545:0:1:0:0:0	31131785	0	46	False
+translocation	chr1	59087075	MantaBND:11569:0:1:0:0:0:0		4	34	False
+translocation	chr1	60093234	MantaBND:234733:0:1:0:0:0:1		5	34	False
+translocation	chr1	62460038	MantaBND:20464:1:2:0:0:0:0		10	43	False
+translocation	chr1	65251048	MantaBND:39619:0:1:0:0:0:1		1	47	False
+tandem_duplication	chr1	66528644	MantaDUP:TANDEM:294579:0:1:0:0:0	71363	0	41	False
+deletion	chr1	66633509	MantaDEL:294570:0:1:0:0:0	1569	2	69	False
+translocation	chr1	67878793	MantaBND:125645:0:1:0:3:0:0		6	34	False
+translocation	chr1	68288274	MantaBND:129741:0:1:0:0:0:1		7	41	False
+deletion	chr1	68301280	MantaDEL:294736:0:1:0:0:0	256	0	43	False
+translocation	chr1	70609928	MantaBND:287475:0:2:0:3:0:1		4	35	False
+deletion	chr1	71205447	MantaDEL:294918:0:1:0:0:0	33679	0	57	False
+translocation	chr1	83586646	MantaBND:295868:0:1:0:0:0:1		6	35	False
+translocation	chr1	85539101	MantaBND:295998:0:1:0:0:0:1		6	34	False
+translocation	chr1	85587922	MantaBND:164463:0:1:0:0:0:0		0	61	False
+translocation	chr1	85878451	MantaBND:169002:0:1:0:0:0:0		4	35	False
+deletion	chr1	86421993	MantaDEL:296059:0:1:0:0:0	401207	1	46	False
+deletion	chr1	86824018	MantaDEL:296095:0:1:0:0:0	5301	4	44	False
+translocation	chr1	88604380	MantaBND:114752:0:1:0:2:0:1		10	34	False
+deletion	chr1	94223782	MantaDEL:296539:0:1:0:0:0	102	1	31	False
+inversion_junction	chr1	94267469	MantaBND:296551:0:1:0:0:0:0	119680096	3	75	False
+translocation	chr1	98747908	MantaBND:52430:0:1:0:0:0:1		4	33	False
+tandem_duplication	chr1	105190573	MantaDUP:TANDEM:297259:0:1:0:0:0	4430	5	39	False
+translocation	chr1	105776198	MantaBND:50359:0:1:0:0:0:0		5	37	False
+tandem_duplication	chr1	108884945	MantaDUP:TANDEM:232629:0:1:0:0:0	12739	6	36	False
+translocation	chr1	111714969	MantaBND:135565:1:2:0:0:0:1		4	33	False
+deletion	chr1	112582430	MantaDEL:297726:0:1:0:0:0	215	0	40	False
+tandem_duplication	chr1	150573967	MantaDUP:TANDEM:299175:0:1:0:0:0	92013	1	44	False
+translocation	chr1	151057713	MantaBND:140992:0:1:0:3:0:0		9	36	False
+translocation	chr1	161762154	MantaBND:287219:0:1:0:0:0:0		6	32	False
+tandem_duplication	chr1	161762893	MantaDUP:TANDEM:299925:0:1:0:0:0	5014	3	33	False
+deletion	chr1	162212455	MantaDEL:299945:0:1:0:0:0	52	0	56	False
+translocation	chr1	163108475	MantaBND:212116:1:2:0:0:0:0		8	33	False
+translocation	chr1	164238179	MantaBND:198291:0:1:0:0:0:1		7	33	False
+translocation	chr1	165977865	MantaBND:14804:0:1:0:0:0:0		7	34	False
+deletion	chr1	167370750	MantaDEL:300352:0:0:0:0:0	50	3	35	False
+translocation	chr1	178176344	MantaBND:79591:1:3:0:0:0:1		6	30	False
+translocation	chr1	178625589	MantaBND:301148:0:1:0:0:0:0		21	34	False
+tandem_duplication	chr1	186406190	MantaDUP:TANDEM:301669:0:1:0:0:0	13778	1	43	False
+translocation	chr1	188896810	MantaBND:182178:0:1:0:0:0:1		13	37	False
+tandem_duplication	chr1	190427473	MantaDUP:TANDEM:301932:0:1:0:0:0	2354	2	34	False
+translocation	chr1	199689456	MantaBND:4133:0:1:0:0:0:0		1	42	False
+tandem_duplication	chr1	204172488	MantaDUP:TANDEM:302939:0:1:0:0:0	363374	0	53	False
+translocation	chr1	204595956	MantaBND:101500:0:1:0:0:0:0		0	30	True
+translocation	chr1	206134471	MantaBND:258248:0:1:0:0:0:0		0	49	False
+tandem_duplication	chr1	209532975	MantaDUP:TANDEM:303296:0:1:0:0:0	409632	3	47	False
+tandem_duplication	chr1	214536119	MantaDUP:TANDEM:303583:0:1:0:0:0	226904	0	48	False
+tandem_duplication	chr1	214947523	MantaDUP:TANDEM:303637:0:1:0:0:0	4515	1	33	False
+tandem_duplication	chr1	219237001	MantaDUP:TANDEM:303949:0:1:0:0:0	11488	3	39	False
+translocation	chr1	227647042	MantaBND:114715:0:1:0:0:0:1		6	37	False
+tandem_duplication	chr1	230034627	MantaDUP:TANDEM:304583:0:1:0:0:0	6945	0	37	False
+translocation	chr1	231104860	MantaBND:216962:0:1:0:2:0:0		16	37	False
+tandem_duplication	chr1	233146535	MantaDUP:TANDEM:304850:0:1:0:0:0	6049	0	31	False
+translocation	chr1	234718344	MantaBND:136170:1:2:0:1:0:0		1	40	False
+tandem_duplication	chr1	235285282	MantaDUP:TANDEM:305000:0:1:0:0:0	3611	3	71	False
+translocation	chr1	238084858	MantaBND:264952:0:1:0:0:0:1		4	38	False
+translocation	chr2	10624579	MantaBND:122173:0:1:0:0:0:0		4	34	False
+deletion	chr2	12754492	MantaDEL:273157:0:1:0:0:0	6612	2	33	False
+inversion_junction	chr2	13771382	MantaBND:273249:0:1:0:0:0:1	180854309	8	32	False
+translocation	chr2	16804007	MantaBND:65419:0:1:0:0:0:1		18	38	False
+translocation	chr2	17456426	MantaBND:232042:1:2:0:1:0:0		0	32	False
+translocation	chr2	18031936	MantaBND:223006:1:2:0:0:0:1		5	33	False
+translocation	chr2	18683754	MantaBND:261012:0:1:0:0:0:0		6	34	False
+tandem_duplication	chr2	23471049	MantaDUP:TANDEM:273914:0:1:0:0:0	3557	1	36	False
+translocation	chr2	26287042	MantaBND:120589:0:1:0:0:0:1		4	38	False
+translocation	chr2	32516509	MantaBND:175931:0:1:0:4:0:1		25	35	False
+translocation	chr2	36518128	MantaBND:275030:0:1:0:1:0:1		5	35	False
+translocation	chr2	36992117	MantaBND:140530:0:1:0:1:0:0		5	36	False
+translocation	chr2	38609384	MantaBND:275203:0:1:0:0:0:1		4	48	False
+inversion_junction	chr2	38812333	MantaBND:275205:0:1:0:0:0:0	56141530	1	46	False
+translocation	chr2	42586510	MantaBND:131099:1:2:0:1:0:1		9	33	False
+tandem_duplication	chr2	45496689	MantaDUP:TANDEM:275776:0:1:0:0:0	1170	4	30	False
+tandem_duplication	chr2	54052980	MantaDUP:TANDEM:276510:0:1:0:0:0	10430	0	40	False
+translocation	chr2	56949453	MantaBND:276760:0:1:0:0:0:0		4	37	False
+inversion_junction	chr2	57597360	MantaBND:276825:0:1:0:1:0:1	119581666	14	35	False
+tandem_duplication	chr2	61008744	MantaDUP:TANDEM:277043:0:1:0:0:0	9560	0	46	False
+translocation	chr2	61269930	MantaBND:110258:0:1:0:0:0:0		7	36	False
+translocation	chr2	67031749	MantaBND:245337:0:1:0:0:0:0		8	33	False
+tandem_duplication	chr2	72324950	MantaDUP:TANDEM:277795:0:1:0:0:0	7893	3	40	False
+tandem_duplication	chr2	75590874	MantaDUP:TANDEM:278016:0:1:0:0:0	38333	2	44	False
+deletion	chr2	97963759	MantaDEL:279654:0:1:0:0:0	123	3	34	False
+translocation	chr2	98067248	MantaBND:139514:0:1:0:0:0:1		7	35	False
+tandem_duplication	chr2	98945748	MantaDUP:TANDEM:279699:0:1:0:0:0	3445	2	32	False
+tandem_duplication	chr2	99503498	MantaDUP:TANDEM:279760:0:1:0:0:0	6785	2	40	False
+translocation	chr2	107461273	MantaBND:280341:0:1:0:0:0:0		7	34	False
+translocation	chr2	132744587	MantaBND:142789:0:1:0:0:0:1		7	32	False
+tandem_duplication	chr2	132928287	MantaDUP:TANDEM:282256:0:1:0:0:0	2649	2	40	False
+tandem_duplication	chr2	133227250	MantaDUP:TANDEM:252089:0:1:0:0:0	1188104	2	42	False
+tandem_duplication	chr2	133273370	MantaDUP:TANDEM:282312:0:1:0:1:0	321297	4	47	False
+tandem_duplication	chr2	135184238	MantaDUP:TANDEM:282410:0:1:0:0:0	10415	2	48	False
+translocation	chr2	140509044	MantaBND:44730:2:5:0:2:0:0		6	38	False
+translocation	chr2	142299552	MantaBND:124994:0:1:0:0:0:0		3	47	False
+tandem_duplication	chr2	142529883	MantaDUP:TANDEM:283109:0:1:0:0:0	861530	1	50	False
+translocation	chr2	142912474	MantaBND:78491:0:2:1:0:0:1		0	41	True
+translocation	chr2	143722715	MantaBND:40365:0:1:0:0:0:0		12	38	False
+translocation	chr2	144329177	MantaBND:152236:1:2:0:0:0:1		5	35	False
+translocation	chr2	148417167	MantaBND:201240:0:1:0:0:0:1		9	34	False
+translocation	chr2	149670675	MantaBND:153895:0:1:0:0:0:1		6	37	False
+translocation	chr2	150889016	MantaBND:139038:0:1:0:1:0:1		2	34	False
+deletion	chr2	152488706	MantaDEL:283829:0:1:0:0:0	29714991	0	55	False
+tandem_duplication	chr2	159036455	MantaDUP:TANDEM:284286:0:1:0:0:0	24244	3	81	False
+deletion	chr2	161214240	MantaDEL:284442:0:0:0:0:0	215	3	64	False
+deletion	chr2	162464498	MantaDEL:284453:0:1:0:0:0	51	4	32	False
+tandem_duplication	chr2	164504757	MantaDUP:TANDEM:284603:0:1:0:0:0	55138	1	46	False
+deletion	chr2	177273902	MantaDEL:285516:0:1:0:0:0	2063	4	39	False
+translocation	chr2	179718742	MantaBND:153065:0:1:0:0:0:0		9	38	False
+translocation	chr2	181869646	MantaBND:60698:0:1:0:0:0:1		15	35	False
+translocation	chr2	182890676	MantaBND:285858:0:1:0:0:0:1		5	35	False
+tandem_duplication	chr2	183009642	MantaDUP:TANDEM:101843:3:4:0:2:0	15594	0	47	False
+translocation	chr2	192735124	MantaBND:159791:0:1:0:0:0:0		0	53	False
+translocation	chr2	194682817	MantaBND:74379:0:1:0:0:0:1		7	36	False
+tandem_duplication	chr2	205334602	MantaDUP:TANDEM:287646:0:1:0:0:0	7057	0	32	False
+tandem_duplication	chr2	207483574	MantaDUP:TANDEM:287799:0:1:0:0:0	586677	3	40	False
+tandem_duplication	chr2	208453010	MantaDUP:TANDEM:287885:0:1:0:0:0	16115	1	44	False
+tandem_duplication	chr2	210572992	MantaDUP:TANDEM:288018:0:1:0:0:0	2387	0	34	False
+translocation	chr2	212087127	MantaBND:145571:0:1:0:0:0:1		4	32	False
+tandem_duplication	chr2	217505959	MantaDUP:TANDEM:288596:0:1:0:0:0	10134	3	44	False
+translocation	chr2	220962233	MantaBND:16706:1:6:0:2:0:1		5	32	False
+tandem_duplication	chr2	233511195	MantaDUP:TANDEM:289715:0:1:0:0:0	8045	1	31	False
+translocation	chr2	235852400	MantaBND:106168:0:1:0:1:0:1		0	36	False
+deletion	chr3	1323471	MantaDEL:254542:0:1:0:0:0	52	1	33	False
+translocation	chr3	4768855	MantaBND:103538:0:1:0:0:0:0		6	35	False
+translocation	chr3	5169485	MantaBND:64171:2:3:0:0:0:1		3	33	False
+tandem_duplication	chr3	11592340	MantaDUP:TANDEM:255526:0:1:0:0:0	17659	0	86	False
+translocation	chr3	11886505	MantaBND:206460:0:1:0:1:0:0		13	35	False
+translocation	chr3	12644920	MantaBND:39777:0:2:0:0:0:0		4	42	False
+translocation	chr3	14041799	MantaBND:221231:0:1:0:0:0:1		5	34	False
+translocation	chr3	14408699	MantaBND:183239:0:1:0:1:0:0		5	34	False
+tandem_duplication	chr3	16329263	MantaDUP:TANDEM:255906:0:1:0:0:0	164850	2	53	False
+translocation	chr3	20535646	MantaBND:256201:0:1:0:0:0:0		5	34	False
+tandem_duplication	chr3	22139559	MantaDUP:TANDEM:256309:0:1:0:0:0	615746	0	76	False
+inversion_junction	chr3	25078444	MantaBND:256670:0:1:0:0:0:1	146451649	7	32	False
+inversion_junction	chr3	29387987	MantaBND:257113:0:1:0:0:0:1	89550160	4	34	False
+deletion	chr3	30562059	MantaDEL:257222:0:1:0:2:0	24803710	2	32	False
+tandem_duplication	chr3	32377655	MantaDUP:TANDEM:257376:0:1:0:0:0	566569	0	65	False
+deletion	chr3	35948565	MantaDEL:257688:0:1:0:0:0	211	2	35	False
+translocation	chr3	39155126	MantaBND:257912:0:1:0:1:0:1		3	35	False
+inversion_junction	chr3	39778945	MantaBND:257980:0:1:0:0:0:0	109873511	0	34	False
+tandem_duplication	chr3	40130102	MantaDUP:TANDEM:258012:0:1:0:0:0	3458	3	54	False
+translocation	chr3	44716137	MantaBND:129749:0:1:0:0:0:0		6	36	False
+tandem_duplication	chr3	47723296	MantaDUP:TANDEM:58108:0:1:0:0:0	1256	3	45	False
+deletion	chr3	55617350	MantaDEL:259122:0:1:0:0:0	308	1	38	False
+translocation	chr3	56311293	MantaBND:143511:1:2:0:0:0:1		11	33	False
+translocation	chr3	61466227	MantaBND:259595:0:1:0:0:0:0		4	32	False
+translocation	chr3	63304354	MantaBND:142483:0:1:0:3:0:0		23	35	False
+translocation	chr3	68622655	MantaBND:260088:0:1:0:0:0:1		7	32	False
+tandem_duplication	chr3	69153804	MantaDUP:TANDEM:260155:0:1:0:0:0	108296	2	58	False
+translocation	chr3	73014550	MantaBND:148665:0:1:0:0:0:1		7	37	False
+translocation	chr3	74643280	MantaBND:106832:0:1:0:0:0:0		2	45	False
+deletion	chr3	82132276	MantaDEL:261291:0:1:0:0:0	53	3	36	False
+translocation	chr3	82212598	MantaBND:212240:0:1:0:0:0:0		14	35	False
+inversion_junction	chr3	83080045	MantaBND:261395:0:1:0:0:0:1	40122711	4	55	False
+inversion_junction	chr3	83097167	MantaBND:261415:0:1:0:0:0:0	40129453	0	42	False
+inversion_junction	chr3	83247477	MantaBND:261475:0:1:0:0:0:0	29861225	9	35	False
+translocation	chr3	83549461	MantaBND:226342:0:1:0:0:0:1		9	36	False
+translocation	chr3	84104113	MantaBND:56973:1:3:0:0:0:0		0	34	False
+translocation	chr3	94113535	MantaBND:262447:0:1:0:0:0:0		11	33	False
+translocation	chr3	101137400	MantaBND:263076:0:1:0:0:0:1		8	34	False
+inversion_junction	chr3	103177419	MantaBND:107264:1:2:0:0:0:0	70986609	5	33	False
+translocation	chr3	104165792	MantaBND:142912:0:1:0:2:0:1		5	37	False
+translocation	chr3	104262230	MantaBND:33497:4:5:0:1:0:1		5	35	False
+deletion	chr3	118380917	MantaDEL:264601:1:2:0:0:0	1450271	1	64	False
+translocation	chr3	124822107	MantaBND:62926:0:1:0:0:0:0		1	49	False
+translocation	chr3	133517018	MantaBND:96057:0:1:0:0:0:0		1	35	False
+translocation	chr3	137932647	MantaBND:31963:1:2:0:0:0:0		4	36	False
+tandem_duplication	chr3	139113392	MantaDUP:TANDEM:266423:0:1:0:0:0	7071	2	77	False
+tandem_duplication	chr3	143078303	MantaDUP:TANDEM:266747:0:1:0:0:0	5915	4	46	False
+inversion_junction	chr3	149734670	MantaBND:267417:0:1:0:0:0:0	613978	4	52	False
+translocation	chr3	150717223	MantaBND:45170:1:13:0:4:0:1		5	34	False
+tandem_duplication	chr3	152724826	MantaDUP:TANDEM:267661:0:1:0:0:0	2509	1	40	False
+tandem_duplication	chr3	155745943	MantaDUP:TANDEM:267993:0:1:0:0:0	417476	2	78	False
+translocation	chr3	156854505	MantaBND:216232:0:1:0:0:0:0		5	34	False
+translocation	chr3	157515613	MantaBND:17733:0:1:0:0:0:0		5	39	False
+deletion	chr3	161162790	MantaDEL:268524:0:1:0:0:0	1030	2	47	False
+tandem_duplication	chr3	161986744	MantaDUP:TANDEM:268580:0:1:0:0:0	20871	2	38	False
+translocation	chr3	165160958	MantaBND:102670:0:1:0:2:0:0		8	33	False
+translocation	chr3	168146126	MantaBND:39803:2:5:0:1:0:1		7	33	False
+tandem_duplication	chr3	169912390	MantaDUP:TANDEM:269346:0:1:0:0:0	25441	2	43	False
+translocation	chr3	174094700	MantaBND:250052:0:1:0:3:0:0		5	33	False
+tandem_duplication	chr3	180640393	MantaDUP:TANDEM:270332:0:1:0:0:0	9061	1	47	False
+translocation	chr3	184692761	MantaBND:175577:0:1:0:1:0:0		15	35	False
+deletion	chr3	185551895	MantaDEL:270767:0:1:0:0:0	542	0	32	False
+tandem_duplication	chr3	186581549	MantaDUP:TANDEM:270855:0:1:0:0:0	3854	1	41	False
+translocation	chr3	186849959	MantaBND:40893:0:1:0:0:0:0		3	34	False
+tandem_duplication	chr3	197085593	MantaDUP:TANDEM:271939:0:1:0:0:0	62831	2	45	False
+inversion_junction	chr3	197293978	MantaBND:271979:0:1:0:1:0:0	2015	4	30	False
+translocation	chr3	197609846	MantaBND:16104:0:1:0:0:0:1		7	37	False
+deletion	chr4	1900228	MantaDEL:236553:0:1:0:0:0	67	1	42	False
+translocation	chr4	3010205	MantaBND:24375:0:1:0:0:0:1		8	35	False
+tandem_duplication	chr4	17284596	MantaDUP:TANDEM:237901:0:1:0:0:0	3474	0	50	False
+translocation	chr4	22340439	MantaBND:119327:0:2:0:1:0:1		1	37	False
+translocation	chr4	29740638	MantaBND:230813:0:1:0:3:0:1		4	34	False
+deletion	chr4	36876985	MantaDEL:239730:0:1:0:0:0	63	2	40	False
+translocation	chr4	39515023	MantaBND:17820:0:1:0:0:0:0		1	43	False
+translocation	chr4	39554586	MantaBND:17813:0:1:0:0:0:1		3	58	False
+tandem_duplication	chr4	40435803	MantaDUP:TANDEM:240121:0:1:0:0:0	19630	1	49	False
+translocation	chr4	44935667	MantaBND:118693:0:1:0:0:0:1		3	36	False
+translocation	chr4	50378392	MantaBND:73310:0:1:0:0:0:1		4	41	False
+tandem_duplication	chr4	55265280	MantaDUP:TANDEM:241438:0:1:0:0:0	73047090	2	41	False
+translocation	chr4	55566334	MantaBND:152546:0:1:0:0:0:1		9	35	False
+deletion	chr4	57724865	MantaDEL:241699:0:1:0:0:0	16291706	2	43	False
+translocation	chr4	59357606	MantaBND:241881:0:1:0:0:0:1		5	34	False
+translocation	chr4	70390797	MantaBND:161610:0:1:0:0:0:0		1	51	False
+translocation	chr4	71076438	MantaBND:51021:0:2:0:4:0:1		7	36	False
+inversion_junction	chr4	76189265	MantaBND:243608:0:1:0:1:0:1	1247	3	44	False
+tandem_duplication	chr4	76534078	MantaDUP:TANDEM:243630:0:1:0:0:0	6282	3	45	False
+translocation	chr4	78927217	MantaBND:24965:0:1:0:0:0:0		9	34	False
+translocation	chr4	79742884	MantaBND:104419:0:1:0:1:0:0		7	36	False
+tandem_duplication	chr4	90177699	MantaDUP:TANDEM:244948:0:1:0:0:0	261414	1	45	False
+translocation	chr4	94936485	MantaBND:4628:0:1:0:0:0:0		20	33	False
+tandem_duplication	chr4	98394745	MantaDUP:TANDEM:245751:0:1:0:0:0	8555	2	37	False
+translocation	chr4	104438359	MantaBND:225658:0:1:0:1:0:1		0	33	False
+tandem_duplication	chr4	118955162	MantaDUP:TANDEM:247806:0:1:0:0:0	574	2	50	False
+translocation	chr4	119170171	MantaBND:25136:1:2:0:0:0:1		10	36	False
+deletion	chr4	119501227	MantaDEL:247853:0:1:1:0:0	949	0	39	False
+tandem_duplication	chr4	121524826	MantaDUP:TANDEM:248027:0:1:0:0:0	4075	1	31	False
+translocation	chr4	139314229	MantaBND:22392:1:2:0:1:0:1		2	36	False
+tandem_duplication	chr4	151335632	MantaDUP:TANDEM:250689:0:1:0:0:0	25580	3	41	False
+translocation	chr4	152309745	MantaBND:23030:2:5:0:2:0:0		3	38	False
+translocation	chr4	156157727	MantaBND:235266:0:1:0:1:0:1		5	34	False
+deletion	chr4	166652732	MantaDEL:252094:0:1:0:0:0	911	1	51	False
+tandem_duplication	chr4	169107641	MantaDUP:TANDEM:252341:0:1:0:0:0	32676	5	48	False
+inversion_junction	chr4	173114253	MantaBND:252741:0:1:0:0:0:0	7588496	6	35	False
+translocation	chr4	181010460	MantaBND:221974:0:1:0:3:0:1		23	36	False
+deletion	chr4	182855624	MantaDEL:253649:0:1:0:0:0	4061285	3	38	False
+deletion	chr4	187756980	MantaDEL:254104:0:1:0:0:0	431	3	38	False
+translocation	chr5	11653602	MantaBND:78028:0:1:0:0:0:1		7	34	False
+translocation	chr5	12090083	MantaBND:70671:0:1:0:0:0:1		3	55	False
+tandem_duplication	chr5	13339992	MantaDUP:TANDEM:221262:0:1:0:1:0	2076	1	33	False
+tandem_duplication	chr5	43445505	MantaDUP:TANDEM:224310:0:1:0:0:0	34512	3	52	False
+tandem_duplication	chr5	54500346	MantaDUP:TANDEM:225218:0:1:0:0:0	1805839	2	66	False
+tandem_duplication	chr5	71996010	MantaDUP:TANDEM:226681:0:1:0:0:0	3197	2	30	False
+translocation	chr5	81767899	MantaBND:172028:0:1:0:0:0:1		6	34	False
+translocation	chr5	87205344	MantaBND:84771:0:1:0:0:0:1		7	37	False
+deletion	chr5	116443338	MantaDEL:230755:0:1:0:0:0	962	2	55	False
+deletion	chr5	118606976	MantaDEL:230985:0:1:0:0:0	745	0	34	False
+translocation	chr5	130569634	MantaBND:41271:0:1:0:0:0:1		5	35	False
+deletion	chr5	134100652	MantaDEL:232416:0:1:0:0:0	67	5	48	False
+tandem_duplication	chr5	152414353	MantaDUP:TANDEM:233834:0:1:0:0:0	4422	2	35	False
+tandem_duplication	chr5	155370194	MantaDUP:TANDEM:234133:0:1:0:0:0	12108	0	46	False
+tandem_duplication	chr5	167756315	MantaDUP:TANDEM:235222:0:1:0:0:0	1734	0	37	False
+translocation	chr5	174786287	MantaBND:52470:10:11:0:3:0:0		20	38	False
+tandem_duplication	chr5	177256565	MantaDUP:TANDEM:236004:0:1:0:1:0	17426	2	55	False
+translocation	chr6	1509997	MantaBND:148510:0:1:0:0:0:1		0	59	False
+translocation	chr6	1770065	MantaBND:156115:0:1:0:0:0:0		0	45	False
+deletion	chr6	2002714	MantaDEL:201108:0:1:0:0:0	1276	1	32	False
+inversion_junction	chr6	7792677	MantaBND:201721:0:1:0:0:0:0	71417276	3	57	False
+tandem_duplication	chr6	10140405	MantaDUP:TANDEM:202062:0:1:0:0:0	1171	2	41	False
+translocation	chr6	13869873	MantaBND:176483:1:2:0:4:0:1		4	35	False
+tandem_duplication	chr6	14172269	MantaDUP:TANDEM:202565:0:1:0:0:0	11269	1	44	False
+inversion_junction	chr6	18441507	MantaBND:203047:0:1:0:0:0:1	2441431	3	37	False
+deletion	chr6	27132118	MantaDEL:204202:0:1:0:0:0	416	0	35	False
+tandem_duplication	chr6	34872267	MantaDUP:TANDEM:205625:0:1:0:0:0	16089	1	62	False
+tandem_duplication	chr6	42687017	MantaDUP:TANDEM:206511:0:1:0:0:0	11565	0	54	False
+translocation	chr6	44610084	MantaBND:165597:0:1:0:0:0:0		2	66	False
+inversion_junction	chr6	46805504	MantaBND:206882:0:1:0:0:0:0	3154377	2	39	False
+inversion_junction	chr6	46809824	MantaBND:206916:0:1:0:0:0:0	3152843	0	47	False
+inversion_junction	chr6	53456126	MantaBND:207688:0:1:0:0:0:0	22966038	0	39	False
+tandem_duplication	chr6	53936832	MantaDUP:TANDEM:207724:0:2:0:0:0	18704	2	50	False
+inversion_junction	chr6	56757073	MantaBND:208091:0:1:0:0:0:1	45206312	5	35	False
+translocation	chr6	63641419	MantaBND:70581:0:1:0:0:0:1		4	31	False
+tandem_duplication	chr6	72720063	MantaDUP:TANDEM:209736:0:1:0:0:0	8514	4	47	False
+translocation	chr6	72982642	MantaBND:155713:0:1:0:0:0:0		6	36	False
+translocation	chr6	86137056	MantaBND:211184:0:1:0:0:0:0		8	37	False
+translocation	chr6	98712729	MantaBND:2:23169:23170:0:4:0:0		23	38	False
+translocation	chr6	100191666	MantaBND:74915:0:2:0:3:0:1		3	34	False
+deletion	chr6	100382075	MantaDEL:212719:0:1:0:0:0	113	1	62	False
+translocation	chr6	104533890	MantaBND:30930:0:1:0:5:0:0		3	36	False
+translocation	chr6	120891521	MantaBND:194414:0:1:0:0:0:1		5	39	False
+translocation	chr6	122832572	MantaBND:103255:0:1:0:0:0:1		7	33	False
+translocation	chr6	126205845	MantaBND:63489:0:1:0:0:0:1		4	37	False
+deletion	chr6	130709224	MantaDEL:215700:0:1:0:0:0	165	0	51	False
+translocation	chr6	145687846	MantaBND:77891:0:1:0:0:0:1		6	30	False
+translocation	chr6	155002369	MantaBND:153210:0:1:0:0:0:1		4	37	False
+translocation	chr6	156186559	MantaBND:16353:0:1:0:0:0:0		5	37	False
+translocation	chr6	161278839	MantaBND:149085:0:1:0:0:0:1		5	35	False
+tandem_duplication	chr6	162560634	MantaDUP:TANDEM:218946:0:1:0:1:0	2675	2	31	False
+tandem_duplication	chr6	167864392	MantaDUP:TANDEM:219508:0:1:0:0:0	17030	2	46	False
+deletion	chr7	4283062	MantaDEL:182382:0:1:0:0:0	6441	0	37	False
+translocation	chr7	4503222	MantaBND:169567:0:1:0:1:0:1		17	35	False
+translocation	chr7	5279322	MantaBND:90079:0:1:0:0:0:0		4	37	False
+translocation	chr7	7666204	MantaBND:104749:0:1:0:7:0:0		3	36	False
+translocation	chr7	13445255	MantaBND:37072:0:1:0:0:0:1		7	33	False
+translocation	chr7	16338978	MantaBND:167103:0:1:0:0:0:1		12	36	False
+translocation	chr7	20265690	MantaBND:167815:0:1:0:0:0:1		3	35	False
+deletion	chr7	22314088	MantaDEL:184572:0:1:0:0:0	60	3	46	False
+tandem_duplication	chr7	24701284	MantaDUP:TANDEM:184824:0:1:0:0:0	12269	0	38	False
+tandem_duplication	chr7	30489153	MantaDUP:TANDEM:185414:0:1:0:0:0	178360	4	36	False
+tandem_duplication	chr7	33243641	MantaDUP:TANDEM:185757:0:1:0:0:0	6615	4	33	False
+translocation	chr7	33659021	MantaBND:116300:0:1:0:0:0:0		13	39	False
+translocation	chr7	35040807	MantaBND:160435:0:1:0:0:0:0		6	35	False
+translocation	chr7	39959969	MantaBND:80429:0:1:0:3:0:1		6	33	False
+translocation	chr7	45247916	MantaBND:81959:0:1:0:1:0:1		7	34	False
+translocation	chr7	64229414	MantaBND:75386:0:1:0:0:0:0		2	47	False
+tandem_duplication	chr7	70023223	MantaDUP:TANDEM:189680:0:1:0:0:0	1237	1	30	False
+tandem_duplication	chr7	70156554	MantaDUP:TANDEM:189739:0:1:0:0:0	21673	2	41	False
+deletion	chr7	85295159	MantaDEL:23448:5:7:0:0:0	57548162	5	32	False
+deletion	chr7	85399881	MantaDEL:191585:0:1:0:1:0	959	2	31	False
+translocation	chr7	107691819	MantaBND:89636:0:1:0:0:0:0		1	75	False
+translocation	chr7	107692019	MantaBND:89723:0:1:0:0:0:0		2	75	False
+tandem_duplication	chr7	109661170	MantaDUP:TANDEM:194660:0:1:0:0:0	3672	2	34	False
+translocation	chr7	110172284	MantaBND:162575:1:2:0:4:0:1		2	34	False
+translocation	chr7	113253057	MantaBND:195090:0:1:0:0:0:1		15	34	False
+tandem_duplication	chr7	129916541	MantaDUP:TANDEM:197260:0:1:0:0:0	16724	2	44	False
+translocation	chr7	131804598	MantaBND:756:0:1:0:0:0:1		8	36	False
+tandem_duplication	chr7	137756309	MantaDUP:TANDEM:198215:0:1:0:0:0	6285	3	47	False
+translocation	chr7	144998674	MantaBND:69291:0:1:0:0:0:0		9	33	False
+translocation	chr7	147414880	MantaBND:143611:0:1:0:0:0:1		11	36	False
+tandem_duplication	chr7	148810503	MantaDUP:TANDEM:199698:0:1:0:0:0	705753	1	45	False
+deletion	chr8	3399047	MantaDEL:313109:0:1:0:0:0	1405	5	33	False
+deletion	chr8	4005863	MantaDEL:313162:0:1:0:0:0	87330	0	57	False
+tandem_duplication	chr8	16347544	MantaDUP:TANDEM:313944:0:1:0:0:0	6094	1	34	False
+tandem_duplication	chr8	38446104	MantaDUP:TANDEM:315245:0:1:0:0:0	14053	5	50	False
+translocation	chr8	46733137	MantaBND:13227:0:1:0:0:0:1		0	51	False
+translocation	chr8	47999258	MantaBND:99887:0:1:0:0:0:1		4	41	False
+deletion	chr8	49845280	MantaDEL:315728:0:1:0:0:0	56	2	40	False
+translocation	chr8	51750233	MantaBND:309:0:1:0:0:0:0		9	35	False
+translocation	chr8	80982446	MantaBND:119047:0:1:0:1:0:1		4	39	False
+translocation	chr8	85887458	MantaBND:145657:0:1:0:0:0:0		6	34	False
+translocation	chr8	86932233	MantaBND:106836:0:1:0:0:0:1		3	51	False
+translocation	chr8	89184518	MantaBND:11204:0:1:0:0:0:0		1	42	False
+translocation	chr8	89308638	MantaBND:14965:0:1:0:0:0:0		3	46	False
+translocation	chr8	89312886	MantaBND:14956:0:1:0:1:0:1		2	44	False
+translocation	chr8	110455878	MantaBND:158423:0:1:0:0:0:1		6	35	False
+deletion	chr8	110693099	MantaDEL:318740:0:1:0:0:0	1136	3	43	False
+tandem_duplication	chr8	115401898	MantaDUP:TANDEM:319073:0:1:0:0:0	54474	0	64	False
+deletion	chr8	122304649	MantaDEL:319466:0:1:0:0:0	620	3	32	False
+translocation	chr8	125393446	MantaBND:43020:1:3:0:0:0:1		3	39	False
+translocation	chr8	135955487	MantaBND:37951:0:1:0:0:0:1		7	37	False
+tandem_duplication	chr8	139465811	MantaDUP:TANDEM:169524:1:2:0:0:0	1037306	3	78	False
+tandem_duplication	chr8	144643837	MantaDUP:TANDEM:211521:0:1:0:0:0	10724	1	40	False
+tandem_duplication	chr9	15214403	MantaDUP:TANDEM:293896:2:3:0:3:0	2081665	3	34	False
+translocation	chr9	23619951	MantaBND:93513:0:1:0:1:0:1		1	34	False
+translocation	chr9	34733427	MantaBND:36047:0:1:0:0:0:1		7	33	False
+tandem_duplication	chr9	77839756	MantaDUP:TANDEM:309531:0:1:0:0:0	12378	2	44	False
+translocation	chr9	79775367	MantaBND:143731:0:1:0:0:0:1		5	35	False
+translocation	chr9	100333529	MantaBND:150690:0:1:0:1:0:1		8	35	False
+inversion_junction	chr10	1259245	MantaBND:86752:0:1:0:0:0:1	5055	2	44	False
+tandem_duplication	chr10	1268038	MantaDUP:TANDEM:86781:0:1:0:0:0	6348	0	34	False
+deletion	chr10	7148583	MantaDEL:87892:0:1:0:1:0	228487	0	53	False
+deletion	chr10	12208398	MantaDEL:88836:0:1:0:0:0	4701374	3	42	False
+deletion	chr10	34778375	MantaDEL:92962:0:1:0:0:0	22678	1	78	False
+deletion	chr10	36725973	MantaDEL:93269:0:1:0:0:0	157	2	43	False
+translocation	chr10	44073607	MantaBND:1929:0:1:0:0:0:0		6	45	False
+translocation	chr10	44145166	MantaBND:39601:1:2:0:1:0:0		4	42	False
+inversion_junction	chr10	44910768	MantaBND:94659:0:1:0:0:0:1	3954	2	104	False
+tandem_duplication	chr10	48996692	MantaDUP:TANDEM:95025:0:1:0:0:0	13053	1	40	False
+tandem_duplication	chr10	58410058	MantaDUP:TANDEM:96398:0:1:0:0:0	8221	0	31	False
+tandem_duplication	chr10	68121983	MantaDUP:TANDEM:97779:0:1:0:0:0	7685	2	44	False
+tandem_duplication	chr10	77026943	MantaDUP:TANDEM:99035:0:1:0:0:0	4611	0	33	False
+tandem_duplication	chr10	82912484	MantaDUP:TANDEM:99724:0:1:0:0:0	1868	1	30	False
+translocation	chr10	88288142	MantaBND:14840:0:1:0:0:0:1		6	35	False
+translocation	chr10	96025294	MantaBND:101478:0:1:0:1:0:0		6	37	False
+tandem_duplication	chr10	121783626	MantaDUP:TANDEM:104775:0:1:0:0:0	14443	2	33	False
+inversion_junction	chr11	10535546	MantaBND:65766:0:1:0:0:0:0	74145455	2	47	False
+translocation	chr11	10875576	MantaBND:2678:0:1:0:1:0:1		7	35	False
+translocation	chr11	11819107	MantaBND:45989:0:2:0:2:0:0		1	36	False
+deletion	chr11	11876963	MantaDEL:65962:0:2:0:0:0	1733	2	31	False
+inversion_junction	chr11	14676401	MantaBND:66443:0:1:0:0:0:1	117714613	0	42	False
+deletion	chr11	15441894	MantaDEL:66616:0:1:0:0:0	3161	3	37	False
+tandem_duplication	chr11	18824823	MantaDUP:TANDEM:67288:0:2:0:1:0	6211	4	35	False
+tandem_duplication	chr11	27668433	MantaDUP:TANDEM:69234:0:1:0:0:0	16086	2	35	False
+translocation	chr11	31229285	MantaBND:45603:0:1:0:1:0:1		8	36	False
+inversion_junction	chr11	34417874	MantaBND:70493:0:1:0:0:0:0	88916232	0	52	False
+tandem_duplication	chr11	35229556	MantaDUP:TANDEM:70677:0:1:0:0:0	30718	1	37	False
+deletion	chr11	36269951	MantaDEL:2:5194:5196:0:0:0	38862182	0	55	False
+tandem_duplication	chr11	59380197	MantaDUP:TANDEM:74348:0:1:0:0:0	89663	2	43	False
+inversion_junction	chr11	62702050	MantaBND:74832:0:1:0:0:0:1	1152	4	30	False
+tandem_duplication	chr11	68524503	MantaDUP:TANDEM:75624:0:1:0:0:0	8364	1	49	False
+translocation	chr11	69117506	MantaBND:75604:0:1:0:0:0:1		2	115	False
+translocation	chr11	69282452	MantaBND:75732:0:1:0:0:0:1		1	108	False
+translocation	chr11	69540177	MantaBND:75753:0:1:0:0:0:1		0	77	False
+translocation	chr11	71796556	MantaBND:76126:0:1:0:0:0:0		2	51	False
+tandem_duplication	chr11	73966969	MantaDUP:TANDEM:76438:0:1:0:1:0	85457	0	48	False
+tandem_duplication	chr11	76554543	MantaDUP:TANDEM:76816:0:1:0:0:0	4222	2	35	False
+deletion	chr11	83527235	MantaDEL:78180:0:1:0:0:0	743	3	128	False
+deletion	chr11	84664686	MantaDEL:59339:0:1:0:0:0	236	0	35	False
+translocation	chr11	86223854	MantaBND:5756:0:2:0:0:0:0		7	33	False
+translocation	chr11	91186425	MantaBND:79768:0:1:0:0:0:0		6	47	False
+translocation	chr11	102399632	MantaBND:81664:0:1:0:0:0:1		2	52	False
+translocation	chr11	105024733	MantaBND:82333:0:1:0:1:0:0		6	34	False
+translocation	chr11	108147345	MantaBND:82794:0:1:0:0:0:0		1	59	False
+translocation	chr11	108666820	MantaBND:82958:0:1:0:0:0:1		1	87	False
+deletion	chr11	116313856	MantaDEL:84033:0:1:0:0:0	91	2	42	False
+tandem_duplication	chr11	118775764	MantaDUP:TANDEM:84273:0:1:0:0:0	20258	3	42	False
+tandem_duplication	chr11	119666699	MantaDUP:TANDEM:84454:0:1:0:0:0	9441	1	62	False
+tandem_duplication	chr11	127422814	MantaDUP:TANDEM:85505:0:2:0:0:0	2791	2	33	False
+deletion	chr11	128998257	MantaDEL:85784:0:1:0:0:0	244	1	82	False
+deletion	chr11	131744191	MantaDEL:86207:0:1:0:0:0	59	2	38	False
+translocation	chr11	134828205	MantaBND:86574:0:1:0:4:0:0		2	45	False
+tandem_duplication	chr12	866667	MantaDUP:TANDEM:42146:0:1:0:0:0	3038	1	61	False
+translocation	chr12	15824544	MantaBND:44608:0:1:0:0:0:1		3	40	False
+inversion_junction	chr12	17812269	MantaBND:45000:0:1:0:0:0:0	5982155	3	52	False
+translocation	chr12	20378818	MantaBND:45500:0:1:0:0:0:0		10	35	False
+deletion	chr12	29938027	MantaDEL:47240:0:1:0:0:0	59	0	62	False
+deletion	chr12	44492718	MantaDEL:49636:0:1:0:0:0	55	3	42	False
+tandem_duplication	chr12	46002464	MantaDUP:TANDEM:49953:0:1:0:0:0	11176	0	53	False
+translocation	chr12	48228039	MantaBND:50402:0:1:0:0:0:0		1	46	False
+tandem_duplication	chr12	57756909	MantaDUP:TANDEM:51541:0:1:0:0:0	402304	1	62	False
+tandem_duplication	chr12	57930975	MantaDUP:TANDEM:51616:0:1:0:0:0	13505	0	69	False
+translocation	chr12	58785217	MantaBND:51709:0:1:0:0:0:0		4	46	False
+translocation	chr12	59176307	MantaBND:51808:0:1:0:1:0:1		2	34	False
+translocation	chr12	65113055	MantaBND:52815:0:1:0:0:0:1		0	43	False
+translocation	chr12	68677531	MantaBND:53339:0:1:0:3:0:0		13	35	False
+deletion	chr12	69208916	MantaDEL:53483:0:1:0:0:0	61	2	39	False
+translocation	chr12	74976422	MantaBND:2:16643:16676:0:2:0:0		0	34	False
+tandem_duplication	chr12	101750189	MantaDUP:TANDEM:59452:0:1:0:0:0	4377	4	33	False
+inversion_junction	chr13	19881402	MantaBND:26616:0:1:0:0:0:0	1527297	0	54	False
+inversion_junction	chr13	20211472	MantaBND:26687:0:1:0:0:0:1	4288	0	72	False
+tandem_duplication	chr13	20320651	MantaDUP:TANDEM:26742:0:1:0:0:0	33951	0	41	False
+inversion_junction	chr13	34995379	MantaBND:29044:0:1:0:0:0:0	38109721	17	33	False
+tandem_duplication	chr13	36349778	MantaDUP:TANDEM:29198:0:1:0:0:0	11698	1	43	False
+translocation	chr13	46061744	MantaBND:30820:0:1:0:0:0:0		5	32	False
+inversion_junction	chr13	51757536	MantaBND:31626:0:1:0:0:0:0	46504042	6	37	False
+translocation	chr13	53328935	MantaBND:1264:2:3:0:2:0:0		7	33	False
+translocation	chr13	55508875	MantaBND:32258:0:1:0:2:0:0		5	36	False
+tandem_duplication	chr13	58950588	MantaDUP:TANDEM:32817:0:1:0:0:0	5288	3	37	False
+translocation	chr13	67539277	MantaBND:34472:0:1:0:0:0:0		0	48	False
+tandem_duplication	chr13	75402433	MantaDUP:TANDEM:35836:0:1:0:0:0	14346	0	36	False
+deletion	chr13	101704057	MantaDEL:40060:0:1:0:0:0	26638	1	58	False
+translocation	chr13	114239848	MantaBND:41982:0:1:0:0:0:1		8	34	False
+tandem_duplication	chr14	44414642	MantaDUP:TANDEM:140610:0:1:0:0:0	8910	4	34	False
+translocation	chr14	46907115	MantaBND:125915:0:1:0:0:0:0		2	61	False
+translocation	chr14	70464303	MantaBND:120034:0:1:0:0:0:0		1	66	False
+inversion_junction	chr14	95465233	MantaBND:146775:0:1:0:1:0:1	11009	2	41	False
+translocation	chr14	101484119	MantaBND:114076:0:1:0:0:0:1		4	37	False
+translocation	chr14	105848481	MantaBND:114491:0:1:0:0:0:1		1	52	False
+deletion	chr15	19865237	MantaDEL:127635:0:1:0:0:0	30558952	0	77	False
+deletion	chr15	19972803	MantaDEL:127596:0:1:0:0:0	3444	0	53	False
+inversion_junction	chr15	25747182	MantaBND:128186:0:1:0:1:0:1	74744802	2	37	False
+tandem_duplication	chr15	37392404	MantaDUP:TANDEM:129426:0:1:0:1:0	2580	1	48	False
+inversion_junction	chr15	53224720	MantaBND:131111:0:1:0:0:0:0	4440895	0	57	False
+translocation	chr15	70855275	MantaBND:20483:0:1:0:0:0:0		3	33	False
+deletion	chr16	19475530	MantaDEL:119821:0:1:0:0:0	924	0	44	False
+translocation	chr16	21232972	MantaBND:22054:1:2:0:0:0:1		2	70	False
+deletion	chr16	35767140	MantaDEL:121772:0:1:0:0:0	4249	6	32	False
+deletion	chr16	67357279	MantaDEL:124666:0:1:0:0:0	50	2	30	False
+inversion_junction	chr16	85710374	MantaBND:126950:0:1:0:0:0:0	417	2	39	False
+tandem_duplication	chr16	89179922	MantaDUP:TANDEM:127364:0:1:0:0:0	25926	1	53	False
+tandem_duplication	chr17	40381244	MantaDUP:TANDEM:82508:1:2:0:0:0	17116	2	36	False
+tandem_duplication	chr17	41869452	MantaDUP:TANDEM:111451:0:1:0:0:0	4246	1	37	False
+tandem_duplication	chr17	41881120	MantaDUP:TANDEM:111512:0:2:0:0:0	59840	0	49	False
+tandem_duplication	chr17	43520267	MantaDUP:TANDEM:111674:0:1:0:0:0	64744	0	54	False
+inversion_junction	chr17	48079401	MantaBND:112074:0:1:0:1:0:1	5101	2	49	False
+tandem_duplication	chr17	50745503	MantaDUP:TANDEM:112457:0:1:0:0:0	215615	3	48	False
+inversion_junction	chr17	59450309	MantaBND:113625:0:1:0:1:0:1	1309	5	30	False
+translocation	chr17	67094258	MantaBND:114723:0:1:0:0:0:0		11	35	False
+deletion	chr17	82897457	MantaDEL:117289:0:1:0:0:0	142	2	64	False
+translocation	chr18	5450565	MantaBND:156249:0:1:0:0:0:1		4	34	False
+deletion	chr18	6005166	MantaDEL:156322:0:1:0:0:0	75	2	37	False
+tandem_duplication	chr18	13552260	MantaDUP:TANDEM:157166:0:1:0:0:0	1642	0	36	False
+tandem_duplication	chr18	41105534	MantaDUP:TANDEM:160034:0:1:0:0:0	3369	4	35	False
+deletion	chr18	51956336	MantaDEL:161186:0:1:0:0:0	81	1	34	False
+translocation	chr19	4396734	MantaBND:148614:0:1:0:0:0:1		7	37	False
+inversion_junction	chr19	12660135	MantaBND:149757:0:1:0:1:0:0	456	2	40	False
+translocation	chr19	16678752	MantaBND:24491:0:1:0:0:0:1		2	36	False
+tandem_duplication	chr19	22858479	MantaDUP:TANDEM:151101:0:1:0:0:0	3572	0	30	False
+tandem_duplication	chr19	37590440	MantaDUP:TANDEM:152873:0:1:0:0:0	59556	0	42	False
+tandem_duplication	chr19	43276852	MantaDUP:TANDEM:153487:0:1:0:0:0	5954	1	43	False
+tandem_duplication	chr19	47102914	MantaDUP:TANDEM:153917:0:1:0:0:0	37882	2	45	False
+tandem_duplication	chr20	3754000	MantaDUP:TANDEM:169503:0:1:0:0:0	10045	3	53	False
+deletion	chr20	12120859	MantaDEL:170668:0:1:0:0:0	401	3	41	False
+tandem_duplication	chr20	16507698	MantaDUP:TANDEM:171237:0:1:0:0:0	1740	0	31	False
+tandem_duplication	chr20	20179084	MantaDUP:TANDEM:171729:0:1:0:0:0	4027	2	34	False
+tandem_duplication	chr20	31798667	MantaDUP:TANDEM:173625:0:1:0:0:0	11669	1	46	False
+tandem_duplication	chr20	34396550	MantaDUP:TANDEM:173974:0:1:0:0:0	40940	3	41	False
+tandem_duplication	chr20	50458324	MantaDUP:TANDEM:175614:0:1:0:0:0	3123	1	48	False
+tandem_duplication	chr20	54289376	MantaDUP:TANDEM:176029:0:1:0:0:0	13439	4	43	False
+tandem_duplication	chr20	56210435	MantaDUP:TANDEM:176237:0:1:0:0:0	6570	2	38	False
+tandem_duplication	chr21	35183303	MantaDUP:TANDEM:180488:0:1:0:0:0	3028	0	30	False
+translocation	chr21	41340266	MantaBND:5098:0:1:0:0:0:1		12	32	False
+deletion	chr22	19235454	MantaDEL:165311:0:1:0:0:0	65	1	38	False
+tandem_duplication	chr22	22062877	MantaDUP:TANDEM:165514:0:1:0:0:0	6630	0	40	False
+inversion_junction	chr22	22377125	MantaBND:165597:0:2:0:1:0:0	3445	3	69	False
+translocation	chr22	23367247	MantaBND:6029:0:1:0:0:0:0		1	48	False
+inversion_junction	chr22	29361791	MantaBND:166459:0:1:0:0:0:1	2979232	0	66	False
+inversion_junction	chr22	29414215	MantaBND:33683:1:2:0:0:0:1	2724817	0	64	True
+tandem_duplication	chr22	30785867	MantaDUP:TANDEM:166691:0:1:0:0:0	2870032	0	58	False
+deletion	chr22	30879217	MantaDEL:166641:0:1:0:0:0	721473	1	54	False
+tandem_duplication	chr22	31742080	MantaDUP:TANDEM:166807:0:1:0:0:0	12487	3	92	False
+tandem_duplication	chr22	33196512	MantaDUP:TANDEM:167107:0:1:0:0:0	9469	0	38	False
+deletion	chr22	37754990	MantaDEL:167598:0:1:0:0:0	12190849	2	95	False
+tandem_duplication	chr22	42899808	MantaDUP:TANDEM:168075:0:1:0:0:0	534495	2	58	False
+tandem_duplication	chr22	46835259	MantaDUP:TANDEM:168511:0:1:0:0:0	26666	0	44	False
+inversion_junction	chrX	7776478	MantaBND:1887:0:1:0:0:0:1	1153	1	37	False
+deletion	chrX	8827547	MantaDEL:2135:0:1:0:0:0	9524352	0	42	False
+tandem_duplication	chrX	13156020	MantaDUP:TANDEM:2830:0:1:0:0:0	25832	4	54	False
+deletion	chrX	15792480	MantaDEL:3300:0:1:0:0:0	2092	0	35	False
+tandem_duplication	chrX	16411866	MantaDUP:TANDEM:3331:0:1:0:0:0	3932	1	30	False
+tandem_duplication	chrX	18703087	MantaDUP:TANDEM:3703:0:1:0:0:0	566099	0	44	False
+tandem_duplication	chrX	34210274	MantaDUP:TANDEM:6982:0:1:0:0:0	3536	3	41	False
+tandem_duplication	chrX	72701186	MantaDUP:TANDEM:12655:0:1:0:0:0	8846	3	36	False
+deletion	chrX	88199892	MantaDEL:15452:0:1:0:0:0	1297	0	42	False
+tandem_duplication	chrX	101977671	MantaDUP:TANDEM:17626:0:1:0:0:0	1794	3	43	False
+tandem_duplication	chrX	116150155	MantaDUP:TANDEM:19726:0:1:0:0:0	4071	2	31	False
+inversion_junction	chrX	117577879	MantaBND:19968:0:1:0:0:0:1	15517039	2	48	False
+tandem_duplication	chrX	117581468	MantaDUP:TANDEM:20100:0:1:0:0:0	34045668	2	46	False
+deletion	chrX	121194231	MantaDEL:20563:0:1:0:0:0	160	0	41	False
+inversion_junction	chrX	123113165	MantaBND:20908:0:1:0:0:0:0	646	18	33	False
+tandem_duplication	chrX	146431776	MantaDUP:TANDEM:24660:0:1:0:0:0	10271	0	50	False

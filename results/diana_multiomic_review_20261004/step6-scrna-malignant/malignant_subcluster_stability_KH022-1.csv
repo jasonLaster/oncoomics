@@ -1,0 +1,6 @@
+resolution,median_pairwise_ari,min_pairwise_ari,min_clusters,max_clusters,eligible,medoid_seed,selected
+0.1,0.0,0.0,1,2,False,2,False
+0.2,0.928917,0.7481756374615234,3,3,True,1,True
+0.3,0.788564,0.6363991554533713,3,5,True,1,False
+0.5,0.670776,0.4867527430366579,6,8,True,0,False
+0.8,0.670005,0.4292391933918142,11,12,True,4,False

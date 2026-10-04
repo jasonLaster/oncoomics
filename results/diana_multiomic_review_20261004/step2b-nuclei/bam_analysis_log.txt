@@ -1,0 +1,72 @@
+KH022-1 chunks 8 called-cell reads 7962120 genes 875
+KH022-1 validation {
+ "dup_cb_ub_gn_among_representative_reads": 0.0,
+ "n_genes_validated": 816,
+ "median_ratio_bam_over_matrix_genes_ge2000umi": 1.0,
+ "iqr_ratio": [
+  1.0,
+  1.0
+ ],
+ "spearman_per_gene_totals": 1.0,
+ "spearman_per_cell_region_umi": 1.0,
+ "total_bam_umi_called_cells": 3954392,
+ "total_matrix_umi_region_genes": 3954392.0
+}
+KH022-1 {
+ "pooled_intronic_frac_called_cells": 0.5697513043724547,
+ "read_level_intronic_frac_gene_assigned_called_cells": 0.5669519953474693,
+ "n_cells_ge30_region_umi": 31482,
+ "mean_cell_intronic_frac": 0.5515290670556658,
+ "quantiles": {
+  "0.05": 0.36363636363636365,
+  "0.25": 0.5,
+  "0.5": 0.5652173913043478,
+  "0.75": 0.6209150326797386,
+  "0.95": 0.6923076923076923
+ },
+ "dip_stat": 0.00983101454799568,
+ "dip_p": 0.0,
+ "obs_sd": 0.10234578438766041,
+ "binomial_expected_sd": 0.05630777625017329,
+ "frac_cells_lt0.30": 0.021250238231370306,
+ "frac_cells_gt0.40": 0.9202083730385617,
+ "spearman_with_pct_mt": -0.3132826088752332,
+ "spearman_with_pct_rp": -0.5312093078339687,
+ "spearman_with_total_counts": 0.42508688067770367
+}
+KH022-1-1 chunks 8 called-cell reads 7407452 genes 866
+KH022-1-1 validation {
+ "dup_cb_ub_gn_among_representative_reads": 0.0,
+ "n_genes_validated": 799,
+ "median_ratio_bam_over_matrix_genes_ge2000umi": 1.0,
+ "iqr_ratio": [
+  1.0,
+  1.0
+ ],
+ "spearman_per_gene_totals": 1.0,
+ "spearman_per_cell_region_umi": 1.0,
+ "total_bam_umi_called_cells": 3737014,
+ "total_matrix_umi_region_genes": 3737014.0
+}
+KH022-1-1 {
+ "pooled_intronic_frac_called_cells": 0.5607656273163547,
+ "read_level_intronic_frac_gene_assigned_called_cells": 0.5583568405315765,
+ "n_cells_ge30_region_umi": 29866,
+ "mean_cell_intronic_frac": 0.5412830730437044,
+ "quantiles": {
+  "0.05": 0.35294117647058826,
+  "0.25": 0.4852941176470588,
+  "0.5": 0.5540540540540541,
+  "0.75": 0.6116755079571614,
+  "0.95": 0.685090830449827
+ },
+ "dip_stat": 0.01151811424362151,
+ "dip_p": 0.0,
+ "obs_sd": 0.1030762062059442,
+ "binomial_expected_sd": 0.05736506028146716,
+ "frac_cells_lt0.30": 0.024509475657938793,
+ "frac_cells_gt0.40": 0.9084242951851604,
+ "spearman_with_pct_mt": -0.3171854069689696,
+ "spearman_with_pct_rp": -0.5292014746950982,
+ "spearman_with_total_counts": 0.42497728348530356
+}
