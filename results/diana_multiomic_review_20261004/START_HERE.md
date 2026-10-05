@@ -32,6 +32,8 @@ https://claude.ai/artifact/G4bVeHrbtmTgb2E3wiKzt8
 |---|---|
 | [Connect the dots](step17-kb-synthesis/connect_the_dots.md) | **Start here.** The omics read against the clinical record, imaging, lab reports and literature:<br>- a pregnancy-associated tumor;<br>- most tumor and immune data come from day-8 on-treatment tissue;<br>- a specific DNA-repair programme;<br>- one composite amplicon;<br>- "hot stroma, quiet tumor cells";<br>- corrections to earlier records. |
 
+| [Visual summary](step17-kb-synthesis/visual_summary.md) | The same story with the timeline, gene charts (as tables), amplicon junctions, response curves and hypothesis table. Markdown version of the shared visual page; the original HTML is `visual_summary.html`. |
+
 ## 4. Foundations (for technical readers)
 
 | Report | What it answers |

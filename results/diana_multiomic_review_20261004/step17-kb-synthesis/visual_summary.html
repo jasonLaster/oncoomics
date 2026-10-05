@@ -1,0 +1,331 @@
+<title>Diana's Tumor, Connected</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Literata:opsz,wght@7..72,500;7..72,650&family=Public+Sans:wght@400;600;700&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: single reading column (~70ch) with full-width figure panels; clinical-lab register, charts carry the argument */
+:root{
+  --bg:#f6f8f8; --surface:#ffffff; --fg:#17232a; --muted:#56656d; --line:#d6dfe2;
+  --accent:#0d6e6e;      /* repair / DNA */
+  --preg:#b23a6b;        /* pregnancy / lineage */
+  --treat:#c47f12;       /* treatment */
+  --neutral:#8a979e;     /* proliferation / typical */
+  --soft:#e8eff0;
+  --display:"Literata",Georgia,"Times New Roman",serif;
+  --body:"Public Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --mono:"JetBrains Mono",ui-monospace,Menlo,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0f1719; --surface:#162124; --fg:#e3ecee; --muted:#9aaab0; --line:#2b3a3e;
+  --accent:#4cc3bd; --preg:#e57aa4; --treat:#e3a64a; --neutral:#6f8187; --soft:#1c2a2e; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0f1719; --surface:#162124; --fg:#e3ecee; --muted:#9aaab0; --line:#2b3a3e;
+  --accent:#4cc3bd; --preg:#e57aa4; --treat:#e3a64a; --neutral:#6f8187; --soft:#1c2a2e; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);font:16px/1.6 var(--body);margin:0}
+.wrap{max-width:980px;margin:0 auto;padding-inline:20px;padding-block:40px 80px}
+.col{max-width:70ch}
+header .eyebrow{font:600 12px/1 var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+h1{font:650 clamp(30px,5vw,46px)/1.1 var(--display);margin:.35em 0 .3em;text-wrap:balance}
+h2{font:650 26px/1.2 var(--display);margin:0 0 .4em;text-wrap:balance}
+h3{font:600 15px/1.3 var(--body);margin:1.2em 0 .3em}
+p{margin:.5em 0}
+.lede{font-size:18px;color:var(--fg)}
+.note{font-size:13px;color:var(--muted)}
+section{padding-block:44px 8px;border-top:1px solid var(--line);margin-top:36px}
+.key{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px;margin-top:22px}
+.key div{background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:14px 16px;min-width:0}
+.key b{display:block;font-family:var(--display);font-size:17px;margin-bottom:4px}
+.key span{font-size:14px;color:var(--muted)}
+.tag{display:inline-block;font:600 11px/1 var(--mono);letter-spacing:.05em;text-transform:uppercase;padding:4px 7px;border-radius:3px;vertical-align:2px}
+.t-preg{background:color-mix(in srgb,var(--preg) 16%,transparent);color:var(--preg)}
+.t-dna{background:color-mix(in srgb,var(--accent) 16%,transparent);color:var(--accent)}
+.t-treat{background:color-mix(in srgb,var(--treat) 18%,transparent);color:var(--treat)}
+.t-imm{background:var(--soft);color:var(--muted)}
+figure{margin:22px 0 8px;background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:16px 16px 10px}
+figure .scroll{overflow-x:auto}
+figcaption{font-size:13px;color:var(--muted);margin-top:8px;max-width:80ch}
+svg text{font-family:var(--body);fill:var(--fg)}
+svg .mono{font-family:var(--mono)}
+svg .mut{fill:var(--muted)}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:16px}
+.grid2>figure{margin:0;min-width:0}
+table{border-collapse:collapse;width:100%;font-size:14px}
+th,td{text-align:left;padding:9px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font:600 11px/1.2 var(--mono);text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
+.tablebox{overflow-x:auto;background:var(--surface);border:1px solid var(--line);border-radius:6px;margin-top:16px}
+.conf{font:600 12px var(--mono);white-space:nowrap}
+.c-hi{color:var(--accent)} .c-md{color:var(--treat)} .c-lo{color:var(--muted)}
+ol.steps{padding-left:1.2em} ol.steps li{margin:.5em 0}
+.foot{font-size:13px;color:var(--muted);margin-top:48px;border-top:1px solid var(--line);padding-top:16px}
+a{color:var(--accent)}
+</style>
+
+<div class="wrap">
+<header class="col">
+  <div class="eyebrow">Diana multi-omic review · step 17 · 4 Oct 2026</div>
+  <h1>Connecting the omics with the clinical record</h1>
+  <p class="lede">We read the family's knowledge base (diagnostic reports, imaging, lab and genomic tests, meeting notes and the research library) against everything the sequencing work has verified. Five connections change how the data should be read.</p>
+  <p class="note">Research hypotheses for discussion with the oncology team. Not treatment recommendations. RNA is not protein; every target idea needs IHC or another protein assay.</p>
+</header>
+
+<div class="key">
+  <div><span class="tag t-preg">Context</span><b>A pregnancy-associated tumor</b><span>Diana was ~9 weeks pregnant at diagnosis. It may contribute to the "luminal-progenitor" state, the IgA infiltrate and part of the MRI response, though ELF5/EHF also sit on a DNA gain.</span></div>
+  <div><span class="tag t-treat">Timing</span><b>Two biopsies, two states</b><span>WGS and Altera are from 3/13 (pregnant, untreated). Exome/RNA, proteomics, the 50% TIL score and probably the single-nucleus sample are from 4/10, day 8 on treatment.</span></div>
+  <div><span class="tag t-dna">Biology</span><b>A specific DNA-repair programme</b><span>POLQ, ATR, HORMAD1 and RAD51 are up versus other TNBC while proliferation genes are not. p21 is nearly absent, matching the TP53 splice mutation.</span></div>
+  <div><span class="tag t-dna">Genome</span><b>One composite amplicon</b><span>Junctions join 11q13, 22q12 and the CD44 region into a single structure. SHANK2, CTTN and CD44 are expressed; CCND1 is not.</span></div>
+  <div><span class="tag t-imm">Immunity</span><b>Hot stroma, quiet tumor cells</b><span>High TILs, but tumor cells show low antigen processing and only one copy of B2M left. One more hit could hide them from T cells.</span></div>
+</div>
+
+<section>
+  <div class="col">
+    <h2>The timeline that frames every dataset</h2>
+    <p>Each result describes the tumor at a particular moment. The pregnancy ended about a week before chemo-immunotherapy started, and the research biopsy that fed most tumor-cell and immune assays was taken eight days into treatment, about 24 hours after the second carboplatin and paclitaxel dose.</p>
+  </div>
+  <figure><div class="scroll"><svg id="timeline" viewBox="0 0 940 360" width="940" role="img" aria-label="Timeline from February to October 2026 showing pregnancy, biopsies, treatment phases and which assays came from which biopsy"></svg></div>
+  <figcaption>Specimen assignments trace accession and block numbers across vendor reports. The NeXT Personal tissue accession PSN49561A2 matches the WGS sample DRF-PSN49561. The proteomics specimen ID SP-26-027487-BR-VL3-A1 is the 4/10 Stanford core, even though its header says 3/13. KH022 = 4/10 is an inference (Kernis customer ID, flash-frozen 4/10 vials, breast composition) awaiting the manifest.</figcaption></figure>
+</section>
+
+<section>
+  <div class="col">
+    <h2><span class="tag t-preg">1</span> A pregnancy-shaped lineage, partly written in DNA</h2>
+    <p>The tumor cells' own defining genes (low background share, at least 4x above non-malignant cells) are the alveolar programme that pregnancy hormones expand, and the basal keratins that most TNBC express are nearly absent. Two later checks refine this. The luminal-progenitor master regulators ELF5 and EHF sit on a 9-copy DNA segment next to the CD44 amplicon, so the state is at least partly genetic. And casein, which first looked tumor-wide, is background RNA: empty droplets hold more of it than any cell.</p>
+  </div>
+  <figure><div class="scroll"><svg id="lineage" viewBox="0 0 760 400" width="760" role="img" aria-label="Bar chart of fold difference versus public TNBC tumor cells for lineage genes"></svg></div>
+  <figcaption>Diana's malignant nuclei vs tumor cells from 8 public TNBC (GSE161529), log2 excess after a nuclei-vs-whole-cell correction learned from shared T-cell, myeloid and fibroblast populations. CSN3 is hatched because it is background RNA (empty droplets exceed every cell type). LALBA (α-lactalbumin) is not detected in tumor nuclei.</figcaption></figure>
+  <div class="col">
+    <h3>Two readings, both possible</h3>
+    <p><b>Cell of origin.</b> BRCA1-null breast cancers arise from luminal progenitors, so this state could be intrinsic. <b>Hormonal state.</b> The programme could be pregnancy-induced and fade now that the hormones are gone. Against her own normal luminal cells PRLR and ERBB4 are not higher, so neither is clearly tumor-selective. If the state is hormonal, the IgA plasma-cell infiltrate may be normal post-pregnancy breast biology rather than an anti-tumor response.</p>
+    <p><b>Test:</b> compare ELF5, PRLR, ERBB4 and IgA versus IgG plasma cells in the 9/24 surgical tissue (six months after the pregnancy) with the 4/10 core. The Altera 3/13 RNA would add the untreated, in-pregnancy timepoint.</p>
+    <p class="note">The only lineage vaccine in the knowledge base targets α-lactalbumin (NCT04674306). Diana's tumor cells do not express it.</p>
+  </div>
+</section>
+
+<section>
+  <div class="col">
+    <h2><span class="tag t-dna">2</span> The DNA-repair signal is specific, not proliferation</h2>
+    <p>One reader suspected that POLQ and ATR were high only because the sample was taken a day after paclitaxel, which stalls cells in division. The data say otherwise. Proliferation genes are typical or below other TNBC, while the backup DNA-repair machinery is up. p21 (CDKN1A), the main p53 target, is about 20x lower than in other TNBC tumor cells, a functional readout of the TP53 splice mutation.</p>
+  </div>
+  <figure><div class="scroll"><svg id="repair" viewBox="0 0 760 470" width="760" role="img" aria-label="Diverging bar chart of DNA repair genes versus proliferation genes"></svg></div>
+  <figcaption>Same comparison as above. Counts in brackets are how many of the 8 public tumors Diana exceeds by more than 2-fold. Carboplatin given the day before could still have induced some repair transcription; HORMAD1 is usually switched on epigenetically, which argues against that for HORMAD1.</figcaption></figure>
+  <div class="col">
+    <p>This fits an HR-deficient tumor leaning on POLQ-mediated end joining (60% of its larger deletions carry microhomology) and the ATR replication-stress checkpoint. It supports the PARP discussion already under way, and connects to research ideas in the library: POLQ plus PARP inhibitors, and the observation that SLFN11-low, ATR-high cells resist TOP1-payload ADCs. <b>Test:</b> POLQ, ATR and HORMAD1 in the untreated 3/13 RNA and in residual tumor; RAD51 foci on surgical tissue.</p>
+  </div>
+</section>
+
+<section>
+  <div class="col">
+    <h2><span class="tag t-dna">3</span> Three amplicons are one structure</h2>
+    <p>The WGS shows four junctions joining the 11q13 amplicon to chromosome 22q12, each landing on a copy-number boundary, and a fifth joining the CD44 amplicon to the edge of the 11q13 gain. The clinical Altera report saw the 11q13 genes (DHCR7, FADD, NADSYN1, ORAOV1) but not the rest.</p>
+  </div>
+  <figure><div class="scroll"><svg id="amp" viewBox="0 0 900 300" width="900" role="img" aria-label="Diagram of chromosome 11 and chromosome 22 amplicons joined by structural variant junctions"></svg></div>
+  <figcaption>Copy numbers from the allele-specific fit (purity 0.35, ploidy 2.8). Arcs are PASS Manta junctions. Expressed genes in the unit: SHANK2 (~2,900 CPM), PPFIA1, CTTN, NADSYN1, CD44. CCND1 is amplified but not over-expressed, and p16 protein is present, both against a CDK4/6 rationale.</figcaption></figure>
+  <div class="col"><p>If this is a breakage-fusion-bridge or extrachromosomal unit, CD44 copy number may vary from cell to cell and shift under treatment. CD44 is still the one surface target that is amplified, tumor-enriched and high against other TNBC, and it does not depend on HLA. <b>Test:</b> AmpliconArchitect on the WGS; per-nucleus amplicon heterogeneity; CD44v6 isoform reads.</p></div>
+</section>
+
+<section>
+  <div class="col">
+    <h2><span class="tag t-treat">4</span> Response: early, partly physiological, then a plateau</h2>
+    <p>Most of the MRI change happened during the carboplatin phase, consistent with HRD platinum sensitivity. But the healthy left breast's enhancement fell almost as much, so part of the April signal was post-pregnancy background. ctDNA was counted in single molecules and cleared by week 12.</p>
+  </div>
+  <div class="grid2">
+    <figure><svg id="mri" viewBox="0 0 440 260" role="img" aria-label="MRI footprint and node size over time"></svg><figcaption>Right-breast non-mass enhancement footprint and clipped axillary node long axis (mm).</figcaption></figure>
+    <figure><svg id="bpe" viewBox="0 0 440 260" role="img" aria-label="Phase 2 enhancement in right and left breast"></svg><figcaption>Early-phase enhancement (%) from the computational kinetics review. The left breast has no cancer.</figcaption></figure>
+  </div>
+  <figure><svg id="ctdna" viewBox="0 0 900 230" width="100%" role="img" aria-label="ctDNA levels over time on a log scale"></svg><figcaption>NeXT Personal (parts per million, left) and Signatera (mean tumor molecules per mL, right). Signatera's 0.17 on 5/28 is about two molecules, at the assay's calling floor. Both panels were designed from the 3/13 block.</figcaption></figure>
+  <div class="col"><p><b>Test:</b> a right-minus-left normalized enhancement curve, and region-by-region radiology-pathology mapping of the residual 57 mm at surgery. The low FDG uptake (SUVmax 4.1), low ctDNA and 0.35 purity together suggest a sparse, diffusely infiltrating tumor whose imaging extent overstates its cell mass.</p></div>
+</section>
+
+<section>
+  <div class="col">
+    <h2><span class="tag t-imm">5</span> Hot stroma, quiet tumor cells</h2>
+    <p>The breast core had 50% stromal TILs, rich in IgA plasma cells and macrophages, with fibroblasts making CXCL12, a chemokine that retains plasma cells and can keep CD8 cells away from tumor. Inside the tumor cells, antigen-processing genes run at 0.3 to 0.6x of normal breast epithelium, PD-L1 protein was not detected, and B2M is down to one copy. The 6/10 granzyme-B research PET showed no focal uptake.</p>
+    <p>The library holds a TNBC vaccine patient who relapsed by losing B2M despite strong T-cell responses. A speculative link from the corpus: ELF5 drives degradation of the IFN-γ receptor, which would tie the pregnancy-related state to the low interferon-driven antigen processing.</p>
+    <p><b>For the vaccine:</b> Serova's HLA typing is unaccredited and conflicted with an earlier typing at the A and B genes, which present 24 of the 27 vaccine windows. No clinical HLA typing exists. <b>Tests:</b> accredited HLA typing (a free first pass from the normal WGS), B2M and HLA-I IHC on residual tumor, and the remaining B2M allele added to ctDNA monitoring.</p>
+  </div>
+</section>
+
+<section>
+  <div class="col"><h2>Hypotheses at a glance</h2></div>
+  <div class="tablebox"><table>
+    <thead><tr><th>Hypothesis</th><th>Key evidence</th><th>Against</th><th>Confidence</th><th>Cheapest test</th></tr></thead>
+    <tbody>
+      <tr><td>The tumor cell state carries a pregnancy imprint</td><td>ELF5/PRLR/ERBB4/XDH programme; pregnancy confirmed</td><td>ELF5/EHF amplified (9 copies); BRCA1-null tumors are luminal-progenitor-derived anyway</td><td class="conf c-md">Medium</td><td>ELF5/PRLR on 9/24 surgery tissue</td></tr>
+      <tr><td>IgA infiltrate is partly gestational physiology</td><td>IgA ≫ IgG; CCL28 expressed; post-pregnancy timing</td><td>High TILs + HRD predict response on their own</td><td class="conf c-md">Medium</td><td>IgA/IgG and CCL28 IHC, 3/13 vs surgery</td></tr>
+      <tr><td>Immune data reflect day-8 treatment, not baseline</td><td>Accessions tie sTIL, proteomics, exome/RNA to 4/10</td><td>KH022 date still inferred</td><td class="conf c-hi">High</td><td>Score the 3/13 slide; KH022 manifest</td></tr>
+      <tr><td>POLQ/ATR/HORMAD1 programme is intrinsic</td><td>Proliferation genes not raised; p21 absent</td><td>Carboplatin 24 h earlier</td><td class="conf c-md">Medium</td><td>Altera 3/13 RNA</td></tr>
+      <tr><td>BRCA1 is near-null; escape would be RING-less or POLQ reversion</td><td>All mutant transcripts stop by codon ~28; 97% mutant pre-mRNA</td><td>No protein data</td><td class="conf c-hi">High</td><td>RAD51 foci; BRCA1 resequencing in residual</td></tr>
+      <tr><td>11q13, 22q12 and CD44 form one amplicon</td><td>5 junctions on CN boundaries</td><td>Low read support on some junctions</td><td class="conf c-md">Medium</td><td>AmpliconArchitect (local)</td></tr>
+      <tr><td>Tumor is one hit from HLA-I loss</td><td>B2M 1:0; low antigen processing; no GZMB PET signal</td><td>No clonal HLA loss; processing is inducible</td><td class="conf c-md">Medium</td><td>B2M/HLA-I IHC; B2M on ctDNA panel</td></tr>
+      <tr><td>B7-H4 ADC + PARP fits better than TROP-2 + PARP</td><td>B7-H4 tumor-enriched; TROP-2 typical; HRD verified</td><td>Advanced disease only; SLFN11-low; B7-H4 equally high in her normal duct cells</td><td class="conf c-lo">Low–medium</td><td>B7-H4 IHC</td></tr>
+      <tr><td>Imaging extent overstates tumor mass</td><td>NME, SUV 4.1, ctDNA 0.3%, purity 0.35</td><td>Indirect</td><td class="conf c-lo">Low–medium</td><td>Rad-path mapping at surgery</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section>
+  <div class="col">
+    <h2>Corrections to earlier records</h2>
+    <ul>
+      <li><b>Casein:</b> background RNA, not tumor expression. <b>PRLR, ERBB4, B7-H4:</b> not above her normal luminal cells (step 18).</li>
+      <li><b>HER2:</b> Stanford's 4/10 report reads "0+ with membrane staining", the HER2-ultralow category, not plain 0.</li>
+      <li><b>TP53 c.559+2T>G:</b> already listed in Altera's trials table and detected by Guardant on 4/3. Our pipeline confirmed it rather than discovered it.</li>
+      <li><b>Proteomics:</b> from the 4/10 on-treatment core, not the 3/13 pre-treatment specimen.</li>
+      <li><b>"HRD 62":</b> untraceable. Replace with HRD-high across fits (67–99), research grade.</li>
+      <li><b>SLFN11 and vimentin:</b> the high bulk signals came from stroma. Tumor cells are SLFN11-low.</li>
+      <li><b>ADC queue led by HER3, MET and EGFR:</b> a capture-library artifact. Tumor-enriched candidates are B7-H4, PSMA, CD44, ENPP3, PRLR and HORMAD1, pending IHC.</li>
+      <li><b>Altera fusions:</b> 5 of 11 reproduce in the WGS. The PTPN2 break is probably on one copy only. IGKV2D-29::IGKJ4 is a normal antibody rearrangement.</li>
+    </ul>
+  </div>
+</section>
+
+<section>
+  <div class="col">
+    <h2>What would settle the most, for the least</h2>
+    <ol class="steps">
+      <li><b>One panel on the 9/24 surgical tissue:</b> RCB per region with imaging correlation; RAD51 foci; B2M/HLA-I; B7-H4, CD44, PSMA (tumor vs vessel), membrane TROP-2; ELF5/PRLR and IgA/IgG; SLFN11 in tumor vs stroma; BRCA1 resequencing for reversions.</li>
+      <li><b>Free, from data we already have:</b> HLA typing from the normal WGS; amplicon reconstruction; per-nucleus amplicon heterogeneity; the 9 subclonal variants genotyped in the single-nucleus data to confirm its specimen; right-minus-left MRI kinetics.</li>
+      <li><b>Records to request:</b> Altera 3/13 RNA raw data; KH022 sample manifest; corrected proteomics requisition; Altera's final PD-L1 report; Guardant variant detail; a TIL score on the 3/13 breast slide.</li>
+      <li><b>For the vaccine:</b> accredited HLA typing before manufacture; drop the unsupported SHANK2 window; ask about the truncal TP53 and BRCA1 splice junctions and HORMAD1; monitor B2M.</li>
+    </ol>
+  </div>
+</section>
+
+<p class="foot col">Method: four readers each covered one part of the knowledge base with a brief of the verified omics findings; the load-bearing claims were then checked against primary files and the sequencing data (pregnancy record, Stanford HER2 text, Manta junction positions, BRCA1 splice frame, and the gene tables recomputed from the single-nucleus comparison). Full report: <code>results/diana_multiomic_review_20261004/step17-kb-synthesis/connect_the_dots.md</code> in the review repository.</p>
+</div>
+
+<script>
+const NS="http://www.w3.org/2000/svg";
+function el(p,tag,a,txt){const e=document.createElementNS(NS,tag);for(const k in a)e.setAttribute(k,a[k]);if(txt!=null)e.textContent=txt;p.appendChild(e);return e}
+const css=v=>getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+
+/* ---------- timeline ---------- */
+(function(){
+  const s=document.getElementById("timeline");
+  const d=(m,day)=>new Date(2026,m-1,day).getTime();
+  const x0=110,x1=920,t0=d(2,10),t1=d(10,5);const X=t=>x0+(t-t0)/(t1-t0)*(x1-x0);
+  // month ticks
+  ["Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct"].forEach((m,i)=>{const t=d(i+2,1);if(t<t0)return;el(s,"line",{x1:X(t),x2:X(t),y1:22,y2:340,stroke:"var(--line)"});el(s,"text",{x:X(t)+4,y:16,"font-size":11,class:"mono mut"},m)});
+  const rows=[["Pregnancy",48],["Treatment",88],["Biopsies",140],["3/13 block",200],["4/10 core",262],["Other",318]];
+  rows.forEach(([l,y])=>el(s,"text",{x:0,y:y+4,"font-size":12,"font-weight":600,class:"mut"},l));
+  // pregnancy band
+  el(s,"rect",{x:X(d(2,10)),y:38,width:X(d(3,25))-X(d(2,10)),height:20,rx:3,fill:"var(--preg)",opacity:.85});
+  el(s,"text",{x:X(d(3,25))+6,y:52,"font-size":11},"ended ~3/25");
+  // treatment bands
+  const band=(a,b,lab,op)=>{el(s,"rect",{x:X(a),y:78,width:X(b)-X(a),height:20,rx:3,fill:"var(--treat)",opacity:op});el(s,"text",{x:X(a)+5,y:92,"font-size":11,fill:"#fff","font-weight":600},lab)};
+  band(d(4,2),d(6,23),"Carbo + paclitaxel + pembro",.9);band(d(6,30),d(8,18),"AC",.6);
+  el(s,"text",{x:X(d(7,28)),y:114,"font-size":10,class:"mut","text-anchor":"middle"},"pembro held 7/28");
+  // biopsies
+  const bx=[[d(3,13),"3/13 breast core"],[d(3,23),"3/23 node"],[d(4,10),"4/10 research core"],[d(9,24),"9/24 surgery"]];
+  const pos=[[-9,144,"end"],[0,126,"middle"],[9,144,"start"],[-9,144,"end"]];
+  bx.forEach(([t,l],i)=>{el(s,"circle",{cx:X(t),cy:140,r:6,fill:"var(--fg)"});const [dx,yy,an]=pos[i];el(s,"text",{x:X(t)+dx,y:yy,"font-size":11,"text-anchor":an},l)});
+  // assay chips
+  const chip=(t,y,txt,col)=>{const w=txt.length*6.3+14;el(s,"rect",{x:X(t),y:y-12,width:w,height:20,rx:3,fill:"none",stroke:col});el(s,"text",{x:X(t)+7,y:y+2,"font-size":11},txt);return w};
+  let xx=d(3,13);el(s,"line",{x1:X(xx),x2:X(xx),y1:146,y2:188,stroke:"var(--fg)","stroke-dasharray":"2 3"});
+  let off=0;["WGS","Altera","Signatera","NeXT Personal"].forEach(n=>{const w=chip(xx+off,200,n,"var(--accent)");off+=(w+8)/(x1-x0)*(t1-t0)});
+  el(s,"text",{x:X(xx),y:226,"font-size":10,class:"mut"},"pregnant, untreated");
+  xx=d(4,10);el(s,"line",{x1:X(xx),x2:X(xx),y1:146,y2:250,stroke:"var(--fg)","stroke-dasharray":"2 3"});
+  off=0;["Exome/RNA","Proteomics","TIL 50%","snRNA KH022 (likely)"].forEach(n=>{const w=chip(xx+off,262,n,"var(--treat)");off+=(w+8)/(x1-x0)*(t1-t0)});
+  el(s,"text",{x:X(xx),y:288,"font-size":10,class:"mut"},"16 days after pregnancy ended · day 8 of treatment · ~24 h after dose 2");
+  // other
+  [[d(4,1),"MRI 87 mm"],[d(6,26),"MRI 65"],[d(7,17),"57"],[d(8,24),"57"]].forEach(([t,l])=>{el(s,"rect",{x:X(t)-3,y:312,width:6,height:12,fill:"var(--neutral)"});el(s,"text",{x:X(t)+6,y:322,"font-size":10,class:"mut"},l)});
+  el(s,"text",{x:X(d(3,23))-4,y:322,"font-size":10,class:"mut","text-anchor":"end"},"TIL 10%");
+})();
+
+/* ---------- horizontal diverging bars ---------- */
+function bars(id,data,opt){
+  const s=document.getElementById(id);const W=+s.getAttribute("viewBox").split(" ")[2];
+  const lx=120,rx=W-70,top=30,rh=opt.rh||26;const lo=opt.lo,hi=opt.hi;const X=v=>lx+(v-lo)/(hi-lo)*(rx-lx);
+  // hatch pattern
+  const defs=el(s,"defs",{});const p=el(defs,"pattern",{id:id+"h",width:6,height:6,patternUnits:"userSpaceOnUse",patternTransform:"rotate(45)"});el(p,"rect",{width:6,height:6,fill:"var(--preg)",opacity:.25});el(p,"line",{x1:0,y1:0,x2:0,y2:6,stroke:"var(--preg)","stroke-width":2.5});
+  const H=top+data.length*rh+30;
+  for(let v=Math.ceil(lo/2)*2;v<=hi;v+=2){el(s,"line",{x1:X(v),x2:X(v),y1:top-8,y2:H-26,stroke:"var(--line)"});const fold=v>=0?Math.round(2**v)+"×":"1/"+Math.round(2**-v);el(s,"text",{x:X(v),y:H-10,"font-size":10,"text-anchor":"middle",class:"mono mut"},v==0?"same":fold)}
+  el(s,"line",{x1:X(0),x2:X(0),y1:top-10,y2:H-26,stroke:"var(--muted)"});
+  data.forEach((r,i)=>{
+    const y=top+i*rh;
+    if(r.group){el(s,"text",{x:0,y:y+rh*.62,"font-size":11,"font-weight":700,class:"mut"},r.group.toUpperCase());return}
+    const v=r.v;const a=Math.min(X(0),X(v)),w=Math.abs(X(v)-X(0));
+    el(s,"text",{x:lx-10,y:y+rh*.62,"font-size":12.5,"text-anchor":"end",class:"mono","font-weight":600},r.g);
+    if(r.nd){el(s,"text",{x:X(0)+8,y:y+rh*.62,"font-size":11,class:"mut"},"not detected in tumor nuclei");return}
+    el(s,"rect",{x:a,y:y+4,width:Math.max(w,1.5),height:rh-9,rx:2,fill:r.hatch?`url(#${id}h)`:`var(${r.c})`});
+    const lab=(v>=0?"~"+(2**v>=10?Math.round(2**v):(2**v).toFixed(1))+"×":"1/"+Math.round(2**-v))+(r.n!=null?`  [${r.n}/8]`:"")+(r.note?"  "+r.note:"");
+    el(s,"text",{x:v>=0?X(v)+6:X(v)-6,y:y+rh*.62,"font-size":11,"text-anchor":v>=0?"start":"end",class:"mut"},lab);
+  });
+  s.setAttribute("viewBox",`0 0 ${W} ${H}`);
+}
+bars("lineage",[
+  {group:"Milk / pregnancy"},
+  {g:"CSN3",v:11.95,c:"--preg",hatch:1,note:"background RNA"},
+  {g:"XDH",v:3.57,c:"--preg"},
+  {g:"LALBA",nd:1},
+  {group:"Alveolar progenitor programme"},
+  {g:"ERBB4",v:6.27,c:"--preg"},{g:"ESRRG",v:5.90,c:"--preg"},{g:"MECOM",v:5.64,c:"--preg"},
+  {g:"EHF",v:4.38,c:"--preg"},{g:"ELF5",v:3.02,c:"--preg"},{g:"PRLR",v:1.53,c:"--preg"},
+  {group:"Basal keratins"},
+  {g:"KRT5",v:-5.03,c:"--neutral"},{g:"KRT14",v:-6.33,c:"--neutral"},{g:"KRT17",v:-6.43,c:"--neutral"}
+],{lo:-8,hi:12,rh:25});
+bars("repair",[
+  {group:"DNA repair / replication stress"},
+  {g:"HORMAD1",v:4.76,n:8,c:"--accent"},{g:"POLQ",v:3.38,n:8,c:"--accent"},{g:"ATR",v:2.40,n:8,c:"--accent"},
+  {g:"BLM",v:1.76,n:6,c:"--accent"},{g:"RAD51",v:1.63,n:8,c:"--accent"},{g:"BRCA2",v:1.59,n:5,c:"--accent"},{g:"FANCD2",v:1.50,n:6,c:"--accent"},
+  {group:"Proliferation / mitosis"},
+  {g:"MKI67",v:-0.14,n:2,c:"--neutral"},{g:"MCM2",v:-0.13,n:2,c:"--neutral"},{g:"TOP2A",v:-0.63,n:1,c:"--neutral"},
+  {g:"CDK1",v:-0.85,n:1,c:"--neutral"},{g:"PCNA",v:-0.88,n:1,c:"--neutral"},{g:"CCNB1",v:-1.02,n:2,c:"--neutral"},
+  {group:"p53 target"},
+  {g:"CDKN1A",v:-4.34,n:1,c:"--preg"}
+],{lo:-6,hi:6,rh:25});
+
+/* ---------- amplicon ---------- */
+(function(){
+  const s=document.getElementById("amp");
+  const c11={y:90,len:135,x:40,w:820},c22={y:220,len:51,x:40,w:820*51/135};
+  const X11=m=>c11.x+m/c11.len*c11.w, X22=m=>c22.x+m/c22.len*c22.w;
+  const chrom=(c,X,name,segs)=>{el(s,"rect",{x:c.x,y:c.y-7,width:c.w,height:14,rx:7,fill:"var(--soft)",stroke:"var(--line)"});el(s,"text",{x:c.x,y:c.y+28,"font-size":12,"font-weight":600},name);
+    segs.forEach(([a,b,cn,lab,col])=>{el(s,"rect",{x:X(a),y:c.y-10,width:Math.max(X(b)-X(a),4),height:20,rx:2,fill:col});el(s,"text",{x:(X(a)+X(b))/2,y:c.y+(lab.up?-18:30),"font-size":11,"text-anchor":"middle",class:"mono"},lab.t)})};
+  chrom(c11,X11,"chr11",[[35.07,36.27,12,{t:"CD44 ~12 copies",up:1},"var(--accent)"],[69.55,71.80,9,{t:"",up:0},"var(--accent)"],[71.8,75.13,4,{t:"",up:0},"color-mix(in srgb,var(--accent) 45%,transparent)"]]);
+  el(s,"text",{x:X11(72),y:c11.y+30,"font-size":11,"text-anchor":"middle",class:"mono"},"11q13 ~9 copies (CCND1, CTTN, SHANK2)");
+  chrom(c22,X22,"chr22",[[29.0,32.3,9,{t:"22q12 8–10 copies (EWSR1)",up:0},"var(--accent)"]]);
+  // inter-chrom junctions
+  [[69.12,37.74],[69.28,29.05],[69.54,25.16],[71.80,31.50]].forEach(([a,b])=>{const xa=X11(a),xb=X22(b);el(s,"path",{d:`M${xa},${c11.y+10} C${xa},${c11.y+70} ${xb},${c22.y-70} ${xb},${c22.y-10}`,fill:"none",stroke:"var(--preg)","stroke-width":1.6,opacity:.85})});
+  // intra junction CD44 -> 75.13
+  const a=X11(36.27),b=X11(75.13);el(s,"path",{d:`M${a},${c11.y-10} C${a},${c11.y-75} ${b},${c11.y-75} ${b},${c11.y-10}`,fill:"none",stroke:"var(--preg)","stroke-width":1.6});
+  el(s,"text",{x:(a+b)/2,y:c11.y-62,"font-size":11,"text-anchor":"middle",class:"mut"},"junction: CD44 amplicon edge ↔ 11q13 gain edge");
+  el(s,"text",{x:620,y:c22.y+4,"font-size":11,class:"mut"},"4 junctions chr11 ↔ chr22");
+})();
+
+/* ---------- small line charts ---------- */
+function lines(id,series,opt){
+  const s=document.getElementById(id);const [,, W,H]=s.getAttribute("viewBox").split(" ").map(Number);
+  const l=46,r=W-(opt.rr||20),t=20,b=H-34;const d=(m,dd)=>new Date(2026,m-1,dd).getTime();
+  const t0=opt.t0,t1=opt.t1;const X=v=>l+(v-t0)/(t1-t0)*(r-l);
+  const Y=opt.log?(v=>b-(Math.log10(Math.max(v,opt.lo))-Math.log10(opt.lo))/(Math.log10(opt.hi)-Math.log10(opt.lo))*(b-t)):(v=>b-(v-opt.lo)/(opt.hi-opt.lo)*(b-t));
+  opt.ticks.forEach(v=>{el(s,"line",{x1:l,x2:r,y1:Y(v),y2:Y(v),stroke:"var(--line)"});el(s,"text",{x:l-6,y:Y(v)+4,"font-size":10,"text-anchor":"end",class:"mono mut"},opt.fmt?opt.fmt(v):v)});
+  opt.months.forEach(([m,lab])=>{const xx=X(d(m,1));el(s,"text",{x:xx,y:H-12,"font-size":10,"text-anchor":"middle",class:"mono mut"},lab)});
+  series.forEach(S=>{const pts=S.pts.map(([m,dd,v])=>[X(d(m,dd)),Y(v),v]);
+    el(s,"polyline",{points:pts.map(p=>p[0]+","+p[1]).join(" "),fill:"none",stroke:S.c,"stroke-width":2.2,"stroke-dasharray":S.dash||""});
+    pts.forEach(([x,y,v],i)=>{el(s,"circle",{cx:x,cy:y,r:3.6,fill:S.c});if(S.lab!==false)el(s,"text",{x:x+(S.dx||5),y:y+(S.dy||-7),"font-size":10,class:"mono"},S.fmt?S.fmt(v):v)});
+    const lp=pts[pts.length-1];el(s,"text",{x:lp[0]+8,y:lp[1]+(S.ly||4),"font-size":11,"font-weight":600,fill:S.c},S.name)});
+}
+const mo=[[4,"Apr"],[5,"May"],[6,"Jun"],[7,"Jul"],[8,"Aug"],[9,"Sep"]];
+lines("mri",[
+  {name:"breast",c:"var(--accent)",pts:[[4,1,87],[6,26,65],[7,17,57],[8,24,57]]},
+  {name:"node",c:"var(--treat)",pts:[[4,1,21],[6,26,18],[7,17,15],[8,24,13]],dy:14}
+],{t0:new Date(2026,2,20).getTime(),t1:new Date(2026,8,10).getTime(),lo:0,hi:100,ticks:[0,25,50,75,100],months:mo,rr:52});
+lines("bpe",[
+  {name:"right",c:"var(--accent)",pts:[[4,1,175],[6,26,37],[7,17,34],[8,24,36]]},
+  {name:"left",c:"var(--preg)",pts:[[4,1,125],[6,26,40],[7,17,36],[8,24,24]],dy:15,dash:"5 4"}
+],{t0:new Date(2026,2,20).getTime(),t1:new Date(2026,8,10).getTime(),lo:0,hi:200,ticks:[0,50,100,150,200],fmt:v=>v+"%",months:mo,rr:46});
+(function(){
+  const s=document.getElementById("ctdna");
+  // two panels side by side inside one svg
+  const g1=el(s,"svg",{x:0,y:0,width:450,height:230,viewBox:"0 0 450 230"});g1.id="ct1";
+  const g2=el(s,"svg",{x:450,y:0,width:450,height:230,viewBox:"0 0 450 230"});g2.id="ct2";
+  const nd=0.3;
+  lines("ct1",[{name:"NeXT PPM",c:"var(--accent)",pts:[[4,20,304],[6,9,1],[7,6,nd],[7,20,nd]],fmt:v=>v==nd?"ND":v}],
+    {t0:new Date(2026,3,1).getTime(),t1:new Date(2026,7,5).getTime(),log:1,lo:0.3,hi:1000,ticks:[1,10,100,1000],months:[[4,"Apr"],[5,"May"],[6,"Jun"],[7,"Jul"],[8,"Aug"]],rr:80});
+  const nd2=0.05;
+  lines("ct2",[{name:"Signatera",c:"var(--treat)",pts:[[4,1,0.87],[4,18,0.48],[5,28,0.17],[7,1,nd2],[7,20,nd2]],fmt:v=>v==nd2?"0":v}],
+    {t0:new Date(2026,2,25).getTime(),t1:new Date(2026,7,5).getTime(),log:1,lo:0.05,hi:2,ticks:[0.1,0.3,1],fmt:v=>v+"",months:[[4,"Apr"],[5,"May"],[6,"Jun"],[7,"Jul"],[8,"Aug"]],rr:80});
+  // LOD line
+  const ct2=document.getElementById("ct2");
+})();
+</script>
