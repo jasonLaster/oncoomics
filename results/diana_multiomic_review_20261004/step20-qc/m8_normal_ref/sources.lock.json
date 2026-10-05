@@ -1,0 +1,348 @@
+{
+ "dataset": "GSE161529 (Pal et al. 2021, EMBO J 40:e107333)",
+ "downloaded": "2026-10-05",
+ "series_matrix": {
+  "url": "https://ftp.ncbi.nlm.nih.gov/geo/series/GSE161nnn/GSE161529/matrix/GSE161529_series_matrix.txt.gz",
+  "path": "/Users/jasonlaster/src/projects/diana-omics/private/analysis/step19-qc/m8_normal_ref/tables/GSE161529_series_matrix.txt.gz",
+  "bytes": 7153,
+  "sha256": "cd2b4013d3d3ffd9b638c3921b57f68657f7bb37103ba51109ad14c47a8af37c"
+ },
+ "samples": [
+  {
+   "gsm": "GSM4909256",
+   "title": "Normal Epithelial cells from Patient 0093",
+   "sample_name": "N-PM0095-Epi",
+   "group": "normal",
+   "patient": "0093",
+   "menopause": "Pre",
+   "parity": "Nulliparous",
+   "cell_population": "Epithelial",
+   "number_of_cells": "9879"
+  },
+  {
+   "gsm": "GSM4909260",
+   "title": "Normal Epithelial cells from Patient 1105",
+   "sample_name": "N-N1105-Epi",
+   "group": "normal",
+   "patient": "1105",
+   "menopause": "Pre",
+   "parity": "Nulliparous",
+   "cell_population": "Epithelial",
+   "number_of_cells": "5201"
+  },
+  {
+   "gsm": "GSM4909262",
+   "title": "Normal Epithelial cells from Patient 0064",
+   "sample_name": "N-MH0064-Epi",
+   "group": "normal",
+   "patient": "0064",
+   "menopause": "Pre",
+   "parity": "Nulliparous",
+   "cell_population": "Epithelial",
+   "number_of_cells": "4785"
+  },
+  {
+   "gsm": "GSM4909264",
+   "title": "Normal Epithelial cells from Patient 0230.16",
+   "sample_name": "N-N1B-Epi",
+   "group": "normal",
+   "patient": "0230.16",
+   "menopause": "Pre",
+   "parity": "Parous",
+   "cell_population": "Epithelial",
+   "number_of_cells": "2157"
+  },
+  {
+   "gsm": "GSM4909267",
+   "title": "Normal Epithelial cells from Patient 0123",
+   "sample_name": "N-MH0023-Epi",
+   "group": "normal",
+   "patient": "0123",
+   "menopause": "Pre",
+   "parity": "Parous",
+   "cell_population": "Epithelial",
+   "number_of_cells": "3037"
+  },
+  {
+   "gsm": "GSM4909269",
+   "title": "Normal Epithelial cells from Patient 0342",
+   "sample_name": "N-PM0342-Epi",
+   "group": "normal",
+   "patient": "0342",
+   "menopause": "Post",
+   "parity": "Nulliparous",
+   "cell_population": "Epithelial",
+   "number_of_cells": "7856"
+  },
+  {
+   "gsm": "GSM4909273",
+   "title": "Normal Epithelial cells from Patient 0275",
+   "sample_name": "N-MH275-Epi",
+   "group": "normal",
+   "patient": "0275",
+   "menopause": "Post (hysterectomy)",
+   "parity": "Parous",
+   "cell_population": "Epithelial",
+   "number_of_cells": "6401"
+  },
+  {
+   "gsm": "GSM4909275",
+   "title": "Normal Epithelial cells from Patient 0372",
+   "sample_name": "N-PM0372-Epi",
+   "group": "normal",
+   "patient": "0372",
+   "menopause": "Post",
+   "parity": "Parous",
+   "cell_population": "Epithelial",
+   "number_of_cells": "12212"
+  },
+  {
+   "gsm": "GSM4909277",
+   "title": "BRCA1 pre-neoplastic Total cells from Patient 0894",
+   "sample_name": "B1-KCF0894",
+   "group": "brca1_preneoplastic",
+   "patient": "0894",
+   "menopause": "Pre",
+   "parity": "Nulliparous",
+   "cell_population": "Total",
+   "number_of_cells": "7850"
+  },
+  {
+   "gsm": "GSM4909278",
+   "title": "BRCA1 pre-neoplastic Total cells from Patient 0033",
+   "sample_name": "B1-MH0033",
+   "group": "brca1_preneoplastic",
+   "patient": "0033",
+   "menopause": "Pre",
+   "parity": "Nulliparous",
+   "cell_population": "Total",
+   "number_of_cells": "6827"
+  },
+  {
+   "gsm": "GSM4909279",
+   "title": "BRCA1 pre-neoplastic Total cells from Patient 0023",
+   "sample_name": "B1-MH0023",
+   "group": "brca1_preneoplastic",
+   "patient": "0023",
+   "menopause": "Post (oophorectomy)",
+   "parity": "Parous",
+   "cell_population": "Total",
+   "number_of_cells": "5932"
+  },
+  {
+   "gsm": "GSM4909280",
+   "title": "BRCA1 pre-neoplastic Total cells from Patient 0090",
+   "sample_name": "B1-MH0090",
+   "group": "brca1_preneoplastic",
+   "patient": "0090",
+   "menopause": "Post (oophorectomy)",
+   "parity": "Parous",
+   "cell_population": "Total",
+   "number_of_cells": "5663"
+  }
+ ],
+ "files": [
+  {
+   "gsm": "GSM4909256",
+   "kind": "barcodes",
+   "url": "https://ftp.ncbi.nlm.nih.gov/geo/samples/GSM4909nnn/GSM4909256/suppl/GSM4909256_N-PM0095-Epi-barcodes.tsv.gz",
+   "path": "/Users/jasonlaster/src/projects/diana-omics/data/raw/scrna/GSE161529/GSM4909256_N-PM0095-Epi-barcodes.tsv.gz",
+   "bytes": 50185,
+   "sha256": "56050bc1062c7a3c83aeaabb57d3590e4fc1a27f71f5076994a5cb5f24e4fd4e"
+  },
+  {
+   "gsm": "GSM4909256",
+   "kind": "matrix",
+   "url": "https://ftp.ncbi.nlm.nih.gov/geo/samples/GSM4909nnn/GSM4909256/suppl/GSM4909256_N-PM0095-Epi-matrix.mtx.gz",
+   "path": "/Users/jasonlaster/src/projects/diana-omics/data/raw/scrna/GSE161529/GSM4909256_N-PM0095-Epi-matrix.mtx.gz",
+   "bytes": 74257486,
+   "sha256": "78315d543f5e4ac0bd08f934b14346d38c8dc7be59abfdb8f3d6d75eadfd49df"
+  },
+  {
+   "gsm": "GSM4909260",
+   "kind": "barcodes",
+   "url": "https://ftp.ncbi.nlm.nih.gov/geo/samples/GSM4909nnn/GSM4909260/suppl/GSM4909260_N-N1105-Epi-barcodes.tsv.gz",
+   "path": "/Users/jasonlaster/src/projects/diana-omics/data/raw/scrna/GSE161529/GSM4909260_N-N1105-Epi-barcodes.tsv.gz",
+   "bytes": 26534,
+   "sha256": "4b104803bda36d07851bb31f4b626ee4b740e8f911573acf02e1682511bedfaa"
+  },
+  {
+   "gsm": "GSM4909260",
+   "kind": "matrix",
+   "url": "https://ftp.ncbi.nlm.nih.gov/geo/samples/GSM4909nnn/GSM4909260/suppl/GSM4909260_N-N1105-Epi-matrix.mtx.gz",
+   "path": "/Users/jasonlaster/src/projects/diana-omics/data/raw/scrna/GSE161529/GSM4909260_N-N1105-Epi-matrix.mtx.gz",
+   "bytes": 38863485,
+   "sha256": "2b02e7f75e1817c91920b086899c78320153a95cdbf219a254ba7c95b602237b"
+  },
+  {
+   "gsm": "GSM4909262",
+   "kind": "barcodes",
+   "url": "https://ftp.ncbi.nlm.nih.gov/geo/samples/GSM4909nnn/GSM4909262/suppl/GSM4909262_N-MH0064-Epi-barcodes.tsv.gz",
+   "path": "/Users/jasonlaster/src/projects/diana-omics/data/raw/scrna/GSE161529/GSM4909262_N-MH0064-Epi-barcodes.tsv.gz",
+   "bytes": 24553,
+   "sha256": "1bcb64fdf18fb789549e9b8ceeff7b131cd4c6a9f116c75acc17d8436650de99"
+  },
+  {
+   "gsm": "GSM4909262",
+   "kind": "matrix",
+   "url": "https://ftp.ncbi.nlm.nih.gov/geo/samples/GSM4909nnn/GSM4909262/suppl/GSM4909262_N-MH0064-Epi-matrix.mtx.gz",
+   "path": "/Users/jasonlaster/src/projects/diana-omics/data/raw/scrna/GSE161529/GSM4909262_N-MH0064-Epi-matrix.mtx.gz",
+   "bytes": 16265835,
+   "sha256": "eaff29ca542079deefa7e360dbc2f2209b5d0c37a8d6c0f7c3493a31157b6edf"
+  },
+  {
+   "gsm": "GSM4909264",
+   "kind": "barcodes",
+   "url": "https://ftp.ncbi.nlm.nih.gov/geo/samples/GSM4909nnn/GSM4909264/suppl/GSM4909264_N-N1B-Epi-barcodes.tsv.gz",
+   "path": "/Users/jasonlaster/src/projects/diana-omics/data/raw/scrna/GSE161529/GSM4909264_N-N1B-Epi-barcodes.tsv.gz",
+   "bytes": 10457,
+   "sha256": "2f23d9df5c2af56f8aa5f6f3cbd583337f4ba0db23301979d8aa2db21ea7ffc9"
+  },
+  {
+   "gsm": "GSM4909264",
+   "kind": "matrix",
+   "url": "https://ftp.ncbi.nlm.nih.gov/geo/samples/GSM4909nnn/GSM4909264/suppl/GSM4909264_N-N1B-Epi-matrix.mtx.gz",
+   "path": "/Users/jasonlaster/src/projects/diana-omics/data/raw/scrna/GSE161529/GSM4909264_N-N1B-Epi-matrix.mtx.gz",
+   "bytes": 10675298,
+   "sha256": "52930fb0b6d01d52f6f04e85a996ffbd5f92d837b6d61253007d8d5da45b3a54"
+  },
+  {
+   "gsm": "GSM4909267",
+   "kind": "barcodes",
+   "url": "https://ftp.ncbi.nlm.nih.gov/geo/samples/GSM4909nnn/GSM4909267/suppl/GSM4909267_N-MH0023-Epi-barcodes.tsv.gz",
+   "path": "/Users/jasonlaster/src/projects/diana-omics/data/raw/scrna/GSE161529/GSM4909267_N-MH0023-Epi-barcodes.tsv.gz",
+   "bytes": 16063,
+   "sha256": "62937a7852b0e495f8ea9ecb77febe4694760344937776772b73449b7f4bd7ba"
+  },
+  {
+   "gsm": "GSM4909267",
+   "kind": "matrix",
+   "url": "https://ftp.ncbi.nlm.nih.gov/geo/samples/GSM4909nnn/GSM4909267/suppl/GSM4909267_N-MH0023-Epi-matrix.mtx.gz",
+   "path": "/Users/jasonlaster/src/projects/diana-omics/data/raw/scrna/GSE161529/GSM4909267_N-MH0023-Epi-matrix.mtx.gz",
+   "bytes": 16202143,
+   "sha256": "3e6e48c5f87ee14a69ce56316c913b4c013de060ba1eefcd5737dfc4e1c6ee91"
+  },
+  {
+   "gsm": "GSM4909269",
+   "kind": "barcodes",
+   "url": "https://ftp.ncbi.nlm.nih.gov/geo/samples/GSM4909nnn/GSM4909269/suppl/GSM4909269_N-PM0342-Epi-barcodes.tsv.gz",
+   "path": "/Users/jasonlaster/src/projects/diana-omics/data/raw/scrna/GSE161529/GSM4909269_N-PM0342-Epi-barcodes.tsv.gz",
+   "bytes": 40429,
+   "sha256": "94be02c3d7ae64ae485752b1f21e7c34c0a01ad6eaf8584248736dcfcfde525b"
+  },
+  {
+   "gsm": "GSM4909269",
+   "kind": "matrix",
+   "url": "https://ftp.ncbi.nlm.nih.gov/geo/samples/GSM4909nnn/GSM4909269/suppl/GSM4909269_N-PM0342-Epi-matrix.mtx.gz",
+   "path": "/Users/jasonlaster/src/projects/diana-omics/data/raw/scrna/GSE161529/GSM4909269_N-PM0342-Epi-matrix.mtx.gz",
+   "bytes": 60076950,
+   "sha256": "333fdb2357cba90fc32ae526f6d56443c47374b35ab3eb477dc94280e229fa94"
+  },
+  {
+   "gsm": "GSM4909273",
+   "kind": "barcodes",
+   "url": "https://ftp.ncbi.nlm.nih.gov/geo/samples/GSM4909nnn/GSM4909273/suppl/GSM4909273_N-MH275-Epi-barcodes.tsv.gz",
+   "path": "/Users/jasonlaster/src/projects/diana-omics/data/raw/scrna/GSE161529/GSM4909273_N-MH275-Epi-barcodes.tsv.gz",
+   "bytes": 32266,
+   "sha256": "876536c2bd77d58a6e755138ca1941645b92907cca73fc169337036d51c0100f"
+  },
+  {
+   "gsm": "GSM4909273",
+   "kind": "matrix",
+   "url": "https://ftp.ncbi.nlm.nih.gov/geo/samples/GSM4909nnn/GSM4909273/suppl/GSM4909273_N-MH275-Epi-matrix.mtx.gz",
+   "path": "/Users/jasonlaster/src/projects/diana-omics/data/raw/scrna/GSE161529/GSM4909273_N-MH275-Epi-matrix.mtx.gz",
+   "bytes": 46979633,
+   "sha256": "3460f935ebce0d7a3c8ea0e27543fd9f4041ff5d474eb0a9e2dbddeba79d8623"
+  },
+  {
+   "gsm": "GSM4909275",
+   "kind": "barcodes",
+   "url": "https://ftp.ncbi.nlm.nih.gov/geo/samples/GSM4909nnn/GSM4909275/suppl/GSM4909275_N-PM0372-Epi-barcodes.tsv.gz",
+   "path": "/Users/jasonlaster/src/projects/diana-omics/data/raw/scrna/GSE161529/GSM4909275_N-PM0372-Epi-barcodes.tsv.gz",
+   "bytes": 61345,
+   "sha256": "54951a184945edce6c6cac9c778610b41b4ba0868c31aa3099a6863a1640650f"
+  },
+  {
+   "gsm": "GSM4909275",
+   "kind": "matrix",
+   "url": "https://ftp.ncbi.nlm.nih.gov/geo/samples/GSM4909nnn/GSM4909275/suppl/GSM4909275_N-PM0372-Epi-matrix.mtx.gz",
+   "path": "/Users/jasonlaster/src/projects/diana-omics/data/raw/scrna/GSE161529/GSM4909275_N-PM0372-Epi-matrix.mtx.gz",
+   "bytes": 92442389,
+   "sha256": "06dd57100fd9c7c54b1eb63463300e8bc64095b8e371b8649c15bf4f85563997"
+  },
+  {
+   "gsm": "GSM4909277",
+   "kind": "barcodes",
+   "url": "https://ftp.ncbi.nlm.nih.gov/geo/samples/GSM4909nnn/GSM4909277/suppl/GSM4909277_B1-KCF0894-barcodes.tsv.gz",
+   "path": "/Users/jasonlaster/src/projects/diana-omics/data/raw/scrna/GSE161529/GSM4909277_B1-KCF0894-barcodes.tsv.gz",
+   "bytes": 39000,
+   "sha256": "023b3c96bcc0d1d4be98c353bbf82a9897b96a6d699f30448f7e3b78cf15f882"
+  },
+  {
+   "gsm": "GSM4909277",
+   "kind": "matrix",
+   "url": "https://ftp.ncbi.nlm.nih.gov/geo/samples/GSM4909nnn/GSM4909277/suppl/GSM4909277_B1-KCF0894-matrix.mtx.gz",
+   "path": "/Users/jasonlaster/src/projects/diana-omics/data/raw/scrna/GSE161529/GSM4909277_B1-KCF0894-matrix.mtx.gz",
+   "bytes": 43508791,
+   "sha256": "a5da0629cfee9b9d24b16b8a4046ddf3615468e82002f82b4e7b0b273ea2cf76"
+  },
+  {
+   "gsm": "GSM4909278",
+   "kind": "barcodes",
+   "url": "https://ftp.ncbi.nlm.nih.gov/geo/samples/GSM4909nnn/GSM4909278/suppl/GSM4909278_B1-MH0033-barcodes.tsv.gz",
+   "path": "/Users/jasonlaster/src/projects/diana-omics/data/raw/scrna/GSE161529/GSM4909278_B1-MH0033-barcodes.tsv.gz",
+   "bytes": 34291,
+   "sha256": "f994c7ceed75f8dcbfab1bf8830584431e65d38400a8f0b57a755552dd0ad838"
+  },
+  {
+   "gsm": "GSM4909278",
+   "kind": "matrix",
+   "url": "https://ftp.ncbi.nlm.nih.gov/geo/samples/GSM4909nnn/GSM4909278/suppl/GSM4909278_B1-MH0033-matrix.mtx.gz",
+   "path": "/Users/jasonlaster/src/projects/diana-omics/data/raw/scrna/GSE161529/GSM4909278_B1-MH0033-matrix.mtx.gz",
+   "bytes": 29400321,
+   "sha256": "e84c50550b2a3b68081203e7c43f54cef54fed0f52ce4e1252419763881452b0"
+  },
+  {
+   "gsm": "GSM4909279",
+   "kind": "barcodes",
+   "url": "https://ftp.ncbi.nlm.nih.gov/geo/samples/GSM4909nnn/GSM4909279/suppl/GSM4909279_B1-MH0023-barcodes.tsv.gz",
+   "path": "/Users/jasonlaster/src/projects/diana-omics/data/raw/scrna/GSE161529/GSM4909279_B1-MH0023-barcodes.tsv.gz",
+   "bytes": 29997,
+   "sha256": "3a25b36d55807e19440b45086df8e65e53d22bbdc1839eca4fbce61d47454741"
+  },
+  {
+   "gsm": "GSM4909279",
+   "kind": "matrix",
+   "url": "https://ftp.ncbi.nlm.nih.gov/geo/samples/GSM4909nnn/GSM4909279/suppl/GSM4909279_B1-MH0023-matrix.mtx.gz",
+   "path": "/Users/jasonlaster/src/projects/diana-omics/data/raw/scrna/GSE161529/GSM4909279_B1-MH0023-matrix.mtx.gz",
+   "bytes": 24397600,
+   "sha256": "3c79d4d822210113a1ddc3013b4ed799266a1203a117e7eb5c466ea609ebc5a7"
+  },
+  {
+   "gsm": "GSM4909280",
+   "kind": "barcodes",
+   "url": "https://ftp.ncbi.nlm.nih.gov/geo/samples/GSM4909nnn/GSM4909280/suppl/GSM4909280_B1-MH0090-barcodes.tsv.gz",
+   "path": "/Users/jasonlaster/src/projects/diana-omics/data/raw/scrna/GSE161529/GSM4909280_B1-MH0090-barcodes.tsv.gz",
+   "bytes": 28803,
+   "sha256": "ebf52465c3ec06a452efda88ed2d28e8bfe26a4c0247f7f7f984234d6c523938"
+  },
+  {
+   "gsm": "GSM4909280",
+   "kind": "matrix",
+   "url": "https://ftp.ncbi.nlm.nih.gov/geo/samples/GSM4909nnn/GSM4909280/suppl/GSM4909280_B1-MH0090-matrix.mtx.gz",
+   "path": "/Users/jasonlaster/src/projects/diana-omics/data/raw/scrna/GSE161529/GSM4909280_B1-MH0090-matrix.mtx.gz",
+   "bytes": 29029415,
+   "sha256": "3fab18e0fd90a36b2bdef2e126e78df18c0b4a204dc26f7dc8780c6cb6053fce"
+  }
+ ],
+ "shared": [
+  {
+   "kind": "features (pre-existing, downloaded 2026-10-02 for step15)",
+   "url": "https://ftp.ncbi.nlm.nih.gov/geo/series/GSE161nnn/GSE161529/suppl/GSE161529_features.tsv.gz",
+   "path": "/Users/jasonlaster/src/projects/diana-omics/data/raw/scrna/GSE161529/GSE161529_features.tsv.gz",
+   "bytes": 270380,
+   "sha256": "d8b21cc094b58a3bdcd6c2b3cc7699399c4f14ff8f8611231a2c6da04791a354"
+  }
+ ],
+ "total_bytes_new": 482493269
+}

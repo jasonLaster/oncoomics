@@ -87,12 +87,12 @@ Diana's tumor nuclei vs tumor cells from 8 public TNBC (GSE161529), after a nucl
 | Milk / pregnancy | CSN3 (κ-casein) | — | Tumor-transcribed (intronic); mature mRNA dominated by background |
 | | XDH | ~12x | |
 | | LALBA (α-lactalbumin) | not detected | Target of the only lineage vaccine in the KB |
-| Alveolar progenitor programme | ERBB4 | ~30x (mature mRNA) | 99% unspliced; HER4 protein not detected |
+| Alveolar progenitor programme | ERBB4 | ~30x (mature mRNA) | 99% unspliced; HER4 protein not detected; normal-lineage gene |
 | | ESRRG | ~60x | |
 | | MECOM | ~50x | On a chr3q gain |
 | | EHF | ~20x | On a 9-copy segment |
 | | ELF5 | ~8x | On a 9-copy segment |
-| | PRLR | ~7x (mature mRNA) | Tumor selectivity vs normal breast being tested |
+| | PRLR | ~7x (mature mRNA) | Normal hormone-sensing-lineage gene; not tumor-selective |
 | Basal keratins | KRT5 | ~1/30 | |
 | | KRT14 | ~1/80 | |
 | | KRT17 | ~1/85 | |
@@ -282,7 +282,7 @@ remaining B2M allele added to ctDNA monitoring.
    - Amplicon reconstruction and per-nucleus amplicon heterogeneity.
    - The 9 subclonal variants genotyped in the single-nucleus data to confirm its specimen.
    - Right-minus-left MRI kinetics.
-   - A public normal-breast reference to settle ERBB4, PRLR, B7-H4 and POLQ.
+   - Done: the normal-breast reference shows PRLR, ERBB4 and B7-H4 are normal-lineage genes, and the Tier A targets are tumor-selective.
 3. **Records to request:**
    - Altera 3/13 RNA raw data.
    - KH022 sample manifest.

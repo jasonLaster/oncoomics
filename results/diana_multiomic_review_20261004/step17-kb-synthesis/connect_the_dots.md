@@ -70,8 +70,10 @@ Diana multi-omic review · 2026-10-04 · research hypotheses for discussion with
 
   This is the alveolar programme that pregnancy hormones expand. But ELF5 and EHF are on a 9-copy segment
   (chr11:34.4-35.1 Mb, 6:3) adjacent to the CD44 amplicon, so their high expression is at least partly genetic.
-  ERBB4's signal is 99% unspliced RNA (step 19). Whether PRLR and ERBB4 are tumor-selective vs normal duct cells is
-  being tested against a public normal-breast reference.
+  ERBB4's signal is 99% unspliced RNA. Against clean normal-breast references (QC module 8), PRLR, ERBB4 and B7-H4 are
+  normal hormone-sensing-lineage genes: her own genetically normal hormone-sensing luminal nuclei express them at or above
+  tumor level. ESRRG, MECOM and SOX6 are tumor-selective (29-300x above normal luminal cells), and ELF5/EHF are
+  progenitor-lineage factors pushed up on a DNA gain.
 - **IgA:** IgA dominates IgG in both bulk RNA and the single-nucleus data. The epithelial chemokine CCL28 is expressed;
   it is linked in the literature to IgA plasma-cell homing to the lactating gland.
 

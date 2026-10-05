@@ -5,9 +5,9 @@ single-nucleus RNA data were turned into target and biology claims, and which of
 
 **Folder note.** Published here as step 20. The private working folder is `private/analysis/step19-qc/`, so module paths inside the reports say step19-qc.
 
-**Status.** Six of seven modules are complete. The CellBender run in module 3 is still training. Its interim robustness
-verdicts, based on the group-rho, SoupX, mixture and plateau corrections, are included; the CellBender column will be
-added when it finishes.
+**Status.** Seven of eight modules are complete, including the normal-breast reference (m8). The CellBender run in
+module 3 is still training. Its interim robustness verdicts, based on the group-rho, SoupX, mixture and plateau
+corrections, are included; the CellBender column will be added when it finishes.
 
 ---
 
@@ -32,6 +32,7 @@ added when it finishes.
 | m5 Protein | Does RNA agree with protein? | OncoOmicsDx panel (66 proteins) vs pseudobulk | Presence/absence agrees (p = 4×10⁻⁵). Levels do not (ρ = 0.17). **HER4 protein not detected.** |
 | m6 Biology | Is it a plausible target? | HPA localization and normal-tissue RNA; gene span | Surface flags; B7-H4 is highest in normal breast; HORMAD1 is testis-restricted. |
 | m7 Exon-only | Does the outlier call survive without intron counting and without the bias model? | Diana exonic UMIs vs public exon-only counts | **B7-H4 is not an outlier.** Long-gene outliers survive. |
+| m8 Normal breast | Is it tumor-selective vs normal duct cells? | 8 normal donors + 3 BRCA1 carriers (GSE161529, 482 MB); exon-only and bias-model tests; within-sample test vs her own clean hormone-sensing luminal and myoepithelial nuclei | **All 13 Tier A genes pass** (8/8 donors, 3/3 carriers). **PRLR, ERBB4 and B7-H4 are normal hormone-sensing-lineage genes.** The bias model cannot certify tumor-vs-normal calls (same-lineage null ≈ tumor rate). |
 
 ## 2. What changed
 
@@ -42,7 +43,7 @@ added when it finishes.
 | ERBB4 is ~77x above TNBC | **Downgraded** | 99% intronic; exonic ~48 CPM, ~30x but only 6/8; HER4 protein not detected (m1, m5, m7). |
 | ATR is ~5x above TNBC | **Unresolved** | Exon-only ~22x (8/8), but tumor-cell enrichment within the sample is <2x, and the measured bias exceeds the model prediction (m4). |
 | CD44 outlier | **Reframed** | ~6x, fully explained by 12-copy dosage. "Amplified and expressed" stands; "outlier" is fragile (FDR ~0.5). |
-| PRLR, ERBB4, B7-H4 "as high in her normal duct cells" (step 18) | **Withdrawn** | That comparator was 80-100% tumor (m2). Tumor selectivity vs normal luminal cells is unknown. |
+| PRLR, ERBB4, B7-H4 "as high in her normal duct cells" (step 18) | **Withdrawn, then answered** | The step 18 comparator was 80-100% tumor (m2). Against clean references (m8) all three are **normal-lineage genes**: her own genetically normal hormone-sensing luminal nuclei express each at or above tumor level (tumor/normal 0.59x PRLR, 0.14x ERBB4, 0.51x B7-H4), and they are expressed in public mature luminal cells. |
 | Casein is pure background RNA (step 18) | **Revised** | Tumor nuclei transcribe κ-casein: intronic signal 3.3x non-tumor, in 83% of tumor nuclei. Exported mRNA dominates the ambient pool (m1). |
 | KH022 is "probably" the 4/10 core | **Confirmed** | 0 alt molecules where 21.2 were expected at 9 subclone sites absent from the 4/10 exome (p = 6×10⁻¹⁰) (m2). |
 | Antigen-processing genes low in tumor | **Confirmed** | TAP1 and PSMB9 are below public tumors (CIs exclude 0); depleted vs non-malignant nuclei; robust to labels and ambient. |
@@ -65,47 +66,49 @@ added when it finishes.
 - **FDR proxy** is the reference-compartment null at the gene's fold (m4).
 - **Ambient** reports whether the tumor-vs-non-malignant effect keeps its direction and stays ≥2x across corrections
   (m3, interim).
+- **vs normal breast (m8):** PASS = tumor-selective vs public normal LP and ML and vs her own clean normal nuclei;
+  LINEAGE = shared with a normal lineage; BELOW = below normal.
 - **Protein** comes from the OncoOmicsDx panel on the 4/10 block. "Not on panel" means the protein was not assayed.
 
-| Gene    | Tier                 | Tumor-cell origin (intronic)   | Label-robust   | Ambient                           | vs TNBC exon-only   | Exon fold vs TNBC   | vs TNBC model   |   P(call) |   FDR proxy |   CN | Intronic share   | Protein               |
-|:--------|:---------------------|:-------------------------------|:---------------|:----------------------------------|:--------------------|:--------------------|:----------------|----------:|------------:|-----:|:-----------------|:----------------------|
-| EHF     | A                    | PASS                           | PASS           | robust                            | PASS                | 28.3x               | PASS            |      1    |        0.27 |    9 | 57%              | not on panel          |
-| ENPP3   | A                    | PASS                           | PASS           | robust                            | PASS                | 46.2x               | PASS            |      1    |        0.16 |    3 | 89%              | not on panel          |
-| ESRRG   | A                    | PASS                           | PASS           | robust                            | PASS                | 61.7x               | PASS            |      0.97 |        0.27 |    5 | 98%              | not on panel          |
-| FOLH1   | A                    | PASS                           | PASS           | robust                            | PASS                | 19.2x               | PASS            |      1    |        0.3  |    3 | 80%              | not on panel          |
-| HORMAD1 | A                    | PASS                           | PASS           | robust                            | PASS                | 37.7x               | PASS            |      0.96 |        0.39 |    4 | 56%              | not on panel          |
-| KIF18A  | A                    | PASS                           | PASS           | robust                            | PASS                | 14.5x               | PASS            |      0.89 |        0.39 |    5 | 73%              | not on panel          |
-| LDLRAD3 | A                    | PASS                           | PASS           | robust                            | PASS                | 11.6x               | PASS            |      0.99 |        0.27 |   12 | 95%              | not on panel          |
-| MECOM   | A                    | PASS                           | PASS           | robust                            | PASS                | 74.8x               | PASS            |      0.92 |        0.3  |    4 | 96%              | not on panel          |
-| POLQ    | A                    | PASS                           | PASS           | robust                            | PASS                | 20.6x               | PASS            |      0.86 |        0.39 |    3 | 74%              | not on panel          |
-| SHANK2  | A                    | PASS                           | PASS           | robust                            | PASS                | 46.8x               | PASS            |      0.88 |        0.3  |    9 | 93%              | not on panel          |
-| SLC28A3 | A                    | PASS                           | PASS           | robust                            | PASS                | 48.4x               | PASS            |      1    |        0.3  |    2 | 71%              | not on panel          |
-| SLC6A14 | A                    | PASS                           | PASS           | robust                            | PASS                | 32.9x               | PASS            |      0.98 |        0.3  |    2 | 65%              | not on panel          |
-| SPECC1L | A                    | PASS                           | PASS           | robust                            | PASS                | 35.3x               | PASS            |      0.99 |        0.3  |    8 | 84%              | not on panel          |
-| CD44    | B                    | PASS                           | PASS           | robust                            | PASS                | 6.1x                | WEAK            |      0.63 |        0.5  |   12 | 68%              | not on panel          |
-| CTTN    | B                    | PASS                           | PASS           | robust                            | PASS                | 5.9x                | WEAK            |      0.56 |        0.5  |    9 | 38%              | not on panel          |
-| ELF5    | B                    | PASS                           | PASS           | robust                            | PASS                | 11.4x               | WEAK            |      0.81 |        0.44 |    9 | 42%              | not on panel          |
-| EWSR1   | B                    | PASS                           | PASS           | robust                            | PASS                | 7.7x                | WEAK            |      0.79 |        0.44 |    8 | 24%              | not on panel          |
-| KYNU    | B                    | PASS                           | PASS           | robust                            | PASS                | 19.2x               | WEAK            |      0.75 |        0.44 |    5 | 93%              | not on panel          |
-| PRLR    | B                    | PASS                           | PASS           | robust                            | PASS                | 7.3x                | NO              |      0.29 |             |    2 | 82%              | not on panel          |
-| SOX6    | B                    | PASS                           | PASS           | robust                            | PASS                | 108.6x              | WEAK            |      0.72 |        0.39 |    5 | 90%              | not on panel          |
-| ATR     | C                    | NO                             | PASS           | no ≥2x effect                     | PASS                | 22.5x               | WEAK            |      0.79 |        0.39 |    4 | 65%              | not on panel          |
-| ERBB4   | D                    | PASS                           | PASS           | robust                            | NO                  | 30.0x               | WEAK            |      0.79 |        0.39 |    3 | 99%              | ND                    |
-| NECTIN4 | D                    | PASS                           | PASS           | no ≥2x effect                     | NO                  | 1.9x                | NO              |      0.03 |             |    5 | 10%              | not on panel          |
-| VTCN1   | D                    | PASS                           | PASS           | robust                            | NO                  | 0.7x                | WEAK            |      0.61 |        0.5  |    3 | 91%              | not on panel          |
-| B2M     | E                    | DEPLETED                       | PASS           | robust                            | LOW                 | 0.2x                | NO              |      0.06 |             |    1 | 6%               | not on panel          |
-| CD274   | E                    | DEPLETED                       | PASS           | robust                            | NO                  | 0.9x                | NO              |      0.1  |             |    3 | 80%              | ND                    |
-| HLA-A   | E                    | DEPLETED                       | PASS           | robust                            | LOW                 | 0.2x                | NO              |      0.01 |             |    5 | 0%               | not on panel          |
-| NLRC5   | E                    | DEPLETED                       | PASS           | robust                            | NO                  | 0.5x                | NO              |      0    |             |    2 | 79%              | not on panel          |
-| PSMB9   | E                    | DEPLETED                       | PASS           | robust                            | LOW                 | 0.1x                | NO              |      0    |             |    5 | 38%              | not on panel          |
-| SLFN11  | E                    | DEPLETED                       | PASS           | robust                            | NO                  | 2.1x                | NO              |      0.12 |             |    2 | 54%              | ND                    |
-| TACSTD2 | E                    | NO                             | PASS           | holds, <2x some corr.             | LOW                 | 0.2x                | NO              |      0.1  |             |    4 | 0%               | detected 1705 amol/ug |
-| TAP1    | E                    | NO                             | PASS           | robust                            | LOW                 | 0.2x                | NO              |      0    |             |    5 | 6%               | not on panel          |
-| CCND1   | F                    | NO                             | PASS           | no ≥2x effect; direction unstable | NO                  | 0.7x                | NO              |      0.01 |             |    9 | 7%               | not on panel          |
-| CD276   | F                    | NO                             | PASS           | no ≥2x effect                     | NO                  | 0.8x                | NO              |      0.01 |             |    2 | 48%              | not on panel          |
-| EGFR    | F                    | NO                             | PASS           | no ≥2x effect                     | NO                  | 1.7x                | NO              |      0.14 |             |    2 | 88%              | detected 171 amol/ug  |
-| TOP1    | F                    | NO                             | PASS           | no ≥2x effect                     | NO                  | 1.7x                | NO              |      0.12 |             |    3 | 69%              | detected 568 amol/ug  |
-| CARD18  | WITHDRAWN (artifact) | PASS                           | PASS           | robust                            | NO                  | 3.1x                | PASS            |      1    |        0.16 |    4 | 100%             | not on panel          |
+| Gene    | Tier                 | Tumor-cell origin (intronic)   | Ambient                           | Exon fold vs TNBC   | vs TNBC model   |   FDR proxy | vs normal breast (m8)   | Fold vs normal LP   |   CN | Intronic share   | Protein               |
+|:--------|:---------------------|:-------------------------------|:----------------------------------|:--------------------|:----------------|------------:|:------------------------|:--------------------|-----:|:-----------------|:----------------------|
+| EHF     | A                    | PASS                           | robust                            | 28.3x               | PASS            |        0.27 | PASS                    | 15.3x               |    9 | 57%              | not on panel          |
+| ENPP3   | A                    | PASS                           | robust                            | 46.2x               | PASS            |        0.16 | PASS                    | 46.5x               |    3 | 89%              | not on panel          |
+| ESRRG   | A                    | PASS                           | robust                            | 61.7x               | PASS            |        0.27 | PASS                    | 157.6x              |    5 | 98%              | not on panel          |
+| FOLH1   | A                    | PASS                           | robust                            | 19.2x               | PASS            |        0.3  | PASS                    | 19.6x               |    3 | 80%              | not on panel          |
+| HORMAD1 | A                    | PASS                           | robust                            | 37.7x               | PASS            |        0.39 | PASS                    | 108.8x              |    4 | 56%              | not on panel          |
+| KIF18A  | A                    | PASS                           | robust                            | 14.5x               | PASS            |        0.39 | PASS                    | 27.3x               |    5 | 73%              | not on panel          |
+| LDLRAD3 | A                    | PASS                           | robust                            | 11.6x               | PASS            |        0.27 | PASS                    | 5.3x                |   12 | 95%              | not on panel          |
+| MECOM   | A                    | PASS                           | robust                            | 74.8x               | PASS            |        0.3  | PASS                    | 28.7x               |    4 | 96%              | not on panel          |
+| POLQ    | A                    | PASS                           | robust                            | 20.6x               | PASS            |        0.39 | PASS                    | 25.8x               |    3 | 74%              | not on panel          |
+| SHANK2  | A                    | PASS                           | robust                            | 46.8x               | PASS            |        0.3  | PASS                    | 30.7x               |    9 | 93%              | not on panel          |
+| SLC28A3 | A                    | PASS                           | robust                            | 48.4x               | PASS            |        0.3  | PASS                    | 9.8x                |    2 | 71%              | not on panel          |
+| SLC6A14 | A                    | PASS                           | robust                            | 32.9x               | PASS            |        0.3  | PASS                    | 6.2x                |    2 | 65%              | not on panel          |
+| SPECC1L | A                    | PASS                           | robust                            | 35.3x               | PASS            |        0.3  | PASS                    | 26.3x               |    8 | 84%              | not on panel          |
+| CD44    | B                    | PASS                           | robust                            | 6.1x                | WEAK            |        0.5  | LINEAGE                 | 1.3x                |   12 | 68%              | not on panel          |
+| CTTN    | B                    | PASS                           | robust                            | 5.9x                | WEAK            |        0.5  | LINEAGE                 | 2.2x                |    9 | 38%              | not on panel          |
+| ELF5    | B                    | PASS                           | robust                            | 11.4x               | WEAK            |        0.44 | PASS                    | 84.1x               |    9 | 42%              | not on panel          |
+| EWSR1   | B                    | PASS                           | robust                            | 7.7x                | WEAK            |        0.44 | LINEAGE                 | 5.6x                |    8 | 24%              | not on panel          |
+| KYNU    | B                    | PASS                           | robust                            | 19.2x               | WEAK            |        0.44 | LINEAGE                 | 2.6x                |    5 | 93%              | not on panel          |
+| PRLR    | B                    | PASS                           | robust                            | 7.3x                | NO              |             | LINEAGE                 | 9.3x                |    2 | 82%              | not on panel          |
+| SOX6    | B                    | PASS                           | robust                            | 108.6x              | WEAK            |        0.39 | PASS                    | 136.9x              |    5 | 90%              | not on panel          |
+| ATR     | C                    | NO                             | no ≥2x effect                     | 22.5x               | WEAK            |        0.39 | LINEAGE                 | 13.1x               |    4 | 65%              | not on panel          |
+| ERBB4   | D                    | PASS                           | robust                            | 30.0x               | WEAK            |        0.39 | LINEAGE                 | 25.7x               |    3 | 99%              | ND                    |
+| NECTIN4 | D                    | PASS                           | no ≥2x effect                     | 1.9x                | NO              |             | LINEAGE                 | 3.1x                |    5 | 10%              | not on panel          |
+| VTCN1   | D                    | PASS                           | robust                            | 0.7x                | WEAK            |        0.5  | LINEAGE                 | 11.2x               |    3 | 91%              | not on panel          |
+| B2M     | E                    | DEPLETED                       | robust                            | 0.2x                | NO              |             | BELOW                   | 0.0x                |    1 | 6%               | not on panel          |
+| CD274   | E                    | DEPLETED                       | robust                            | 0.9x                | NO              |             | BELOW                   | 0.3x                |    3 | 80%              | ND                    |
+| HLA-A   | E                    | DEPLETED                       | robust                            | 0.2x                | NO              |             | BELOW                   | 0.0x                |    5 | 0%               | not on panel          |
+| NLRC5   | E                    | DEPLETED                       | robust                            | 0.5x                | NO              |             | NA                      | 0.5x                |    2 | 79%              | not on panel          |
+| PSMB9   | E                    | DEPLETED                       | robust                            | 0.1x                | NO              |             | BELOW                   | 0.1x                |    5 | 38%              | not on panel          |
+| SLFN11  | E                    | DEPLETED                       | robust                            | 2.1x                | NO              |             | NA                      | 3.5x                |    2 | 54%              | ND                    |
+| TACSTD2 | E                    | NO                             | holds, <2x some corr.             | 0.2x                | NO              |             | BELOW                   | 0.0x                |    4 | 0%               | detected 1705 amol/ug |
+| TAP1    | E                    | NO                             | robust                            | 0.2x                | NO              |             | LINEAGE                 | 0.0x                |    5 | 6%               | not on panel          |
+| CCND1   | F                    | NO                             | no ≥2x effect; direction unstable | 0.7x                | NO              |             | LINEAGE                 | 0.5x                |    9 | 7%               | not on panel          |
+| CD276   | F                    | NO                             | no ≥2x effect                     | 0.8x                | NO              |             | BELOW                   | 0.2x                |    2 | 48%              | not on panel          |
+| EGFR    | F                    | NO                             | no ≥2x effect                     | 1.7x                | NO              |             | LINEAGE                 | 0.4x                |    2 | 88%              | detected 171 amol/ug  |
+| TOP1    | F                    | NO                             | no ≥2x effect                     | 1.7x                | NO              |             | LINEAGE                 | 0.7x                |    3 | 69%              | detected 568 amol/ug  |
+| CARD18  | WITHDRAWN (artifact) | PASS                           | robust                            | 3.1x                | PASS            |        0.16 | NA                      | 2.7x                |    4 | 100%             | not on panel          |
 
 **Reading notes**
 - **Exon-only folds are conservative.** Nuclei lose cytoplasmic mRNA: GAPDH and ACTB come out 8-16x lower than in whole
@@ -187,6 +190,19 @@ added when it finishes.
 - **Discordances:** HER4 is not detected despite high (intronic) ERBB4. Stromal RNA dominates TYMP, hENT1, GPNMB, Cav-1
   and vimentin.
 
+### m8 Normal breast (`m8_normal_ref/report.md`)
+- **References:** 8 non-carrier donors (EpCAM-sorted epithelium; pre/post-menopause, nulliparous/parous) and 3 usable
+  BRCA1 carriers. 482.5 MB downloaded, logged with sha256.
+- **Labels:** lineage labels (LP / ML / basal) are robust to removing the candidate genes from the marker sets (96-100%).
+- **Calibration:**
+  - The bias-model test called 26-28% of genes when Diana's own clean normal nuclei were the query against the matching
+    public lineage, which is the same rate as tumor. So that test cannot certify tumor-vs-normal calls.
+  - Verdicts therefore require both an ambient-corrected exon-only test (≥2x vs LP and ML in ≥6/8 donors) and a
+    same-chemistry within-sample test (≥2x vs her own clean hormone-sensing luminal and myoepithelial nuclei).
+- **Results:** 16 PASS, 17 LINEAGE, 8 BELOW, 6 NA.
+- **Controls:** the BRCA1 positive control passes because of its nuclear-retained mutant pre-mRNA. So the exon-only test
+  is not conservative for nuclear-retained transcripts.
+
 ### m7 Exon-only (`m7_exon_only/README.md`)
 - **Design:** no bias model; conservative in direction because of cytoplasmic loss; exposed to ambient. Read it with m3.
 
@@ -202,6 +218,14 @@ fold change and the FDR proxy for each.
 | Antigen | HORMAD1 (~38x; testis-restricted in normal tissue) |
 | Amplicon | SHANK2, SPECC1L, LDLRAD3 |
 | Lineage transcription factors | EHF, ESRRG, MECOM |
+
+**Selectivity against normal breast (m8).**
+- Every Tier A gene exceeds normal luminal progenitors and mature luminal cells ≥2x in 8/8 normal donors and 3/3 BRCA1
+  carriers, and exceeds her own clean normal nuclei.
+- **Near-absent in normal epithelium:** HORMAD1 (109x vs LP), ENPP3 (46x), ESRRG, MECOM, SOX6 (29-300x), POLQ and KIF18A
+  (~26x; proliferation-linked), FOLH1 (20x).
+- **Lineage genes turned up:** SLC28A3 and SLC6A14 are expressed by ~18-24% of normal LP cells, at 6-10x lower RNA.
+  ELF5 and EHF are LP-lineage factors on a 9-copy gain; EHF is only ~2x above her own hormone-sensing nuclei.
 
 **Then the immune state**
 - Antigen processing (TAP1, PSMB9, NLRC5, B2M, HLA-A) is depleted in tumor nuclei relative to her own non-malignant
@@ -222,11 +246,8 @@ comparisons (label contamination).
 
 1. **CellBender (m3).** Running. Its results will be added to the scorecard as a robustness column; the interim
    verdicts already use four corrections.
-2. **Clean normal-epithelium reference.**
-   - Use public normal-breast and BRCA1-carrier preneoplastic luminal progenitors (GSE161529).
-   - This is needed to say whether any target is tumor-selective against normal duct cells, especially PRLR, ERBB4 and
-     B7-H4.
-   - Her own clean normal luminal population is too small: 79 nuclei, L2 only.
+2. **Clean normal-epithelium reference.** Done (m8). The remaining gap is a normal-breast reference on the same chemistry
+   (single-nucleus, GEM-X, introns counted). Cross-platform tests could not certify calls without the within-sample arm.
 3. **Same-platform reference.** A nuclei TNBC cohort on GEM-X with introns would remove the need for a bias model.
 4. **Protein confirmation** by IHC on tumor cells for Tier A surface targets (PSMA, ENPP3, CNT3/SLC28A3, SLC6A14) and
    for HORMAD1.
