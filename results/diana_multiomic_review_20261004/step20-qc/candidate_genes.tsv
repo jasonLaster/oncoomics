@@ -1,0 +1,48 @@
+gene	role	why
+CD44	target	amplified ~12 copies; outlier vs TNBC
+VTCN1	target	B7-H4 ADC; tumor-enriched vs TNBC
+FOLH1	target	PSMA; ~21x vs TNBC
+ENPP3	target	ENPP3 ADC; ~50x vs TNBC
+PRLR	target	PRLR; lineage
+ERBB4	target	HER4; lineage
+SLC28A3	target	CNT3 nucleoside transporter
+SLC6A14	target	amino-acid transporter
+HORMAD1	target	cancer-testis antigen
+ATR	target	ATR inhibitor context
+POLQ	target	POLQ inhibitor context
+KIF18A	target	WGD dependency
+TACSTD2	target	TROP-2 (typical; ambient-dominated)
+TOP1	target	ADC payload target
+SLFN11	target	TOP1-ADC sensitivity marker (low in tumor)
+NECTIN4	target	ADC target (typical)
+EGFR	target	typical
+CD276	target	B7-H3 (typical/below)
+SHANK2	amplicon	11q13 amplicon, top expressed
+CCND1	amplicon	11q13, not over-expressed
+CTTN	amplicon	11q13
+EWSR1	amplicon	22q12
+SPECC1L	amplicon	22q12
+LDLRAD3	amplicon	CD44 amplicon
+ELF5	lineage	9-copy segment near CD44
+EHF	lineage	9-copy segment near CD44
+ESRRG	lineage	tumor-enriched
+MECOM	lineage	3q gain
+SOX6	lineage	11p15 gain
+CARD18	outlier	largest outlier, unknown function
+KYNU	outlier	kynurenine pathway
+B2M	immune	single copy; ambient-dominated
+HLA-A	immune	ambient-dominated
+TAP1	immune	antigen processing
+PSMB9	immune	antigen processing
+NLRC5	immune	antigen processing
+CD274	immune	PD-L1
+CSN3	negative_control	background RNA (known artifact)
+KRT5	negative_control	expected absent in tumor
+PTPRC	negative_control	immune-only; should be absent in tumor
+COL1A1	negative_control	fibroblast-only
+GAPDH	housekeeping	nuclei-depleted cytoplasmic
+ACTB	housekeeping	ambient-rich
+MALAT1	housekeeping	nuclear
+BRCA1	positive_control	biallelic loss; 97% mutant pre-mRNA
+TP53	positive_control	splice-null
+CDKN1A	positive_control	p21 near-absent (TP53 loss)

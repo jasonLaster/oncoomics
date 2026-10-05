@@ -1,11 +1,15 @@
 # Bottom-up: genes Diana's tumor expresses above other TNBC tumors (2026-10-04)
 
-> **Update (step 18, 2026-10-04).** Against Diana's own normal luminal cells:
-> - PRLR, ERBB4 and VTCN1/B7-H4 are not higher in tumor. They are still far above other TNBC tumors, so they are not
->   clearly tumor-selective in her breast; for B7-H4 that means on-target, off-tumor risk.
-> - ELF5/EHF high expression is partly explained by a 9-copy DNA gain next to the CD44 amplicon.
->
-> See [step 18](../step18-tumor-vs-normal-epi/tumor_vs_normal_report.md).
+> **Update (step 19 QC, 2026-10-05).** A six-module quality control changed several single-nucleus claims (see
+> [QC report](../step20-qc/QC_REPORT.md)):
+> - **CARD18** is withdrawn: a gene-model artifact in the 2024 reference.
+> - **VTCN1/B7-H4** is not an outlier vs other TNBC once intronic counts are removed (~0.7x on mature mRNA).
+> - **ERBB4** is 99% unspliced RNA; mature mRNA is ~30x other TNBC, and HER4 protein was not detected.
+> - The earlier "same as her normal luminal cells" statements (PRLR, ERBB4, B7-H4) are withdrawn: that comparison group
+>   was mostly tumor.
+> - The genes that pass every check (Tier A) are FOLH1/PSMA, ENPP3, SLC28A3, SLC6A14, HORMAD1, POLQ, KIF18A, SHANK2,
+>   SPECC1L, LDLRAD3, EHF, ESRRG and MECOM. The "outlier vs other TNBC" rule has an estimated FDR of ~0.5 at 2x, so rank
+>   by fold.
 
 Research prioritization for discussion with the oncology team. It is not a treatment recommendation. RNA is not
 protein: every candidate needs IHC or another protein assay.

@@ -1,0 +1,6 @@
+quantity,n_genes,spearman,pearson,median_abs_diff,L1_calls,L2_calls,both,jaccard
+"tumor CPM, genes CPM>0 in either",28164,0.9933699753644774,0.9999494425910495,0.04410550915820588,,,,
+"tumor CPM, genes >=10 CPM in either",10170,0.9983124386911459,0.9999495145217789,0.03997650350496329,,,,
+"log2FC tumor vs non-malignant, >=10 CPM in either group",12187,0.9946908339047986,0.996621430753646,0.06166583872388465,,,,
+"median corrected excess vs public, tested genes",7069,0.9988132317835772,0.9990830355898016,0.034431042830180836,,,,
+outlier list (enriched stage) per library: Jaccard,900,,,,883.0,878.0,861.0,0.9566666666666667

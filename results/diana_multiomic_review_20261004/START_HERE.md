@@ -10,6 +10,7 @@ https://claude.ai/artifact/G4bVeHrbtmTgb2E3wiKzt8
 
 | Report | What it answers |
 |---|---|
+| [**Quality control of the single-cell claims**](step20-qc/QC_REPORT.md) | **Read before relying on any single-cell target.** Seven checks (counting, tumor labels, background RNA, statistics with an empirical FDR, protein, target biology, mature-mRNA-only comparison) and a per-gene trust scorecard. Tier A targets: PSMA, ENPP3, SLC28A3, SLC6A14, HORMAD1, POLQ, KIF18A and amplicon/lineage genes. Withdrawn: CARD18 (gene-model artifact) and B7-H4 as an outlier. |
 | [Integrated drug targets](step14-integrated-targets/integrated_targets_report.md) | **Start here.** Candidate targets ranked across WGS, exome, single-nucleus RNA and proteomics, with a walkthrough of how we got there. Tier 1: HRD (PARP/platinum/POLQ), TROP-2 ADC, immune-rich. Tier 2: CD44 amplicon, B7-H4, PSMA, ENPP3 and others. |
 | [Tumor vs her own normal cells](step18-tumor-vs-normal-epi/tumor_vs_normal_report.md) | Newest single-cell results:<br>- subtype: luminal-progenitor-like, with ELF5/EHF amplified;<br>- immune recognition: lowest antigen presentation in the sample, no interferon response;<br>- genes over-expressed by tumor cells, mostly on DNA gains;<br>- casein is background, not tumor;<br>- B7-H4 is also in normal duct cells. |
 | [Genes high vs other TNBC](step15-tnbc-outliers/tnbc_outliers_report.md) | Diana's tumor cells compared with tumor cells from 8 public TNBC. CD44, SLC28A3, ATR, HORMAD1, SLC6A14, PSMA. TROP-2 is typical, not an outlier. |

@@ -77,21 +77,22 @@ How the assignments were made:
 **Two later checks refine this**
 - **Partly genetic:** the luminal-progenitor master regulators ELF5 and EHF sit on a 9-copy DNA segment next to the CD44
   amplicon.
-- **Casein is background:** it first looked tumor-wide, but empty droplets hold more of it than any cell.
+- **Casein is made by the tumor cells:** the exported mRNA dominates the background RNA, but pre-mRNA is ~3.3x higher
+  in tumor nuclei (step 19).
 
 Diana's tumor nuclei vs tumor cells from 8 public TNBC (GSE161529), after a nuclei-vs-whole-cell correction:
 
 | Group | Gene | Fold vs public TNBC tumor cells | Note |
 |---|---|---|---|
-| Milk / pregnancy | CSN3 (κ-casein) | — | Background RNA, not tumor expression |
+| Milk / pregnancy | CSN3 (κ-casein) | — | Tumor-transcribed (intronic); mature mRNA dominated by background |
 | | XDH | ~12x | |
 | | LALBA (α-lactalbumin) | not detected | Target of the only lineage vaccine in the KB |
-| Alveolar progenitor programme | ERBB4 | ~77x | Not above her normal luminal cells |
+| Alveolar progenitor programme | ERBB4 | ~30x (mature mRNA) | 99% unspliced; HER4 protein not detected |
 | | ESRRG | ~60x | |
 | | MECOM | ~50x | On a chr3q gain |
 | | EHF | ~20x | On a 9-copy segment |
 | | ELF5 | ~8x | On a 9-copy segment |
-| | PRLR | ~3x | Not above her normal luminal cells |
+| | PRLR | ~7x (mature mRNA) | Tumor selectivity vs normal breast being tested |
 | Basal keratins | KRT5 | ~1/30 | |
 | | KRT14 | ~1/80 | |
 | | KRT17 | ~1/85 | |
@@ -100,7 +101,7 @@ Diana's tumor nuclei vs tumor cells from 8 public TNBC (GSE161529), after a nucl
 - **Cell of origin:** BRCA1-null breast cancers arise from luminal progenitors, and the ELF5/EHF amplification points
   toward a genetic contribution.
 - **Hormonal state:** part of the programme could be pregnancy-induced and fade now that the hormones are gone.
-- Either way, PRLR and ERBB4 are not higher than in her own normal luminal cells. The IgA plasma-cell infiltrate may be
+- The IgA plasma-cell infiltrate may be
   normal post-pregnancy breast biology rather than an anti-tumor response.
 
 **Test:** compare ELF5, PRLR, ERBB4 and IgA versus IgG plasma cells in the 9/24 surgical tissue (six months after the
@@ -248,20 +249,20 @@ remaining B2M allele added to ctDNA monitoring.
 | BRCA1 is near-null; escape would be RING-less or POLQ reversion | All mutant transcripts stop by codon ~28; 97% mutant pre-mRNA | No protein data | High | RAD51 foci; BRCA1 resequencing in residual |
 | 11q13, 22q12 and CD44 form one amplicon | 5 junctions on CN boundaries | Low read support on some junctions | Medium | AmpliconArchitect (local) |
 | Tumor is one hit from HLA-I loss | B2M 1:0; low antigen processing; no GZMB PET signal | No clonal HLA loss; processing is inducible | Medium | B2M/HLA-I IHC; B2M on ctDNA panel |
-| B7-H4 ADC + PARP fits better than TROP-2 + PARP | B7-H4 tumor-enriched vs other TNBC; TROP-2 typical; HRD verified | Advanced disease only; SLFN11-low; B7-H4 equally high in her normal duct cells | Low–medium | B7-H4 IHC |
+| B7-H4 ADC + PARP fits better than TROP-2 + PARP | HRD verified; TROP-2 typical; but B7-H4 is not above other TNBC on mature mRNA (step 19) | Advanced disease only; SLFN11-low; B7-H4 equally high in her normal duct cells | Low–medium | B7-H4 IHC |
 | Imaging extent overstates tumor mass | NME, SUV 4.1, ctDNA 0.3%, purity 0.35 | Indirect | Low–medium | Rad-path mapping at surgery |
 
 ## Corrections to earlier records
 
-- **Casein:** background RNA, not tumor expression.
-- **PRLR, ERBB4, B7-H4:** not above her normal luminal cells (step 18).
+- **Casein:** tumor-transcribed; the exported mRNA dominates the background (step 19).
+- **B7-H4, CARD18, ERBB4:** not outliers vs other TNBC on mature mRNA, or artifacts (step 19 QC).
 - **HER2:** Stanford's 4/10 report reads "0+ with membrane staining", the HER2-ultralow category, not plain 0.
 - **TP53 c.559+2T>G:** already listed in Altera's trials table and detected by Guardant on 4/3. Our pipeline confirmed
   it rather than discovered it.
 - **Proteomics:** from the 4/10 on-treatment core, not the 3/13 pre-treatment specimen.
 - **"HRD 62":** untraceable. Replace with HRD-high across fits (67–99), research grade.
 - **SLFN11 and vimentin:** the high bulk signals came from stroma. Tumor cells are SLFN11-low.
-- **ADC queue led by HER3, MET and EGFR:** a capture-library artifact. Tumor-enriched candidates are B7-H4, PSMA, CD44,
+- **ADC queue led by HER3, MET and EGFR:** a capture-library artifact. Step 19 Tier A candidates are PSMA, ENPP3, SLC28A3, SLC6A14, HORMAD1; plus CD44,
   ENPP3, PRLR and HORMAD1, pending IHC.
 - **Altera fusions:** 5 of 11 reproduce in the WGS. The PTPN2 break is probably on one copy only. IGKV2D-29::IGKJ4 is a
   normal antibody rearrangement.

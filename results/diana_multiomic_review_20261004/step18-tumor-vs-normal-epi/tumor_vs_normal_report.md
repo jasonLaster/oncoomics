@@ -1,5 +1,13 @@
 # Tumor cells vs Diana's own normal breast cells (step 18)
 
+> **Correction (step 19 QC, 2026-10-05).** Genetic checks (module 2) showed that the "normal luminal" nuclei used
+> here are 80-100% tumor, so every "tumor vs normal luminal" comparison in this report is invalid. That covers the
+> module-score column and the PRLR/ERBB4/B7-H4/POLQ table. Only the myoepithelial comparisons stand.
+> - **Casein:** tumor nuclei do transcribe κ-casein (intronic signal ~3.3x non-tumor, in 83% of tumor nuclei); the
+>   mature mRNA is exported and dominates the background.
+> - **CARD18** is a gene-model artifact.
+> - See the [QC report](../step20-qc/QC_REPORT.md).
+
 Diana multi-omic review · 2026-10-04 · research hypotheses for discussion with the oncology team, not treatment
 recommendations. RNA is not protein.
 

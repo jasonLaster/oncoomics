@@ -99,13 +99,13 @@ a{color:var(--accent)}
 <section>
   <div class="col">
     <h2><span class="tag t-preg">1</span> A pregnancy-shaped lineage, partly written in DNA</h2>
-    <p>The tumor cells' own defining genes (low background share, at least 4x above non-malignant cells) are the alveolar programme that pregnancy hormones expand, and the basal keratins that most TNBC express are nearly absent. Two later checks refine this. The luminal-progenitor master regulators ELF5 and EHF sit on a 9-copy DNA segment next to the CD44 amplicon, so the state is at least partly genetic. And casein, which first looked tumor-wide, is background RNA: empty droplets hold more of it than any cell.</p>
+    <p>The tumor cells' own defining genes (low background share, at least 4x above non-malignant cells) are the alveolar programme that pregnancy hormones expand, and the basal keratins that most TNBC express are nearly absent. Two later checks refine this. The luminal-progenitor master regulators ELF5 and EHF sit on a 9-copy DNA segment next to the CD44 amplicon, so the state is at least partly genetic. And the tumor cells transcribe κ-casein: its pre-mRNA is about 3.3x higher in tumor nuclei, though the exported mRNA dominates the background RNA.</p>
   </div>
   <figure><div class="scroll"><svg id="lineage" viewBox="0 0 760 400" width="760" role="img" aria-label="Bar chart of fold difference versus public TNBC tumor cells for lineage genes"></svg></div>
-  <figcaption>Diana's malignant nuclei vs tumor cells from 8 public TNBC (GSE161529), log2 excess after a nuclei-vs-whole-cell correction learned from shared T-cell, myeloid and fibroblast populations. CSN3 is hatched because it is background RNA (empty droplets exceed every cell type). LALBA (α-lactalbumin) is not detected in tumor nuclei.</figcaption></figure>
+  <figcaption>Diana's malignant nuclei vs tumor cells from 8 public TNBC (GSE161529), log2 excess after a nuclei-vs-whole-cell correction learned from shared T-cell, myeloid and fibroblast populations. CSN3 is hatched because its mature mRNA is dominated by background RNA; its pre-mRNA shows the tumor transcribes it. ERBB4 is shown on mature mRNA only (its signal is 99% unspliced). LALBA (α-lactalbumin) is not detected in tumor nuclei.</figcaption></figure>
   <div class="col">
     <h3>Two readings, both possible</h3>
-    <p><b>Cell of origin.</b> BRCA1-null breast cancers arise from luminal progenitors, so this state could be intrinsic. <b>Hormonal state.</b> The programme could be pregnancy-induced and fade now that the hormones are gone. Against her own normal luminal cells PRLR and ERBB4 are not higher, so neither is clearly tumor-selective. If the state is hormonal, the IgA plasma-cell infiltrate may be normal post-pregnancy breast biology rather than an anti-tumor response.</p>
+    <p><b>Cell of origin.</b> BRCA1-null breast cancers arise from luminal progenitors, so this state could be intrinsic. <b>Hormonal state.</b> The programme could be pregnancy-induced and fade now that the hormones are gone. Whether PRLR and ERBB4 are tumor-selective against normal duct cells is being tested against a public normal-breast reference. If the state is hormonal, the IgA plasma-cell infiltrate may be normal post-pregnancy breast biology rather than an anti-tumor response.</p>
     <p><b>Test:</b> compare ELF5, PRLR, ERBB4 and IgA versus IgG plasma cells in the 9/24 surgical tissue (six months after the pregnancy) with the 4/10 core. The Altera 3/13 RNA would add the untreated, in-pregnancy timepoint.</p>
     <p class="note">The only lineage vaccine in the knowledge base targets α-lactalbumin (NCT04674306). Diana's tumor cells do not express it.</p>
   </div>
@@ -167,7 +167,7 @@ a{color:var(--accent)}
       <tr><td>BRCA1 is near-null; escape would be RING-less or POLQ reversion</td><td>All mutant transcripts stop by codon ~28; 97% mutant pre-mRNA</td><td>No protein data</td><td class="conf c-hi">High</td><td>RAD51 foci; BRCA1 resequencing in residual</td></tr>
       <tr><td>11q13, 22q12 and CD44 form one amplicon</td><td>5 junctions on CN boundaries</td><td>Low read support on some junctions</td><td class="conf c-md">Medium</td><td>AmpliconArchitect (local)</td></tr>
       <tr><td>Tumor is one hit from HLA-I loss</td><td>B2M 1:0; low antigen processing; no GZMB PET signal</td><td>No clonal HLA loss; processing is inducible</td><td class="conf c-md">Medium</td><td>B2M/HLA-I IHC; B2M on ctDNA panel</td></tr>
-      <tr><td>B7-H4 ADC + PARP fits better than TROP-2 + PARP</td><td>B7-H4 tumor-enriched; TROP-2 typical; HRD verified</td><td>Advanced disease only; SLFN11-low; B7-H4 equally high in her normal duct cells</td><td class="conf c-lo">Low–medium</td><td>B7-H4 IHC</td></tr>
+      <tr><td>B7-H4 ADC + PARP fits better than TROP-2 + PARP</td><td>HRD verified; TROP-2 typical</td><td>B7-H4 not above other TNBC on mature mRNA (QC); advanced disease only; SLFN11-low</td><td class="conf c-lo">Low–medium</td><td>B7-H4 IHC</td></tr>
       <tr><td>Imaging extent overstates tumor mass</td><td>NME, SUV 4.1, ctDNA 0.3%, purity 0.35</td><td>Indirect</td><td class="conf c-lo">Low–medium</td><td>Rad-path mapping at surgery</td></tr>
     </tbody>
   </table></div>
@@ -177,13 +177,13 @@ a{color:var(--accent)}
   <div class="col">
     <h2>Corrections to earlier records</h2>
     <ul>
-      <li><b>Casein:</b> background RNA, not tumor expression. <b>PRLR, ERBB4, B7-H4:</b> not above her normal luminal cells (step 18).</li>
+      <li><b>Casein:</b> tumor-transcribed; its exported mRNA dominates the background. <b>B7-H4, ERBB4, CARD18:</b> not outliers on mature mRNA, or a gene-model artifact (step 19 QC).</li>
       <li><b>HER2:</b> Stanford's 4/10 report reads "0+ with membrane staining", the HER2-ultralow category, not plain 0.</li>
       <li><b>TP53 c.559+2T>G:</b> already listed in Altera's trials table and detected by Guardant on 4/3. Our pipeline confirmed it rather than discovered it.</li>
       <li><b>Proteomics:</b> from the 4/10 on-treatment core, not the 3/13 pre-treatment specimen.</li>
       <li><b>"HRD 62":</b> untraceable. Replace with HRD-high across fits (67–99), research grade.</li>
       <li><b>SLFN11 and vimentin:</b> the high bulk signals came from stroma. Tumor cells are SLFN11-low.</li>
-      <li><b>ADC queue led by HER3, MET and EGFR:</b> a capture-library artifact. Tumor-enriched candidates are B7-H4, PSMA, CD44, ENPP3, PRLR and HORMAD1, pending IHC.</li>
+      <li><b>ADC queue led by HER3, MET and EGFR:</b> a capture-library artifact. The QC's Tier A candidates are PSMA, ENPP3, SLC28A3, SLC6A14 and HORMAD1, pending IHC.</li>
       <li><b>Altera fusions:</b> 5 of 11 reproduce in the WGS. The PTPN2 break is probably on one copy only. IGKV2D-29::IGKJ4 is a normal antibody rearrangement.</li>
     </ul>
   </div>
@@ -265,11 +265,11 @@ function bars(id,data,opt){
 }
 bars("lineage",[
   {group:"Milk / pregnancy"},
-  {g:"CSN3",v:11.95,c:"--preg",hatch:1,note:"background RNA"},
+  {g:"CSN3",v:11.95,c:"--preg",hatch:1,note:"mostly background"},
   {g:"XDH",v:3.57,c:"--preg"},
   {g:"LALBA",nd:1},
   {group:"Alveolar progenitor programme"},
-  {g:"ERBB4",v:6.27,c:"--preg"},{g:"ESRRG",v:5.90,c:"--preg"},{g:"MECOM",v:5.64,c:"--preg"},
+  {g:"ERBB4",v:4.91,c:"--preg",note:"mature mRNA"},{g:"ESRRG",v:5.90,c:"--preg"},{g:"MECOM",v:5.64,c:"--preg"},
   {g:"EHF",v:4.38,c:"--preg"},{g:"ELF5",v:3.02,c:"--preg"},{g:"PRLR",v:1.53,c:"--preg"},
   {group:"Basal keratins"},
   {g:"KRT5",v:-5.03,c:"--neutral"},{g:"KRT14",v:-6.33,c:"--neutral"},{g:"KRT17",v:-6.43,c:"--neutral"}

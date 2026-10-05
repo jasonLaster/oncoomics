@@ -17,8 +17,8 @@ Diana multi-omic review · 2026-10-04 · research hypotheses for discussion with
    - It may contribute to three findings we had treated as tumor-intrinsic: the luminal-progenitor
      (ELF5/PRLR/ERBB4) tumor state, the IgA-dominant plasma-cell infiltrate, and part of the MRI "response".
    - Update (step 18): the luminal-progenitor master regulators ELF5 and EHF sit on a 9-copy DNA segment next to the
-     CD44 amplicon, so that state is at least partly genetic. Casein in the single-nucleus data turned out to be
-     background RNA, not tumor expression.
+     CD44 amplicon, so that state is at least partly genetic. Casein is transcribed by the tumor nuclei (intronic
+     signal; step 19), although its exported mRNA dominates the background.
 2. **The datasets come from two biopsy events, and most of the tumor-cell and immune data are on-treatment.**
    - **3/13 block (pregnant, untreated):** WGS, Altera, Signatera and NeXT Personal.
    - **4/10 core (day 8 of chemo-immunotherapy, the morning after the second carboplatin/paclitaxel):** exome/RNA,
@@ -35,8 +35,8 @@ Diana multi-omic review · 2026-10-04 · research hypotheses for discussion with
    - The BLUESTAR arm pairs a B7-H4 ADC with a PARP inhibitor. It was set aside because it does not target TROP-2.
    - B7-H4 is tumor-enriched in Diana's cells, TROP-2 is only typical, and HRD is verified.
    - That arm is for advanced disease, so it is relevant mainly as a reference point.
-   - Caution (step 18): B7-H4 is about as high in her normal duct cells as in tumor, so on-target, off-tumor effects
-     need weighing.
+   - Correction (step 19 QC): on mature mRNA, B7-H4 is not above other TNBC (~0.7x); its earlier excess was intronic.
+     HPA lists normal breast as its top tissue. This weakens the BLUESTAR point.
 6. **Immune escape: "hot stroma, quiet tumor cells, one hit from invisible".**
    - B2M is single-copy and the antigen-processing genes are low in tumor cells.
    - In the corpus there is a TNBC vaccine patient who relapsed by losing B2M.
@@ -53,9 +53,11 @@ Diana multi-omic review · 2026-10-04 · research hypotheses for discussion with
 - hCG was 1,472 IU/L on 4/2, falling to 3 by 5/26.
 
 **What our data show (checked today).**
-- **Milk protein (corrected in step 18):** CSN3 (casein-kappa) appears in 99% of malignant nuclei, but empty droplets
-  contain more of it (3,790-5,460 CPM) than any cell type, and β-casein and α-lactalbumin are absent. It is background
-  RNA and says nothing about the tumor cells.
+- **Milk protein (revised in step 19):**
+  - Mature κ-casein (CSN3) mRNA is highest in the background RNA.
+  - But its pre-mRNA (intronic) is ~3.3x higher in tumor nuclei than in non-tumor nuclei, and is present in 83% of
+    them. So the tumor cells transcribe κ-casein.
+  - β-casein and α-lactalbumin are absent.
 - **Tumor-intrinsic programme:** the following genes have low ambient share (<0.12) and are at least 4x higher than in
   non-malignant nuclei.
 
@@ -68,7 +70,8 @@ Diana multi-omic review · 2026-10-04 · research hypotheses for discussion with
 
   This is the alveolar programme that pregnancy hormones expand. But ELF5 and EHF are on a 9-copy segment
   (chr11:34.4-35.1 Mb, 6:3) adjacent to the CD44 amplicon, so their high expression is at least partly genetic.
-  Against her own normal luminal cells, PRLR and ERBB4 are not higher (step 18), so neither is clearly tumor-selective.
+  ERBB4's signal is 99% unspliced RNA (step 19). Whether PRLR and ERBB4 are tumor-selective vs normal duct cells is
+  being tested against a public normal-breast reference.
 - **IgA:** IgA dominates IgG in both bulk RNA and the single-nucleus data. The epithelial chemokine CCL28 is expressed;
   it is linked in the literature to IgA plasma-cell homing to the lactating gland.
 
@@ -77,8 +80,7 @@ Diana multi-omic review · 2026-10-04 · research hypotheses for discussion with
 - **(b) Hormonal state:** the state was induced by the pregnancy and should fade after termination and Lupron.
 
 **Why it matters.**
-- If (b), PRLR- or ERBB4-directed ideas lose their driver over time. Either way, step 18 finds neither clearly above her
-  normal luminal cells.
+- If (b), PRLR- or ERBB4-directed ideas lose their driver over time.
 - The IgA infiltrate may be gestational and involution physiology rather than an anti-tumor response.
 - The 50% sTIL score, taken at day 8 post-pregnancy and on treatment, may overstate cytotoxic engagement.
 
@@ -265,7 +267,7 @@ usually activated epigenetically rather than by damage, which argues against thi
 | Proteomics date | 4/10 Stanford core (on-treatment), not 3/13 pre-treatment. |
 | SLFN11 "discordance" | Resolved: tumor cells are SLFN11-low, and the high bulk signal was stroma. |
 | VIM "mesenchymal" | Stromal, not tumor EMT. |
-| ADC atlas queue (HER3/MET/EGFR) | Capture-library artifact. Replace with B7-H4, PSMA, CD44, ENPP3, PRLR, HORMAD1, pending IHC. |
+| ADC atlas queue (HER3/MET/EGFR) | Capture-library artifact. Replace with the step 19 Tier A list (PSMA, ENPP3, SLC28A3, SLC6A14, HORMAD1), pending IHC. |
 | Altera fusions | 5/11 reproduce in WGS. PTPN2 break is probably one copy only. IGKV::IGKJ is normal antibody rearrangement. A2M, PAX3, FNBP1L::FAM129A not supported. |
 | PD-L1 CPS | Never resulted. |
 | hENT1 / TYMP proteomics labels | Mostly from stroma in this tumor; the tumor's nucleoside transporter is CNT3 (not on the panel). |

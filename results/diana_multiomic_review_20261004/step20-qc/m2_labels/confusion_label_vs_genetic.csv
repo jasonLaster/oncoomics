@@ -1,0 +1,7 @@
+lib,malignant_label,ambiguous,genetic_normal,genetic_tumor,no_molecule
+KH022-1,malignant,8252,57,2028,2503
+KH022-1,non_malignant,4359,28,9,6841
+KH022-1,unresolved,581,0,22,786
+KH022-1-1,malignant,7828,51,1999,2868
+KH022-1-1,non_malignant,4113,24,6,6730
+KH022-1-1,unresolved,463,0,17,798
