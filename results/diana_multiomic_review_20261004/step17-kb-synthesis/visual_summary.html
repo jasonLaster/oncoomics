@@ -79,10 +79,21 @@ a{color:var(--accent)}
 <section>
   <div class="col">
     <h2>The timeline that frames every dataset</h2>
-    <p>Each result describes the tumor at a particular moment. The pregnancy ended about a week before chemo-immunotherapy started, and the research biopsy that fed most tumor-cell and immune assays was taken eight days into treatment, about 24 hours after the second carboplatin and paclitaxel dose.</p>
+    <p>Each result describes the tumor at a particular moment. The pregnancy ended about a week before chemo-immunotherapy started, and the research biopsy that fed most tumor-cell and immune assays was taken eight days into treatment, the morning after the second carboplatin and paclitaxel dose.</p>
   </div>
   <figure><div class="scroll"><svg id="timeline" viewBox="0 0 940 360" width="940" role="img" aria-label="Timeline from February to October 2026 showing pregnancy, biopsies, treatment phases and which assays came from which biopsy"></svg></div>
   <figcaption>Specimen assignments trace accession and block numbers across vendor reports. The NeXT Personal tissue accession PSN49561A2 matches the WGS sample DRF-PSN49561. The proteomics specimen ID SP-26-027487-BR-VL3-A1 is the 4/10 Stanford core, even though its header says 3/13. KH022 = 4/10 is an inference (Kernis customer ID, flash-frozen 4/10 vials, breast composition) awaiting the manifest.</figcaption></figure>
+  <div class="tablebox"><table>
+    <thead><tr><th>Date</th><th>Specimen</th><th>Pregnancy / treatment state</th><th>Samples and data</th></tr></thead>
+    <tbody>
+      <tr><td><b>3/13</b></td><td>Sutter breast core, block A2</td><td>~8 weeks pregnant, untreated</td><td>Altera DNA/RNA · Signatera panel · NeXT Personal panel · <b>WGS</b></td></tr>
+      <tr><td><b>3/23</b></td><td>Stanford axillary node core</td><td>Pregnant, untreated</td><td>HistoWiz TIL score (10%)</td></tr>
+      <tr><td><b>4/10</b></td><td>Stanford breast research core, FFPE block A1</td><td>16 days after the pregnancy ended; day 8 of treatment, the morning after dose 2</td><td>Personalis <b>exome + RNA</b> · <b>Proteomics</b> · HistoWiz TIL score (50%) · Ki67 61-70%</td></tr>
+      <tr><td><b>4/10</b></td><td>Same biopsy, flash-frozen breast vials</td><td>Same as above</td><td><b>Single-nucleus RNA (KH022)</b>, likely; not yet confirmed by Signios</td></tr>
+      <tr><td><b>9/24</b></td><td>Surgery</td><td>After treatment</td><td>Pathology not yet available</td></tr>
+    </tbody>
+  </table></div>
+  <p class="note col">Blood (not tumor): 4/1 Altera normal and Signatera baseline · 4/3 Guardant360 · 4/18–7/20 Signatera and NeXT Personal ctDNA series.</p>
 </section>
 
 <section>
@@ -152,7 +163,7 @@ a{color:var(--accent)}
       <tr><td>The tumor cell state carries a pregnancy imprint</td><td>ELF5/PRLR/ERBB4/XDH programme; pregnancy confirmed</td><td>ELF5/EHF amplified (9 copies); BRCA1-null tumors are luminal-progenitor-derived anyway</td><td class="conf c-md">Medium</td><td>ELF5/PRLR on 9/24 surgery tissue</td></tr>
       <tr><td>IgA infiltrate is partly gestational physiology</td><td>IgA ≫ IgG; CCL28 expressed; post-pregnancy timing</td><td>High TILs + HRD predict response on their own</td><td class="conf c-md">Medium</td><td>IgA/IgG and CCL28 IHC, 3/13 vs surgery</td></tr>
       <tr><td>Immune data reflect day-8 treatment, not baseline</td><td>Accessions tie sTIL, proteomics, exome/RNA to 4/10</td><td>KH022 date still inferred</td><td class="conf c-hi">High</td><td>Score the 3/13 slide; KH022 manifest</td></tr>
-      <tr><td>POLQ/ATR/HORMAD1 programme is intrinsic</td><td>Proliferation genes not raised; p21 absent</td><td>Carboplatin 24 h earlier</td><td class="conf c-md">Medium</td><td>Altera 3/13 RNA</td></tr>
+      <tr><td>POLQ/ATR/HORMAD1 programme is intrinsic</td><td>Proliferation genes not raised; p21 absent</td><td>Carboplatin the day before</td><td class="conf c-md">Medium</td><td>Altera 3/13 RNA</td></tr>
       <tr><td>BRCA1 is near-null; escape would be RING-less or POLQ reversion</td><td>All mutant transcripts stop by codon ~28; 97% mutant pre-mRNA</td><td>No protein data</td><td class="conf c-hi">High</td><td>RAD51 foci; BRCA1 resequencing in residual</td></tr>
       <tr><td>11q13, 22q12 and CD44 form one amplicon</td><td>5 junctions on CN boundaries</td><td>Low read support on some junctions</td><td class="conf c-md">Medium</td><td>AmpliconArchitect (local)</td></tr>
       <tr><td>Tumor is one hit from HLA-I loss</td><td>B2M 1:0; low antigen processing; no GZMB PET signal</td><td>No clonal HLA loss; processing is inducible</td><td class="conf c-md">Medium</td><td>B2M/HLA-I IHC; B2M on ctDNA panel</td></tr>
@@ -225,7 +236,7 @@ const css=v=>getComputedStyle(document.documentElement).getPropertyValue(v).trim
   el(s,"text",{x:X(xx),y:226,"font-size":10,class:"mut"},"pregnant, untreated");
   xx=d(4,10);el(s,"line",{x1:X(xx),x2:X(xx),y1:146,y2:250,stroke:"var(--fg)","stroke-dasharray":"2 3"});
   off=0;["Exome/RNA","Proteomics","TIL 50%","snRNA KH022 (likely)"].forEach(n=>{const w=chip(xx+off,262,n,"var(--treat)");off+=(w+8)/(x1-x0)*(t1-t0)});
-  el(s,"text",{x:X(xx),y:288,"font-size":10,class:"mut"},"16 days after pregnancy ended · day 8 of treatment · ~24 h after dose 2");
+  el(s,"text",{x:X(xx),y:288,"font-size":10,class:"mut"},"16 days after pregnancy ended · day 8 of treatment · morning after dose 2");
   // other
   [[d(4,1),"MRI 87 mm"],[d(6,26),"MRI 65"],[d(7,17),"57"],[d(8,24),"57"]].forEach(([t,l])=>{el(s,"rect",{x:X(t)-3,y:312,width:6,height:12,fill:"var(--neutral)"});el(s,"text",{x:X(t)+6,y:322,"font-size":10,class:"mut"},l)});
   el(s,"text",{x:X(d(3,23))-4,y:322,"font-size":10,class:"mut","text-anchor":"end"},"TIL 10%");

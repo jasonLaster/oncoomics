@@ -24,8 +24,8 @@ library) against everything the sequencing work has verified. Five connections c
 ## The timeline that frames every dataset
 
 Each result describes the tumor at a particular moment. The pregnancy ended about a week before chemo-immunotherapy
-started. The research biopsy that fed most tumor-cell and immune assays was taken eight days into treatment, about
-24 hours after the second carboplatin and paclitaxel dose.
+started. The research biopsy that fed most tumor-cell and immune assays was taken eight days into treatment, the
+morning after the second carboplatin and paclitaxel dose.
 
 ```mermaid
 gantt
@@ -49,11 +49,15 @@ gantt
     MRI 57 mm                         :milestone, 2026-08-24, 0d
 ```
 
-| Biopsy | State at collection | Datasets |
-|---|---|---|
-| **3/13 Sutter breast core** (block A2) | Pregnant (~8 weeks), untreated | **WGS**, Altera, Signatera, NeXT Personal |
-| **3/23 Stanford axillary node** | Pregnant, untreated | HistoWiz node TIL 10% |
-| **4/10 Stanford research core** | 16 days after the pregnancy ended; day 8 of treatment; the morning after dose 2 (08:40) | **Exome/RNA**, **proteomics**, HistoWiz breast TIL 50%, **single-nucleus KH022 (likely)** |
+| Date | Specimen | Pregnancy / treatment state | Samples and data from it |
+|---|---|---|---|
+| **3/13** | Sutter breast core, block A2 (`SUS-26-01600`) | ~8 weeks pregnant, untreated | Altera DNA/RNA · Signatera panel · NeXT Personal panel · **WGS** |
+| **3/23** | Stanford axillary node core (`SP-26-022231`) | Pregnant, untreated | HistoWiz TIL score (10%) |
+| **4/10** | Stanford breast research core (`SP-26-027487`), FFPE block A1 | 16 days after the pregnancy ended; day 8 of treatment, the morning after dose 2 | Personalis **exome + RNA** · **Proteomics** · HistoWiz TIL score (50%) · Ki67 61-70% |
+| **4/10** | Same biopsy, flash-frozen breast vials | Same as above | **Single-nucleus RNA (KH022)**, likely; vial and date not yet confirmed by Signios |
+| **9/24** | Surgery | After treatment | Pathology not yet available |
+
+Blood (not tumor): 4/1 Altera normal and Signatera baseline · 4/3 Guardant360 · 4/18-7/20 Signatera and NeXT Personal ctDNA series.
 
 How the assignments were made:
 - They trace accession and block numbers across vendor reports.
@@ -240,7 +244,7 @@ remaining B2M allele added to ctDNA monitoring.
 | The tumor cell state carries a pregnancy imprint | ELF5/PRLR/ERBB4/XDH programme; pregnancy confirmed | ELF5/EHF amplified (9 copies); BRCA1-null tumors are luminal-progenitor-derived anyway | Medium | ELF5/PRLR on 9/24 surgery tissue |
 | IgA infiltrate is partly gestational physiology | IgA ≫ IgG; CCL28 expressed; post-pregnancy timing | High TILs + HRD predict response on their own | Medium | IgA/IgG and CCL28 IHC, 3/13 vs surgery |
 | Immune data reflect day-8 treatment, not baseline | Accessions tie TIL, proteomics, exome/RNA to 4/10 | KH022 date still inferred | High | Score the 3/13 slide; KH022 manifest |
-| POLQ/ATR/HORMAD1 programme is intrinsic | Proliferation genes not raised; p21 absent | Carboplatin 24 h earlier | Medium | Altera 3/13 RNA |
+| POLQ/ATR/HORMAD1 programme is intrinsic | Proliferation genes not raised; p21 absent | Carboplatin the day before | Medium | Altera 3/13 RNA |
 | BRCA1 is near-null; escape would be RING-less or POLQ reversion | All mutant transcripts stop by codon ~28; 97% mutant pre-mRNA | No protein data | High | RAD51 foci; BRCA1 resequencing in residual |
 | 11q13, 22q12 and CD44 form one amplicon | 5 junctions on CN boundaries | Low read support on some junctions | Medium | AmpliconArchitect (local) |
 | Tumor is one hit from HLA-I loss | B2M 1:0; low antigen processing; no GZMB PET signal | No clonal HLA loss; processing is inducible | Medium | B2M/HLA-I IHC; B2M on ctDNA panel |

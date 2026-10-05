@@ -94,11 +94,32 @@ pregnancy) against the 4/10 core.
 
 ## 2. Specimen map: what each result actually describes
 
-| Specimen | Treatment and pregnancy state | Datasets |
+| Date | Specimen | Pregnancy / treatment state | Samples and data from it |
+|---|---|---|---|
+| **3/13** | Sutter breast core, block A2 (`SUS-26-01600`) | ~8 weeks pregnant, untreated | Altera DNA/RNA · Signatera panel · NeXT Personal panel · **WGS** |
+| **3/23** | Stanford axillary node core (`SP-26-022231`) | Pregnant, untreated | HistoWiz TIL score (10%) |
+| **4/10** | Stanford breast research core (`SP-26-027487`), FFPE block A1 | 16 days after the pregnancy ended; day 8 of treatment, the morning after dose 2 | Personalis **exome + RNA** · **Proteomics** · HistoWiz TIL score (50%) · Ki67 61-70% |
+| **4/10** | Same biopsy, flash-frozen breast vials | Same as above | **Single-nucleus RNA (KH022)**, likely; vial and date not yet confirmed by Signios |
+| **9/24** | Surgery | After treatment | Pathology not yet available |
+
+Blood (not tumor):
+
+| Date | Sample |
+|---|---|
+| 4/1 | Altera normal (blood) · Signatera baseline |
+| 4/3 | Guardant360 ctDNA |
+| 4/18 – 7/20 | Signatera and NeXT Personal ctDNA series |
+
+**How the assignments were checked**
+
+| Link | Evidence | Grade |
 |---|---|---|
-| 3/13 Sutter `SUS-26-01600` block A2 | Pregnant (~8 wk), untreated | Altera; Signatera and NeXT Personal panels; **our WGS** (NeXT accession `PSN49561A2` = WGS `DRF-PSN49561`) |
-| 3/23 Stanford node `SP-26-022231` | Pregnant, untreated | HistoWiz node sTIL 10% |
-| 4/10 Stanford core `SP-26-027487` | 16 d after termination; day 8 after pembrolizumab #1; the morning after carboplatin/paclitaxel #2 | Personalis exome/RNA (Echo requested this block on 6/10 with the E019 form; Personalis returned its DNA/RNA extractions and the block to Kernis); **proteomics** (`SP-26-027487-BR-VL3-A1`, header "3/13 Sutter" is wrong); HistoWiz breast sTIL 50%; Ki67 61-70%; **KH022 snRNA** (medium-high confidence: Kernis customer ID, flash-frozen 4/10 vials, breast composition) |
+| Altera, Signatera, NeXT Personal = 3/13 A2 | Block A2 named on each report | Confirmed |
+| WGS = 3/13 A2 | WGS sample `DRF-PSN49561` shares the NeXT Personal accession prefix `PSN49561`; the 6/26 delivery email calls it the WGS "from their NeXT Personal test" | Strong inference |
+| Exome/RNA = 4/10 | Echo requested block SP-26-027487 on 6/10 with the E019 form; Personalis returned its DNA/RNA extractions and the block to Kernis | Strong inference |
+| Proteomics = 4/10 | PDF specimen ID `SP-26-027487-BR-VL3-A1`; its "3/13, Sutter" header fields are carried over from the original A2 order, which was abandoned when A2 was exhausted (7/29 email) | Source conflict, resolved to 4/10 |
+| HistoWiz slides | HistoWiz workbook | Confirmed |
+| KH022 = 4/10 frozen breast vial | Kernis held the only frozen tissue (4/10 vials); Signios quoted single-nucleus RNA on frozen tissue; shipment planned 9/8; breast composition | Inference |
 
 **Consequences.**
 - **The ~10% subclone in Altera and WGS but absent from the exome is explained:** the WGS and Altera came from the same
