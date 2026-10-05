@@ -31,6 +31,7 @@ Sections 7-10 hold round-by-round results and corrections.
 | 16 | step16-problems-report | Problems found in the EVEE report and the bulk-RNA bottom-up comparison |
 | 17 | step17-kb-synthesis | Connecting the omics with the clinical record, imaging, lab reports and literature (`connect_the_dots.md`) |
 | 18 | step18-tumor-vs-normal-epi | Tumor cells vs her own normal cells: subtype, immune recognition, over-expressed genes, casein, CDH1 |
+| 19 | step19-cbioportal-dna | How unusual Diana's DNA changes are across ~5,000 public breast tumors (TCGA, METABRIC, MSK) |
 
 Only reports and small tables are included. Read data (BAM slices), VCFs, images, slide labels, vendor PDFs and
 analysis scripts stay in private storage.

@@ -37,6 +37,7 @@ https://claude.ai/artifact/G4bVeHrbtmTgb2E3wiKzt8
 
 | Report | What it answers |
 |---|---|
+| [How unusual is her DNA?](step19-cbioportal-dna/dna_rarity_report.md) | Diana's copy-number and driver changes against ~5,000 public breast tumors. Her 11q13 + 22q12 + CD44 amplicon is found in none of ~3,200 genome-wide-profiled tumors; CD44 + ELF5/EHF co-amplification is a recognized pattern in ~6-9% of TNBC; B2M loss and 3q gain are common TNBC changes. |
 | [WGS somatic calls](step8-wgs-somatic/wgs_somatic_report.md) | Consensus mutations, structural variants, signatures and TMB. |
 | [Copy number, purity, HRD scars](step5-ascn/ascn_report.md) | Purity 0.35, ploidy 2.8, HRD scars 67-99, B2M single copy, no clonal HLA loss. |
 | [Single-nucleus malignant calls](step6-scrna-malignant/scrna_malignant_report.md) | How tumor nuclei were identified, and target readouts. |
