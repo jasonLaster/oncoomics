@@ -1,5 +1,7 @@
 # Diana multi-omic review, 2026-10-02 to 2026-10-04
 
+**Sharing? Start with [START_HERE.md](START_HERE.md)** for the curated reports (drug candidates, what went wrong, connect the dots).
+
 Research analysis of Diana's TNBC data, published at the data owner's direction. It is not a clinical report or a
 treatment recommendation. Every finding needs review by her oncology team and, where noted, confirmation by a
 CLIA-certified assay.
@@ -28,6 +30,7 @@ Sections 7-10 hold round-by-round results and corrections.
 | 15 | step15-tnbc-outliers | Genes Diana's tumor expresses above other TNBC tumors (bulk vs TCGA plus tumor nuclei vs public TNBC tumor cells) |
 | 16 | step16-problems-report | Problems found in the EVEE report and the bulk-RNA bottom-up comparison |
 | 17 | step17-kb-synthesis | Connecting the omics with the clinical record, imaging, lab reports and literature (`connect_the_dots.md`) |
+| 18 | step18-tumor-vs-normal-epi | Tumor cells vs her own normal cells: subtype, immune recognition, over-expressed genes, casein, CDH1 |
 
 Only reports and small tables are included. Read data (BAM slices), VCFs, images, slide labels, vendor PDFs and
 analysis scripts stay in private storage.

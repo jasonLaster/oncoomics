@@ -1,6 +1,6 @@
-# Reconciled somatic findings across Altera, the July 17 summary, the EVEE report and the WGS early look (PRIVATE)
+# Reconciled somatic findings across Altera, the July 17 summary, the EVEE report and the WGS early look
 
-Research prioritization only; nothing here is clinical. Git-ignored (`private/`); never commit. Generated 2026-10-03 (step 7).
+Research prioritization only; nothing here is clinical. Generated 2026-10-03 (step 7).
 Machine-readable: `results/reconciled_table.tsv` (per variant, chosen site, counts) and `results/audit_results.json` (every candidate site).
 
 ## How to read it

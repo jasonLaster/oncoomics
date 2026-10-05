@@ -1,6 +1,6 @@
 # BRCA1 c.81-1G>A: direct RNA evidence in the existing bulk tumor RNA-seq (step 4)
 
-PRIVATE (git-ignored). Research prioritization only; not a clinical interpretation. 2026-10-03.
+Research prioritization only; not a clinical interpretation. 2026-10-03.
 Genome build for everything below: hs37d5 / GRCh37, contig `17`, 1-based coordinates. Transcript NM_007294.4 (BRCA1, minus strand).
 
 ## 1. Headline

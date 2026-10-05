@@ -1,6 +1,6 @@
 # Deep-exome audit of the ten EVEE-report alleles (Personalis ImmunoID tumor/normal exome, hs37d5 / GRCh37)
 
-PRIVATE patient analysis; lives under git-ignored `private/`. Never commit. Research prioritization only; no clinical claim. Generated 2026-10-03.
+Research prioritization only; no clinical claim. Generated 2026-10-03.
 
 ## Bottom line
 

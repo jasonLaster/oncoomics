@@ -1,5 +1,12 @@
 # Integrated candidate drug targets (2026-10-04)
 
+> **Update (step 18, 2026-10-04).** Against Diana's own normal luminal cells:
+> - PRLR, ERBB4 and VTCN1/B7-H4 are not higher in tumor. They are still far above other TNBC tumors, so they are not
+>   clearly tumor-selective in her breast; for B7-H4 that means on-target, off-tumor risk.
+> - ELF5/EHF high expression is partly explained by a 9-copy DNA gain next to the CD44 amplicon.
+>
+> See [step 18](../step18-tumor-vs-normal-epi/tumor_vs_normal_report.md).
+
 Research prioritization from Diana's data, to discuss with her oncology team. It is not a treatment recommendation.
 Approval status and trial eligibility must come from the treating oncologist. Each candidate lists the
 evidence layers that support it and what would confirm or refute it.

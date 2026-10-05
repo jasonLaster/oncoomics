@@ -1,4 +1,4 @@
-# Step 9: bulk tumor RNA vs TCGA (private, 2026-10-03)
+# Step 9: bulk tumor RNA vs TCGA (2026-10-03)
 
 This is research prioritization only. It makes no clinical or treatment claims. There is one bulk sample, so every
 number below is a relative position against public tumors, not a diagnosis. Sources and commands are in `README.md`;

@@ -1,4 +1,4 @@
-# Tumor-cell-enriched, potentially druggable targets from single-nucleus RNA (private, 2026-10-04)
+# Tumor-cell-enriched, potentially druggable targets from single-nucleus RNA (2026-10-04)
 
 Research prioritization only. It is not a treatment recommendation; any target needs protein confirmation (IHC)
 and oncologist review. KH022 is an undated specimen, possibly taken at a different time than the March FFPE block.

@@ -1,4 +1,4 @@
-# Serova SRV-DL-T0: transcription and data audit (private, 2026-10-04)
+# Serova SRV-DL-T0: transcription and data audit (2026-10-04)
 
 Research audit of the vendor's stated evidence against our independent data. It is input for discussion with
 Serova and the clinical team, not a design recommendation. KH022 (single-nucleus) is a different, undated

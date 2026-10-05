@@ -1,5 +1,12 @@
 # Bottom-up: genes Diana's tumor expresses above other TNBC tumors (2026-10-04)
 
+> **Update (step 18, 2026-10-04).** Against Diana's own normal luminal cells:
+> - PRLR, ERBB4 and VTCN1/B7-H4 are not higher in tumor. They are still far above other TNBC tumors, so they are not
+>   clearly tumor-selective in her breast; for B7-H4 that means on-target, off-tumor risk.
+> - ELF5/EHF high expression is partly explained by a 9-copy DNA gain next to the CD44 amplicon.
+>
+> See [step 18](../step18-tumor-vs-normal-epi/tumor_vs_normal_report.md).
+
 Research prioritization for discussion with the oncology team. It is not a treatment recommendation. RNA is not
 protein: every candidate needs IHC or another protein assay.
 
