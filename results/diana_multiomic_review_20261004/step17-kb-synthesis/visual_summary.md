@@ -53,7 +53,7 @@ gantt
 |---|---|---|
 | **3/13 Sutter breast core** (block A2) | Pregnant (~8 weeks), untreated | **WGS**, Altera, Signatera, NeXT Personal |
 | **3/23 Stanford axillary node** | Pregnant, untreated | HistoWiz node TIL 10% |
-| **4/10 Stanford research core** | 16 days after the pregnancy ended; day 8 of treatment; ~24 h after dose 2 | **Exome/RNA**, **proteomics**, HistoWiz breast TIL 50%, **single-nucleus KH022 (likely)** |
+| **4/10 Stanford research core** | 16 days after the pregnancy ended; day 8 of treatment; the morning after dose 2 (08:40) | **Exome/RNA**, **proteomics**, HistoWiz breast TIL 50%, **single-nucleus KH022 (likely)** |
 
 How the assignments were made:
 - They trace accession and block numbers across vendor reports.
