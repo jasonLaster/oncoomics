@@ -73,3 +73,43 @@ Controls behave as expected:
 **Files:**
 - `exon_only_vs_atlas.py`, `exon_only_vs_atlas.csv`, `run.log`.
 - Atlas contents: `reference_atlas_contents.md`.
+
+
+---
+
+## Update: expanded atlas (v2: 109 TNBC patients, 2026-10-05)
+
+The atlas grew to 109 TNBC patients with tumor cells. The new tests are below; files are `exon_only_vs_atlas_v2.csv`,
+`nuclei_vs_htapp.csv`, `run_v2.log` and `run_nuclei.log`.
+
+### A. More tumor-cell references (exon-only, as above)
+
+- **Author-labelled whole-cell tumors (118 samples):** every Tier A gene still exceeds essentially all of them.
+- **Two new reference groups:** the 11 BREAKFAST tumors sampled on chemotherapy (after one AC cycle) and the 42
+  tumor-epithelium samples without author labels.
+- **On-chemotherapy result:** Tier A genes exceed 91-100% of these tumors. So the signal is not simply what
+  chemotherapy does to TNBC cells, although AC is not Diana's carboplatin/paclitaxel regimen.
+
+### B. Like-for-like nuclei comparison (11 HTAPP metastatic TNBC biopsies)
+
+This compares nuclei with nuclei, both with intronic reads counted, with no correction. It is the closest technical
+match available, but these are pretreated metastatic tumors, mostly liver.
+
+| Group | Genes | Fold vs HTAPP nuclei (median) |
+|---|---|---|
+| **Still far above** | SPECC1L, SLC6A14, KYNU, SLC28A3, SOX6, ERBB4, MECOM, FOLH1, HORMAD1, ELF5, ESRRG, ENPP3, EHF, LDLRAD3 | 11-290x |
+| Modestly above | SHANK2, CADM1, KIF18A, EWSR1, CTTN, CD44 | 3-8x |
+| **Typical** | **POLQ (1.1x), ATR (1.3x)**, TOP1, EGFR, CCND1, B7-H4 (0.8x), TROP-2 (0.6x) | 0.6-1.5x |
+| Below | TAP1 0.3x, NLRC5 0.3x, PSMB9 0.4x, CD274 0.4x, CDKN1A 0.3x; but GAPDH 0.4x | 0.3-0.7x |
+
+**What changes**
+- **POLQ and ATR are not distinctive against nuclei-profiled metastatic TNBC.**
+  - They are 16-18x above whole-cell tumors on exon counts.
+  - Two explanations are open: (1) a residual nuclei-vs-cell effect for these genes, or (2) pretreated metastatic TNBC
+    genuinely expresses high POLQ/ATR.
+  - Until primary TNBC nuclei are available, call POLQ/ATR "high vs untreated primary TNBC, typical vs pretreated
+    metastatic TNBC". POLQ's HRD rationale does not depend on it being an outlier.
+- **The amplicon, lineage and transporter genes hold on every test:** SLC6A14, SLC28A3, SPECC1L, MECOM, SOX6, FOLH1,
+  HORMAD1, ELF5/EHF, ESRRG, ENPP3, LDLRAD3.
+- **Antigen-processing genes:** low against nuclei references too (TAP1, PSMB9, NLRC5 at 0.3-0.4x). GAPDH is also
+  0.4x, so only part of this is specific.

@@ -1,49 +1,46 @@
-# Public single-cell reference atlas: what was built (2026-10-05)
+# Public single-cell reference atlas (v2, 2026-10-05)
 
-The atlas was built by a background agent. Details are in `inventory.md`, `manifest.csv` and `README.md`. Research
-use only.
+Details are in `inventory.md`, `manifest.csv` and `README.md`. The v1 report is `report_v1.md`, and the v1 data files
+are kept as `*_v1`. Research use only.
 
-**Targets:** ~150 TNBC tumors and ~200 normal-breast donors.
+## TNBC tumors with ≥50 tumor cells (distinct patients), v1 → v2
 
-| Category | Distinct patients | Detail |
-|---|---|---|
-| TNBC, any data | 90 | Zhang 2021's 16 tumor biopsies contain immune cells only |
-| TNBC with tumor cells (≥50 malignant/tumor-epithelial cells) | **65** | Shiao 2024 28, Bassez 2021 18, Pal/Gao 11, Wu 2021 8 |
-| … before treatment | 52 | |
-| … on treatment | 43 | All anti-PD-1 windows (~1 dose pembrolizumab ± radiation); none on chemo + pembrolizumab |
-| … same patient before and on | 33 | |
-| … germline BRCA1 | 4 | Pal 2021. No source records somatic BRCA1 loss |
-| ER+ / HER2+ tumors | 64 / 15 | |
-| Tumors, subtype unknown | 35 | |
-| Normal-breast donors | ~273, plus 18 pooled libraries (~80 donors) | 38 BRCA1 carriers; parity recorded for 64 |
-| Normal donors profiled as both nuclei and cells | 17 | Kumar 2023 |
+The full table is in `tnbc_summary_v1_v2.csv`.
 
-**Size:** ~38 GB downloaded, ~40 GB on disk.
+| | v1 | v2 | Added by |
+|---|---|---|---|
+| **TNBC with tumor cells** | **65** | **109** | |
+| … with author/3CA malignant calls | 62 | 83 | HTAPP, MPE, Gao |
+| … single-nucleus | 0 | 12 | HTAPP frozen biopsies, all metastatic (11 are 3' v3) |
+| … 3' / 5' chemistry | 14 / 51 | 56 / 51 | |
+| … pre-treatment | 52 | 71 | |
+| … on chemotherapy | 0 | 11 | BREAKFAST, after 1 cycle of AC (10 paired with pre-treatment) |
+| … after neoadjuvant chemotherapy | 6 | 9 | |
+| … after chemo + pembrolizumab | 0 | 2 | GSE302453; timing not stated |
+| … anti-PD-1 window | 43 | 43 | Bassez, Shiao |
+| … metastatic, pretreated | 0 | 20 | |
+| … germline BRCA1 | 4 | 4 | No new BRCA1 tumors in open data |
+
+**Other counts:**
+- TNBC with any data: 135.
+- ER+ / HER2+: 117 / 22.
+- Unknown subtype: 19.
+- Normal donors: unchanged (~273 plus 18 pooled libraries).
+
+**Size:** about 11.5 GB more downloaded, about 50 GB on disk in total.
 
 ## Gaps
 
-- **No TNBC single-nucleus data.** The only tumor nuclei are 3 metastatic tumors of unknown subtype.
-- **Chemistry mismatch.**
-  - 51 of 65 TNBC tumors use 10x 5' chemistry; Diana's sample is 3' v4.
-  - Corrections should be fitted per study or per chemistry.
-- **No pregnancy-associated tumors.**
-  - Lactation is represented only by milk-derived cells from 10 donors.
-  - Parity fields exist for 64 normal donors.
-- **Uneven malignant labels.**
-  - One integrated atlas labels all epithelium "Malignant"; those cells are kept as `tumor_epi_unlabeled`.
-  - Bassez has no normal-epithelium class.
-  - Zhang cell types were assigned by the agent.
-- **Uneven gene coverage.** Bassez lacks PTPRC, and one normal object stores 15k genes. Use the `measured_in_<study>`
-  masks.
-- **Skipped sources.**
-  - Slyper 2020: NCBI returned 403.
-  - Karaayvaz 2018: non-UMI chemistry.
-  - HTAN and controlled-access raw reads: not attempted.
-
-## Recommended use
-
-1. Compare Diana with author-labelled TNBC tumor cells, splitting pre- and on-treatment, and report per-gene
-   percentiles (step 20).
-2. Fit the technical correction separately for 3' and 5' studies. Check the nuclei correction against the 17
-   same-donor nuclei-vs-cells pairs.
-3. Compare with the BRCA1 tumors, the BRCA1-carrier normal epithelium, and the parity/lactation ranges.
+- **TNBC count:** 109 against the ~150 target. The remaining large cohorts need a login (HTAN/Synapse), are controlled
+  access, or are unreleased.
+- **Nuclei:**
+  - All 12 single-nucleus TNBC samples are metastatic, pretreated biopsies, mostly liver.
+  - 4 patients changed receptor status from their primary tumor.
+  - There are no primary TNBC nuclei.
+- **Regimen:**
+  - The on-chemo samples are after AC cycle 1, not carboplatin/paclitaxel.
+  - Only 2 samples are on chemo + pembrolizumab, with unstated timing.
+- **Labels:** most new tumor cells have no author malignant label. They are kept as `tumor_epi_unlabeled`, assigned by
+  marker-scored clusters. GSE252175 and GSE302453 are low confidence.
+- **No new BRCA1 tumors, and no pregnancy-associated tumors.**
+- **Gene coverage** varies by study; mask with `measured_in_<study>`.
