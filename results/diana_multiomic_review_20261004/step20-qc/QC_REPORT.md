@@ -5,9 +5,7 @@ single-nucleus RNA data were turned into target and biology claims, and which of
 
 **Folder note.** Published here as step 20. The private working folder is `private/analysis/step19-qc/`, so module paths inside the reports say step19-qc.
 
-**Status.** Seven of eight modules are complete, including the normal-breast reference (m8). The CellBender run in
-module 3 is still training. Its interim robustness verdicts, based on the group-rho, SoupX, mixture and plateau
-corrections, are included; the CellBender column will be added when it finishes.
+**Status.** All eight modules are complete (CellBender finished 2026-10-05).
 
 ---
 
@@ -27,7 +25,7 @@ corrections, are included; the CellBender column will be added when it finishes.
 |---|---|---|---|
 | m1 Counting | Are counts what we think? | BAM region recount; exonic / intronic / antisense / MAPQ split; GENCODE overlap audit | Counts match the matrix exactly. **CARD18 is a gene-model artifact.** Long genes are 90-99% pre-mRNA. |
 | m2 Labels | Are tumor / normal calls right? | Per-nucleus genotypes at 7,969 WGS somatic SNVs; calibrated mixture model | Malignant precision 0.94 and recall 0.90. **The "normal luminal epithelium" group is mostly tumor.** KH022 = 4/10 core. |
-| m3 Ambient | Is the signal background RNA? | Empty-droplet test; group rho, SoupX, mixture and plateau corrections; CellBender (running) | 35/47 candidates are robust in direction and ≥2x. Interim. |
+| m3 Ambient | Is the signal background RNA? | Empty-droplet test against three soup definitions; group rho, SoupX and CellBender 0.3.2 corrections; model-free depth-scaling test | All Tier A genes robust (≥2x, CIs clear, both libraries, every correction). 1,068/1,080 step-13 enriched genes stay ≥2x. Earlier empty-droplet window was wrong (rho ~1.5x too high). |
 | m4 Statistics | Is the "outlier vs TNBC" call calibrated? | Leave-one-compartment-out bias model; reference-compartment null; housekeeping controls; dosage; bootstrap; robustness grid | **Empirical FDR ≈ 0.5 at 2x**, falling to ≈0.15-0.3 at ≥8x. Dosage check passes. |
 | m5 Protein | Does RNA agree with protein? | OncoOmicsDx panel (66 proteins) vs pseudobulk | Presence/absence agrees (p = 4×10⁻⁵). Levels do not (ρ = 0.17). **HER4 protein not detected.** |
 | m6 Biology | Is it a plausible target? | HPA localization and normal-tissue RNA; gene span | Surface flags; B7-H4 is highest in normal breast; HORMAD1 is testis-restricted. |
@@ -153,16 +151,39 @@ corrections, are included; the CellBender column will be added when it finishes.
   - WGS-subclonal sites as a class have k = 0.40.
   - The 3/13-specific subclone has k ≤ 0.09, which places KH022 on the 4/10 core.
 
-### m3 Ambient (`m3_ambient/`, interim)
-- **Contamination by group:**
-  - Malignant 0.15-0.17.
-  - Myeloid, endothelial and fibroblast 0.35-0.44.
-  - T/NK and B 0.64-0.75. Small nuclei carry the most ambient.
-- **Public TNBC comparators:** immunoglobulin-based rho is ~0.5-8% in 7/8 tumors (one is unestimable). So this sample is
-  much more ambient-heavy than the public reference. That inflates ambient genes in Diana's tumor nuclei, which is why
-  CSN3 would be the top "outlier" without the ambient filter.
-- **Robustness:** 35/47 candidates keep their tumor-vs-non-malignant direction and ≥2x under every correction tried
-  (raw, group rho, SoupX global, mixture, plateau). The CellBender column is pending.
+### m3 Ambient (`m3_ambient/report.md`)
+- **The step 6/13 empty-droplet window was wrong.**
+  - True empty droplets plateau at ~500 UMIs (barcode ranks ~45k-170k).
+  - The 1-99 UMI window sits past the droplet cliff and is mostly barcode errors.
+  - With plateau empties, rho is ~1.5x lower than step 6: malignant 0.09 vs 0.145; T/NK 0.43 vs 0.67. This matches a
+    physical bound within ±0.03.
+- **CellBender 0.3.2:**
+  - Settings: 60 epochs, FPR 0.01 primary, 5.5 h per library on CPU.
+  - Versions: needs torch 1.13.1 + pyro 1.8.6, because torch ≥2 cannot save the checkpoint.
+  - Removed 13% of counts: 8% in malignant nuclei, 71% in T/NK.
+- **Robustness (four corrections: raw, step-6 rho, SoupX, CellBender; both libraries; bootstrap CIs):**
+  - Robust: every amplicon, lineage and outlier gene and 10/18 targets (≥2x, same direction, CIs clear of 2x).
+  - Lower in tumor, robustly: SLFN11, NLRC5, CD274 and CDKN1A.
+  - 1,068 of 1,080 step-13 enriched genes stay ≥2x.
+  - Because non-malignant nuclei carry 25-70% largely tumor-derived ambient, fold changes grow after correction. Tumor CPM
+    moves ≤10% for expressed genes.
+- **Changes:**
+  - **CSN3** is above ambient in tumor: 2.2x the expectation, and CellBender keeps 63%. That agrees with m1's intronic
+    evidence that the tumor transcribes κ-casein.
+  - **CCND1** goes from flat to +4.3 log2 vs non-malignant after CellBender; its raw parity was tumor ambient in normal
+    nuclei. It is still typical vs other TNBC.
+  - **NECTIN4** is ≥2x tumor-enriched under 3 of 4 methods.
+  - **TACSTD2** stays uninterpretable (80% removed; sign flips).
+  - **B2M and HLA-A** in tumor nuclei cannot be distinguished from ambient. Their tumor depletion is therefore at least as
+    deep as reported.
+- **Model-free depth test:** a purely ambient gene's CPM falls as 1/UMI (slope -1); an expressed gene's stays flat.
+  - IGKC and COL1A1: about -0.9.
+  - Targets: -0.1 to +0.3.
+  - CSN3: -0.4, so about half ambient.
+- **Public TNBC re-run with CellBender inputs:**
+  - Every outlier still exceeds ≥7 of 8 public tumors.
+  - FOLH1 (4.4 → 3.6 log2) and ENPP3 (5.6 → 4.5) shrink by ~1 log2.
+  - Correcting the public data for their own ambient (0.5-8%) changes candidates by ≤0.1 log2.
 
 ### m4 Statistics (`m4_stats/report.md`)
 - **Bias model:**
@@ -244,8 +265,7 @@ comparisons (label contamination).
 
 ## 6. Open items
 
-1. **CellBender (m3).** Running. Its results will be added to the scorecard as a robustness column; the interim
-   verdicts already use four corrections.
+1. **CellBender (m3).** Done; it agrees with the other corrections for every Tier A gene.
 2. **Clean normal-epithelium reference.** Done (m8). The remaining gap is a normal-breast reference on the same chemistry
    (single-nucleus, GEM-X, introns counted). Cross-platform tests could not certify calls without the within-sample arm.
 3. **Same-platform reference.** A nuclei TNBC cohort on GEM-X with introns would remove the need for a bias model.
