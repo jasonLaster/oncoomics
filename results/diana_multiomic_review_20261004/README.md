@@ -34,6 +34,7 @@ Sections 7-10 hold round-by-round results and corrections.
 | 19 | step19-cbioportal-dna | How unusual Diana's DNA changes are across ~5,000 public breast tumors (TCGA, METABRIC, MSK) |
 | 20 | step20-qc | Quality control of single-nucleus target claims: counting, tumor labels, background RNA, statistics/FDR, protein, biology; per-gene scorecard (`QC_REPORT.md`) |
 | 21 | step21-atlas-exon-only | The QC exon-only test extended from 8 to 109 TNBC patients (public single-cell atlas, pre- and on-treatment) |
+| 22 | step22-pet-tracers | PET-tracer ranking from the QC'd single-nucleus data (re-run on Yuga's 2026-10-09 delivery) and the human PET literature (`pet_ranking.md`) |
 
 Only reports and small tables are included. Read data (BAM slices), VCFs, images, slide labels, vendor PDFs and
 analysis scripts stay in private storage.
