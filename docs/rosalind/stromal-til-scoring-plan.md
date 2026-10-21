@@ -200,4 +200,3 @@ Capability inventory: installed Rosalind Workbench skill version 0.2.10 research
 5. [TIAToolbox](https://github.com/TissueImageAnalytics/tiatoolbox) and [CellViT++](https://github.com/TIO-IKIM/CellViT-plus-plus).
 
 6. [TILScout endpoint and study](https://www.nature.com/articles/s41698-025-00866-0).
-
