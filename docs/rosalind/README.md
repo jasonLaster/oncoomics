@@ -50,6 +50,7 @@ The pattern is:
 
 | Workflow | Use it when | Main output |
 | --- | --- | --- |
+| [Breast H&E stromal TIL scoring](stromal-til-scoring-plan.md) | You want to compare MuTILs and ECTIL and plan pathologist-reviewed sTIL validation. | Model comparison, current Rosalind capabilities, implementation phases, and score agreement gates. |
 | [Single-cell Modal/S3 platform](../scrna-platform.md) | You want reproducible public PBMC matrix QC, clustering, and calibration before using a larger cohort. | Preserved counts, QC and doublet decisions, UMAPs, calibration gates, and hash-verified S3 artifacts. |
 | [Breast tumor single-cell QC](../scrna-breast-qc.md) | You want tissue-specific QC and cohort-readiness review on public breast tumor matrices. | Sample and compartment loss audits, sensitivity tables, provisional labels, and explicit capture/ambient limitations. |
 | [Breast research release controls](../scrna-production.md) | You need to admit, quarantine, monitor, or promote a breast QC cohort. | Evidence-bound release decisions, immutable S3 release manifests, and diagnostic miQC comparison. |
