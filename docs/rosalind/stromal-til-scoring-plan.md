@@ -1,8 +1,8 @@
 # Breast H&E stromal TIL scoring plan and Rosalind capabilities
 
-Prepared October 21, 2026. Scope: research assessment of stromal tumor-infiltrating lymphocytes in breast-cancer H&E whole-slide images, including a separate validation path for post-treatment residual disease.
+Prepared October 21, 2026; implementation perspective updated October 22, 2026. Scope: research assessment of stromal tumor-infiltrating lymphocytes in breast-cancer H&E whole-slide images, including a separate validation path for post-treatment residual disease.
 
-The recommended pilot pairs **MuTILs for inspectable tissue and nucleus predictions with ECTIL for a separate slide-level sTIL estimate**, reviewed against breast-pathologist scores. Rosalind can coordinate the scientific workflow, and the installed Slide Viewer can support image inspection and bounded analyses. A complete whole-slide scoring runner, output adapter, and validation dataset still need to be assembled. This is a research plan; no patient slides were scored.
+The initial comparison pairs **MuTILs for inspectable tissue and nucleus predictions with ECTIL for a separate slide-level sTIL estimate**, reviewed against breast-pathologist scores. Native research runners and custody checks have since been exercised; they do not establish clinical score validity. The next comparison separates stromal segmentation, nucleus segmentation, cell classification and area aggregation so errors in each stage can be reviewed independently. Rosalind can coordinate the scientific workflow, and the installed Slide Viewer can support inspection. A reviewed eligibility annotation, reference dataset and target-setting validation remain necessary.
 
 **The most consequential issue is measurement equivalence:** neither a lymphocyte count nor a model output named “TIL score” automatically measures the percentage of tumor-associated stromal area occupied by mononuclear inflammatory cells.
 
@@ -118,6 +118,52 @@ A directory search did not return Runpod or the named Life Sciences Literature i
 For execution, use an approved local or remote environment with actual hardware, pinned dependencies, and verified model assets. A GPU provider is infrastructure rather than an sTIL method. Estimate memory and runtime using a representative public slide before selecting compute. Keep patient-image transfer as a separate, explicitly authorized operation.
 
 # Proposed implementation and validation plan
+
+## October 22 update: modular comparison with explicit stromal eligibility
+
+Add **VISTA-PATH → Cellpose 3 → CytoFormer → independent mask intersection and aggregation** as a candidate research comparison. Retain the native MuTILs and ECTIL measurements as separate baselines. This architecture makes it possible to investigate stromal boundaries, missed or merged nuclei, cell identities and sampling independently; it does not establish that the proposed chain is more accurate.
+
+| Stage | Candidate and role | Required qualification |
+| --- | --- | --- |
+| Eligibility | Breast pathologist defines invasive-tumor or residual-tumor-bed region and exclusions | A generic stroma mask cannot distinguish all eligible tumor-associated stroma from benign, in-situ, nodal or treatment-related tissue. Confirm specimen and treatment setting first. |
+| Stromal compartment | VISTA-PATH, with reviewed class prompts and optional box feedback | Preserve raw masks and probability maps, class order, physical scale, overlap, thresholds and feedback. Its no-box mode still uses text prompts. [Repository](https://github.com/zhihuanglab/VISTA-PATH), [model card](https://huggingface.co/zhihuanglab/VISTA-PATH). |
+| Nucleus instances | Cellpose 3, using an explicitly selected nuclei checkpoint | The `cyto3` cytoplasm model is not automatically the right nuclei model. Review H&E channels or hematoxylin preprocessing, physical diameter, split/merge errors and tiled-edge handling on development ROIs. [Versioned model documentation](https://cellpose.readthedocs.io/en/v3.1.1.1/models.html). |
+| Cell identities | CytoFormer breast head, with an explicit reject/unknown category | Use original, unmasked RGB context: a 56 µm nucleus-centered field resized to 224 × 224. Preserve IDs and level-0 transforms. Its breast taxonomy includes both lymphocytes and plasma cells. [Repository](https://github.com/zhihuanglab/CytoFormer), [crop implementation](https://github.com/zhihuanglab/CytoFormer/blob/main/scripts/crop_cells.py), [taxonomy](https://github.com/zhihuanglab/CytoFormer/blob/main/cytoformer/organ_celltype_map.json). |
+| Area arithmetic | Independent deterministic intersection | Intersect accepted lymphocyte and plasma-cell nuclear instances with reviewed eligible stroma. Report nuclear-area proxy, assessed stromal area, coverage and unresolved nuclear area separately. |
+
+**Preserve tissue context until after inference.** Run nucleus segmentation on unmasked image tiles with a halo; crop CytoFormer context from the original slide. Apply eligibility and exclusion masks to the resulting instances when measuring. Blacking out non-stroma before either model would change its input and truncate cells at boundaries. This is an implementation safeguard inferred from the components' input contracts, not a validated superiority claim.
+
+**Do not rename nuclear area as clinical sTIL.** The new endpoint is `nuclear_area_proxy_percent`: accepted lymphocyte-plus-plasma-cell nuclear pixels inside assessed eligible stroma, divided by that stromal area. Nuclear area omits cytoplasm and does not reproduce a pathologist's occupied stromal-area estimate. Do not add arbitrary nuclear dilation to force agreement. Keep this proxy, MuTILs' TIL-rich-region ratio, ECTIL's regressed score and blinded visual assessment separate. Plasma cells must be considered, and excluded inflammatory classes must be specified. [Working Group assessment FAQ](https://www.tilsinbreastcancer.org/faq/), [scoring and residual-disease guidance](https://www.tilsinbreastcancer.org/).
+
+### Candidate readiness and licensing
+
+The versioned candidate configuration is [stil_modular_pipeline.json](../../manifests/stil_modular_pipeline.json). Repository commits are recorded; checkpoint hashes, component preprocessing and acceptance thresholds remain unset. This is not an inference-ready model lock. Cellpose is deliberately pinned to a version 3 release rather than silently installing the current major version.
+
+VISTA-PATH and CytoFormer code use the Penn Academic Software License, which limits use and transfer; CytoFormer's weight card separately declares CC-BY-NC-4.0. Review code, weights, dependent assets and the intended operator/hosting scope before download, packaging or Modal deployment. Self-hosting alone does not resolve these terms. The adapter and tests here contain no upstream model code or weights. [VISTA-PATH license](https://github.com/zhihuanglab/VISTA-PATH/blob/main/LICENSE), [CytoFormer code license](https://github.com/zhihuanglab/CytoFormer/blob/main/LICENSE), [CytoFormer weight card](https://huggingface.co/zhihuanglab/CytoFormer).
+
+Do not promote SAM2-PATH as a demonstrated breast-stroma solution: its cited paper evaluates three adenoma datasets. Keep HoVer-Net, CellViT and InstanSeg as alternatives to test on the same annotated development regions rather than adopting an unverified model ranking. [Path-SAM2 paper](https://arxiv.org/abs/2408.03651).
+
+### Executable review preparation and scoring adapter
+
+Prepare a new, private review queue from existing results without rerunning inference or modifying the original packet:
+
+```sh
+PYTHONPATH=src python scripts/stil_modular_review.py prepare \
+  --run <existing-private-run> \
+  --out private/stil/modular-review-20261022
+```
+
+The queue identifies native no-calls, sparse admission and separate nodal candidates. Admission fractions describe native region selection, not eligible tumor coverage. The sparse-admission flag of 25% and pooled/salient difference flag are diagnostic triage heuristics, not validated acceptance thresholds. This selected error set is for development and failure analysis; an independent validation sample must also include systematically sampled eligible regions and patients not used for configuration.
+
+The offline ROI scoring adapter in `src/diana_omics/stil_modular.py` requires five aligned layers: approved region, total stromal compartment including immune-occupied areas, exclusions, assessed region and integer nucleus instances. It checks the source hash, origin, x/y pixel calibration, shape and exact instance/classification ID join. Classification records contain `instance_id`, `class_name` and `probability`. Low-probability and unknown cells remain in the stromal denominator, with their nuclear area reported separately; the rejection threshold is not a calibrated confidence interval. Empty stroma, absent assessable nuclei, insufficient coverage, excessive unresolved nuclear area, unreviewed eligibility or unsupported tissue produce no-calls rather than zero scores.
+
+For supplied masks, `score --contract <contract.json> --out <new-result.json>` verifies each artifact hash before loading it. The JSON contract must supply the shared `grid` and identical `layer_grids` for each layer; `scope: "roi"`; `stroma_definition: "total_stromal_compartment_including_immune_occupied_area"`; source identity, annotation reference/review, specimen, organ head, treatment setting and scoring protocol; a probability threshold; and prespecified `acceptance` values for minimum stromal area, coverage and maximum unresolved fraction of nuclear area. `artifacts` maps each layer to a relative `.npy` path and SHA-256 and maps `cells` to a JSON path and SHA-256. This adapter performs arithmetic on provided masks; it does not produce those masks or establish model accuracy.
+
+### Next evidence and acceptance decision
+
+The strategy verdict is **promising with gaps**. First obtain blinded development annotations of stromal eligibility, nuclear boundaries and lymphocyte/plasma-cell identities. Compare each candidate with the native baseline on exactly the same source coordinates, including rejected regions, dense clumps, sparse inflammation, boundary cells, plasma cells and artifacts. Measure stromal overlap, nucleus split/merge errors and class-specific errors before comparing final proxies. Keep annotation-only feedback separate from the untouched evaluation set.
+
+Prespecify acceptable component error, eligible stromal area, analyzed coverage, unresolved-cell burden and score agreement before evaluating independent patients. Use a distinct residual-disease protocol/stratum and separate nodal review. Related blocks from one person cannot establish generalization or support fitting a patient-specific calibration. Only then choose whether this modular comparison should supplement or replace a component of the current workflow.
 
 ## Phase 1 Define the endpoint and assemble the reference set
 

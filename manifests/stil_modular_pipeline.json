@@ -1,0 +1,70 @@
+{
+  "schema_version": 1,
+  "updated": "2026-10-22",
+  "purpose": "Research comparison of stromal compartment masks, nucleus instances and cell identities",
+  "status": "candidate_not_executed",
+  "clinical_stil_percent": null,
+  "components": {
+    "stroma": {
+      "name": "VISTA-PATH",
+      "repository": "https://github.com/zhihuanglab/VISTA-PATH",
+      "code_commit": "88c0305af8593ed72d4641d7dc87822ec463035d",
+      "checkpoint_sha256": null,
+      "license_source": "https://github.com/zhihuanglab/VISTA-PATH/blob/88c0305af8593ed72d4641d7dc87822ec463035d/LICENSE",
+      "license_review_status": "pending_operator_and_hosting_scope_review",
+      "configuration_status": "pending_development_roi_review",
+      "required_settings": ["ordered_class_prompts", "stroma_label_mapping", "input_mpp", "crop_size_level0_pixels", "overlap", "box_prompt_mode", "probability_threshold", "save_mask", "save_prob", "PLIP_Mask2Former_SAM_asset_hashes"],
+      "limitations": ["stroma prediction does not establish tumor-associated eligibility", "prompt-free inference still uses textual class prompts", "box-prompted image and mask files must be joined by identity, never independent sorted order"]
+    },
+    "nuclei": {
+      "name": "Cellpose 3",
+      "repository": "https://github.com/MouseLand/cellpose",
+      "version": "3.1.1.1",
+      "code_commit": "fb22843e70d03f7884c301b7b72bedd7d9c3d2d9",
+      "checkpoint_sha256": null,
+      "license_source": "https://github.com/MouseLand/cellpose/blob/fb22843e70d03f7884c301b7b72bedd7d9c3d2d9/LICENSE",
+      "license_review_status": "pending_selected_weight_review",
+      "configuration_status": "pending_development_roi_review",
+      "required_settings": ["nuclei_checkpoint", "channel_or_hematoxylin_preprocessing", "physical_diameter", "flow_threshold", "cellprob_threshold", "tile_halo", "overlap_deduplication"],
+      "limitations": ["cyto3 cytoplasm model is not automatically a nuclei model", "segmentation does not assign lymphocyte or plasma-cell identity", "run on unmasked tissue with a halo, then intersect outputs with eligible stroma"]
+    },
+    "classification": {
+      "name": "CytoFormer",
+      "repository": "https://github.com/zhihuanglab/CytoFormer",
+      "code_commit": "36b667e40a440d0a8faea8296709aadfcffe6616",
+      "checkpoint_sha256": null,
+      "license_source": "https://github.com/zhihuanglab/CytoFormer/blob/36b667e40a440d0a8faea8296709aadfcffe6616/LICENSE",
+      "weight_license_source": "https://huggingface.co/zhihuanglab/CytoFormer",
+      "license_review_status": "pending_code_weight_and_hosting_scope_review",
+      "configuration_status": "pending_development_roi_review",
+      "required_settings": ["organ_head", "taxonomy_hash", "class_probability_threshold", "normalization", "edge_padding", "centroid_to_level0_transform"],
+      "field_of_view_um": 56,
+      "input_size_pixels": [224, 224],
+      "context": "original unmasked RGB around nucleus centroid",
+      "breast_immune_classes": ["Lymphocyte", "Plasma_cell"],
+      "limitations": ["predicted cell identities are not measured spatial IHC or gene expression", "breast and lymph_node heads are separate", "top-class probability is not calibrated confidence"]
+    }
+  },
+  "research_endpoints": {
+    "nuclear_area_proxy_percent": "100 * union of confident lymphocyte and plasma-cell nuclear pixels intersected with assessed eligible stroma / assessed eligible stromal pixels",
+    "unknown_nuclear_area_percent_of_stroma": "100 * unknown or below-threshold nuclear pixels intersected with assessed eligible stroma / assessed eligible stromal pixels",
+    "eligible_stroma": "pathologist-approved tumor or residual-tumor-bed region intersected with total stromal compartment, including immune-occupied stroma, minus exclusions",
+    "coverage_fraction": "assessed eligible stromal area / all annotated eligible stromal area within the declared ROI",
+    "unresolved_nuclear_area_rejection_denominator": "all detected nuclear pixels inside assessed eligible stroma",
+    "aggregation": "sum areas before dividing; disjoint tile ownership required; never average models or unequal-stroma tile percentages",
+    "scope": "roi_only_until_independent_whole_slide_coverage_validation",
+    "not_equivalent_to": ["visual clinical sTIL percentage", "MuTILs TIL-rich region proxy", "ECTIL regression prediction", "fraction of detected cells"]
+  },
+  "validation": {
+    "strategy_verdict": "promising_with_gaps",
+    "validation_verdict": "partial",
+    "next_evidence": "blinded development ROIs with reviewed stromal boundaries, nuclear instances, lymphocyte and plasma-cell identities",
+    "independent_unit": "patient",
+    "development_and_test_patients_must_be_disjoint": true,
+    "required_before_inference": ["review software and weight licenses for the intended operator and Modal transfer", "hash all model and dependent assets", "freeze preprocessing, prompts and sampling on development data"],
+    "required_before_interpretation": ["confirm source identity and tissue", "select pretreatment or residual-disease scoring protocol", "review eligible stroma and exclusions", "prespecify minimum stromal area, coverage and maximum unresolved nuclear area", "independent blinded pathology scoring"],
+    "diagnostic_roi_selection_is_not_representative_validation": true,
+    "reference_score_status": "not_available",
+    "acceptance_thresholds_status": "not_prespecified"
+  }
+}
