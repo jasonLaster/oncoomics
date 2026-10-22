@@ -43,7 +43,7 @@ Place `tile_manifest.json` and original RGB image tiles under `/modular-20261022
 
 The manifest has top-level `tiles`, `slides` and `sampling` fields. SHA256 placeholders above must be replaced by actual digests. Each source image must be 1152 × 1152 pixels: a 1024-pixel core surrounded by a 64-pixel halo. The origin refers to the core in the original level-zero coordinate system. Preserve measured x/y MPP and the original unmasked RGB context. Source hashes must be verified against the original whole-slide files before tile extraction; verifying the extracted images alone cannot establish that upstream step.
 
-The exercised development design uses 32 spatially distributed nonoverlapping cores per source slide. A thumbnail foreground rule selects candidates from a disjoint grid; deterministic farthest-point sampling spreads the selected cores over the slide. It is independent of TIL predictions but does not establish representative tumor-associated coverage. Related sections from one patient remain one patient for validation purposes.
+The first development run (`development-v1`) used 32 spatially distributed nonoverlapping cores per source slide, chosen by a thumbnail color-foreground rule and farthest-point sampling. That rule admitted pathologist handwriting and fat; [version 2](#version-2-artifact-aware-sampling-and-assessable-stroma) replaces it. Neither design establishes representative tumor-associated coverage. Related sections from one patient remain one patient for validation purposes.
 
 The provisional `axillary_sentinel_node` group selects the `lymph_node` classification head. Other supplied groups use `breast`; an operator must confirm that assignment before interpretation. Nodal tissue requires separate review. The public author demo is a mechanical smoke input and may overlap model development data.
 
@@ -117,6 +117,63 @@ python scripts/stil_modular_verify.py \
 The collector needs the Modal SDK. The verifier needs NumPy and can run independently of the model runtime. The collector checks the archive SHA256 and every member's size/hash before accepting the collection. The verifier checks source and tile joins, disjoint ownership, halo/core consistency, exact nucleus/classification IDs, finite normalized probabilities, organ assignment, both mask calculations, all probability thresholds and area aggregation. The public demo uses `--expected-slides 1`.
 
 These checks establish artifact custody and arithmetic, not model accuracy. The first segmentation batch omitted its runner-source hash, although asset and output hashes and settings were captured; the current runner records the script hash for future segmentation. Classification receipts record their exact executed-source hash. Keep those receipts with the private packet rather than substituting the latest repository code for the code actually executed.
+
+## Version 2: artifact-aware sampling and assessable stroma
+
+Version 2 fixes two defects found by visual audit of `development-v1`: tiles on handwriting and fat, and a two-prompt stroma mask that left many lymphocytes outside the denominator. Its code is separate from the version-1 stages, which stay reproducible against their receipts.
+
+### Sampling
+
+[stil_sample_tiles.py](../../scripts/stil_sample_tiles.py) with [stil_sampling.py](../../src/diana_omics/stil_sampling.py) reads each slide at about 8 µm per pixel and builds a class map:
+
+- **Tissue envelope**: a FESI-style mask (stained pixels or local Laplacian structure, closed, hole-filled, small components dropped). The ECTIL native FESI mask is optional and used only for an agreement report by default, because it dropped whole tissue fragments, including a lymph node, on some slides. `--intersect-ectil` restores the veto.
+- **Ink**: blue, green and black marker (hematoxylin is purple, with green below red; marker has green at or above red), opened, small specks dropped, dilated by 150 µm. This removes handwriting, inked margins and tissue-marking dye.
+- **White in tissue**: optical density relative to the slide's glass below 0.08 in every channel. It separates adipocyte lumens from pale post-treatment collagen, which plain brightness or saturation rules do not.
+
+A cell of the legacy 0-aligned 1024-pixel grid (with a 64-pixel halo inside the slide) is eligible when its halo has no ink, at least half its core is tissue and at most half is white. Every map-eligible cell is then re-read at level 0 and rejected if marker pixels exceed 0.5% of the halo tile, stained pixels are under 25% of the core, or fat lumen or glass exceeds 80% of the core. Thin inked margin rims and grey-hazed fat are invisible at map scale. The same full-resolution check runs again on every extracted tile, and the sampler exits nonzero if any tile is flagged.
+
+Selection modes are `spread` (farthest-point, `--count`), `exhaustive` (every eligible cell) and `dense` (every `--stride`th eligible cell in x and y). `--roi key=path` restricts cells to a level-0 polygon given as GeoJSON (QuPath export; polygons with holes are rejected) or `{"polygons": [[[x, y], ...]]}`. Use `exhaustive` or `dense` inside a reviewed tumor-bed ROI; `--max-tiles` guards the extraction size.
+
+```sh
+python scripts/stil_sample_tiles.py --legacy-manifest <v1 inputs>/tile_manifest.json \
+  --slides-dir <slides> --ectil-dir <ECTIL outputs> --out <new private dir> --maps-only
+python scripts/stil_sample_tiles.py ... --out <new private inputs> [--roi s03=roi.geojson --mode exhaustive]
+```
+
+Review every `sampling_map.png` before extracting or spending GPU time. Tiles already present in the legacy inputs with matching hashes are copied rather than re-extracted, and keep their IDs.
+
+### Tissue classes and assessable stroma
+
+`segment_v2` prompts VISTA-PATH with BCSS-style names (its BRCA example vocabulary): `background`/`outside_roi`, `tumor`, `stroma`, `lymphocytic_infiltrate`/`plasma_cells`/`other_immune_infiltrate`, `fat` and `necrosis_or_debris`. A class probability is the maximum of its prompts' foreground softmax, and labels are the argmax over background, tumor, stroma, immune infiltrate, fat and necrosis. No per-tile Otsu threshold is used. Unstained pixels (optical density below 0.08: glass, clear lumens, tears) are forced to background and marker pixels, dilated by 3 pixels, to an artifact label.
+
+On the development tiles VISTA-PATH's immune prompts rarely won the argmax: dense lymphoid aggregates were labelled background (`outside_roi` responds to them), necrosis or tumor. A local ablation with the same weights, selected on version-1 tiles and checked on version-2 tiles, found that dropping `outside_roi` or adding immune synonyms (`lymphocytes`, `immune infiltrate`, `inflammatory cells`, `lymphoid aggregate`) moved aggregates to other excluded labels and changed held-out gate (a) by about one point. The prompt set above therefore stays frozen. Assessable stroma is in practice mostly the stroma label, and immune nuclei missed in aggregates bias the ratio down; gate (a) measures that miss. Closing it needs annotated aggregate masks or a nuclei-density immune-region rule.
+
+Under the ITWG definition the stromal compartment includes immune-occupied area, so [stil_tissue.py](../../src/diana_omics/stil_tissue.py) defines **assessable stroma = stroma + immune infiltrate**, excluding tumor nests, fat, necrosis, background and artifact. The v2 diagnostic is immune (lymphocyte and plasma-cell) nuclear area inside assessable stroma over assessable stroma area, summed over tiles before dividing. Nuclei and CytoFormer classifications are copied from an earlier completed run when the tile ID, image hash, artifact hashes, checkpoint and organ head all match, since those stages are deterministic for a given tile.
+
+### QC gates
+
+`classify_v2` records, and the verifier independently recomputes, three per-slide gates:
+
+- (a) the fraction of immune nuclei (at least half their pixels) inside assessable stroma; flagged below 85% on breast and breast-margin slides, reported only on nodes;
+- (b) the tumor-label fraction of tissue against the CytoFormer tumor-nucleus fraction; flagged when they differ by more than 15 points absolute, or by more than 3× when either exceeds 5%;
+- (c) sampled tiles on ink or off tissue by the full-resolution tile check; must be zero.
+
+A slide that flags a gate is not interpretable even as a research diagnostic until its overlays are reviewed.
+
+### Execute and verify version 2
+
+```sh
+modal volume put diana-stil-pilot-20261021 <v2 inputs> /modular-20261022/inputs-v2
+modal run scripts/modal/stil_modular_execute.py --stage segment-v2 --slide-key s03,s00,s04 --run-id <run> --inputs inputs-v2
+modal run scripts/modal/stil_modular_execute.py --stage classify-v2 --slide-key s03,s00,s04 --run-id <run>
+modal run scripts/modal/stil_modular_execute.py --stage bundle --slide-key s03,s00,s04 --run-id <run>
+python scripts/stil_modular_collect.py --volume diana-stil-pilot-20261021 --receipt /modular-20261022/archives/<run>-s03-s00-s04-full.receipt.json --out <dir>
+python scripts/stil_modular_verify_v2.py --run <dir> --inputs <v2 inputs> \
+  --legacy-run <v1 collection> --legacy-inputs <v1 inputs> --out <verification.json>
+python scripts/stil_modular_packet_v2.py --verification <verification.json> --inputs <v2 inputs> --run <dir> --out <packet dir>
+```
+
+Passing `--inputs inputs` with a new run ID applies the v2 masks to the version-1 tiles, reusing all their nuclei, which isolates the mask change on identical pixels. The verifier recomputes pixel masks from the source tiles, labels from the saved float16 probabilities, every tile count and the gates. With `--legacy-run` it evaluates the same gates on the version-1 native and competition masks, using predicted stroma alone as the old denominator, and ties those counts back to the version-1 receipts. Pilot two or three breast slides and inspect `review_v2.png` overlays before running the rest, and keep sentinel nodes in their own section.
 
 ## Interpretation boundary
 

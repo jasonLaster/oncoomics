@@ -27,6 +27,10 @@ if modal.is_local():
         ignore=[".git", "figures", "examples", "VISTA-PATH_data", "notebook", "checkpoints"],
     ).add_local_dir(
         project / ".runs/stil-modular-20261022/vendor/CytoFormer/cytoformer", "/opt/cytoformer/cytoformer",
+    ).add_local_file(
+        project / "src/diana_omics/stil_tissue.py", "/opt/diana/stil_tissue.py",
+    ).add_local_file(
+        project / "src/diana_omics/stil_sampling.py", "/opt/diana/stil_sampling.py",
     )
 
 
@@ -426,6 +430,400 @@ def classify(slide_key: str, run_id: str = "development-v1", batch_size: int = 6
     return {k: v for k, v in receipt.items() if k not in ("tiles", "artifacts")}
 
 
+V2_SEGMENTED, V2_CLASSIFIED = "completed_multiclass_segmentation_v2", "completed_assessable_stroma_v2"
+REUSED_NUCLEUS_FILES = ("nucleus_instances_halo.npy", "nucleus_instances_core.npy", "nuclei.json")
+REUSED_CLASS_FILES = ("cell_classifications.json", "class_probabilities.npz")
+
+
+def reusable_tiles(base, reuse_run, slide_key, rows):
+    """Tiles whose nuclei and classifications can be copied from an earlier completed run.
+
+    Reuse requires the same tile ID and source image hash, a completed earlier
+    segmentation and classification with intact artifact hashes, and the same
+    CytoFormer checkpoint. Cellpose and CytoFormer are deterministic given those.
+    """
+    import json
+
+    root = base / reuse_run / slide_key
+    if not reuse_run or not (root / "classification_manifest.json").exists():
+        return {}
+    segmentation = json.loads((root / "run_manifest.json").read_text())
+    classification = json.loads((root / "classification_manifest.json").read_text())
+    if (segmentation.get("status"), classification.get("status")) not in (
+            ("completed_two_components", "completed_experimental_comparison"), (V2_SEGMENTED, V2_CLASSIFIED)):
+        return {}
+    hashes = {a["path"]: a["sha256"] for stage in (segmentation, classification) for a in stage["artifacts"]}
+    earlier = {t["tile_id"]: t for t in segmentation["tiles"]}
+    reuse = {}
+    for row in rows:
+        old = earlier.get(row["tile_id"])
+        if not old or old["image_sha256"] != row["image_sha256"]:
+            continue
+        files = [f"{row['tile_id']}/{name}" for name in REUSED_NUCLEUS_FILES + REUSED_CLASS_FILES]
+        if all(f in hashes and digest(root / f) == hashes[f] for f in files):
+            reuse[row["tile_id"]] = {"run_id": reuse_run, "checkpoint_sha256": classification["checkpoint_sha256"],
+                                     "organ_head": classification["organ_head"],
+                                     "files": {f.split("/", 1)[1]: hashes[f] for f in files}}
+    return reuse
+
+
+@app.function(image=image, volumes={"/data": volume}, gpu="A10G", cpu=4, memory=32768,
+              timeout=7200, max_containers=3)
+def segment_v2(slide_key: str, run_id: str, inputs: str = "inputs-v2", reuse_run: str = "development-v1", limit: int = 0):
+    """Multi-prompt VISTA-PATH argmax with background, plus Cellpose nuclei unless reusable."""
+    import gc
+    import json
+    import shutil
+    import sys
+    import time
+    import traceback
+    from types import SimpleNamespace
+
+    import cv2
+    import numpy as np
+    import torch
+    from PIL import Image
+    from scipy import ndimage
+    from skimage.color import rgb2hed
+    from skimage.measure import regionprops
+    from transformers import AutoImageProcessor, CLIPProcessor
+
+    sys.path.insert(0, "/opt/diana")
+    import stil_sampling
+    import stil_tissue
+
+    base = Path("/data/modular-20261022")
+    asset_root = Path("/data/models/modular-20261022")
+    manifest_path = base / inputs / "tile_manifest.json"
+    source = json.loads(manifest_path.read_text())
+    rows = [row for row in source["tiles"] if row["slide_key"] == slide_key][:limit or None]
+    if not rows:
+        raise ValueError("no input tiles for " + slide_key)
+    slide = next((s for s in source["slides"] if s["slide_key"] == slide_key), {})
+    glass = slide.get("glass_rgb", [250., 250., 250.])
+    destination = base / run_id / slide_key
+    receipt_path = destination / "run_manifest.json"
+    if receipt_path.exists():
+        previous = json.loads(receipt_path.read_text())
+        if (previous.get("status") == V2_SEGMENTED and previous.get("tile_manifest_sha256") == digest(manifest_path)
+                and all(digest(destination / a["path"]) == a["sha256"] for a in previous["artifacts"])):
+            return {k: v for k, v in previous.items() if k not in ("tiles", "artifacts")}
+        raise FileExistsError("existing segmentation run; use a new run ID")
+    destination.mkdir(parents=True, exist_ok=True)
+    reuse = reusable_tiles(base, reuse_run, slide_key, rows)
+    receipt = {"status": "running", "stage": "preflight", "schema_version": 2, "slide_key": slide_key,
+               "inputs": inputs, "source_sha256": rows[0]["source_sha256"], "tile_manifest_sha256": digest(manifest_path),
+               "requested_tiles": len(rows), "candidate_tissue_group": rows[0]["candidate_tissue_group"],
+               "reuse_run": reuse_run, "reused_nucleus_tiles": len(reuse), "glass_rgb": glass,
+               "started_utc_seconds": time.time(), "clinical_stil_percent": None, "pathologist_score": None,
+               "eligibility_annotation_status": "not_reviewed", "sampling": source["sampling"], "tiles": []}
+
+    def save():
+        receipt_path.write_text(json.dumps(receipt, indent=2) + "\n")
+        volume.commit()
+    try:
+        lock = json.loads((asset_root / "asset_manifest.json").read_text())
+        for asset in lock:
+            if digest(asset_root / asset["relative_path"]) != asset["sha256"]:
+                raise ValueError("model asset hash mismatch: " + asset["relative_path"])
+        cp_receipt = json.loads((asset_root / "cellpose_receipt.json").read_text())
+        if digest(cp_receipt["checkpoint"]) != cp_receipt["checkpoint_sha256"]:
+            raise ValueError("Cellpose asset hash mismatch")
+        receipt.update(cellpose=cp_receipt, asset_manifest_sha256=digest(asset_root / "asset_manifest.json"),
+                       execution_script_sha256=digest(__file__),
+                       shared_module_sha256={"stil_tissue": digest(stil_tissue.__file__),
+                                             "stil_sampling": digest(stil_sampling.__file__)})
+        sys.path.insert(0, "/opt/vista")
+        import inference_utils as vista
+        vista.BASE_MODEL_NAME = str(asset_root / "vinid--plip")
+        vista.MASK2FORMER_NAME = str(asset_root / "facebook--mask2former-swin-small-ade-semantic")
+        vista.SAM_PRETRAINED = str(asset_root / "facebook--sam-vit-base")
+        vista.set_seed(42)
+        torch.set_num_threads(4)
+        device = torch.device("cuda")
+        args = SimpleNamespace(checkpoint_file=str(asset_root / "VISTA-PATH/pytorch_model.bin"),
+                               d_model=512, nhead=8, num_layers=4, bbx_random=1., tune_mode="freeze",
+                               num_queries=20, m2f_image_size=512)
+        model = vista.load_model(args, device)
+        processor = CLIPProcessor.from_pretrained(vista.BASE_MODEL_NAME)
+        m2f_processor = AutoImageProcessor.from_pretrained(vista.MASK2FORMER_NAME,
+                        do_resize=False, do_reduce_labels=False, ignore_index=255)
+        prompt_texts = [text for texts in stil_tissue.DEFAULT_PROMPTS.values() for text in texts]
+        encoded = vista.encode_class_texts(processor, dict(enumerate(prompt_texts)), range(len(prompt_texts)))
+        receipt.update(stage="tissue_classes", VISTA_checkpoint_strict_load=True,
+                       adapter_configuration={"prompts": stil_tissue.DEFAULT_PROMPTS, "text_template": vista.TEXT_TEMPLATE,
+                                              "class_probability": "maximum over a class's prompts of the prompt's foreground softmax",
+                                              "labels": "argmax over background, tumor, stroma, immune_infiltrate, fat, necrosis on float16 maps",
+                                              "glass_pixels": "stil_sampling.white_pixels with the slide glass RGB -> background",
+                                              "artifact_pixels": "stil_sampling.ink_pixels dilated 3 pixels -> artifact",
+                                              "assessable_stroma": "stroma + immune_infiltrate (ITWG: stroma includes immune-occupied area)",
+                                              "input_size": 512, "core_pixels": 1024, "box_prompt": False, "otsu": "not used",
+                                              "nucleus_preprocessing": "hematoxylin optical density, percentile 1 to 99.8, clipped [0,1]",
+                                              "nucleus_diameter_um": 8, "nucleus_halo_pixels": 64,
+                                              "scope": "sampled unreviewed ROIs; not whole slide"})
+        save()
+        for row in rows:
+            tile_dir = destination / row["tile_id"]
+            tile_dir.mkdir(exist_ok=True)
+            image_path = base / inputs / row["image_path"]
+            if digest(image_path) != row["image_sha256"]:
+                raise ValueError("input image hash mismatch")
+            rgb = np.asarray(Image.open(image_path).convert("RGB"))
+            halo = row["halo_pixels"]
+            core = rgb[halo:halo+1024, halo:halo+1024]
+            pixel = m2f_processor(images=cv2.resize(core, (512, 512), interpolation=cv2.INTER_LINEAR),
+                                  return_tensors="pt")["pixel_values"].to(device)
+            per_prompt = []
+            with torch.inference_mode():
+                for index in range(len(prompt_texts)):
+                    ids, attention = encoded[index]
+                    output = model(pixel, ids.unsqueeze(0).to(device), attention.unsqueeze(0).to(device), box=None)
+                    per_prompt.append(torch.softmax(output["logits"], 1)[0, 1].cpu().numpy())
+            probabilities, cursor = {}, 0
+            for name, texts in stil_tissue.DEFAULT_PROMPTS.items():
+                maximum = np.max(per_prompt[cursor:cursor+len(texts)], 0)
+                cursor += len(texts)
+                probabilities[name] = cv2.resize(maximum, (1024, 1024), interpolation=cv2.INTER_LINEAR).astype(np.float16)
+            glass_pixels = stil_sampling.white_pixels(core, glass)
+            artifact_pixels = ndimage.binary_dilation(stil_sampling.ink_pixels(core), iterations=3)
+            labels = stil_tissue.label_map(probabilities, glass_pixels, artifact_pixels)
+            np.save(tile_dir / "tissue_labels_v2.npy", labels)
+            np.savez_compressed(tile_dir / "tissue_probabilities_v2.npz", **probabilities)
+            np.savez_compressed(tile_dir / "pixel_masks_v2.npz", glass=glass_pixels, artifact=artifact_pixels)
+            pixel_qc = stil_sampling.tile_pixel_qc(rgb, halo, glass)
+            summary = dict(row, pixel_qc_runner=pixel_qc, label_pixels={stil_tissue.LABELS[c]: int((labels == c).sum())
+                                                                        for c in stil_tissue.LABELS},
+                           eligibility_reviewed=False, nuclei_source="reused" if row["tile_id"] in reuse else "cellpose")
+            if row["tile_id"] in reuse:
+                for name in REUSED_NUCLEUS_FILES:
+                    shutil.copyfile(base / reuse_run / slide_key / row["tile_id"] / name, tile_dir / name)
+                summary["reused_from"] = reuse[row["tile_id"]]
+            receipt["tiles"].append(summary)
+        del model, pixel, output
+        gc.collect()
+        torch.cuda.empty_cache()
+        pending = [t for t in receipt["tiles"] if t["nuclei_source"] == "cellpose"]
+        receipt["stage"] = "nuclei"
+        save()
+        if pending:
+            from cellpose import models
+            nuclei_model = models.CellposeModel(gpu=True, pretrained_model=cp_receipt["checkpoint"])
+        for summary in pending:
+            tile_dir = destination / summary["tile_id"]
+            rgb = np.asarray(Image.open(base / inputs / summary["image_path"]).convert("RGB"))
+            hema = rgb2hed(rgb)[..., 0]
+            low, high = np.percentile(hema, [1, 99.8])
+            hema = np.clip((hema-low) / max(high-low, 1e-8), 0, 1).astype(np.float32)
+            masks, _, _ = nuclei_model.eval(hema, diameter=8 / summary["mpp_xy"][0], channels=[0, 0],
+                                           normalize=False, flow_threshold=.4, cellprob_threshold=0.)
+            halo = summary["halo_pixels"]
+            core_masks = masks[halo:halo+1024, halo:halo+1024].astype(np.int32)
+            np.save(tile_dir / "nucleus_instances_halo.npy", masks.astype(np.int32))
+            np.save(tile_dir / "nucleus_instances_core.npy", core_masks)
+            core_ids = set(np.unique(core_masks)) - {0}
+            cells = []
+            for prop in regionprops(masks):
+                if prop.label not in core_ids:
+                    continue
+                y, x = prop.centroid
+                cells.append({"instance_id": int(prop.label), "centroid_halo_xy": [float(x), float(y)],
+                              "centroid_level0_xy": [summary["origin_level0_xy"][0]+x-halo,
+                                                       summary["origin_level0_xy"][1]+y-halo],
+                              "nuclear_area_pixels_halo": int(prop.area),
+                              "classification_status": "not_run_in_segmentation_stage"})
+            (tile_dir / "nuclei.json").write_text(json.dumps(cells, indent=2) + "\n")
+            print(slide_key, "nuclei", summary["tile_id"], len(cells), flush=True)
+        for summary in receipt["tiles"]:
+            summary["nuclei_intersecting_core"] = len(json.loads((destination / summary["tile_id"] / "nuclei.json").read_text()))
+            receipt["processed_tiles"] = receipt.get("processed_tiles", 0) + 1
+        receipt.update(status=V2_SEGMENTED, stage="awaiting_cell_classification", finished_utc_seconds=time.time(),
+                       total_nuclei=sum(t["nuclei_intersecting_core"] for t in receipt["tiles"]),
+                       artifacts=[{"path": str(p.relative_to(destination)), "bytes": p.stat().st_size, "sha256": digest(p)}
+                                  for p in sorted(destination.rglob("*")) if p.is_file() and p != receipt_path])
+    except Exception:
+        receipt.update(status="failed", error=traceback.format_exc(), finished_utc_seconds=time.time())
+    save()
+    return {k: v for k, v in receipt.items() if k not in ("tiles", "artifacts")}
+
+
+@app.function(image=image, volumes={"/data": volume}, gpu="A100-40GB", cpu=4, memory=32768,
+              timeout=14400, max_containers=3)
+def classify_v2(slide_key: str, run_id: str, reuse_run: str = "development-v1", batch_size: int = 64):
+    """CytoFormer for non-reused tiles, then assessable-stroma aggregation and QC gates."""
+    import importlib.metadata
+    import json
+    import os
+    import shutil
+    import sys
+    import time
+    import traceback
+
+    import cv2
+    import numpy as np
+    import torch
+    from PIL import Image, ImageDraw
+    from skimage.segmentation import find_boundaries
+
+    sys.path.insert(0, "/opt/diana")
+    import stil_tissue
+
+    base = Path("/data/modular-20261022")
+    root = base / run_id / slide_key
+    assets = Path("/data/models/modular-20261022/CytoFormer")
+    checkpoint_sha256 = "e93362f4e894cad5d02cf72d944702f7fd9b95b5fc25eedf01406adf1c7b7ead"
+    receipt_path = root / "classification_manifest.json"
+    if receipt_path.exists():
+        previous = json.loads(receipt_path.read_text())
+        if (previous.get("status") == V2_CLASSIFIED and previous.get("segmentation_manifest_sha256") == digest(root / "run_manifest.json")
+                and all(digest(root / a["path"]) == a["sha256"] for a in previous["artifacts"])):
+            return {k: v for k, v in previous.items() if k not in ("tiles", "artifacts")}
+        raise FileExistsError("existing classification run; use a new run ID")
+    receipt = {"status": "running", "stage": "cell_classification", "schema_version": 2, "slide_key": slide_key,
+               "started_utc_seconds": time.time(), "clinical_stil_percent": None, "nuclear_area_proxy_percent": None,
+               "eligibility_annotation_status": "not_reviewed", "processed_tiles": 0, "tiles": []}
+
+    def save():
+        receipt_path.write_text(json.dumps(receipt, indent=2) + "\n")
+        volume.commit()
+    try:
+        segmentation = json.loads((root / "run_manifest.json").read_text())
+        if segmentation["status"] != V2_SEGMENTED:
+            raise ValueError("segmentation not complete")
+        for artifact in segmentation["artifacts"]:
+            if digest(root / artifact["path"]) != artifact["sha256"]:
+                raise ValueError("segmentation artifact changed: " + artifact["path"])
+        if digest(assets / "checkpoint.pth") != checkpoint_sha256:
+            raise ValueError("CytoFormer checkpoint hash mismatch")
+        group = segmentation["candidate_tissue_group"]
+        organ_head = "lymph_node" if group == "axillary_sentinel_node" else "breast"
+        receipt.update(source_sha256=segmentation["source_sha256"], candidate_tissue_group=group,
+                       execution_script_sha256=digest(__file__), shared_module_sha256=digest(stil_tissue.__file__),
+                       segmentation_manifest_sha256=digest(root / "run_manifest.json"),
+                       checkpoint_sha256=checkpoint_sha256, taxonomy_sha256=digest(assets / "organ_celltype_map.json"),
+                       field_of_view_um=56, input_pixels=224, organ_head=organ_head,
+                       organ_assignment_status="provisional_specimen_mapping",
+                       probability_threshold_status="development_heuristic_not_calibrated", gates=stil_tissue.GATES,
+                       runtime_versions={name: importlib.metadata.version(name) for name in
+                                         ("torch", "torchvision", "transformers", "timm", "numpy", "pillow", "opencv-python-headless")})
+        pending = [t for t in segmentation["tiles"] if t["nuclei_source"] == "cellpose"]
+        if pending:
+            os.environ["CYTOFORMER_ORGAN_MAP"] = str(assets / "organ_celltype_map.json")
+            sys.path.insert(0, "/opt/cytoformer")
+            from cytoformer import common
+            from cytoformer.model import CellClassifier
+            torch.set_num_threads(4)
+            net = CellClassifier()
+            checkpoint = torch.load(assets / "checkpoint.pth", map_location="cpu", weights_only=True)
+            net.load_state_dict(checkpoint, strict=True)
+            del checkpoint
+            device = torch.device("cuda")
+            receipt["gpu"] = torch.cuda.get_device_name(0)
+            net.eval().to(device)
+            receipt["checkpoint_strict_load"] = True
+            mean = torch.tensor(common.IMAGENET_NORM[0], device=device).view(1, 3, 1, 1)
+            std = torch.tensor(common.IMAGENET_NORM[1], device=device).view(1, 3, 1, 1)
+            organ = common.ORGAN_IDX[organ_head]
+            immune_indices = [common.CLASS_IDX[name] for name in stil_tissue.IMMUNE_CELLS]
+        save()
+        palette = np.array([[255, 255, 255], [220, 60, 60], [70, 170, 190], [250, 160, 30],
+                            [240, 230, 120], [120, 70, 40], [200, 0, 200]], np.uint8)
+        for tile in segmentation["tiles"]:
+            tile_dir = root / tile["tile_id"]
+            image_path = base / segmentation["inputs"] / tile["image_path"]
+            if digest(image_path) != tile["image_sha256"]:
+                raise ValueError("classification input image changed")
+            rgb = np.asarray(Image.open(image_path).convert("RGB"))
+            if tile["nuclei_source"] == "reused":
+                if tile["reused_from"]["checkpoint_sha256"] != checkpoint_sha256 or tile["reused_from"]["organ_head"] != organ_head:
+                    raise ValueError("reused classification used another checkpoint or organ head")
+                for name in REUSED_CLASS_FILES:
+                    source = base / tile["reused_from"]["run_id"] / slide_key / tile["tile_id"] / name
+                    if digest(source) != tile["reused_from"]["files"][name]:
+                        raise ValueError("reused classification artifact changed")
+                    shutil.copyfile(source, tile_dir / name)
+                rows = json.loads((tile_dir / "cell_classifications.json").read_text())
+            else:
+                cells = json.loads((tile_dir / "nuclei.json").read_text())
+                half = max(8, int(round(28 / tile["mpp_xy"][0])))
+                rows, crops = [], []
+                for cell in cells:
+                    x, y = [int(round(v)) for v in cell["centroid_halo_xy"]]
+                    entry = {"instance_id": cell["instance_id"], "centroid_level0_xy": cell["centroid_level0_xy"]}
+                    if x-half < 0 or y-half < 0 or x+half > rgb.shape[1] or y+half > rgb.shape[0]:
+                        entry.update(class_name="Unknown", probability=0., rejection_reason="context_exceeds_saved_halo")
+                    else:
+                        entry["inference_index"] = len(crops)
+                        crops.append(cv2.resize(rgb[y-half:y+half, x-half:x+half], (224, 224), interpolation=cv2.INTER_AREA))
+                    rows.append(entry)
+                probabilities = []
+                with torch.inference_mode():
+                    for start in range(0, len(crops), batch_size):
+                        array = np.stack(crops[start:start+batch_size])
+                        tensor = torch.from_numpy(array).to(device).permute(0, 3, 1, 2).float().div_(255)
+                        tensor = (tensor-mean) / std
+                        ids = torch.full((len(array),), organ, dtype=torch.long, device=device)
+                        with torch.autocast("cuda", dtype=torch.bfloat16):
+                            logits = net(tensor, ids).float()
+                        probabilities.append(torch.softmax(logits, 1).cpu().numpy())
+                values = np.concatenate(probabilities) if probabilities else np.empty((0, len(common.GLOBAL_CLASSES)))
+                if not np.isfinite(values).all():
+                    raise ValueError("nonfinite classification probabilities")
+                for entry in rows:
+                    if "inference_index" in entry:
+                        p = values[entry.pop("inference_index")]
+                        idx = int(p.argmax())
+                        entry.update(class_name=common.GLOBAL_CLASSES[idx], probability=float(p[idx]),
+                                     immune_probability=float(p[immune_indices].sum()))
+                (tile_dir / "cell_classifications.json").write_text(json.dumps(rows, indent=2) + "\n")
+                np.savez_compressed(tile_dir / "class_probabilities.npz", probabilities=values,
+                                    instance_ids=np.array([r["instance_id"] for r in rows if r["class_name"] != "Unknown"]),
+                                    classes=np.array(common.GLOBAL_CLASSES))
+            labels = np.load(tile_dir / "tissue_labels_v2.npy")
+            instances = np.load(tile_dir / "nucleus_instances_core.npy")
+            metrics = stil_tissue.tile_metrics(labels, instances, rows)
+            stroma = stil_tissue.assessable(labels)
+            sensitivity = {}
+            for threshold in (0., .5, .7, .9):
+                accepted = [r["instance_id"] for r in rows if r["class_name"] in stil_tissue.IMMUNE_CELLS and r["probability"] >= threshold]
+                sensitivity[str(threshold)] = int((np.isin(instances, accepted) & stroma).sum())
+            summary = dict(metrics, tile_id=tile["tile_id"], immune_nuclear_pixels_in_assessable_by_threshold=sensitivity,
+                           pixel_area_um2=float(np.prod(tile["mpp_xy"])), clinical_stil_percent=None, eligibility_reviewed=False,
+                           pixel_qc_runner=tile["pixel_qc_runner"])
+            colored = (.55 * rgb[64:1088, 64:1088] + .45 * palette[labels]).astype(np.uint8)
+            immune_ids = [r["instance_id"] for r in rows if r["class_name"] in stil_tissue.IMMUNE_CELLS]
+            marked = rgb[64:1088, 64:1088].copy()
+            immune = np.isin(instances, immune_ids)
+            marked[find_boundaries(instances) & immune & stroma] = [0, 200, 0]
+            marked[find_boundaries(instances) & immune & ~stroma] = [255, 0, 255]
+            canvas = Image.new("RGB", (1152, 414), "white")
+            for i, (array, name) in enumerate(((rgb[64:1088, 64:1088], "Source H&E"), (colored, "Labels v2 (stroma teal, immune orange, tumor red)"),
+                                               (marked, "Immune nuclei: green in / magenta outside assessable"))):
+                canvas.paste(Image.fromarray(array).resize((384, 384)), (i*384, 30))
+                ImageDraw.Draw(canvas).text((i*384+8, 8), name, fill="black")
+            canvas.save(tile_dir / "review_v2.png")
+            (tile_dir / "classification_summary_v2.json").write_text(json.dumps(summary, indent=2) + "\n")
+            receipt["tiles"].append(summary)
+            receipt["processed_tiles"] += 1
+            print(slide_key, "classified", receipt["processed_tiles"], "/", len(segmentation["tiles"]), flush=True)
+            save()
+        areas = {t["pixel_area_um2"] for t in receipt["tiles"]}
+        if len(areas) != 1:
+            raise ValueError("mixed pixel calibration within a slide")
+        aggregate = stil_tissue.aggregate(receipt["tiles"], areas.pop())
+        artifact_tiles = [t["tile_id"] for t in receipt["tiles"] if t["pixel_qc_runner"]["ink_tile"] or t["pixel_qc_runner"]["off_tissue_tile"]]
+        receipt.update(status=V2_CLASSIFIED, stage="completed", finished_utc_seconds=time.time(), aggregate=aggregate,
+                       qc_gates=stil_tissue.evaluate_gates(aggregate, group, artifact_tiles),
+                       endpoint="sampled immune nuclear area in model-predicted assessable stroma; not reviewed visual sTIL",
+                       clinical_stil_percent=None, nuclear_area_proxy_percent=None,
+                       artifacts=[{"path": str(p.relative_to(root)), "bytes": p.stat().st_size, "sha256": digest(p)}
+                                  for p in sorted(root.rglob("*")) if p.is_file() and p.name in
+                                  REUSED_CLASS_FILES + ("classification_summary_v2.json", "review_v2.png")])
+    except Exception:
+        receipt.update(status="failed", error=traceback.format_exc(), finished_utc_seconds=time.time())
+    save()
+    return {k: v for k, v in receipt.items() if k not in ("tiles", "artifacts")}
+
+
 @app.function(image=modal.Image.debian_slim(python_version="3.11"), volumes={"/data": volume},
               cpu=4, memory=8192, timeout=1800)
 def bundle(run_id: str, slide_key: str = "all", require_classification: bool = True):
@@ -435,15 +833,16 @@ def bundle(run_id: str, slide_key: str = "all", require_classification: bool = T
 
     base = Path("/data/modular-20261022")
     root = base / run_id
-    keys = [slide_key] if slide_key != "all" else [f"s{i:02d}" for i in range(9)]
+    keys = slide_key.split(",") if slide_key != "all" else [f"s{i:02d}" for i in range(9)]
     files = []
     for key in keys:
         segment_receipt = json.loads((root / key / "run_manifest.json").read_text())
-        if segment_receipt["status"] != "completed_two_components":
+        version = segment_receipt.get("schema_version", 1)
+        if segment_receipt["status"] != ("completed_two_components" if version == 1 else V2_SEGMENTED):
             raise ValueError("segmentation is not complete for " + key)
         if require_classification:
             classification = json.loads((root / key / "classification_manifest.json").read_text())
-            if classification["status"] != "completed_experimental_comparison":
+            if classification["status"] != ("completed_experimental_comparison" if version == 1 else V2_CLASSIFIED):
                 raise ValueError("classification is not complete for " + key)
         files.extend(p for p in sorted((root / key).rglob("*")) if p.is_file())
     def identify(p):
@@ -461,7 +860,7 @@ def bundle(run_id: str, slide_key: str = "all", require_classification: bool = T
     archives = base / "archives"
     archives.mkdir(exist_ok=True)
     suffix = "full" if require_classification else "segmentation"
-    path = archives / f"{run_id}-{slide_key}-{suffix}.zip"
+    path = archives / f"{run_id}-{slide_key.replace(',', '-')}-{suffix}.zip"
     if path.exists():
         raise FileExistsError("archive already exists")
     with zipfile.ZipFile(path, "w", compression=zipfile.ZIP_DEFLATED, compresslevel=4) as archive:
@@ -478,7 +877,7 @@ def bundle(run_id: str, slide_key: str = "all", require_classification: bool = T
 
 @app.local_entrypoint()
 def main(stage: str = "provision", slide_key: str = "s03", limit: int = 0,
-         run_id: str = "development-v1"):
+         run_id: str = "development-v1", inputs: str = "inputs-v2", reuse_run: str = "development-v1"):
     import json
 
     def emit(result):
@@ -497,6 +896,10 @@ def main(stage: str = "provision", slide_key: str = "s03", limit: int = 0,
         emit(classify.remote(slide_key, run_id))
     elif stage == "classify-batch":
         emit(list(classify.starmap([(f"s{i:02d}", run_id) for i in range(9)])))
+    elif stage == "segment-v2":
+        emit(list(segment_v2.starmap([(key, run_id, inputs, reuse_run, limit) for key in slide_key.split(",")])))
+    elif stage == "classify-v2":
+        emit(list(classify_v2.starmap([(key, run_id, reuse_run) for key in slide_key.split(",")])))
     elif stage == "bundle":
         emit(bundle.remote(run_id, slide_key))
     else:
