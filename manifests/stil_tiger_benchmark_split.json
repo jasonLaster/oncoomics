@@ -1,0 +1,820 @@
+{
+  "schema": "diana-stil-tiger-split/v1",
+  "seed": 20261022,
+  "n_dev": 40,
+  "n_folds": 5,
+  "strata": [
+    {
+      "source": "TC",
+      "band": "0-4",
+      "n": 10,
+      "development": 5
+    },
+    {
+      "source": "TC",
+      "band": "5-9",
+      "n": 4,
+      "development": 2
+    },
+    {
+      "source": "TC",
+      "band": "10-29",
+      "n": 14,
+      "development": 7
+    },
+    {
+      "source": "TC",
+      "band": "30-59",
+      "n": 3,
+      "development": 2
+    },
+    {
+      "source": "TC",
+      "band": "60+",
+      "n": 14,
+      "development": 7
+    },
+    {
+      "source": "numeric_SB",
+      "band": "0-4",
+      "n": 13,
+      "development": 6
+    },
+    {
+      "source": "numeric_SB",
+      "band": "5-9",
+      "n": 4,
+      "development": 2
+    },
+    {
+      "source": "numeric_SB",
+      "band": "10-29",
+      "n": 9,
+      "development": 4
+    },
+    {
+      "source": "numeric_SB",
+      "band": "30-59",
+      "n": 5,
+      "development": 2
+    },
+    {
+      "source": "numeric_SB",
+      "band": "60+",
+      "n": 6,
+      "development": 3
+    }
+  ],
+  "slides": [
+    {
+      "image_id": "104S",
+      "source": "numeric_SB",
+      "band": "60+",
+      "pitfall_flags": [
+        "dcis",
+        "normal_structures"
+      ],
+      "split": "locked_test",
+      "dev_fold": null
+    },
+    {
+      "image_id": "105S",
+      "source": "numeric_SB",
+      "band": "10-29",
+      "pitfall_flags": [],
+      "split": "locked_test",
+      "dev_fold": null
+    },
+    {
+      "image_id": "106S",
+      "source": "numeric_SB",
+      "band": "10-29",
+      "pitfall_flags": [
+        "normal_structures",
+        "stated_pitfall"
+      ],
+      "split": "locked_test",
+      "dev_fold": null
+    },
+    {
+      "image_id": "107S",
+      "source": "numeric_SB",
+      "band": "5-9",
+      "pitfall_flags": [
+        "normal_structures",
+        "stated_pitfall"
+      ],
+      "split": "locked_test",
+      "dev_fold": null
+    },
+    {
+      "image_id": "108S",
+      "source": "numeric_SB",
+      "band": "30-59",
+      "pitfall_flags": [
+        "neutrophils",
+        "stated_pitfall"
+      ],
+      "split": "locked_test",
+      "dev_fold": null
+    },
+    {
+      "image_id": "110S",
+      "source": "numeric_SB",
+      "band": "0-4",
+      "pitfall_flags": [],
+      "split": "locked_test",
+      "dev_fold": null
+    },
+    {
+      "image_id": "112B",
+      "source": "numeric_SB",
+      "band": "0-4",
+      "pitfall_flags": [
+        "stated_pitfall"
+      ],
+      "split": "locked_test",
+      "dev_fold": null
+    },
+    {
+      "image_id": "121S",
+      "source": "numeric_SB",
+      "band": "5-9",
+      "pitfall_flags": [
+        "granulation_tissue",
+        "normal_structures",
+        "stated_pitfall"
+      ],
+      "split": "development",
+      "dev_fold": 4
+    },
+    {
+      "image_id": "123S",
+      "source": "numeric_SB",
+      "band": "60+",
+      "pitfall_flags": [
+        "necrosis"
+      ],
+      "split": "locked_test",
+      "dev_fold": null
+    },
+    {
+      "image_id": "126B",
+      "source": "numeric_SB",
+      "band": "10-29",
+      "pitfall_flags": [
+        "normal_structures"
+      ],
+      "split": "development",
+      "dev_fold": 3
+    },
+    {
+      "image_id": "129S",
+      "source": "numeric_SB",
+      "band": "30-59",
+      "pitfall_flags": [],
+      "split": "development",
+      "dev_fold": 3
+    },
+    {
+      "image_id": "132B",
+      "source": "numeric_SB",
+      "band": "0-4",
+      "pitfall_flags": [
+        "normal_structures",
+        "stated_pitfall"
+      ],
+      "split": "locked_test",
+      "dev_fold": null
+    },
+    {
+      "image_id": "139B",
+      "source": "numeric_SB",
+      "band": "30-59",
+      "pitfall_flags": [],
+      "split": "development",
+      "dev_fold": 4
+    },
+    {
+      "image_id": "146B",
+      "source": "numeric_SB",
+      "band": "0-4",
+      "pitfall_flags": [],
+      "split": "locked_test",
+      "dev_fold": null
+    },
+    {
+      "image_id": "155B",
+      "source": "numeric_SB",
+      "band": "0-4",
+      "pitfall_flags": [],
+      "split": "development",
+      "dev_fold": 0
+    },
+    {
+      "image_id": "159S",
+      "source": "numeric_SB",
+      "band": "0-4",
+      "pitfall_flags": [],
+      "split": "locked_test",
+      "dev_fold": null
+    },
+    {
+      "image_id": "160B",
+      "source": "numeric_SB",
+      "band": "60+",
+      "pitfall_flags": [
+        "dcis"
+      ],
+      "split": "locked_test",
+      "dev_fold": null
+    },
+    {
+      "image_id": "161S",
+      "source": "numeric_SB",
+      "band": "10-29",
+      "pitfall_flags": [
+        "necrosis",
+        "stated_pitfall"
+      ],
+      "split": "development",
+      "dev_fold": 2
+    },
+    {
+      "image_id": "162S",
+      "source": "numeric_SB",
+      "band": "30-59",
+      "pitfall_flags": [],
+      "split": "locked_test",
+      "dev_fold": null
+    },
+    {
+      "image_id": "165B",
+      "source": "numeric_SB",
+      "band": "0-4",
+      "pitfall_flags": [
+        "dcis"
+      ],
+      "split": "development",
+      "dev_fold": 0
+    },
+    {
+      "image_id": "174S",
+      "source": "numeric_SB",
+      "band": "60+",
+      "pitfall_flags": [],
+      "split": "development",
+      "dev_fold": 2
+    },
+    {
+      "image_id": "175B",
+      "source": "numeric_SB",
+      "band": "10-29",
+      "pitfall_flags": [
+        "normal_structures"
+      ],
+      "split": "locked_test",
+      "dev_fold": null
+    },
+    {
+      "image_id": "184B",
+      "source": "numeric_SB",
+      "band": "5-9",
+      "pitfall_flags": [
+        "normal_structures"
+      ],
+      "split": "development",
+      "dev_fold": 3
+    },
+    {
+      "image_id": "205B",
+      "source": "numeric_SB",
+      "band": "0-4",
+      "pitfall_flags": [],
+      "split": "development",
+      "dev_fold": 3
+    },
+    {
+      "image_id": "208B",
+      "source": "numeric_SB",
+      "band": "0-4",
+      "pitfall_flags": [],
+      "split": "locked_test",
+      "dev_fold": null
+    },
+    {
+      "image_id": "211B",
+      "source": "numeric_SB",
+      "band": "10-29",
+      "pitfall_flags": [
+        "dcis",
+        "normal_structures"
+      ],
+      "split": "locked_test",
+      "dev_fold": null
+    },
+    {
+      "image_id": "212B",
+      "source": "numeric_SB",
+      "band": "5-9",
+      "pitfall_flags": [
+        "dcis"
+      ],
+      "split": "locked_test",
+      "dev_fold": null
+    },
+    {
+      "image_id": "214B",
+      "source": "numeric_SB",
+      "band": "0-4",
+      "pitfall_flags": [],
+      "split": "locked_test",
+      "dev_fold": null
+    },
+    {
+      "image_id": "223B",
+      "source": "numeric_SB",
+      "band": "0-4",
+      "pitfall_flags": [],
+      "split": "development",
+      "dev_fold": 2
+    },
+    {
+      "image_id": "224B",
+      "source": "numeric_SB",
+      "band": "30-59",
+      "pitfall_flags": [],
+      "split": "locked_test",
+      "dev_fold": null
+    },
+    {
+      "image_id": "227S",
+      "source": "numeric_SB",
+      "band": "60+",
+      "pitfall_flags": [],
+      "split": "development",
+      "dev_fold": 3
+    },
+    {
+      "image_id": "228B",
+      "source": "numeric_SB",
+      "band": "10-29",
+      "pitfall_flags": [
+        "neutrophils"
+      ],
+      "split": "development",
+      "dev_fold": 0
+    },
+    {
+      "image_id": "233B",
+      "source": "numeric_SB",
+      "band": "0-4",
+      "pitfall_flags": [
+        "lymphoid_aggregates",
+        "normal_structures"
+      ],
+      "split": "development",
+      "dev_fold": 1
+    },
+    {
+      "image_id": "236B",
+      "source": "numeric_SB",
+      "band": "60+",
+      "pitfall_flags": [
+        "stated_pitfall"
+      ],
+      "split": "development",
+      "dev_fold": 4
+    },
+    {
+      "image_id": "244B",
+      "source": "numeric_SB",
+      "band": "0-4",
+      "pitfall_flags": [],
+      "split": "development",
+      "dev_fold": 4
+    },
+    {
+      "image_id": "247B",
+      "source": "numeric_SB",
+      "band": "10-29",
+      "pitfall_flags": [
+        "normal_structures"
+      ],
+      "split": "locked_test",
+      "dev_fold": null
+    },
+    {
+      "image_id": "248B",
+      "source": "numeric_SB",
+      "band": "10-29",
+      "pitfall_flags": [],
+      "split": "development",
+      "dev_fold": 4
+    },
+    {
+      "image_id": "TC_S01_P000004_C0001_B103",
+      "source": "TC",
+      "band": "60+",
+      "pitfall_flags": [
+        "necrosis"
+      ],
+      "split": "development",
+      "dev_fold": 0
+    },
+    {
+      "image_id": "TC_S01_P000006_C0001_B206",
+      "source": "TC",
+      "band": "60+",
+      "pitfall_flags": [],
+      "split": "locked_test",
+      "dev_fold": null
+    },
+    {
+      "image_id": "TC_S01_P000020_C0001_B207",
+      "source": "TC",
+      "band": "5-9",
+      "pitfall_flags": [
+        "dcis",
+        "stated_pitfall"
+      ],
+      "split": "locked_test",
+      "dev_fold": null
+    },
+    {
+      "image_id": "TC_S01_P000041_C0001_B101",
+      "source": "TC",
+      "band": "5-9",
+      "pitfall_flags": [
+        "normal_structures"
+      ],
+      "split": "development",
+      "dev_fold": 2
+    },
+    {
+      "image_id": "TC_S01_P000045_C0001_B106",
+      "source": "TC",
+      "band": "10-29",
+      "pitfall_flags": [],
+      "split": "locked_test",
+      "dev_fold": null
+    },
+    {
+      "image_id": "TC_S01_P000047_C0001_B101",
+      "source": "TC",
+      "band": "0-4",
+      "pitfall_flags": [],
+      "split": "development",
+      "dev_fold": 4
+    },
+    {
+      "image_id": "TC_S01_P000049_C0001_B101",
+      "source": "TC",
+      "band": "0-4",
+      "pitfall_flags": [],
+      "split": "locked_test",
+      "dev_fold": null
+    },
+    {
+      "image_id": "TC_S01_P000052_C0001_B101",
+      "source": "TC",
+      "band": "60+",
+      "pitfall_flags": [],
+      "split": "locked_test",
+      "dev_fold": null
+    },
+    {
+      "image_id": "TC_S01_P000055_C0001_B101",
+      "source": "TC",
+      "band": "60+",
+      "pitfall_flags": [],
+      "split": "development",
+      "dev_fold": 1
+    },
+    {
+      "image_id": "TC_S01_P000058_C0001_B101",
+      "source": "TC",
+      "band": "0-4",
+      "pitfall_flags": [],
+      "split": "development",
+      "dev_fold": 2
+    },
+    {
+      "image_id": "TC_S01_P000061_C0001_B101",
+      "source": "TC",
+      "band": "60+",
+      "pitfall_flags": [],
+      "split": "development",
+      "dev_fold": 1
+    },
+    {
+      "image_id": "TC_S01_P000063_C0001_B101",
+      "source": "TC",
+      "band": "5-9",
+      "pitfall_flags": [
+        "dcis"
+      ],
+      "split": "locked_test",
+      "dev_fold": null
+    },
+    {
+      "image_id": "TC_S01_P000064_C0001_B101",
+      "source": "TC",
+      "band": "0-4",
+      "pitfall_flags": [],
+      "split": "locked_test",
+      "dev_fold": null
+    },
+    {
+      "image_id": "TC_S01_P000073_C0001_B101",
+      "source": "TC",
+      "band": "30-59",
+      "pitfall_flags": [
+        "dcis"
+      ],
+      "split": "development",
+      "dev_fold": 1
+    },
+    {
+      "image_id": "TC_S01_P000074_C0001_B101",
+      "source": "TC",
+      "band": "5-9",
+      "pitfall_flags": [],
+      "split": "development",
+      "dev_fold": 1
+    },
+    {
+      "image_id": "TC_S01_P000077_C0001_B101",
+      "source": "TC",
+      "band": "10-29",
+      "pitfall_flags": [],
+      "split": "development",
+      "dev_fold": 2
+    },
+    {
+      "image_id": "TC_S01_P000079_C0001_B101",
+      "source": "TC",
+      "band": "10-29",
+      "pitfall_flags": [],
+      "split": "locked_test",
+      "dev_fold": null
+    },
+    {
+      "image_id": "TC_S01_P000083_C0001_B101",
+      "source": "TC",
+      "band": "0-4",
+      "pitfall_flags": [],
+      "split": "locked_test",
+      "dev_fold": null
+    },
+    {
+      "image_id": "TC_S01_P000085_C0001_B101",
+      "source": "TC",
+      "band": "0-4",
+      "pitfall_flags": [],
+      "split": "development",
+      "dev_fold": 3
+    },
+    {
+      "image_id": "TC_S01_P000087_C0001_B101",
+      "source": "TC",
+      "band": "0-4",
+      "pitfall_flags": [],
+      "split": "locked_test",
+      "dev_fold": null
+    },
+    {
+      "image_id": "TC_S01_P000089_C0001_B101",
+      "source": "TC",
+      "band": "10-29",
+      "pitfall_flags": [],
+      "split": "development",
+      "dev_fold": 1
+    },
+    {
+      "image_id": "TC_S01_P000092_C0001_B101",
+      "source": "TC",
+      "band": "0-4",
+      "pitfall_flags": [],
+      "split": "development",
+      "dev_fold": 0
+    },
+    {
+      "image_id": "TC_S01_P000093_C0001_B101",
+      "source": "TC",
+      "band": "60+",
+      "pitfall_flags": [],
+      "split": "locked_test",
+      "dev_fold": null
+    },
+    {
+      "image_id": "TC_S01_P000099_C0001_B101",
+      "source": "TC",
+      "band": "60+",
+      "pitfall_flags": [],
+      "split": "locked_test",
+      "dev_fold": null
+    },
+    {
+      "image_id": "TC_S01_P000100_C0001_B101",
+      "source": "TC",
+      "band": "60+",
+      "pitfall_flags": [],
+      "split": "development",
+      "dev_fold": 2
+    },
+    {
+      "image_id": "TC_S01_P000101_C0001_B101",
+      "source": "TC",
+      "band": "10-29",
+      "pitfall_flags": [
+        "dcis",
+        "lymphoid_aggregates",
+        "stated_pitfall"
+      ],
+      "split": "development",
+      "dev_fold": 4
+    },
+    {
+      "image_id": "TC_S01_P000103_C0001_B101",
+      "source": "TC",
+      "band": "10-29",
+      "pitfall_flags": [],
+      "split": "locked_test",
+      "dev_fold": null
+    },
+    {
+      "image_id": "TC_S01_P000104_C0001_B101",
+      "source": "TC",
+      "band": "10-29",
+      "pitfall_flags": [],
+      "split": "development",
+      "dev_fold": 1
+    },
+    {
+      "image_id": "TC_S01_P000106_C0001_B101",
+      "source": "TC",
+      "band": "30-59",
+      "pitfall_flags": [],
+      "split": "development",
+      "dev_fold": 2
+    },
+    {
+      "image_id": "TC_S01_P000108_C0001_B101",
+      "source": "TC",
+      "band": "10-29",
+      "pitfall_flags": [],
+      "split": "locked_test",
+      "dev_fold": null
+    },
+    {
+      "image_id": "TC_S01_P000112_C0001_B101",
+      "source": "TC",
+      "band": "60+",
+      "pitfall_flags": [
+        "dcis"
+      ],
+      "split": "locked_test",
+      "dev_fold": null
+    },
+    {
+      "image_id": "TC_S01_P000116_C0001_B101",
+      "source": "TC",
+      "band": "60+",
+      "pitfall_flags": [],
+      "split": "development",
+      "dev_fold": 3
+    },
+    {
+      "image_id": "TC_S01_P000119_C0001_B101",
+      "source": "TC",
+      "band": "0-4",
+      "pitfall_flags": [],
+      "split": "locked_test",
+      "dev_fold": null
+    },
+    {
+      "image_id": "TC_S01_P000120_C0001_B101",
+      "source": "TC",
+      "band": "60+",
+      "pitfall_flags": [
+        "normal_structures"
+      ],
+      "split": "development",
+      "dev_fold": 0
+    },
+    {
+      "image_id": "TC_S01_P000122_C0001_B101",
+      "source": "TC",
+      "band": "60+",
+      "pitfall_flags": [
+        "dcis"
+      ],
+      "split": "development",
+      "dev_fold": 4
+    },
+    {
+      "image_id": "TC_S01_P000123_C0001_B101",
+      "source": "TC",
+      "band": "10-29",
+      "pitfall_flags": [
+        "dcis",
+        "normal_structures"
+      ],
+      "split": "locked_test",
+      "dev_fold": null
+    },
+    {
+      "image_id": "TC_S01_P000124_C0001_B101",
+      "source": "TC",
+      "band": "60+",
+      "pitfall_flags": [],
+      "split": "locked_test",
+      "dev_fold": null
+    },
+    {
+      "image_id": "TC_S01_P000127_C0001_B101",
+      "source": "TC",
+      "band": "10-29",
+      "pitfall_flags": [
+        "neutrophils"
+      ],
+      "split": "locked_test",
+      "dev_fold": null
+    },
+    {
+      "image_id": "TC_S01_P000128_C0001_B101",
+      "source": "TC",
+      "band": "10-29",
+      "pitfall_flags": [],
+      "split": "development",
+      "dev_fold": 0
+    },
+    {
+      "image_id": "TC_S01_P000134_C0001_B101",
+      "source": "TC",
+      "band": "10-29",
+      "pitfall_flags": [],
+      "split": "development",
+      "dev_fold": 0
+    },
+    {
+      "image_id": "TC_S01_P000139_C0001_B101",
+      "source": "TC",
+      "band": "10-29",
+      "pitfall_flags": [
+        "dcis",
+        "granulation_tissue",
+        "normal_structures"
+      ],
+      "split": "development",
+      "dev_fold": 3
+    },
+    {
+      "image_id": "TC_S01_P000155_C0001_B101",
+      "source": "TC",
+      "band": "30-59",
+      "pitfall_flags": [],
+      "split": "locked_test",
+      "dev_fold": null
+    },
+    {
+      "image_id": "TC_S01_P000160_C0001_B204",
+      "source": "TC",
+      "band": "60+",
+      "pitfall_flags": [
+        "lymph_node"
+      ],
+      "split": "locked_test",
+      "dev_fold": null
+    },
+    {
+      "image_id": "TC_S01_P000166_C0001_B101",
+      "source": "TC",
+      "band": "0-4",
+      "pitfall_flags": [],
+      "split": "development",
+      "dev_fold": 1
+    },
+    {
+      "image_id": "TC_S01_P000181_C0001_B101",
+      "source": "TC",
+      "band": "10-29",
+      "pitfall_flags": [],
+      "split": "locked_test",
+      "dev_fold": null
+    }
+  ],
+  "source": {
+    "uri": "s3://tiger-training/wsitils/tiger-til-scores-wsitils.csv",
+    "sha256": "a70061c9ad5191963d199d3137f7e205bf4ccd52755df3031a333e8a0f54c846",
+    "license": "CC BY-NC 4.0 (TIGER training data; see s3://tiger-training/license.txt)",
+    "source_labels": {
+      "numeric_SB": "Jules Bordet (S resection, B biopsy)",
+      "TC": "Radboud UMC"
+    }
+  },
+  "frozen": "2026-10-22",
+  "generator": "scripts/stil_tiger_split.py",
+  "rule": "development is for method work and 5-fold CV; locked_test is scored once per frozen pipeline"
+}
