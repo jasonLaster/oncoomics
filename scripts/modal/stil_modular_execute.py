@@ -626,9 +626,10 @@ def segment_v2(slide_key: str, run_id: str, inputs: str = "inputs-v2", reuse_run
                 if prop.label not in core_ids:
                     continue
                 y, x = prop.centroid
+                scale = summary.get("level0_per_pixel", 1.)  # resampled tiles map back to level 0
                 cells.append({"instance_id": int(prop.label), "centroid_halo_xy": [float(x), float(y)],
-                              "centroid_level0_xy": [summary["origin_level0_xy"][0]+x-halo,
-                                                       summary["origin_level0_xy"][1]+y-halo],
+                              "centroid_level0_xy": [summary["origin_level0_xy"][0]+(x-halo)*scale,
+                                                       summary["origin_level0_xy"][1]+(y-halo)*scale],
                               "nuclear_area_pixels_halo": int(prop.area),
                               "classification_status": "not_run_in_segmentation_stage"})
             (tile_dir / "nuclei.json").write_text(json.dumps(cells, indent=2) + "\n")
@@ -695,7 +696,7 @@ def classify_v2(slide_key: str, run_id: str, reuse_run: str = "development-v1", 
         if digest(assets / "checkpoint.pth") != checkpoint_sha256:
             raise ValueError("CytoFormer checkpoint hash mismatch")
         group = segmentation["candidate_tissue_group"]
-        organ_head = "lymph_node" if group == "axillary_sentinel_node" else "breast"
+        organ_head = "lymph_node" if "node" in group else "breast"
         receipt.update(source_sha256=segmentation["source_sha256"], candidate_tissue_group=group,
                        execution_script_sha256=digest(__file__), shared_module_sha256=digest(stil_tissue.__file__),
                        segmentation_manifest_sha256=digest(root / "run_manifest.json"),

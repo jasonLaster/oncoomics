@@ -140,6 +140,8 @@ python scripts/stil_sample_tiles.py --legacy-manifest <v1 inputs>/tile_manifest.
 python scripts/stil_sample_tiles.py ... --out <new private inputs> [--roi s03=roi.geojson --mode exhaustive]
 ```
 
+For slides without a version-1 manifest (benchmark WSIs, other scanners), pass `--slides-spec` with a JSON list of `{slide_key, slide, candidate_tissue_group}` (optional `source_sha256`, which is then enforced, and `mpp_xy`, otherwise read from the slide). `--target-mpp 0.5` resamples explicitly: each grid cell is the level-0 extent of 1024 target pixels, read at level 0 and reduced with a box filter, and the tile records `mpp_xy`, `source_mpp_xy` and `level0_per_pixel` so nucleus centroids map back to level 0. Only pyramid levels are read; associated label and macro images, which can carry patient names, are never opened. `--min-tissue` overrides the core tissue fraction for small biopsy cores. A group containing `node` selects CytoFormer's lymph-node head.
+
 Review every `sampling_map.png` before extracting or spending GPU time. Tiles already present in the legacy inputs with matching hashes are copied rather than re-extracted, and keep their IDs.
 
 ### Tissue classes and assessable stroma
