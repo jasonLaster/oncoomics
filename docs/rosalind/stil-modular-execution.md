@@ -177,6 +177,16 @@ python scripts/stil_modular_packet_v2.py --verification <verification.json> --in
 
 Passing `--inputs inputs` with a new run ID applies the v2 masks to the version-1 tiles, reusing all their nuclei, which isolates the mask change on identical pixels. The verifier recomputes pixel masks from the source tiles, labels from the saved float16 probabilities, every tile count and the gates. With `--legacy-run` it evaluates the same gates on the version-1 native and competition masks, using predicted stroma alone as the old denominator, and ties those counts back to the version-1 receipts. Pilot two or three breast slides and inspect `review_v2.png` overlays before running the rest, and keep sentinel nodes in their own section.
 
+### TIGER benchmark adapter
+
+[stil_tiger_v2.py](../../scripts/modal/stil_tiger_v2.py) runs `segment_v2` and `classify_v2` on the [TIGER benchmark](../validation/stil-tiger-benchmark.md) development split only. Like the baseline adapters, it executes a hash-pinned copy of this runner (commit `d8eca7d4`, `git show d8eca7d4:scripts/modal/stil_modular_execute.py > .runs/stil-tiger-benchmark/frozen/stil_modular_execute_d8eca7d4.py`) and pins the shared modules and sampler. Only storage is rebound, to the TIGER volumes.
+
+- `rois-segment`, `rois-classify`, `rois-evaluate`: v2 labels on the wsirois ROI tiles. Every nucleus and CytoFormer class is reused from `tiger-rois-baseline-v1`, so only VISTA-PATH needs a GPU, and classification runs on CPU. Evaluation writes per-ROI `stroma_mask.png` (assessable = 1), `tumor_mask.png` and `cells.json` in ROI pixels, then scores them with `diana_omics.stil_benchmark`. VISTA-PATH was trained on TIGER ROIs, so its stroma Dice is a contaminated best case.
+- `slides-v1tiles-segment`, `slides-v1tiles-classify`: v2 labels on the 32 version-1 cores per slide, with all nuclei reused.
+- `sample` (CPU; `--maps-only` by default): v2 sampling resampled to 0.5 µm/px. Then `slides-segment` and `slides-classify` run the full chain, and `collect` writes slide rows in the benchmark's schema.
+
+Every GPU stage needs explicit budget approval. Whole-tissue tiling costs far more than 32-core sampling.
+
 ## Interpretation boundary
 
 A development packet should show both mask variants, threshold sensitivity, no-calls, unresolved nuclear area, sampling maps and source-bound overlays. Keep MuTILs TIL-rich-region ratios, ECTIL regression predictions and the modular nuclear-area proxy in distinct columns. Do not average them into a patient score.
