@@ -103,8 +103,9 @@ def run_ectil(row: dict, run_id: str):
 run_ectil = app.function(image=ectil_image, gpu="A10G", cpu=4, memory=16384, timeout=7200,  # noqa: F821
                          volumes={"/pilot": volume, "/raw": slides_volume}, max_containers=4)(run_ectil)
 _frozen_run_mutils = run_mutils  # noqa: F821
+MUTILS_INFERENCE_SHA256 = "c6d3e484cff195fa8b5d0baefb497da3064471efa2c31e11546cefd65c9d780b"
 MUTILS_LOG_BUG = '            self.logger.info(f"ROI {self._rid} has no nuclei!")'
-MUTILS_LOG_FIX = '            getattr(self, "logger", __import__("logging").getLogger()).info(f"ROI {self._rid} has no nuclei!")'
+MUTILS_LOG_FIX = '            __import__("logging").info(f"ROI {self._rid} has no nuclei!")'
 
 
 def run_mutils(row: dict, run_id: str):
@@ -112,23 +113,37 @@ def run_mutils(row: dict, run_id: str):
 
     In the pinned container, ROIPostProcessor.run_roi logs through `self.logger`,
     which is unset in the single-process path, so any ROI without nuclei aborts the
-    slide. The fix only changes that log call; the ROI is still skipped as upstream
-    intends. Original and patched file hashes are recorded beside the receipt.
+    slide. The fix replaces only that call with `logging.info`; the ROI is still
+    skipped as upstream intends. The container image digest is unchanged (the edit
+    is applied at run time); original/patched file hashes and the diff are recorded.
     """
+    receipt = Path("/pilot") / run_id / "mutils" / Path(row["filename"]).stem / "run_manifest.json"
+    if receipt.exists():
+        prior = json.loads(receipt.read_text())
+        if prior.get("status") == "completed" and prior.get("source_sha256") == row["sha256"]:
+            return _frozen_run_mutils(row, run_id)  # returns the existing receipt; no patch applied or recorded
     if row.get("patch_no_nuclei_log"):
+        import difflib
         import hashlib as _h
         path = Path("/home/MuTILs_Panoptic/mutils_panoptic/MuTILsInference.py")
-        text = path.read_text()
-        before = _h.sha256(text.encode()).hexdigest()
-        if MUTILS_LOG_FIX not in text:
-            assert text.count(MUTILS_LOG_BUG) == 1, "unexpected MuTILs source"
-            text = text.replace(MUTILS_LOG_BUG, MUTILS_LOG_FIX)
-            path.write_text(text)
+        current = path.read_text()
+        # A warm container may already hold the patch from an earlier slide.
+        original = current.replace(MUTILS_LOG_FIX, MUTILS_LOG_BUG) if MUTILS_LOG_FIX in current else current
+        assert original.count(MUTILS_LOG_BUG) == 1 and MUTILS_LOG_FIX not in original, "unexpected MuTILs source"
+        assert _h.sha256(original.encode()).hexdigest() == MUTILS_INFERENCE_SHA256, "MuTILs source differs from the pinned image"
+        patched = original.replace(MUTILS_LOG_BUG, MUTILS_LOG_FIX)
+        if current != patched:
+            path.write_text(patched)
         receipt_dir = Path("/pilot") / run_id / "mutils" / Path(row["filename"]).stem
         receipt_dir.mkdir(parents=True, exist_ok=True)
         (receipt_dir / "container_patch.json").write_text(json.dumps({
-            "file": str(path), "original_sha256": before, "patched_sha256": _h.sha256(text.encode()).hexdigest(),
-            "change": "no-nuclei ROI log call uses a module logger when self.logger is unset"}, indent=2) + "\n")
+            "image": MUTILS_IMAGE, "image_digest_unchanged": True,  # noqa: F821
+            "file": str(path), "original_sha256": _h.sha256(original.encode()).hexdigest(),
+            "patched_sha256": _h.sha256(patched.encode()).hexdigest(),
+            "diff": "".join(difflib.unified_diff(original.splitlines(True), patched.splitlines(True),
+                                                 "MuTILsInference.py (pinned image)", "MuTILsInference.py (patched)")),
+            "change": "self.logger.info -> logging.info on the no-nuclei ROI path only"}, indent=2) + "\n")
+        volume.commit()
     return _frozen_run_mutils(row, run_id)
 
 
@@ -522,6 +537,70 @@ def _dev_ids(slides):
     return chosen
 
 
+def _benchmark_spend_today():
+    """Today's Modal spend for this benchmark's apps (names diana-stil-tiger-* / tiger-*)."""
+    import subprocess
+    out = subprocess.run(["modal", "billing", "report", "--for", "today", "--json"], capture_output=True, text=True, check=True).stdout
+    return sum(float(r["cost"]) for r in json.loads(out) if r["description"].startswith(("diana-stil-tiger", "tiger-")))
+
+
+def _mutils_budget_run(rows, order, run_id, cap, rate_per_hour, reserve, max_concurrent, min_slide_minutes, log_path):
+    """Run MuTILs slides in frozen order without letting projected spend pass `cap`.
+
+    Committed spend = billed spend at launch + wall time of finished and running
+    slides x `rate_per_hour` (A10G + 4 CPU + 24 GiB, rounded up). A slide starts only
+    if committed spend plus one expected slide (max of `min_slide_minutes` and the
+    median finished duration) plus `reserve` stays within the cap.
+    """
+    import statistics
+    import time
+    baseline = _benchmark_spend_today()
+    queue = [i for i in order if i in rows]
+    running, done = {}, {}
+    state = {"cap": cap, "baseline_billed": baseline, "rate_per_hour": rate_per_hour, "reserve": reserve, "order": order}
+
+    def committed(now):
+        spent = sum(d["wall_minutes"] for d in done.values()) + sum((now - s) / 60 for _, s in running.values())
+        return baseline + spent / 60 * rate_per_hour
+
+    def write(now):
+        state.update(committed_estimate=committed(now), done=done, running=sorted(running),
+                     not_run=[i for i in queue if i not in done and i not in running])
+        log_path.write_text(json.dumps(state, indent=2, default=str) + "\n")
+
+    while queue or running:
+        now = time.time()
+        durations = [d["wall_minutes"] for d in done.values() if d["status"] != "returned_existing"]
+        expected = max(min_slide_minutes, statistics.median(durations) if durations else 0) / 60 * rate_per_hour
+        while queue and len(running) < max_concurrent and committed(now) + expected + reserve <= cap:
+            image_id = queue.pop(0)
+            running[image_id] = (run_mutils.spawn(dict(rows[image_id], patch_no_nuclei_log=True), run_id), now)
+            print("start", image_id, f"committed ${committed(now):.2f}", flush=True)
+        if not running:
+            break
+        time.sleep(30)
+        for image_id, (call, started) in list(running.items()):
+            try:
+                result = call.get(timeout=0)
+            except TimeoutError:
+                continue
+            except Exception as e:
+                result = {"status": "failed", "error": repr(e)[:500]}
+            wall = (time.time() - started) / 60
+            status = result.get("status")
+            if status == "completed" and wall < 2:
+                status = "returned_existing"
+            done[image_id] = {"status": status, "wall_minutes": wall, "n_analyzed_rois": result.get("n_analyzed_rois"),
+                              "error": (result.get("error") or "")[-400:]}
+            del running[image_id]
+            print("done", image_id, status, f"{wall:.1f} min", f"committed ${committed(time.time()):.2f}", flush=True)
+        write(time.time())
+    state["not_run"] = queue
+    state["billed_at_end"] = _benchmark_spend_today()
+    write(time.time())
+    return state
+
+
 @app.local_entrypoint()
 def main(stage: str = "assets", slides: str = "all", run_id: str = RUN_ID,
          out: str = "private/stil/benchmark-20261022/baselines"):
@@ -565,6 +644,13 @@ def main(stage: str = "assets", slides: str = "all", run_id: str = RUN_ID,
         for r in merged:
             r.pop("stain", None)
         save("slide_rows.json", merged)
+    elif stage == "mutils-budget":
+        order_doc = json.loads((SPLIT_PATH.parent / "stil_tiger_mutils_order.json").read_text())
+        order = order_doc["first_wave"] + order_doc["remaining"]
+        assert set(order) == set(_dev_ids("all"))
+        result = _mutils_budget_run(rows, order, run_id, cap=40.0, rate_per_hour=1.6, reserve=0.5, max_concurrent=4,
+                                    min_slide_minutes=30, log_path=local / "mutils_budget_progress.json")
+        print(json.dumps({k: result[k] for k in ("baseline_billed", "committed_estimate", "billed_at_end", "not_run")}, default=str))
     elif stage in ("ectil", "mutils", "mutils-patched"):
         fn = run_ectil if stage == "ectil" else run_mutils
         if stage == "mutils-patched":

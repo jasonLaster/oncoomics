@@ -348,3 +348,33 @@ def select_component_rois(coco, seed=20261022, n_tcga=200):
     tcga = [r for r in rois if r["source"] == "TCGA"]
     keep = set(r["image_id"] for r in random.Random(seed).sample(tcga, min(n_tcga, len(tcga))))
     return [r for r in rois if r["source"] != "TCGA" or r["image_id"] in keep]
+
+
+def subset_order(split, seed, n_first=20):
+    """Frozen run order over development slides: a stratified first wave, then the rest.
+
+    The first wave allocates `n_first` slides across (source, band) strata by
+    largest remainder, preferring pitfall-comment slides within each stratum; the
+    remaining development slides follow in seeded random order.
+    """
+    dev = [s for s in split["slides"] if s["split"] == "development"]
+    _require(0 < n_first <= len(dev), "invalid first-wave size")
+    rng = random.Random(seed)
+    strata = {}
+    for s in sorted(dev, key=lambda s: s["image_id"]):
+        strata.setdefault((s["source"], s["band"]), []).append(s)
+    keys = sorted(strata, key=lambda k: (k[0], [b[0] for b in SCORE_BANDS].index(k[1])))
+    quota = {k: len(strata[k]) * n_first / len(dev) for k in keys}
+    alloc = {k: int(math.floor(quota[k])) for k in keys}
+    tiebreak = {k: rng.random() for k in keys}
+    for k in sorted(keys, key=lambda k: (-(quota[k] - alloc[k]), tiebreak[k]))[: n_first - sum(alloc.values())]:
+        alloc[k] += 1
+    first = []
+    for k in keys:
+        members = list(strata[k])
+        rng.shuffle(members)
+        members.sort(key=lambda s: not s["pitfall_flags"])  # stable: pitfall slides first, shuffled order kept
+        first += [s["image_id"] for s in members[:alloc[k]]]
+    rest = sorted(s["image_id"] for s in dev if s["image_id"] not in set(first))
+    rng.shuffle(rest)
+    return {"seed": seed, "n_first": n_first, "first_wave": first, "remaining": rest}

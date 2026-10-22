@@ -27,6 +27,7 @@ from diana_omics.stil_benchmark import (
     select_component_rois,
     slide_source,
     spearman,
+    subset_order,
     tissue_component_dice,
 )
 
@@ -65,6 +66,17 @@ class SplitTests(unittest.TestCase):
         sizes = [sum(s["dev_fold"] == f for s in dev) for f in range(5)]
         self.assertEqual(sizes, [4] * 5)
         self.assertNotEqual(a, make_split(rows, seed=8, n_dev=20, n_folds=5))
+
+    def test_subset_order_is_stratified_complete_and_frozen(self):
+        split = json.loads(SPLIT.read_text())
+        order = subset_order(split, seed=20261022, n_first=20)
+        dev = {s["image_id"]: s for s in split["slides"] if s["split"] == "development"}
+        self.assertEqual(len(order["first_wave"]), 20)
+        self.assertEqual(sorted(order["first_wave"] + order["remaining"]), sorted(dev))
+        self.assertEqual({dev[i]["band"] for i in order["first_wave"]}, {"0-4", "5-9", "10-29", "30-59", "60+"})
+        self.assertEqual({dev[i]["source"] for i in order["first_wave"]}, {"TC", "numeric_SB"})
+        frozen = json.loads((SPLIT.parent / "stil_tiger_mutils_order.json").read_text())
+        self.assertEqual({k: frozen[k] for k in order}, order)
 
     def test_committed_split_is_frozen_and_complete(self):
         split = json.loads(SPLIT.read_text())
