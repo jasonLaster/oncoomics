@@ -316,3 +316,35 @@ def coco_box_centers(coco, image_id):
     """Centers of COCO [x, y, w, h] boxes for one image."""
     return [(a["bbox"][0] + a["bbox"][2] / 2, a["bbox"][1] + a["bbox"][3] / 2)
             for a in coco["annotations"] if a["image_id"] == image_id]
+
+
+# ROI PNGs carry no calibration. RUMC/JB values are the per-scanner MPP observed
+# on every wsitils slide of that source; TCGA slides were resampled to 0.5 by TIGER.
+ROI_SOURCE_MPP = {"TCGA": 0.5, "RUMC": 0.485069, "JB": 0.456694}
+
+
+def roi_source(file_name):
+    name = file_name.split("/")[-1]
+    if name.startswith("TCGA-"):
+        return "TCGA"
+    if name.startswith("TC_"):
+        return "RUMC"
+    if re.match(r"\d+[SB]_\[", name):
+        return "JB"
+    raise ValueError("unrecognized ROI file: " + file_name)
+
+
+def select_component_rois(coco, seed=20261022, n_tcga=200):
+    """All RUMC and JB tissue-cells ROIs plus a seeded random sample of TCGA ROIs."""
+    boxes = {}
+    for a in coco["annotations"]:
+        boxes.setdefault(a["image_id"], []).append(a["bbox"])
+    rois = []
+    for image in sorted(coco["images"], key=lambda i: i["id"]):
+        source = roi_source(image["file_name"])
+        rois.append({"image_id": image["id"], "file_name": image["file_name"].split("/")[-1], "source": source,
+                     "width": image["width"], "height": image["height"], "mpp": ROI_SOURCE_MPP[source],
+                     "box_centers": [[b[0] + b[2] / 2, b[1] + b[3] / 2] for b in boxes.get(image["id"], [])]})
+    tcga = [r for r in rois if r["source"] == "TCGA"]
+    keep = set(r["image_id"] for r in random.Random(seed).sample(tcga, min(n_tcga, len(tcga))))
+    return [r for r in rois if r["source"] != "TCGA" or r["image_id"] in keep]

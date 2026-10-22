@@ -22,7 +22,9 @@ from diana_omics.stil_benchmark import (
     per_band,
     pitfall_flags,
     pooled_detection,
+    roi_source,
     score_band,
+    select_component_rois,
     slide_source,
     spearman,
     tissue_component_dice,
@@ -140,6 +142,20 @@ class ComponentTests(unittest.TestCase):
         pooled = pooled_detection([out, match_points([], [(0, 0)], 4)])
         self.assertEqual((pooled["tp"], pooled["fn"]), (1, 2))
         self.assertTrue(math.isclose(pooled["recall"], 1 / 3))
+
+
+class RoiSelectionTests(unittest.TestCase):
+    def test_selection_keeps_all_rumc_jb_and_samples_tcga(self):
+        names = ["./images/TCGA-A1-A0SK-01Z_[1, 2, 3, 4].png"] * 5 + ["./images/TC_S01_P000001_C0001_B101_[0, 0, 9, 9].png",
+                                                                      "./images/100B_[0, 0, 9, 9].png"]
+        coco = {"images": [{"id": i, "file_name": n, "width": 10, "height": 10} for i, n in enumerate(names)],
+                "annotations": [{"image_id": 5, "bbox": [2, 2, 16, 16]}]}
+        rois = select_component_rois(coco, seed=1, n_tcga=2)
+        self.assertEqual([r["source"] for r in rois].count("TCGA"), 2)
+        self.assertEqual({r["source"] for r in rois}, {"TCGA", "RUMC", "JB"})
+        self.assertEqual([r for r in rois if r["image_id"] == 5][0]["box_centers"], [[10, 10]])
+        self.assertEqual(rois, select_component_rois(coco, seed=1, n_tcga=2))
+        self.assertEqual(roi_source("228B_[1, 2, 3, 4].png"), "JB")
 
 
 if __name__ == "__main__":

@@ -100,4 +100,4 @@ python scripts/stil_tiger_split.py --scores <dir>/tiger-til-scores-wsitils.csv -
 python -m pytest tests/test_stil_benchmark.py
 ```
 
-Staging, adapters and evaluation are added with the runners in a later commit.
+Staging, adapters and evaluation: [stil-tiger-benchmark-runbook.md](stil-tiger-benchmark-runbook.md).
