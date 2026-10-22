@@ -550,7 +550,8 @@ def _mutils_budget_run(rows, order, run_id, cap, rate_per_hour, reserve, max_con
     Committed spend = billed spend at launch + wall time of finished and running
     slides x `rate_per_hour` (A10G + 4 CPU + 24 GiB, rounded up). A slide starts only
     if committed spend plus one expected slide (max of `min_slide_minutes` and the
-    median finished duration) plus `reserve` stays within the cap.
+    median finished duration) for it and for every running slide, plus `reserve`,
+    stays within the cap.
     """
     import statistics
     import time
@@ -572,7 +573,7 @@ def _mutils_budget_run(rows, order, run_id, cap, rate_per_hour, reserve, max_con
         now = time.time()
         durations = [d["wall_minutes"] for d in done.values() if d["status"] != "returned_existing"]
         expected = max(min_slide_minutes, statistics.median(durations) if durations else 0) / 60 * rate_per_hour
-        while queue and len(running) < max_concurrent and committed(now) + expected + reserve <= cap:
+        while queue and len(running) < max_concurrent and committed(now) + expected * (len(running) + 1) + reserve <= cap:
             image_id = queue.pop(0)
             running[image_id] = (run_mutils.spawn(dict(rows[image_id], patch_no_nuclei_log=True), run_id), now)
             print("start", image_id, f"committed ${committed(now):.2f}", flush=True)
@@ -588,7 +589,7 @@ def _mutils_budget_run(rows, order, run_id, cap, rate_per_hour, reserve, max_con
                 result = {"status": "failed", "error": repr(e)[:500]}
             wall = (time.time() - started) / 60
             status = result.get("status")
-            if status == "completed" and wall < 2:
+            if status == "completed" and result.get("finished", 0) < started - 60:
                 status = "returned_existing"
             done[image_id] = {"status": status, "wall_minutes": wall, "n_analyzed_rois": result.get("n_analyzed_rois"),
                               "error": (result.get("error") or "")[-400:]}
@@ -648,6 +649,11 @@ def main(stage: str = "assets", slides: str = "all", run_id: str = RUN_ID,
         order_doc = json.loads((SPLIT_PATH.parent / "stil_tiger_mutils_order.json").read_text())
         order = order_doc["first_wave"] + order_doc["remaining"]
         assert set(order) == set(_dev_ids("all"))
+        previous = local / "mutils_budget_progress_wave1.json"
+        if previous.exists():
+            # Slides already terminal (completed or native failure) are not re-dispatched.
+            finished = {k for k, v in json.loads(previous.read_text())["done"].items() if v["status"] in ("completed", "returned_existing", "failed")}
+            order = [i for i in order if i not in finished]
         result = _mutils_budget_run(rows, order, run_id, cap=40.0, rate_per_hour=1.6, reserve=0.5, max_concurrent=4,
                                     min_slide_minutes=30, log_path=local / "mutils_budget_progress.json")
         print(json.dumps({k: result[k] for k in ("baseline_billed", "committed_estimate", "billed_at_end", "not_run")}, default=str))

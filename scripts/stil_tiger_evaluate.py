@@ -38,6 +38,10 @@ ENDPOINTS = {
 }
 
 
+# A run stopped at the budget cap or never dispatched is not-run, not a no-call.
+NOT_RUN_STATUSES = {"running", "classification_not_run", "not_run"}
+
+
 def _stem(filename):
     return Path(filename).stem
 
@@ -52,11 +56,15 @@ def predictions(collected, hovernet):
             out["ectil"][sid] = 100 * r["uncalibrated_model_output_fraction"]
     for r in collected.get("mutils", []):
         sid = _stem(r["filename"])
+        if r["status"] in NOT_RUN_STATUSES:
+            continue
         status["mutils"][sid] = r["status"]
         if r["status"] == "completed":
             out["mutils"][sid] = 100 * r["native_summary"]["metrics"]["unweighted_global"]["TILs2AnyStromaRatio"]
     for r in collected.get("modular", []):
         sid = r["slide_key"]
+        if r.get("status") in NOT_RUN_STATUSES:
+            continue
         status["modular"][sid] = status["modular_competition"][sid] = r.get("status")
         if r.get("status") == "completed_experimental_comparison":
             v = r.get("exploratory_model_stroma_nuclear_area_percent")
@@ -74,9 +82,11 @@ def predictions(collected, hovernet):
 
 def summarize(name, preds, status, refs, dev, slides_meta):
     callable_ids = [i for i in dev if i in preds]
-    no_calls = [i for i in dev if i not in preds]
+    no_calls = [i for i in dev if i not in preds and i in status]
+    not_run = [i for i in dev if i not in status]
     result = {"pipeline": name, "endpoint": ENDPOINTS[name], "n_development": len(dev), "n_callable": len(callable_ids),
-              "no_calls": [{"image_id": i, "status": status.get(i, "not_run")} for i in no_calls]}
+              "no_calls": [{"image_id": i, "status": status[i]} for i in no_calls], "not_run": not_run,
+              "no_call_rate_of_attempted": len(no_calls) / max(len(no_calls) + len(callable_ids), 1)}
     if len(callable_ids) < 3:
         result["status"] = "insufficient_callable_slides"
         return result
@@ -157,6 +167,8 @@ def main():
     p.add_argument("--collected", type=Path, required=True)
     p.add_argument("--hovernet", type=Path)
     p.add_argument("--out", type=Path, required=True)
+    p.add_argument("--subset-pipeline", default="mutils",
+                   help="also score every pipeline on the slides this pipeline attempted (written to metrics_<name>_subset.json)")
     args = p.parse_args()
     if hashlib.sha256(args.scores.read_bytes()).hexdigest() != SCORES_SHA256:
         raise SystemExit("TIGER score file hash mismatch")
@@ -183,6 +195,18 @@ def main():
             r["plot"] = "plots/" + plot(name, refs, preds[name], ids, args.out / "plots", ENDPOINTS[name])
         results.append(r)
     (args.out / "metrics.json").write_text(json.dumps(results, indent=2) + "\n")
+    # Attempted = reached a terminal state; a run cancelled at the budget cap ("running") is not-run.
+    subset = sorted(i for i in status.get(args.subset_pipeline, {}) if i in dev)
+    if subset:
+        sub_results = [summarize(name, preds[name], status[name], refs, subset, meta) for name in ENDPOINTS if status[name]]
+        for r in sub_results:
+            r["subset"] = {"defined_by": args.subset_pipeline + " attempted slides", "n": len(subset), "image_ids": subset}
+        (args.out / f"metrics_{args.subset_pipeline}_subset.json").write_text(json.dumps(sub_results, indent=2) + "\n")
+        for r in sub_results:
+            a = r.get("agreement")
+            if a:
+                print(f"[subset n={len(subset)}] {r['pipeline']:20s} n={r['n_callable']:2d} MAE={a['mae_pp']:.1f} bias={a['bias']:.1f} "
+                      f"CCC={a['lins_ccc']:.2f} rho={a['spearman']:.2f}")
     with (args.out / "slide_predictions.csv").open("w", newline="") as f:
         w = csv.writer(f)
         w.writerow(["image_id", "source", "band", "pitfall_flags", "dev_fold", "reference"] + list(ENDPOINTS))
