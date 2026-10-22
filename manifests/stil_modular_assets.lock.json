@@ -1,0 +1,165 @@
+{
+  "schema_version": 1,
+  "purpose": "Exact asset identities used in bounded research execution; no assets redistributed",
+  "base_assets": [
+    {
+      "repo": "zhihuanglab/VISTA-PATH",
+      "revision": "972a3c630868f2c488887feab412cc69525d5804",
+      "filename": "examples_BRCA/images/TCGA-A2-A3XT-DX1_xmin83566_ymin29931_MPP-0-0-0.png",
+      "size": 2034908,
+      "expected_sha256": "f3e38d7537fff9d53a2db362c380323a1d698f8545b432bd8e92465838a9569d",
+      "relative_path": "VISTA-PATH/examples_BRCA/images/TCGA-A2-A3XT-DX1_xmin83566_ymin29931_MPP-0-0-0.png",
+      "sha256": "f3e38d7537fff9d53a2db362c380323a1d698f8545b432bd8e92465838a9569d"
+    },
+    {
+      "repo": "zhihuanglab/VISTA-PATH",
+      "revision": "972a3c630868f2c488887feab412cc69525d5804",
+      "filename": "examples_BRCA/masks/TCGA-A2-A3XT-DX1_xmin83566_ymin29931_MPP-0-0-0.png",
+      "size": 11646,
+      "expected_sha256": null,
+      "relative_path": "VISTA-PATH/examples_BRCA/masks/TCGA-A2-A3XT-DX1_xmin83566_ymin29931_MPP-0-0-0.png",
+      "sha256": "008fd1828fdda3e826b6f1d23c9940800ab0536cc64cfee684ca2ea1dbe9b841"
+    },
+    {
+      "repo": "zhihuanglab/VISTA-PATH",
+      "revision": "972a3c630868f2c488887feab412cc69525d5804",
+      "filename": "idx_to_names/BRCA.json",
+      "size": 554,
+      "expected_sha256": null,
+      "relative_path": "VISTA-PATH/idx_to_names/BRCA.json",
+      "sha256": "48d71e8d5101b12c49972622a27cafea3ab4090ea09d2c07f7502d91527c65d2"
+    },
+    {
+      "repo": "zhihuanglab/VISTA-PATH",
+      "revision": "972a3c630868f2c488887feab412cc69525d5804",
+      "filename": "pytorch_model.bin",
+      "size": 530927319,
+      "expected_sha256": "d263cf07ab2ab37deaec54317cd462a5136b7c3807c155417dcfbe9c33e17f19",
+      "relative_path": "VISTA-PATH/pytorch_model.bin",
+      "sha256": "d263cf07ab2ab37deaec54317cd462a5136b7c3807c155417dcfbe9c33e17f19"
+    },
+    {
+      "repo": "facebook/mask2former-swin-small-ade-semantic",
+      "revision": "717a6bb84e96b508536efed40a8718b6a45cd87c",
+      "filename": "config.json",
+      "size": 82536,
+      "expected_sha256": null,
+      "relative_path": "facebook--mask2former-swin-small-ade-semantic/config.json",
+      "sha256": "57ff30efb40489e83a698297f8419841b91534d00ae05ef31c31aee3de11e86d"
+    },
+    {
+      "repo": "facebook/mask2former-swin-small-ade-semantic",
+      "revision": "717a6bb84e96b508536efed40a8718b6a45cd87c",
+      "filename": "model.safetensors",
+      "size": 275606248,
+      "expected_sha256": "2533310a1e902580a79e575814f1fa04078a99e2321b9bda7afd4f22bba49189",
+      "relative_path": "facebook--mask2former-swin-small-ade-semantic/model.safetensors",
+      "sha256": "2533310a1e902580a79e575814f1fa04078a99e2321b9bda7afd4f22bba49189"
+    },
+    {
+      "repo": "facebook/mask2former-swin-small-ade-semantic",
+      "revision": "717a6bb84e96b508536efed40a8718b6a45cd87c",
+      "filename": "preprocessor_config.json",
+      "size": 538,
+      "expected_sha256": null,
+      "relative_path": "facebook--mask2former-swin-small-ade-semantic/preprocessor_config.json",
+      "sha256": "2cc071ffa594ec111c765acfcf18e279ef61f0ac09f493fb331704d4b6220e3c"
+    },
+    {
+      "repo": "facebook/sam-vit-base",
+      "revision": "70c1a07f894ebb5b307fd9eaaee97b9dfc16068f",
+      "filename": "config.json",
+      "size": 6566,
+      "expected_sha256": null,
+      "relative_path": "facebook--sam-vit-base/config.json",
+      "sha256": "5ebd0d8643b486f3a716bf17c2a15531eb818b2b96ff0c6c5dcc88fa015161af"
+    },
+    {
+      "repo": "facebook/sam-vit-base",
+      "revision": "70c1a07f894ebb5b307fd9eaaee97b9dfc16068f",
+      "filename": "model.safetensors",
+      "size": 374979480,
+      "expected_sha256": "892c410e496344e527255ccdcb2cb7244a609acb5389c7c4fdba1288f861c579",
+      "relative_path": "facebook--sam-vit-base/model.safetensors",
+      "sha256": "892c410e496344e527255ccdcb2cb7244a609acb5389c7c4fdba1288f861c579"
+    },
+    {
+      "repo": "facebook/sam-vit-base",
+      "revision": "70c1a07f894ebb5b307fd9eaaee97b9dfc16068f",
+      "filename": "preprocessor_config.json",
+      "size": 466,
+      "expected_sha256": null,
+      "relative_path": "facebook--sam-vit-base/preprocessor_config.json",
+      "sha256": "225545a743c654e3c495ec6f545a0eaba57c8ba3fbbd8483b3cb1c0fc58db517"
+    },
+    {
+      "repo": "vinid/plip",
+      "revision": "67ade53ddd32195868f422585f72698ef5d15094",
+      "filename": "config.json",
+      "size": 4463,
+      "expected_sha256": null,
+      "relative_path": "vinid--plip/config.json",
+      "sha256": "79595b5c6be8867e3ba42c34b1e6b9a0f957e549c1e7f43b5c6945f4f6f59471"
+    },
+    {
+      "repo": "vinid/plip",
+      "revision": "67ade53ddd32195868f422585f72698ef5d15094",
+      "filename": "preprocessor_config.json",
+      "size": 316,
+      "expected_sha256": null,
+      "relative_path": "vinid--plip/preprocessor_config.json",
+      "sha256": "910e70b3956ac9879ebc90b22fb3bc8a75b6a0677814500101a4c072bd7857bd"
+    },
+    {
+      "repo": "vinid/plip",
+      "revision": "67ade53ddd32195868f422585f72698ef5d15094",
+      "filename": "pytorch_model.bin",
+      "size": 605241933,
+      "expected_sha256": "98a7f8d2a1f4a8fc8f6dedb3a16ff7efbe02a7ef67c93904c80bca9767c69630",
+      "relative_path": "vinid--plip/pytorch_model.bin",
+      "sha256": "98a7f8d2a1f4a8fc8f6dedb3a16ff7efbe02a7ef67c93904c80bca9767c69630"
+    },
+    {
+      "repo": "vinid/plip",
+      "revision": "67ade53ddd32195868f422585f72698ef5d15094",
+      "filename": "special_tokens_map.json",
+      "size": 389,
+      "expected_sha256": null,
+      "relative_path": "vinid--plip/special_tokens_map.json",
+      "sha256": "f8c0d6c39aee3f8431078ef6646567b0aba7f2246e9c54b8b99d55c22b707cbf"
+    },
+    {
+      "repo": "vinid/plip",
+      "revision": "67ade53ddd32195868f422585f72698ef5d15094",
+      "filename": "tokenizer.json",
+      "size": 2224041,
+      "expected_sha256": null,
+      "relative_path": "vinid--plip/tokenizer.json",
+      "sha256": "b556ac8c99757ffb677208af34bc8c6721572114111a6e0aaf5fa69ff0b8d842"
+    },
+    {
+      "repo": "vinid/plip",
+      "revision": "67ade53ddd32195868f422585f72698ef5d15094",
+      "filename": "tokenizer_config.json",
+      "size": 568,
+      "expected_sha256": null,
+      "relative_path": "vinid--plip/tokenizer_config.json",
+      "sha256": "cbcdcf14cede6b5c3a6841f37961364357d82bef3079beb115e95f27252526a0"
+    }
+  ],
+  "CytoFormer": {
+    "model": "CytoFormer",
+    "source": "https://huggingface.co/zhihuanglab/CytoFormer",
+    "revision": "3e9691e45c3bd7139059dafa8dc5da716d67801a",
+    "checkpoint_sha256": "e93362f4e894cad5d02cf72d944702f7fd9b95b5fc25eedf01406adf1c7b7ead",
+    "checkpoint_bytes": 2726343169,
+    "code_commit": "36b667e40a440d0a8faea8296709aadfcffe6616",
+    "taxonomy_git_blob": "1ad9e89d723d8b6bd5b894cb8f9d857d4118984b",
+    "taxonomy_sha256": "8dc8613c48f5fcad29b263f8c5e3e4a8e4588f2f94cef7c9628c738716eeea73"
+  },
+  "Cellpose": {
+    "version": "3.1.1.1",
+    "checkpoint": "nucleitorch_0",
+    "checkpoint_sha256": "89ca45e4a45048d5010d29621466b1274b91b3dcb9714dce9f9e90a9a8671303"
+  }
+}
