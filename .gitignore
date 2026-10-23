@@ -63,3 +63,6 @@ results/scrna/**/miqc/model-*.rds
 # Patient intake, identity documents and derived outputs must stay outside Git.
 private/
 results/scrna/patient/
+
+# Patient-derived sTIL outputs (public repo): keep local only
+results/stil/
